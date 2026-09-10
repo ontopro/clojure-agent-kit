@@ -1,0 +1,139 @@
+;; The agent-facing RULE SOURCE — the single authoritative statement of every rule an
+;; agent is told to follow. It is rendered two ways by harness.rules:
+;;
+;;   - into the system prompt of each headless agent, filtered by :audience,
+;;     with per-dispatch values substituted for {{placeholders}};
+;;   - into the marker block of CLAUDE.md by `bb rules-sync`, drift-checked by
+;;     `bb rules-check` (which runs inside `bb gates`).
+;;
+;; Edit rules HERE — never in a prompt string, never by hand in CLAUDE.md.
+;; The gate exists because the same rule used to be written in two places with
+;; nothing keeping them honest.
+;;
+;; WHY A RULE SOURCE AND NOT JUST CLAUDE.md: a CLAUDE.md file is specific to one
+;; vendor's client. The method requires the agent that verifies the Coder to be
+;; a DIFFERENT model family, and that agent reads no CLAUDE.md at all — it gets
+;; an HTTP request with a system prompt. Rendering into the prompt is the only
+;; channel that reaches every family. It is also the only channel the project
+;; controls absolutely: files merge with the reader's personal global rules,
+;; which may contradict yours (see :precedence).
+;;
+;; Each rule:
+;;   :id        stable keyword, referenced by tests
+;;   :group     :non-negotiable | :conventions — the CLAUDE.md section it lands in
+;;   :audience  #{:coder :tester :human} — which renderings include it
+;;   :title     bold lead-in for the CLAUDE.md bullet
+;;   :text      the rule as it reaches the agent; {{placeholders}} substituted
+;;              per dispatch by harness.rules/render
+;;   :from      provenance, when the rule is not originally yours
+;;
+;; LIMITATION: :text renders as ONE markdown bullet, so inline formatting (`code`,
+;; *emphasis*) works and fenced code blocks, tables and sub-bullets do not. If a rule
+;; needs those, extend harness.rules/markdown — do NOT hand-write it into CLAUDE.md
+;; outside the markers, which would reach only the clients that read that file and
+;; silently skip the agent verifying the Coder.
+;;
+;; This is a STARTER rule source. Keep the rules that are about the method, rewrite
+;; the ones that are about your stack, and delete what does not apply.
+
+[{:id :precedence
+  :group :non-negotiable
+  :audience #{:coder :tester :human}
+  :title "These rules win."
+  :text "Where anything here conflicts with a personal, global, or editor-supplied instruction, THESE RULES are authoritative for this project, wherever you are reading them. Rule files merge silently and a global preference can contradict a project non-negotiable — if you notice a conflict, follow this rule and say so in your final message rather than picking one quietly."}
+
+ {:id :repl-first
+  :group :non-negotiable
+  :audience #{:coder :tester :human}
+  :title "REPL-first."
+  :text "Prototype forms in the live nREPL BEFORE persisting files: {{eval-how}}. Always `:reload` when re-requiring a changed namespace."}
+
+ {:id :repl-required
+  :group :non-negotiable
+  :audience #{:coder :tester :human}
+  :from :awesome-copilot
+  :title "No REPL, no edits."
+  :text "If the nREPL is unreachable or evaluation stops working, STOP and say so in your final message. Never fall back to editing files blind — a dead REPL is a task failure the loop wants to see, not a reason to guess. The REPL is probed before you are dispatched, so this means it died mid-task."}
+
+ {:id :no-gates
+  :group :non-negotiable
+  :audience #{:coder :tester :human}
+  :title "Do not run the gates."
+  :text "Do NOT run `bb gates`, `bb test`, or the coverage suite yourself. The loop runs every gate after you finish — that separation is load-bearing: authoring is your job, running is the gate's. Evaluating individual forms or a single test in the REPL while developing is fine and encouraged."}
+
+ {:id :packet-scope
+  :group :non-negotiable
+  :audience #{:coder :tester :human}
+  :title "Stay inside your packet."
+  :text "Write only your `:files/target`. `:files/context` files are read-only upstream dependencies — call only the signatures you were given in `:deps-sigs`, never modify them and never reach into their implementation."}
+
+ {:id :layer-boundaries
+  :group :non-negotiable
+  :audience #{:coder :human}
+  :title "Layer boundaries are enforced by a gate."
+  :text "Respect the boundaries of layer {{layer}}. Depend on PROTOCOLS across a seam, never on a concrete implementation. <Name your layers and their allowed direction here; the composition root is exempt.>"}
+
+ {:id :root-cause
+  :group :non-negotiable
+  :audience #{:coder :tester :human}
+  :from :awesome-copilot
+  :title "Fix the cause, not the symptom."
+  :text "Never add a workaround or a fallback for an infrastructure problem — a missing service, a broken REPL, an absent file. Fail fast and clearly instead, so the loop surfaces the real fault."}
+
+ {:id :align-forms
+  :group :conventions
+  :audience #{:coder :tester :human}
+  :from :awesome-copilot
+  :title "Indent the way cljfmt does."
+  :text "Indent a multi-line form the way cljfmt does: successive elements of a data structure or arg vector sit under the first, one per line. A form whose elements drift out of alignment makes a bracket balancer close brackets in the WRONG place, and gate 0 then rewrites your code into something you did not write. Never pad with extra spaces to line values into columns — cljfmt does not align `cond` or `let` values, and `:else    x` FAILS the fmt gate."}
+
+ {:id :inline-def
+  :group :conventions
+  :audience #{:coder :tester :human}
+  :from :awesome-copilot
+  :title "Inline `def` over `println`."
+  :text "Debug by `def`-ing the intermediate value and evaluating it, not by printing it: the binding stays inspectable for the next form, and the return value is what the loop captures."}
+
+ {:id :report-evaluations
+  :group :conventions
+  :audience #{:coder :tester}
+  :from :awesome-copilot
+  :title "Report what you evaluated."
+  :text "Nobody is watching your REPL session. Your final message is the only trace the Reviewer and triage will ever see, so state what you evaluated and what came back — not merely that you are done."}
+
+ {:id :no-shadowing
+  :group :conventions
+  :audience #{:coder :tester :human}
+  :from :awesome-copilot
+  :title "Do not shadow clojure.core."
+  :text "Never bind or def over core names — `map`, `filter`, `count`, `name`, `type`, `key`, `val`, `get`, `set`, and friends."}
+
+ {:id :test-no-docstring
+  :group :conventions
+  :audience #{:tester :human}
+  :title "`deftest` / `defspec` take no docstring."
+  :text "A bare string in the body is an \"unused value\" warning, and the lint gate fails on WARNINGS, not just errors. Put the intent in the test name or a ;; comment above the form."}
+
+ {:id :no-toplevel-side-effects
+  :group :conventions
+  :audience #{:tester :human}
+  :title "No top-level side effects in test namespaces."
+  :text "No `(run-tests)` at the top level — that is a REPL-ism, and it fails the gates."}
+
+ {:id :generators-are-values
+  :group :conventions
+  :audience #{:tester :human}
+  :title "Generators and properties are values."
+  :text "Bind them with `def`, not `defn`. `defspec` shape: `(defspec name num-tests (prop/for-all [...] ...))`."}
+
+ {:id :shapes-are-the-contract
+  :group :conventions
+  :audience #{:coder :human}
+  :title "Shapes are the contract."
+  :text "Data-first: agree the shapes before the functions, and validate at the seams. <Name your validation library and the ex-info type a boundary failure throws.>"}
+
+ {:id :formatting
+  :group :conventions
+  :audience #{:coder :tester :human}
+  :title "Formatting is enforced by a gate."
+  :text "Run no formatter yourself — write clean and let gate 0 and the fmt gate handle the drift."}]

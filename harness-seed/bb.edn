@@ -1,0 +1,61 @@
+{:paths ["src" "resources"]
+ :deps {metosin/malli {:mvn/version "0.19.1"}}
+ :tasks
+ {:requires ([babashka.fs :as fs]
+             [clojure.string :as str])
+  :init (do (defn test-nses []
+              (->> (fs/glob "test" "**/*_test.clj")
+                   (map (fn [p]
+                          (-> (str (fs/relativize "test" p))
+                              (str/replace (re-pattern "\\.clj$") "")
+                              (str/replace "/" ".")
+                              (str/replace "_" "-")
+                              symbol)))
+                   sort))
+            (defn run-test-nses! [nses]
+              (require '[clojure.test])
+              (apply require nses)
+              (let [{:keys [fail error]}
+                    (apply (resolve 'clojure.test/run-tests) nses)]
+                (when (pos? (+ fail error))
+                  (System/exit 1)))))
+
+  dev {:doc "Start a bb nREPL server for REPL-first development"
+       :task (babashka.nrepl.server/start-server! {:host "localhost" :port 1667})}
+
+  doctor {:doc "Report the Clojure toolchain: tool, version, status, what it does (--edn for a pins map)"
+          :requires ([harness.doctor :as doctor])
+          :task (apply doctor/-main *command-line-args*)}
+
+  test {:doc "Run the test suites"
+        :extra-paths ["test"]
+        :task (run-test-nses! (test-nses))}
+
+  fmt {:doc "Format with cljfmt"
+       :task (shell "cljfmt fix src test dev")}
+
+  fmt-check {:doc "Check formatting (no changes)"
+             :task (shell "cljfmt check src test dev")}
+
+  lint {:doc "Lint with clj-kondo"
+        :task (shell "clj-kondo --lint src test dev")}
+
+  rules-sync {:doc "Regenerate CLAUDE.md's rule block from resources/agent-rules.edn"
+              :requires ([harness.rules :as rules])
+              :task (apply rules/-main *command-line-args*)}
+
+  rules-check {:doc "Fail when CLAUDE.md has drifted from the agent-rule source"
+               :requires ([harness.rules :as rules])
+               :task (rules/-main "--check")}
+
+  ;; Mirrors gates/default-gate-seq, minus :deps — the seed has no layers
+  ;; to enforce. Written out rather than driven off the data, so a gate
+  ;; failure here looks like a gate failure and not a harness failure.
+  gates {:doc "Quality gates, cheap first: doctor -> format -> lint -> rules -> test"
+         :task (do (run 'doctor) (run 'fmt-check) (run 'lint)
+                   (run 'rules-check) (run 'test))}
+
+  example {:doc "End-to-end tour: packet -> runner -> gate 0 -> gates. No model calls."
+           :extra-paths ["dev"]
+           :requires ([example])
+           :task (example/-main)}}}
