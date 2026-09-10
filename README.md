@@ -48,6 +48,11 @@ It scaffolds on stock
 TailwindCSS, SQLite/PostgreSQL), with [XTDB v2](https://xtdb.com) as a SQL-compatible
 alternative datastore.
 
+## Known limitations
+
+[`NOTES.md`](NOTES.md) is the honest state of the kit — what is deliberately deferred, and
+where the weak points are.
+
 ## Provenance
 
 [`harness-seed/PROVENANCE.md`](harness-seed/PROVENANCE.md) records what was extracted from
