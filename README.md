@@ -58,5 +58,5 @@ operation, and the divergences are fixes rather than drift.
 ## Licence
 
 [MIT](LICENSE). Six rules in the seed's rule source are adapted from
-[github/awesome-copilot](https://github.com/github/awesome-copilot) (MIT) — see the
-third-party notice in `LICENSE`.
+[github/awesome-copilot](https://github.com/github/awesome-copilot) (MIT); see
+[`NOTICE`](NOTICE) for the attribution and the upstream licence text.
