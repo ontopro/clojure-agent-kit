@@ -6,7 +6,7 @@
 
 > **Rule for this document:** it describes what the system *is*. It does not argue.
 > Every choice that could have gone another way lives in the decision log with a status;
-> here it appears as a reference — "the terminology store is <X> (D1, PROVISIONAL)".
+> here it appears as a reference — "the primary datastore is <X> (D1, PROVISIONAL)".
 > That split is what keeps this doc readable while decisions churn underneath it.
 
 ---
