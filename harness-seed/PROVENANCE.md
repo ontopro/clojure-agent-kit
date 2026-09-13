@@ -33,7 +33,14 @@ diverged, and each divergence has a reason:
 - **`gates/failure` is new**, because upstream synthesizes that exact map by hand
   in two places.
 - **Gate 0 moved to its own namespace** (`harness.repair`), so `harness.gates`
-  depends on nothing but a shell and the stack-specific part has one home.
+  depends on nothing but a shell and the stack-specific part has one home. Two
+  more stack-specific namespaces were added here and exist nowhere upstream:
+  `harness.stub` (the slice as loadable source) and `harness.sigs` (the slice's
+  `:deps-sigs`, checked against the source they describe).
+- **`harness.profile` is new**, and so is `resources/profiles/`. Upstream ran
+  one model family for every role and had nothing to configure; the seat/role
+  split and the independence check only became expressible once the kit had to
+  work from a client other than the one it was written in.
 - **`Gates` drops `:cmd`.** Dead upstream: one writer, zero readers.
 - **`example-packet` was promoted** from a test fixture into `src`.
 - **The rule source is genericised** — upstream's layer names, project-specific `ex-info` type
@@ -46,8 +53,23 @@ diverged, and each divergence has a reason:
   "corpus" collides with its NLP meaning (a body of text for training) in a document
   entirely about LLM agents. Same artifact, same shape — do not "fix" it back.
 - **`ManualRunner`'s REPL hint is injectable** rather than hardcoding one bridge.
-- **`rules/-main` defaults to `CLAUDE.md` in the cwd** rather than a sibling checkout, so
-  the seed's drift gate needs nothing outside itself.
+- **`rules/-main` defaults to `AGENTS.md` in the cwd** rather than a sibling checkout, so
+  the seed's drift gate needs nothing outside itself. Upstream mirrors into `CLAUDE.md`;
+  the seed generates `AGENTS.md` — which the Antigravity IDE, OpenCode and Pi read natively
+  — and ships a hand-written `CLAUDE.md` that imports it, so there is one marker block and
+  one drift target rather than one per client.
+- **`rules/prompt-main` and `bb rules-prompt` are new.** Upstream renders the prompt block
+  from inside its runners, which were not extracted; without a CLI the seed shipped
+  `rule-block` with no caller at all — the rendering its own docstring calls the one that
+  must never be skipped.
+- **`repair/-main` and `bb repair` are new**, along with `changed-clojure-files` and
+  `repo-root`. Upstream has no entry point for gate 0 outside the loop, so work done beside
+  the loop depended on the agent remembering to run the repair — the exact discipline
+  `harness.repair`'s docstring says not to rely on. Untracked files are included
+  deliberately: `git diff` alone misses a newly created namespace.
+- **`doctor/toolchain` lists the interactive clients** (`claude`, `agy-ide`, `opencode`,
+  `opencode2`, `pi`) and demotes `clj-paren-repair-claude-hook` from `:recommended` to
+  `:optional`. A write-time hook is one client's accelerant; `bb repair` is the mechanism.
 
 ## Third-party provenance
 

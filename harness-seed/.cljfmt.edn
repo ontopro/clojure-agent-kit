@@ -1,1 +1,6 @@
-{:sort-ns-references? true}
+;; :remove-multiple-non-indenting-spaces? makes rule :align-forms true rather
+;; than aspirational. Without it cljfmt accepts `:else     x` silently, and the
+;; rule told agents it would fail the gate — a rule that misdescribes its gate
+;; erodes every other rule (§09: gates and rules are one system, not two).
+{:sort-ns-references? true
+ :remove-multiple-non-indenting-spaces? true}

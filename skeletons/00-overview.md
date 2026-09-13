@@ -106,7 +106,7 @@ Stage content beyond the next stage is indicative and will be re-planned.
 - **Every stage runs through the Foundation.** No code merges outside the workflow and
   quality gates in `03-method-and-tooling.md`.
 - **Agent rules live in the rule source.** Never in a prompt string, never hand-edited into
-  `CLAUDE.md` — a gate fails on drift. Project rules override personal and global ones;
+  `AGENTS.md` — a gate fails on drift. Project rules override personal and global ones;
   where they conflict, the rule source wins (`03-method-and-tooling.md` §7.5).
 - **Superseded plan documents are archived, not deleted.** They are historical records;
   nothing current depends on them.

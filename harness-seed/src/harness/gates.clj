@@ -32,17 +32,25 @@
    [:test "bb test"]
    [:deps "bb deps-check"]])
 
+(defn- millis-since [start-ns]
+  (quot (- (System/nanoTime) start-ns) 1000000))
+
 (defn- run-gate [dir cmd]
-  (try
-    (let [res (p/shell {:dir dir :out :string :err :string :continue true} cmd)]
-      {:exit (:exit res) :out (str (:out res) (:err res))})
-    (catch java.io.IOException e
-      ;; :continue true suppresses a non-zero exit, NOT a missing program —
-      ;; that throws. An unconfigured gate must fail like any other gate
-      ;; rather than blow up the loop mid-attempt and lose the work. 127 is
-      ;; the shell's own "command not found", so triage on :exit still works.
-      {:exit 127
-       :out (str "could not run " (pr-str cmd) ": " (ex-message e))})))
+  ;; Timed on both paths, including the failure one: a gate that dies slowly
+  ;; is a different problem from one that dies immediately, and the run log is
+  ;; the only place that distinction survives.
+  (let [start (System/nanoTime)]
+    (try
+      (let [res (p/shell {:dir dir :out :string :err :string :continue true} cmd)]
+        {:exit (:exit res) :out (str (:out res) (:err res)) :ms (millis-since start)})
+      (catch java.io.IOException e
+        ;; :continue true suppresses a non-zero exit, NOT a missing program —
+        ;; that throws. An unconfigured gate must fail like any other gate
+        ;; rather than blow up the loop mid-attempt and lose the work. 127 is
+        ;; the shell's own "command not found", so triage on :exit still works.
+        {:exit 127
+         :out (str "could not run " (pr-str cmd) ": " (ex-message e))
+         :ms (millis-since start)}))))
 
 (defn failure
   "A non-gate failure in the gate-result shape, so a dead REPL or a failed
@@ -51,7 +59,7 @@
   [gate out]
   {:gates/passed? false
    :gates/failed gate
-   :gates/report [{:gate gate :status :fail :exit nil :out out}]})
+   :gates/report [{:gate gate :status :fail :exit nil :out out :ms nil}]})
 
 (defn run-gates!
   "Run `gate-seq` in `dir`, stopping at the first failure. Gates after the
@@ -69,16 +77,16 @@
    (loop [remaining gate-seq
           report []]
      (if-let [[gate cmd] (first remaining)]
-       (let [{:keys [exit out]} (run-gate dir cmd)]
+       (let [{:keys [exit out ms]} (run-gate dir cmd)]
          (if (zero? exit)
            (recur (rest remaining)
-                  (conj report {:gate gate :status :pass :exit exit :out out}))
+                  (conj report {:gate gate :status :pass :exit exit :out out :ms ms}))
            {:gates/passed? false
             :gates/failed gate
             :gates/report (into (conj report {:gate gate :status :fail
-                                              :exit exit :out out})
+                                              :exit exit :out out :ms ms})
                                 (map (fn [[g _]] {:gate g :status :skipped
-                                                  :exit nil :out ""}))
+                                                  :exit nil :out "" :ms nil}))
                                 (rest remaining))}))
        {:gates/passed? true
         :gates/failed nil

@@ -1,0 +1,8 @@
+# Pins for the sandbox ONLY. This file must never move to the repository root:
+# harness-seed is deliberately bb-only, and `doctor/mise-file` walks up from the
+# cwd, so a root-level pin would make `bb doctor` in harness-seed/ start
+# enforcing a JDK it does not have and does not need.
+[tools]
+java = "temurin-21"
+clojure = "1.12.6.1673"
+babashka = "1.13.220"

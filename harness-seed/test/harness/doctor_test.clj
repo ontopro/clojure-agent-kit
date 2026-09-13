@@ -211,3 +211,20 @@
     (testing "no JAVA_HOME set is silent"
       (with-redefs [doctor/java-home (constantly nil)]
         (is (nil? (doctor/java-home-mismatch "21.0.12")))))))
+
+(deftest pins-are-read-per-directory
+  ;; `report` could not be reached with a directory before --dir existed, so a
+  ;; harness had no way to verify a worktree it had just provisioned.
+  (let [dir (str (fs/create-temp-dir))
+        nested (str (fs/create-dirs (fs/path dir "src" "deep")))]
+    (spit (str (fs/path dir ".mise.toml"))
+          "[tools]\njava = \"temurin-21\"\nbabashka = \"1.13.220\"\n")
+    (testing "pins come from the named directory"
+      (let [pins (doctor/mise-pins dir)]
+        (is (= 21 (get-in pins [:java :major])))
+        (is (= 1 (get-in pins [:bb :major])) "mise's `babashka` maps to :bb")))
+    (testing "and are found by walking up from a subdirectory"
+      (is (= 21 (get-in (doctor/mise-pins nested) [:java :major]))))
+    (testing "a directory with no config anywhere above it yields no pins"
+      ;; fs/create-temp-dir sits outside any repo, so nothing is inherited
+      (is (= {} (doctor/mise-pins (str (fs/create-temp-dir))))))))

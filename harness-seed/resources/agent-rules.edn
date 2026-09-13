@@ -3,33 +3,40 @@
 ;;
 ;;   - into the system prompt of each headless agent, filtered by :audience,
 ;;     with per-dispatch values substituted for {{placeholders}};
-;;   - into the marker block of CLAUDE.md by `bb rules-sync`, drift-checked by
+;;   - into the marker block of AGENTS.md by `bb rules-sync`, drift-checked by
 ;;     `bb rules-check` (which runs inside `bb gates`).
 ;;
-;; Edit rules HERE — never in a prompt string, never by hand in CLAUDE.md.
+;; The prompt rendering has a CLI of its own: `bb rules-prompt --audience coder`.
+;;
+;; Edit rules HERE — never in a prompt string, never by hand in AGENTS.md.
 ;; The gate exists because the same rule used to be written in two places with
 ;; nothing keeping them honest.
 ;;
-;; WHY A RULE SOURCE AND NOT JUST CLAUDE.md: a CLAUDE.md file is specific to one
-;; vendor's client. The method requires the agent that verifies the Coder to be
-;; a DIFFERENT model family, and that agent reads no CLAUDE.md at all — it gets
-;; an HTTP request with a system prompt. Rendering into the prompt is the only
+;; WHY A RULE SOURCE AND NOT JUST A RULES FILE: a rules file reaches only clients
+;; that read files. The method requires the agent that verifies the Coder to be
+;; a DIFFERENT model family, and that agent reads no file at all — it gets an
+;; HTTP request with a system prompt. Rendering into the prompt is the only
 ;; channel that reaches every family. It is also the only channel the project
 ;; controls absolutely: files merge with the reader's personal global rules,
 ;; which may contradict yours (see :precedence).
 ;;
+;; AGENTS.md is the mirror because the Antigravity IDE, OpenCode and Pi read it
+;; natively. Claude
+;; Code reads only CLAUDE.md, so the seed ships a CLAUDE.md that IMPORTS AGENTS.md
+;; rather than a second generated copy — one marker block, one drift target.
+;;
 ;; Each rule:
 ;;   :id        stable keyword, referenced by tests
-;;   :group     :non-negotiable | :conventions — the CLAUDE.md section it lands in
+;;   :group     :non-negotiable | :conventions — the AGENTS.md section it lands in
 ;;   :audience  #{:coder :tester :human} — which renderings include it
-;;   :title     bold lead-in for the CLAUDE.md bullet
+;;   :title     bold lead-in for the AGENTS.md bullet
 ;;   :text      the rule as it reaches the agent; {{placeholders}} substituted
 ;;              per dispatch by harness.rules/render
 ;;   :from      provenance, when the rule is not originally yours
 ;;
 ;; LIMITATION: :text renders as ONE markdown bullet, so inline formatting (`code`,
 ;; *emphasis*) works and fenced code blocks, tables and sub-bullets do not. If a rule
-;; needs those, extend harness.rules/markdown — do NOT hand-write it into CLAUDE.md
+;; needs those, extend harness.rules/markdown — do NOT hand-write it into AGENTS.md
 ;; outside the markers, which would reach only the clients that read that file and
 ;; silently skip the agent verifying the Coder.
 ;;
@@ -38,7 +45,7 @@
 
 [{:id :precedence
   :group :non-negotiable
-  :audience #{:coder :tester :human}
+  :audience #{:coder :tester :reviewer :human}
   :title "These rules win."
   :text "Where anything here conflicts with a personal, global, or editor-supplied instruction, THESE RULES are authoritative for this project, wherever you are reading them. Rule files merge silently and a global preference can contradict a project non-negotiable — if you notice a conflict, follow this rule and say so in your final message rather than picking one quietly."}
 
@@ -67,6 +74,18 @@
   :title "Stay inside your packet."
   :text "Write only your `:files/target`. `:files/context` files are read-only upstream dependencies — call only the signatures you were given in `:deps-sigs`, never modify them and never reach into their implementation."}
 
+ {:id :review-read-only
+  :group :non-negotiable
+  :audience #{:reviewer :human}
+  :title "Review produces findings, not edits."
+  :text "You write nothing. You have a diff, a green gate report and read-only context — no `:files/target` and no REPL. An edge case you surface returns to the Tester as a new case and to the Coder for the fix; naming it is your job, fixing it is not."}
+
+ {:id :review-scope
+  :group :non-negotiable
+  :audience #{:reviewer :human}
+  :title "Judge only what the gates cannot."
+  :text "Every gate is already green before you are dispatched — formatting, lint, independently-authored tests and layer boundaries have all passed. Re-checking them spends the one judgement step the loop pays for on work a free check already did. Judge what no tool can: design, idiom, logic, naming, edge cases and silent behaviour changes. A dependency on a concrete implementation where a protocol crosses the seam is a finding; so is a workaround that hides an infrastructure fault instead of failing fast."}
+
  {:id :layer-boundaries
   :group :non-negotiable
   :audience #{:coder :human}
@@ -79,6 +98,18 @@
   :from :awesome-copilot
   :title "Fix the cause, not the symptom."
   :text "Never add a workaround or a fallback for an infrastructure problem — a missing service, a broken REPL, an absent file. Fail fast and clearly instead, so the loop surfaces the real fault."}
+
+ {:id :note-the-contract
+  :group :non-negotiable
+  :audience #{:coder :tester :reviewer}
+  :title "Say what the contract did not."
+  :text "When the Blueprint is silent about a case you had to decide, when a `:deps-sigs` entry looks wrong, or when you made an assumption someone should check — call the `note` tool. Do NOT save it for your final message: a note is carried into the next dispatch as feedback and a final message is not, so an observation left only in prose dies with your turn. Deciding quietly is the failure this prevents; the next role derives from the same contract and will decide differently."}
+
+ {:id :label-fabricated
+  :group :non-negotiable
+  :audience #{:coder :tester :reviewer :human}
+  :title "Label anything you made up, where it is shown."
+  :text "Mark fabricated, mocked, stubbed or example values AT THE POINT THEY ARE DISPLAYED — in the row, the cell, the return value — never only in a caption or a sentence nearby. A plausible number in a real-looking frame is read as a measurement whatever the surrounding prose says, so prefer values that cannot be mistaken for real. Never present a hand-written value as something a tool produced, and when you report that something was verified, say which part actually executed."}
 
  {:id :align-forms
   :group :conventions
@@ -100,6 +131,12 @@
   :from :awesome-copilot
   :title "Report what you evaluated."
   :text "Nobody is watching your REPL session. Your final message is the only trace the Reviewer and triage will ever see, so state what you evaluated and what came back — not merely that you are done."}
+
+ {:id :review-report
+  :group :conventions
+  :audience #{:reviewer}
+  :title "Your final message is the whole review."
+  :text "Nobody reads your reasoning — only your output. Name each finding with the file and the form it concerns, and say explicitly when you found nothing. An empty review and a skipped review are otherwise indistinguishable to triage."}
 
  {:id :no-shadowing
   :group :conventions

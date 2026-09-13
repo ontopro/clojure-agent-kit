@@ -1,0 +1,57 @@
+{:paths ["dev"]
+ :tasks
+ {:requires ([babashka.fs :as fs])
+
+  fmt {:doc "Format with cljfmt"
+       :task (shell "cljfmt fix src test dev")}
+
+  fmt-check {:doc "Check formatting (no changes)"
+             :task (shell "cljfmt check src test dev")}
+
+  lint {:doc "Lint with clj-kondo"
+        :task (shell "clj-kondo --lint src test dev")}
+
+  test {:doc "Run the test suite on the JVM"
+        :task (shell "clojure -M:test")}
+
+  ;; Gate 4 (method §09), a real check rather than a placeholder: it reads
+  ;; layers.edn and fails when a namespace crosses a boundary. See red/ for
+  ;; proof that it actually fails.
+  deps-check {:doc "Architecture boundary gate — enforces layers.edn"
+              :requires ([deps-check :as dc])
+              :task (apply dc/-main *command-line-args*)}
+
+  nrepl {:doc "Start an nREPL for interactive work"
+         :task (shell "clojure -M:nrepl")}
+
+  ;; Keys match harness.gates/default-gate-seq: :fmt :lint :test :deps
+  gates {:doc "Quality gates, cheap first: format -> lint -> test -> deps"
+         :task (do (run 'fmt-check) (run 'lint) (run 'test) (run 'deps-check))}
+
+  ;; ---------------------------------------------------------------------
+  ;; Red fixtures. A gate suite that has only ever passed proves nothing.
+  ;; ---------------------------------------------------------------------
+
+  break {:doc "Copy a red fixture into place: bb break fmt|lint|test|deps"
+         :task (let [which (first *command-line-args*)
+                     dest {"fmt" "src/sandbox/red_fmt.clj"
+                           "lint" "src/sandbox/red_lint.clj"
+                           "test" "test/sandbox/red_test.clj"
+                           "deps" "src/sandbox/red_deps.clj"
+                           "seam" "src/sandbox/red_seam.clj"}]
+                 (if-let [to (get dest which)]
+                   (do (fs/copy (str "red/" which ".clj") to {:replace-existing true})
+                       (println (str "break: " to " — `bb gates` should now fail at :" which)))
+                   (do (println (str "break: unknown fixture " (pr-str which)
+                                     " — one of " (sort (keys dest))))
+                       (System/exit 1))))}
+
+  restore {:doc "Remove every red fixture"
+           ;; Deletes only files named red_*, so this can never touch real source.
+           :task (let [gone (->> (concat (fs/glob "src" "**/red_*.clj")
+                                         (fs/glob "test" "**/red_*.clj"))
+                                 (map (fn [p] (fs/delete p) (str p)))
+                                 sort)]
+                   (if (seq gone)
+                     (doseq [g gone] (println (str "restore: removed " g)))
+                     (println "restore: nothing to remove")))}}}

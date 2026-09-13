@@ -1,0 +1,22 @@
+{:run/id "d1-smoke",
+ :task/id "adapter-smoke",
+ :run/status :done,
+ :run/steps
+ [#:step{:source :measured,
+         :name :tester,
+         :cost 3.642E-6,
+         :model "deepseek/deepseek-v4-flash-20260423",
+         :status :done,
+         :provider "StreamLake",
+         :ms 1862,
+         :kind :dispatch,
+         :tokens 35}
+  #:step{:source :measured,
+         :name :coder,
+         :cost nil,
+         :model "claude-sonnet-5",
+         :status :done,
+         :provider nil,
+         :ms 1100,
+         :kind :dispatch,
+         :tokens 29}]}

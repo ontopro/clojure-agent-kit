@@ -31,8 +31,8 @@
     (testing "every entry has the same keys, skipped ones included"
       (let [{:gates/keys [report]}
             (gates/run-gates! dir [[:a "false"] [:b "true"]])]
-        (is (= #{:gate :status :exit :out} (set (keys (first report)))))
-        (is (= #{:gate :status :exit :out} (set (keys (second report)))))))))
+        (is (= #{:gate :status :exit :out :ms} (set (keys (first report)))))
+        (is (= #{:gate :status :exit :out :ms} (set (keys (second report)))))))))
 
 (deftest missing-binary-is-a-failed-gate-not-a-crash
   ;; :continue true suppresses a non-zero exit, not a missing program.
@@ -55,3 +55,17 @@
       (is (shapes/valid-gate-result? res))
       (is (= :repl (:gates/failed res)))
       (is (nil? (-> res :gates/report first :exit))))))
+
+(deftest gates-are-timed
+  ;; §10 measured the Tester at >80% of wall time. Nothing could have told you
+  ;; that without per-step timing, so a gate that runs records how long it took
+  ;; and one that is skipped records nil — the same required-but-nullable shape
+  ;; :exit already uses.
+  (let [dir (str (fs/create-temp-dir))
+        res (gates/run-gates! dir [[:ok "true"] [:bad "false"] [:never "true"]])
+        by-gate (into {} (map (juxt :gate identity)) (:gates/report res))]
+    (is (nat-int? (:ms (:ok by-gate))) "a passing gate is timed")
+    (is (nat-int? (:ms (:bad by-gate))) "a FAILING gate is timed too — slow failures matter")
+    (is (nil? (:ms (:never by-gate))) "a skipped gate has no duration")
+    (testing "a synthesized failure has no duration either — nothing ran"
+      (is (nil? (-> (gates/failure :repl "dead") :gates/report first :ms))))))

@@ -1,0 +1,26 @@
+{:run/id "r-04"
+ :task/id "t-04-reduce"
+ :run/status :done
+ :run/attempts 3
+ :run/steps
+ [{:step/name :provision  :step/kind :provision    :step/status :done :step/ms 4230  :step/source :measured}
+  {:step/name :sigs       :step/kind :precondition :step/status :fail :step/ms 56    :step/source :measured}
+  {:step/name :sigs       :step/kind :precondition :step/status :pass :step/ms 56    :step/source :measured}
+  {:step/name :coder      :step/kind :dispatch     :step/status :done :step/ms 34000 :step/source :measured}
+  {:step/name :tester     :step/kind :dispatch     :step/status :done :step/ms 36000 :step/source :measured}
+  {:step/name :gate-0     :step/kind :gate-0       :step/status :pass :step/ms 219   :step/source :measured}
+  {:step/name :fmt        :step/kind :gate         :step/status :pass :step/ms 161   :step/source :measured}
+  {:step/name :lint       :step/kind :gate         :step/status :fail :step/ms 134   :step/source :measured}
+  {:step/name :tester-r1  :step/kind :dispatch     :step/status :done :step/ms nil   :step/source :measured}
+  {:step/name :gate-0     :step/kind :gate-0       :step/status :pass :step/ms 215   :step/source :measured}
+  {:step/name :fmt        :step/kind :gate         :step/status :pass :step/ms 163   :step/source :measured}
+  {:step/name :lint       :step/kind :gate         :step/status :pass :step/ms 135   :step/source :measured}
+  {:step/name :test       :step/kind :gate         :step/status :pass :step/ms 3288  :step/source :measured}
+  {:step/name :deps       :step/kind :gate         :step/status :pass :step/ms 49    :step/source :measured}
+  {:step/name :reviewer   :step/kind :dispatch     :step/status :done :step/ms nil   :step/source :measured}
+  {:step/name :tester-r2  :step/kind :dispatch     :step/status :done :step/ms nil   :step/source :measured}
+  {:step/name :gate-0     :step/kind :gate-0       :step/status :pass :step/ms 215   :step/source :measured}
+  {:step/name :fmt        :step/kind :gate         :step/status :pass :step/ms 147   :step/source :measured}
+  {:step/name :lint       :step/kind :gate         :step/status :pass :step/ms 86    :step/source :measured}
+  {:step/name :test       :step/kind :gate         :step/status :pass :step/ms 2217  :step/source :measured}
+  {:step/name :deps       :step/kind :gate         :step/status :pass :step/ms 43    :step/source :measured}]}

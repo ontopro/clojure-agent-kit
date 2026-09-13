@@ -430,17 +430,17 @@ Rules reach an agent from three places, and they **merge silently**:
 | Project rules file at the repo root | This project's rules, in a generated block — the rest of the file is hand-written | Only clients that read that file |
 | The rule source, rendered into the system prompt | Anything a gate enforces | **Every model family** |
 
-Two facts decide how you use them. First, **a rules file is specific to one vendor's client** — and §05 requires the agent verifying the Coder to be a *different family*, which reads no such file at all. The prompt is the only universal channel. Second, **layers merge**, so a personal preference can contradict a project non-negotiable without either side knowing.
+Two facts decide how you use them. First, **a rules file only reaches clients that read files** — and §05 requires the agent verifying the Coder to be a *different family*, which reads none at all. The prompt is the only universal channel. (Interactive clients have converged on one filename, `AGENTS.md`; where a client insists on its own, make that file a pointer to the generated one rather than a second generated copy, so there stays exactly one thing to drift-check.) Second, **layers merge**, so a personal preference can contradict a project non-negotiable without either side knowing.
 
 That collision is not hypothetical. A perfectly reasonable personal rule — *"run the tests after modifying a namespace"* — sits directly against this method's most load-bearing rule: *never run the gates yourself; authoring is the model's job, running is the gate's* (§05). Obeying the wrong one breaks the separation the whole loop is built on, and nothing in either file mentions the other.
 
 So: personal taste that travels between projects goes in the global file. **Anything a gate enforces must be in the rule source**, because a file you do not control can contradict a file you do. And have the rule source state its own precedence as a rule, so whichever channel an agent reads, it is told which layer wins — that is the only mitigation available, since nothing stops the merge itself.
 
-**Adding something by hand.** Only the generated block is generated; the rest of that file is yours and survives every sync. So the question is which bucket you are in: *a rule for agents* goes in the rule source — which is still hand-writing it, just in the source rather than a rendering; *a rule only humans need* goes in the rule source too, marked human-only, which renders to the file and reaches no prompt; *anything that is not a rule* — orientation, a task-surface table, pointers to docs — is hand-written outside the markers. The test is whether a headless agent on another model family would need it.
+**Adding something by hand.** Only the generated block is generated; the rest of that file is yours and survives every sync. So the question is which bucket you are in: *a rule for agents* goes in the rule source — which is still hand-writing it, just in the source rather than a rendering; *a rule only humans need* goes in the rule source too, marked human-only, which renders to the file and reaches no prompt; *anything that is not a rule* — orientation, a task-surface table, pointers to docs — is hand-written outside the markers. The test is whether a headless agent that reads no file at all would need it.
 
 What must never happen is a **rule** written outside the markers. It survives every sync, so nothing complains — and it reaches only the clients that read that file, which by the independence rule above excludes your verifier. Silent, and precisely the failure this arrangement exists to prevent.
 
-> A working implementation — the rule source, both renderings, the marker-block sync and the drift gate — is in [`harness-seed/`](harness-seed/); `harness-seed/CLAUDE.md` is its own output.
+> A working implementation — the rule source, both renderings, the marker-block sync and the drift gate — is in [`harness-seed/`](harness-seed/); `harness-seed/AGENTS.md` is its own output, and `bb rules-prompt` emits the other rendering.
 
 ---
 
@@ -609,7 +609,7 @@ Run the gates in the **already-warm REPL** where you can, rather than paying a c
 
 ### Learned live, not designed on paper
 
-Ten things that only showed up from running the loop repeatedly against real work — each one cost a real run to learn.
+Twelve things that only showed up from running the loop repeatedly against real work — each one cost a real run to learn.
 
 1. **Profile by call frequency, not per-call cost — then fix the constraint, and only the constraint.** The role that fires on *every* task, however cheap-sounding, is usually the loop's real clock. Measure it: cycle time per task falls out of the run log's timestamps for free, once you are recording them (items 5 and 9). In the source project the Tester was **over 80% of wall time on every completed run**; attacking that one role took total wall from **18:04 to 2:06** across five runs. Optimising anywhere else would have moved nothing, and the arithmetic says so before you start.
 2. **State conventions as rules; don't wait for retries to teach them.** A less-than-frontier model learns a written rule instantly and a scolding slowly. Three rounds of gate feedback failed to break a habit that one up-front line in the system prompt broke immediately. Each retry round is a full paid attempt. Rules that load-bearing deserve somewhere better than a prompt string — put them in a rule source (§06).
@@ -621,6 +621,10 @@ Ten things that only showed up from running the loop repeatedly against real wor
 8. **Tool-call failures return to the model as data, never crash the process.** An uncaught exception from one bad tool call losing an entire in-flight, already-paid-for run is cheap to close and expensive to discover live.
 9. **Record what a gate actually said, not just which gate failed.** "Which gate" alone isn't enough for anyone — human or model — doing triage after the fact.
 10. **Serving parameters are part of the artifact — pin them.** Sampling settings, and for locally-served models the chat template itself, change failure *quality*, not just speed. A community-packaged model's embedded template broke tool-call parsing outright and silently corrupted arguments; the fix was to pin the official one in-repo. Version-control anything that shapes model output.
+
+11. **Synthetic data in a real frame is indistinguishable from a measurement.** Label it where it is *displayed* — on the row, on the number, on the total — never only in a caption. This one was learned the expensive way: an example report carrying plausible timings, costs and provider names, under prose that said three times the values were not real, was read as a record of three model calls that had never happened. The caption was accurate and the table still lied. Mark the numbers, because the numbers are what get read alone.
+
+12. **A rule the agent has already read is not fixed by writing it again.** When an instruction is ignored rather than unknown, a second copy changes nothing — the question is whether anything fires at the moment of action. Gates cannot help here: they run on artifacts, and a process that reached a clean artifact by the wrong route leaves them nothing to see. That is review's job, and it is why the Reviewer reads the diff rather than the result. Before adding a rule, check whether the one you want already exists somewhere the agent had open.
 
 **Triage is worth a model call.** A deterministic heuristic has to assume something — usually that the tests are right and the implementation is wrong. A model that reads the failing gate output against the contract *and* both agents' files can tell the difference between a faithful implementation and a test whose generator violates the contract's own preconditions. Put it behind the deterministic path as a seam, so it can **degrade, never block**.
 
@@ -654,17 +658,11 @@ This document gives you the method, a decision-log discipline, and a task-packet
 
 **Recommendation: don't build it speculatively.** Run the loop by hand for the first several tasks — copy the Blueprint slice into each agent's prompt yourself, run the gates yourself — and automate the orchestration only once you've felt where the manual version actually hurts. Automating a process you haven't run yet tends to automate the wrong things.
 
-When you do get there, [`harness-seed/`](harness-seed/) is a working starting point rather than a blank page — about 500 lines, extracted from a harness that ran this loop across dozens of real dispatches:
+When you do get there, [`harness-seed/`](harness-seed/) is a working starting point rather than a blank page — a few thousand lines extracted from a harness that ran this loop across dozens of real dispatches, and since extended by running it again. It carries §06's task packet as real schemas, the gate runner, gate 0, workspace provisioning, the `AgentRunner` seam, and a toolchain doctor.
 
-- §06's **task packet** as real Malli schemas, and the assembler that strips the Coder's implementation from the Tester's context *mechanically*;
-- the **gate runner** — ordered, short-circuiting, returning what a gate said rather than only which one failed;
-- **gate 0**, in its own namespace, so the stack-specific repairs have exactly one home;
-- the **`AgentRunner` seam** with a `ManualRunner` that gets the mechanics working end-to-end on day one, plus a **conformance check** to run every headless runner you add through;
-- a **toolchain doctor** (`bb doctor`) reporting every tool the loop needs, its version, and what it is for — which is how Foundation readiness criterion 1 becomes something you run rather than something you assert.
+**What is in it, what is deliberately left out, and the order to add the rest back are its own README's business** — [`harness-seed/README.md`](harness-seed/README.md). Repeating the inventory here is how the two drifted apart once already: this section said "the first headless runner" was still to come for a week after the seed had one.
 
-`bb doctor && bb gates && bb example` runs green with no model calls, no network, and no checkout but its own. It is meant to be **copied and edited, not depended on**; its README says what was deliberately left out and why, and `PROVENANCE.md` says where it came from and how it has since diverged.
-
-**The rest of the build list, in dependency order, once the seed is in place:** workspace and REPL provisioning; triage with a capped retry; the first headless runner, then the others; an append-only run log; and the two human pause points.
+`bb doctor && bb gates && bb example` runs green with no model calls, no network, and no checkout but its own. It is meant to be **copied and edited, not depended on**.
 
 Two things to get right early because they're cheap now and expensive later: **auto-approving an agent's edits is only safe because it runs in an isolated workspace** — never the main checkout; and the **run log is the only artifact that survives a run**, so record task, attempts, status, cost, provider, and the failing gate's actual output.
 

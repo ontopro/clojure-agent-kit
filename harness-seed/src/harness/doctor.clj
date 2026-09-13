@@ -70,10 +70,14 @@
     :does "On-demand delimiter repair"
     :needed-for "Gate 0 for agents whose client has no write hook"}
 
-   {:tool :clj-paren-repair-claude-hook :via :bbin :req :recommended
-    :does "Zero-token delimiter repair at write time, before it reaches disk"
-    :needed-for "Gate 0 for hook-capable clients. Keep BOTH — hooks cover
-                 Write/Edit, but an agent can still edit via the shell"}
+   {:tool :clj-paren-repair-claude-hook :via :bbin :req :optional
+    :does "Zero-token delimiter repair at write time, for Claude Code"
+    :needed-for "One client's write-time accelerant, not the mechanism. `bb
+                 repair` is the floor and runs everywhere; every client can
+                 still edit through the shell and bypass any hook. Other
+                 clients have the same capability under other names —
+                 Antigravity's .agents/hooks.json, an OpenCode plugin, a Pi
+                 extension"}
 
    {:tool :bbin :via :flag :cmd ["bbin" "--version"] :req :recommended
     :does "Installs single-file Babashka tools"
@@ -83,6 +87,36 @@
     :does "Namespace layer-boundary checker"
     :needed-for "Gate 4. Usually a deps alias (clj -M:depend), not a binary —
                  reported here so the gate is not forgotten"}
+
+   ;; The interactive seats. All five were verified to answer --version
+   ;; without dispatching anything — do that yourself before adding a sixth,
+   ;; because the SAFETY RULE above applies with most force to a client that
+   ;; takes a prompt as a positional argument.
+   {:tool :claude :via :flag :cmd ["claude" "--version"] :req :optional
+    :does "Claude Code — reads CLAUDE.md; write hooks in .claude/settings.json"
+    :needed-for "One of the interactive seats. Pick per role in your profile"}
+
+   {:tool :agy-ide :via :flag :cmd ["agy-ide" "--version"] :req :optional
+    :does "Antigravity IDE launcher — the IDE's agent reads AGENTS.md"
+    :needed-for "An interactive seat. The CLI itself is a VS Code-style launcher
+                 (--diff, --goto, --install-extension), not an agent: there is no
+                 headless mode and nothing to dispatch to. Antigravity's whole
+                 integration with this kit is AGENTS.md, plus optional
+                 .agents/hooks.json for write-time gate 0"}
+
+   {:tool :opencode :via :flag :cmd ["opencode" "--version"] :req :optional
+    :does "OpenCode v1 — reads AGENTS.md; agents in .opencode/agents/"
+    :needed-for "Coexists with v2 as a separate binary, so both are listed"}
+
+   {:tool :opencode2 :via :flag :cmd ["opencode2" "--version"] :req :optional
+    :does "OpenCode v2 — ordered {action, resource, effect} permissions"
+    :needed-for "The only seat that can enforce read-only review and `never run
+                 the gates` as client rules rather than prompt text. Still beta:
+                 its plugin and SDK contracts are not final"}
+
+   {:tool :pi :via :flag :cmd ["pi" "--version"] :req :optional
+    :does "Pi — reads AGENTS.md; .pi/SYSTEM.md replaces the system prompt"
+    :needed-for "The programmable seat: TypeScript extensions can replace tools"}
 
    {:tool :neil :via :flag :cmd ["neil" "--version"] :req :optional
     :does "Project scaffolding from a deps-new template"
@@ -346,10 +380,32 @@
                        :needed-for (:needed-for spec)})))
     true))
 
-(defn -main [& args]
-  (let [results (report)]
-    (if (some #{"--edn"} args)
-      (prn (render-edn results))
-      (println (render-table results)))
-    (when-not (ok? results)
-      (System/exit 1))))
+(defn- arg-value
+  "The token following `flag`, or nil."
+  [args flag]
+  (second (drop-while #(not= flag %) args)))
+
+(defn -main
+  "bb doctor [--edn] [--dir PATH]
+
+  `--dir` reads another project's mise pins instead of the current directory's.
+  The toolchain itself is machine-wide, so only the pin comparison is
+  directory-sensitive — but that is the part a harness needs when it verifies a
+  worktree it has just provisioned, and `report` could not be reached with a
+  directory before this."
+  [& args]
+  (let [dir (or (arg-value args "--dir") ".")]
+    ;; A missing directory must fail rather than fall through: mise-file walks
+    ;; UP from where it starts, so a typo'd path would silently find some
+    ;; ancestor's pins and report them as this project's.
+    (when-not (fs/directory? dir)
+      (println (str "doctor: --dir " dir " is not a directory"))
+      (System/exit 1))
+    (let [results (report toolchain (mise-pins dir))]
+      (if (some #{"--edn"} args)
+        (prn (render-edn results))
+        (do (when (not= "." dir)
+              (println (str "\nPins read from " (fs/canonicalize dir))))
+            (println (render-table results))))
+      (when-not (ok? results)
+        (System/exit 1)))))

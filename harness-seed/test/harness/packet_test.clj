@@ -1,7 +1,9 @@
 (ns harness.packet-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
-   [harness.packet :as packet]))
+   [harness.packet :as packet]
+   [harness.shapes :as shapes]))
 
 (def spec
   {:task/id "t-07-service-ops"
@@ -64,3 +66,68 @@
   (testing "a gates override on the spec replaces the default"
     (is (= {:retry-cap 1}
            (:gates (packet/coder-packet (assoc spec :gates {:retry-cap 1}) session))))))
+
+;; ---------------------------------------------------------------------------
+;; the return channel
+;; ---------------------------------------------------------------------------
+
+(deftest a-retry-must-say-why
+  ;; D4 ran triage by hand and nothing in TaskPacket could carry the gate
+  ;; output. Dispatching the same packet twice is not a retry — it is the same
+  ;; dispatch, and it will produce the same answer.
+  (let [p (packet/coder-packet spec session)]
+    (is (thrown-with-msg? Exception #"must say why" (packet/for-retry p 2 [])))
+    (is (thrown-with-msg? Exception #"starts at attempt 2"
+                          (packet/for-retry p 1 [{:feedback/from :gate
+                                                  :feedback/text "x"}])))))
+
+(deftest a-retry-carries-the-reason-and-validates
+  (let [r (packet/for-retry (packet/coder-packet spec session) 2
+                            [{:feedback/from :gate :feedback/text "lint failed"}])]
+    (is (= 2 (:task/attempt r)))
+    (is (= [:gate] (mapv :feedback/from (:task/feedback r))))
+    (is (shapes/valid-packet? r))
+    (is (thrown? Exception
+                 (packet/for-retry (packet/coder-packet spec session) 2
+                                   [{:feedback/from :nobody :feedback/text "x"}]))
+        "the source is an enum, so a typo fails rather than riding along")))
+
+(deftest gate-feedback-takes-only-what-failed
+  ;; Picking the failing gate's :out by hand at every call site is how a retry
+  ;; ends up carrying the output of a gate that passed.
+  (let [fb (packet/gate-feedback
+            {:gates/report [{:gate :fmt :status :pass :out ""}
+                            {:gate :lint :status :fail :out "unused binding x"}
+                            {:gate :test :status :skipped :out ""}]})]
+    (is (= 1 (count fb)))
+    (is (= :gate (:feedback/from (first fb))))
+    (is (str/includes? (:feedback/text (first fb)) "lint failed"))
+    (is (str/includes? (:feedback/text (first fb)) "unused binding x"))))
+
+(deftest a-siblings-notes-become-feedback-tagged-with-who-left-them
+  ;; The other half of the circuit: run 4's Coder handled two cases the
+  ;; contract never mentioned and could only say so in prose nothing read.
+  (let [fb (packet/notes-feedback :coder ["7/2 is a ratio and :expr/value is :int"])]
+    (is (= [:coder] (mapv :feedback/from fb)))
+    (is (shapes/valid-packet?
+         (packet/for-retry (packet/tester-packet spec session) 3 fb))
+        "and it validates on the packet it is carried into")))
+
+(deftest feedback-is-clipped-because-a-retry-resends-it-every-turn
+  ;; `harness.tools/max-output` clips tool results for exactly this reason and
+  ;; says so; feedback was added a layer up without it. A failing test suite's
+  ;; whole output as a retry reason is re-sent on every turn of that dispatch.
+  (let [huge (apply str (repeat 9000 "x"))
+        r (packet/for-retry (packet/coder-packet spec session) 2
+                            [{:feedback/from :gate :feedback/text huge}])
+        text (:feedback/text (first (:task/feedback r)))]
+    (is (< (count text) 4200) "clipped")
+    (is (str/includes? text "truncated at 4000 characters of 9000")
+        "and announced — a model that cannot tell it got half a gate report will
+         reason confidently about the half it did not get")
+    (is (shapes/valid-packet? r))))
+
+(deftest short-feedback-is-left-exactly-as-it-was
+  (let [r (packet/for-retry (packet/coder-packet spec session) 2
+                            [{:feedback/from :gate :feedback/text "lint failed"}])]
+    (is (= "lint failed" (:feedback/text (first (:task/feedback r)))))))

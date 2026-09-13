@@ -1,0 +1,13 @@
+{:run/id "d3",
+ :task/id "t-06-clamp",
+ :run/status :done,
+ :run/steps
+ [#:step{:source :measured,
+         :name :coder,
+         :cost nil,
+         :model "claude-sonnet-5",
+         :status :done,
+         :provider nil,
+         :ms 29255,
+         :kind :dispatch,
+         :tokens 29131}]}

@@ -50,21 +50,23 @@ fall back to editing blind.
 - **Pure functions, data in and data out.** Side effects stay out of business logic;
   plain maps and vectors cross function boundaries, not stateful objects.
 - **Align multi-line forms.** Misalignment is what makes a bracket balancer close
-  brackets in the wrong place. Run `clj-paren-repair` on any `.clj`/`.cljs`/`.cljc`
-  file you have edited — you are outside the loop, so gate 0 will not run for you.
+  brackets in the wrong place. Run `bb repair` before handing anything over — it is gate 0
+  over the Clojure files you changed, the same repair the loop runs, and you need it
+  because you are outside the loop and nothing runs gate 0 for you.
 - **Done means the quality bar, not "it runs":** zero formatter drift, zero linter
   warnings (the gates fail on warnings), tests green, layer boundaries intact.
 
 ## The rules that govern this project
 
-`CLAUDE.md` at the repository root mirrors the authoritative rule source for anyone
-writing Clojure here. Read it before editing.
+`AGENTS.md` at the repository root mirrors the authoritative rule source for anyone
+writing Clojure here. Read it before editing. (Claude Code reads `CLAUDE.md`, which is
+a stub importing that file.)
 
 Those rules are **generated** from `resources/agent-rules.edn`. If one of them is
-wrong, fix it there and run `bb rules-sync` — never by hand-editing `CLAUDE.md`, which
+wrong, fix it there and run `bb rules-sync` — never by hand-editing `AGENTS.md`, which
 `bb gates` will simply revert as drift.
 
 One rule applies differently to you than to a dispatched agent: the rules say *do not
 run the gates*, because for the loop, authoring and running are deliberately separate
-jobs. You are not being gated by a harness, so run them — `bb gates` before you hand
-anything over.
+jobs. You are not being gated by a harness, so run them — `bb repair && bb gates` before
+you hand anything over.

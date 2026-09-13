@@ -1,0 +1,24 @@
+{:run/id "r-05"
+ :task/id "t-05-render"
+ :run/status :done
+ :run/attempts 3
+ :run/steps
+ [{:step/name :provision :step/kind :provision    :step/status :done :step/ms 4216  :step/source :measured}
+  {:step/name :sigs      :step/kind :precondition :step/status :pass :step/ms 188   :step/source :measured}
+  {:step/name :coder     :step/kind :dispatch     :step/status :done :step/ms 25000 :step/source :measured}
+  {:step/name :tester    :step/kind :dispatch     :step/status :done :step/ms 24000 :step/source :measured}
+  {:step/name :gate-0    :step/kind :gate-0       :step/status :pass :step/ms nil   :step/source :measured}
+  {:step/name :fmt       :step/kind :gate         :step/status :fail :step/ms 139   :step/source :measured}
+  {:step/name :tester-r1 :step/kind :dispatch     :step/status :done :step/ms nil   :step/source :measured}
+  {:step/name :gate-0    :step/kind :gate-0       :step/status :pass :step/ms nil   :step/source :measured}
+  {:step/name :fmt       :step/kind :gate         :step/status :pass :step/ms 130   :step/source :measured}
+  {:step/name :lint      :step/kind :gate         :step/status :pass :step/ms 82    :step/source :measured}
+  {:step/name :test      :step/kind :gate         :step/status :pass :step/ms 3068  :step/source :measured}
+  {:step/name :deps      :step/kind :gate         :step/status :pass :step/ms 48    :step/source :measured}
+  {:step/name :reviewer  :step/kind :dispatch     :step/status :done :step/ms nil   :step/source :measured}
+  {:step/name :tester-r2 :step/kind :dispatch     :step/status :done :step/ms nil   :step/source :measured}
+  {:step/name :gate-0    :step/kind :gate-0       :step/status :pass :step/ms nil   :step/source :measured}
+  {:step/name :fmt       :step/kind :gate         :step/status :pass :step/ms 136   :step/source :measured}
+  {:step/name :lint      :step/kind :gate         :step/status :pass :step/ms 82    :step/source :measured}
+  {:step/name :test      :step/kind :gate         :step/status :pass :step/ms 2357  :step/source :measured}
+  {:step/name :deps      :step/kind :gate         :step/status :pass :step/ms 49    :step/source :measured}]}

@@ -1,0 +1,75 @@
+;; A WORKED EXAMPLE shipped with the seed — not a configuration. Copy the one
+;; matching your seat to resources/profile.edn and edit it.
+;;
+;; SEAT :agy-ide — the Antigravity IDE's CLI. Its sibling is claude.edn, and the
+;; pair is instructive: they are near mirror images. Here Google writes and
+;; Anthropic reviews; there Anthropic writes and Google reviews. Between them
+;; both tool-call adapters are exercised, which is why there are two rather
+;; than one.
+;;
+;; Model names are dated selections (decision log P0-3: "Specific models are
+;; dated selections"). The SHAPE is the part meant to outlive them.
+;;
+;; Three things this file is careful about:
+;;
+;;   ONE SEAT. The interactive client is where the human sits. The three
+;;   dispatched roles are reached over HTTP by the harness and are not anyone's
+;;   editor — so there is exactly one :seat, and it is a scalar so it cannot
+;;   grow a second. :seat names a tool `bb doctor` knows how to probe.
+;;
+;;   THE CODER'S FAMILY FOLLOWS THE SEAT, by convention and not by rule. The
+;;   seat here is a Google client, so the Coder is Gemini and Anthropic moves to
+;;   the verifying side — the exact reverse of claude.edn. It is not checked,
+;;   because OpenCode 2 and Pi are bring-your-own-model clients with no inherent
+;;   family: the relation is not expressible for half the seats this kit
+;;   supports.
+;;
+;;   VERIFIER ≠ CODER FAMILY. Method §05 and decision log P0-3, and this one IS
+;;   checked. The Tester and the Reviewer both verify the Coder, so neither may
+;;   share its family. `bb profile` is the only place that rule has ever been
+;;   anything but prose.
+;;
+;;   NO KEYS, EVER. :key-env NAMES an environment variable. This file is
+;;   committed; a field that could hold a secret would eventually be handed one.
+
+{:seat :agy-ide
+
+ :roles
+ {:coder {:family :google
+          :model "google/gemini-3.8-flash"
+          :shape :openai
+          :endpoint "https://openrouter.ai/api/v1"
+          :key-env "OPENROUTER_API_KEY"
+          ;; Pinned request-side: without :allow_fallbacks false, the provider
+          ;; you logged yesterday is not the one you get today, and a different
+          ;; provider can mean a different chat template.
+          ;; MEDIUM, NOT HIGH, AND THAT IS MEASURED. The original sketch put
+          ;; :reasoning_effort "high" on every OpenRouter role, unexamined. On
+          ;; gemini-3.8-flash as Reviewer it produced 27,706 tokens, 4m09s and an
+          ;; EMPTY final message; the identical dispatch at medium answered in 63s
+          ;; for half the money with real findings. High reasoning on a flash tier
+          ;; spends the budget thinking and has nothing left to say with — D1 saw
+          ;; the same shape when a small max_tokens returned empty content.
+          :params {:reasoning_effort "medium"
+                   :provider {:only ["google-vertex"] :allow_fallbacks false}}}
+
+  ;; THE TESTER IS NOT THE CHEAP SEAT — see claude.edn for the run that
+  ;; established it. Same change here for the same reason: the Tester
+  ;; writes more than the Coder, from the contract alone, under more lint
+  ;; conventions. :only pins the serving provider; this model has exactly
+  ;; one, where the model it replaced had sixteen down to fp4.
+  :tester {:family :openai
+           :model "openai/gpt-5.2-codex"
+           :shape :openai
+           :endpoint "https://openrouter.ai/api/v1"
+           :key-env "OPENROUTER_API_KEY"
+           :params {:reasoning_effort "medium"
+                    :provider {:only ["azure"] :allow_fallbacks false}}}
+
+  ;; Direct to Anthropic, which is the :anthropic tool-call shape. No
+  ;; :provider pin: that endpoint does no routing, so there is nothing to pin.
+  :reviewer {:family :anthropic
+             :model "claude-sonnet-5"
+             :shape :anthropic
+             :endpoint "https://api.anthropic.com"
+             :key-env "ANTHROPIC_API_KEY"}}}

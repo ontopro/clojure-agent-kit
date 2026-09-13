@@ -1,0 +1,33 @@
+;; Gate 4's ruleset — method §09's architecture-boundary check.
+;;
+;; Each namespace maps to the set of sandbox namespaces it may require.
+;; Anything required and not listed is a violation; anything outside the
+;; sandbox.* tree is ignored, because gate 4 is about YOUR layers, not your
+;; dependencies. A namespace under src/ absent from this map is also a
+;; violation — a new layer should be declared, not discovered.
+;;
+;; Two boundaries are being enforced here:
+;;
+;;   SIBLINGS — parse and compute may not see each other. Tests derived from an
+;;   implementation only re-assert what the code already does.
+;;
+;;   THE PROTOCOL SEAM — compute depends on sandbox.bindings, the protocol, and
+;;   never on sandbox.memory, an implementation of it. This is the one a
+;;   Reviewer is told to look for by rule :review-scope.
+;;
+;; sandbox.api is the composition root and is the only namespace allowed both
+;; sides of either boundary.
+
+{sandbox.shapes   #{}
+ sandbox.bindings #{}
+ sandbox.expr     #{sandbox.shapes}
+ sandbox.memory   #{sandbox.bindings}
+ sandbox.parse    #{sandbox.expr sandbox.shapes}
+ sandbox.compute  #{sandbox.expr sandbox.shapes sandbox.bindings}
+ sandbox.render   #{sandbox.expr sandbox.shapes}
+ sandbox.api      #{sandbox.parse sandbox.compute sandbox.memory sandbox.render}
+
+ ;; A fixture, declared so the FORBIDDEN-DEPENDENCY path is exercised and not
+ ;; only the undeclared one. red/seam.clj requires sandbox.memory, which this
+ ;; entry does not allow. See red/README.md.
+ sandbox.red-seam #{sandbox.bindings}}

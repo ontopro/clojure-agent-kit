@@ -1,0 +1,19 @@
+{:paths ["src"]
+ :deps {org.clojure/clojure {:mvn/version "1.12.5"}
+        metosin/malli {:mvn/version "0.19.1"}}
+ :aliases
+ {;; One nREPL per workspace (method §03 step 2). Provisioning starts this in
+  ;; each worktree it creates; the port lands in .nrepl-port, which is what
+  ;; `clj-nrepl-eval --discover-ports` reads.
+  ;; test and dev are on the classpath because a Tester has to be able to load
+  ;; the test namespace it just wrote. §03 step 2 says the REPL should start
+  ;; "ready to work"; for the Tester that means seeing test/, and a src-only
+  ;; nREPL makes :repl-first unsatisfiable for it a second way.
+  :nrepl {:extra-paths ["test" "dev"]
+          :extra-deps {nrepl/nrepl {:mvn/version "1.7.0"}
+                       org.clojure/test.check {:mvn/version "1.1.3"}}
+          :main-opts ["-m" "nrepl.cmdline" "--port" "0"]}
+
+  :test {:extra-paths ["test" "dev"]
+         :extra-deps {org.clojure/test.check {:mvn/version "1.1.3"}}
+         :main-opts ["-m" "test-runner"]}}}

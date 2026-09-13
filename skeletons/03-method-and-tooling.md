@@ -182,11 +182,19 @@ so two agents pointed at one server share state whether you meant them to or not
 
 LLMs introduce mismatched parens and brackets when editing Clojure. Left unhandled that
 burns the Coder's capped retries (§5) on something no model should be paying to fix.
-Which mechanism applies follows the model-family split in §1:
+There is one mechanism and one accelerant.
 
-- **Hook-capable client (Claude Code)** → `clj-paren-repair-claude-hook` repairs delimiters
-  **before the write reaches disk, at zero tokens**, preserving the native diff UI. With
-  `--cljfmt` the file also lands formatted, which collapses gate 1 to a near-no-op:
+**The mechanism, everywhere:** the orchestrator runs `clj-paren-repair` over the files the
+agent produced, before the gates. Do **not** depend on the agent remembering to call it — a
+pre-gate that only fires when the model chooses to fire it is not a pre-gate. For work done
+*beside* the loop, where no orchestrator is watching, `bb repair` is the same pass driven off
+`git status` instead of a packet.
+
+**The accelerant, per client:** a write-time hook repairs delimiters **before the write
+reaches disk, at zero tokens**, preserving the native diff UI, and with `--cljfmt` the file
+also lands formatted — which collapses gate 1 to a near-no-op. Every current client can do
+this under its own name: Claude Code and Antigravity both call it
+`PreToolUse`/`PostToolUse`, OpenCode uses a plugin hook, Pi a TypeScript extension. Claude Code's, as an example:
 
   ```json
   { "hooks": {
@@ -199,10 +207,9 @@ Which mechanism applies follows the model-family split in §1:
   }
   ```
 
-- **Every other agent** → the on-demand `clj-paren-repair` command. Do **not** depend on the
-  agent remembering to call it: have the orchestrator run it over the files the agent
-  produced, before the gates. A pre-gate that only fires when the model chooses to fire it
-  is not a pre-gate.
+Keep the mechanism even where you have the accelerant. A hook covers the client's own write
+tools; any agent can still edit through the shell and bypass it. <Name the hook you wired,
+per client, or say you rely on the mechanism alone.>
 
 **Keep both, even for hook-capable clients.** Hooks cover Write/Edit; an agent can still
 edit through the shell (`sed`, `awk`) and bypass them entirely.
@@ -238,7 +245,9 @@ bb doctor --edn   # a pins map, for the decision log
 
 - Rule source: `<path>/agent-rules.edn` — records of `:id :group :audience :title :text`
 - Rendered into: <which agents' system prompts>, filtered by `:audience`
-- Mirrored into: `<repo>/CLAUDE.md`, between `<!-- agent-rules:begin/end -->` markers
+- Mirrored into: `<repo>/AGENTS.md`, between `<!-- agent-rules:begin/end -->` markers.
+  Where a client reads only its own filename, make that file a *pointer* to this one rather
+  than a second generated mirror — one marker block, one drift target
 - Regenerate with `bb rules-sync`; **`bb rules-check` runs inside `bb gates`** and fails on drift
 - Edit rules in the rule source only — never in a prompt string, never by hand inside the
   mirror's marker block
@@ -253,12 +262,12 @@ precedence down — nothing else enforces it:
 
 | Layer | Holds | Reaches |
 |---|---|---|
-| `~/.claude/CLAUDE.md` (personal) | One person's taste, across all their projects | Only clients that read it |
-| `<repo>/CLAUDE.md` (project) | This project's rules, in a generated block — the rest of the file is hand-written and survives sync | Only clients that read it |
+| Personal rules file (`~/.claude/CLAUDE.md`, `~/.pi/agent/AGENTS.md`, …) | One person's taste, across all their projects | Only clients that read it |
+| `<repo>/AGENTS.md` (project) | This project's rules, in a generated block — the rest of the file is hand-written and survives sync | Only clients that read it |
 | The rule source, in the system prompt | Anything a gate enforces | **Every model family** |
 
-> Two facts decide the split. A `CLAUDE.md` is one vendor's client convention, and §1's
-> independence rule puts the verifier on a **different family** — which reads no such file.
+> Two facts decide the split. A rules file reaches only clients that read files, and §1's
+> independence rule puts the verifier on a **different family** — which reads none at all.
 > And because the layers merge, a personal preference can contradict a project
 > non-negotiable silently. <Check for this: a global "run the tests after changing a
 > namespace" directly contradicts a project "never run the gates yourself".> Anything a

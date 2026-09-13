@@ -8,8 +8,14 @@
 
   - `rule-block` — the bullet list interpolated into a headless agent's system
     prompt, filtered by audience, with per-dispatch values substituted in;
-  - `markdown` — the mirrored sections of CLAUDE.md, written by `bb rules-sync`
-    and drift-checked by `bb rules-check` inside `bb gates`.
+  - `markdown` — the mirrored sections of the agent-rules file, written by
+    `bb rules-sync` and drift-checked by `bb rules-check` inside `bb gates`.
+
+  The mirror defaults to AGENTS.md, which the Antigravity IDE, OpenCode and Pi
+  read natively.
+  Claude Code reads only CLAUDE.md, so the seed ships a CLAUDE.md that imports
+  AGENTS.md rather than a second generated copy: one marker block, one drift
+  target, and exactly one place a rule can be hand-written outside it.
 
   Rules live in one file rather than inline in prompt strings because the
   loop's measured lesson is that prompt rules beat retry feedback — three
@@ -17,10 +23,10 @@
   immediately. That makes them load-bearing assets, and the same rule written
   in two places with nothing keeping them honest is how they rot.
 
-  The prompt rendering is the one that must never be skipped: a CLAUDE.md file
-  is specific to one vendor's client, and the method requires the agent
-  verifying the Coder to be a different model family — which reads no
-  CLAUDE.md at all."
+  The prompt rendering is the one that must never be skipped. AGENTS.md is a
+  convention among interactive clients; the method requires the agent verifying
+  the Coder to be a different model family, and that agent reads no file at
+  all — it gets an HTTP request with a system prompt."
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
@@ -66,13 +72,25 @@
         (map #(str "- " (render (:text %) subs)))
         (str/join "\n"))))
 
+(defn prompt-substitutions
+  "Per-dispatch substitutions for `rule-block`, with `:eval-how` derived from
+  `:repl-port` when the caller did not supply one.
+
+  The derived hint names the bridge `bb doctor` declares required. Pass your
+  own `:eval-how` to use a different one — like ManualRunner's eval-hint, it
+  is a string, not a dependency."
+  [{:keys [repl-port eval-how] :as subs}]
+  (cond-> subs
+    (and repl-port (not eval-how))
+    (assoc :eval-how (str "clj-nrepl-eval -p " repl-port " \"<code>\""))))
+
 (def ^:private markdown-sections
-  "Group key -> CLAUDE.md heading, in the order they are written."
+  "Group key -> agent-rules heading, in the order they are written."
   [[:non-negotiable "## Non-negotiables"]
    [:conventions "## Conventions (the lint gate fails on WARNINGS, not just errors)"]])
 
 (defn markdown
-  "The :human rules as the CLAUDE.md sections, grouped and titled.
+  "The :human rules as the mirror's sections, grouped and titled.
 
   Each rule becomes one bullet, so :text supports inline markdown only — no fenced
   blocks, tables or sub-bullets. Extend this fn if a rule needs them; the workaround
@@ -119,31 +137,81 @@
       (spit doc-path updated))
     {:path doc-path :changed? changed?}))
 
+(def ^:private reserved-flags
+  "Flags `prompt-main` consumes itself. Every OTHER --flag becomes a
+  {{placeholder}} substitution, so adding a placeholder to the rule source
+  needs no change here."
+  #{:audience :out})
+
+(defn- parse-flags
+  "`--key value` pairs to {:key \"value\"}. Positional args are ignored — this
+  entry point has none, and silently dropping one is better than guessing
+  which flag it belonged to."
+  [args]
+  (into {}
+        (comp (partition-all 2)
+              (keep (fn [[k v]]
+                      (when (and k (str/starts-with? k "--"))
+                        [(keyword (subs k 2)) v]))))
+        args))
+
+(defn prompt-main
+  "bb rules-prompt --audience <name> [--out FILE] [--<key> <value>]...
+
+  Writes the PROMPT rendering, which is the only channel that reaches a model
+  family reading no rules file at all. Where it goes is the caller's problem
+  and deliberately so: Pi replaces its system prompt from a file, a headless
+  runner interpolates the block into an HTTP request, and a client with an
+  append flag takes it on stdin."
+  [& args]
+  (let [flags (parse-flags args)
+        audiences (into (sorted-set) (mapcat :audience) (load-rules))
+        audience (some-> (:audience flags) keyword)]
+    (when-not (contains? audiences audience)
+      (println (str "rules-prompt: --audience must be one of "
+                    (str/join ", " (map name audiences))
+                    (when audience (str " — got " (name audience)))))
+      (System/exit 1))
+    (let [block (rule-block audience
+                            (prompt-substitutions
+                             (apply dissoc flags reserved-flags)))]
+      (if-let [out (:out flags)]
+        (do (spit out block)
+            (println (str "rules-prompt: " (count (str/split-lines block))
+                          " rules for " (name audience) " -> " out)))
+        (println block)))))
+
 (defn -main
-  "bb rules-sync [--check] [path]   (default path: CLAUDE.md)"
+  "bb rules-sync [--check] [path...]   (default: AGENTS.md)
+
+  Takes any number of mirrors. A project that generates more than one — this
+  repository generates its own and the sandbox's — needs every one of them
+  drift-checked, or the unchecked one is correct only by luck. That is the
+  failure the rule source exists to prevent, one level out."
   [& args]
   (let [check? (boolean (some #{"--check"} args))
-        path (or (first (remove #(str/starts-with? % "--") args)) "CLAUDE.md")]
-    (when-not (.exists (io/file path))
-      (println (str "agent-rules: " path " not found — the rule mirror is the "
-                    "file agents actually read; create it with the "
-                    begin-marker " / " end-marker " markers."))
-      (System/exit 1))
-    (let [{:keys [changed?]}
-          ;; A malformed mirror is a gate failure with a fix, not a stack
-          ;; trace: whoever deleted the marker needs to be told which one.
-          (try (sync! path :check? check?)
-               (catch clojure.lang.ExceptionInfo e
-                 (println (str "agent-rules: " (ex-message e) " in " path
-                               " — the block is delimited by\n  " begin-marker
-                               "\n  " end-marker))
-                 (System/exit 1)))]
-      (cond
-        (and check? changed?)
-        (do (println (str "agent-rules drift: " path " does not match resources/"
-                          resource-name " — run `bb rules-sync`"))
-            (System/exit 1))
+        paths (or (seq (remove #(str/starts-with? % "--") args)) ["AGENTS.md"])]
+    (doseq [path paths]
+      (when-not (.exists (io/file path))
+        (println (str "agent-rules: " path " not found — the rule mirror is the "
+                      "file agents actually read; create it with the "
+                      begin-marker " / " end-marker " markers."))
+        (System/exit 1))
+      (let [{:keys [changed?]}
+            ;; A malformed mirror is a gate failure with a fix, not a stack
+            ;; trace: whoever deleted the marker needs to be told which one.
+            (try (sync! path :check? check?)
+                 (catch clojure.lang.ExceptionInfo e
+                   (println (str "agent-rules: " (ex-message e) " in " path
+                                 " — the block is delimited by\n  " begin-marker
+                                 "\n  " end-marker))
+                   (System/exit 1)))]
+        (cond
+          (and check? changed?)
+          (do (println (str "agent-rules drift: " path " does not match resources/"
+                            resource-name " — run `bb rules-sync`"))
+              (System/exit 1))
 
-        check? (println (str "agent-rules in sync: " path))
-        changed? (println (str "agent-rules synced: " path))
-        :else (println (str "agent-rules already current: " path))))))
+          check? (println (str "agent-rules in sync: " path))
+          changed? (println (str "agent-rules synced: " path))
+          :else (println (str "agent-rules already current: " path)))))))

@@ -52,9 +52,9 @@
     (is (shapes/valid-gate-result?
          {:gates/passed? false
           :gates/failed :lint
-          :gates/report [{:gate :fmt :status :pass :exit 0 :out ""}
-                         {:gate :lint :status :fail :exit 1 :out "boom"}
-                         {:gate :test :status :skipped :exit nil :out ""}]})))
+          :gates/report [{:gate :fmt :status :pass :exit 0 :out "" :ms 12}
+                         {:gate :lint :status :fail :exit 1 :out "boom" :ms 40}
+                         {:gate :test :status :skipped :exit nil :out "" :ms nil}]})))
   (testing "a skipped entry that omits :exit/:out is rejected"
     (is (not (shapes/valid-gate-result?
               {:gates/passed? false

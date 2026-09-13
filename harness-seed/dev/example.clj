@@ -10,13 +10,16 @@
    [harness.repair :as repair]
    [harness.runner :as runner]
    [harness.runner-check :as check]
-   [harness.shapes :as shapes]))
+   [harness.shapes :as shapes]
+   [harness.sigs :as sigs]))
 
 (def spec
   "One entry of an Architect's dependency-ordered task list."
   {:task/id "t-07-service-ops"
    :task/title "Service ops: lookup, children, search"
-   :blueprint/slice {:shapes '[Concept] :interfaces '[(lookup [store id])]}
+   :blueprint/slice {:shapes '[Concept]
+                     :interfaces '[(lookup [store id])]
+                     :deps-sigs '[(query [store q opts])]}
    :files/impl ["src/app/service.clj"]
    :files/test ["test/app/service_test.clj"]
    ;; note the impl file is listed here on purpose
@@ -43,6 +46,12 @@
         session {:worktree/path dir :nrepl/port 7807}
         runner (scripted-runner dir)]
 
+    ;; The one upstream file this task depends on. In a real run it arrives
+    ;; with the worktree, at the base commit.
+    (fs/create-dirs (fs/path dir "src" "app"))
+    (spit (str (fs/path dir "src/app/store.clj"))
+          "(ns app.store)\n(defn query [store q opts] nil)\n(def defaults {})\n")
+
     (println "\n1. Assemble the packets — one spec, two roles.\n")
     (let [coder (packet/coder-packet spec session)
           tester (packet/tester-packet spec session)]
@@ -51,7 +60,20 @@
       (println "   ^ the impl was stripped for the Tester. It reads the contract,")
       (println "     never the code — enforced in harness.packet, not asked for.\n")
 
-      (println "2. Dispatch. A real runner shells a CLI or calls an endpoint;")
+      (println "2. Verify the Blueprint's claims before anyone is dispatched.\n")
+      (let [slice (:blueprint/slice spec)
+            ctx (:files/context tester)]
+        (println "   :deps-sigs" (pr-str (:deps-sigs slice))
+                 "->" (sigs/violations dir ctx (:deps-sigs slice)))
+        ;; A gate suite that has only ever passed proves nothing, and neither
+        ;; does a precondition. Here is the same check with one word wrong.
+        (doseq [x (sigs/violations dir ctx '[(query [store q]) (defaults [])])]
+          (println "   caught:" (:violation x) "—" (:detail x))))
+      (println "   ^ a wrong signature is worse than a missing one: the agent is")
+      (println "     told a function exists, writes against it, and the failure")
+      (println "     surfaces as the Coder's fault two gates later.\n")
+
+      (println "3. Dispatch. A real runner shells a CLI or calls an endpoint;")
       (println "   this one just writes the file.\n")
       (let [result (runner/run-agent runner :coder coder)]
         (println "   =>" (pr-str (dissoc result :stdout)))
@@ -59,18 +81,18 @@
         (println "   ^ :session-id lives under :runner/meta, where the schema")
         (println "     can see it. Upstream it rode on the top level, undeclared.\n")
 
-        (println "3. Gate 0 — mechanical repair, before anything is judged.\n")
+        (println "4. Gate 0 — mechanical repair, before anything is judged.\n")
         (let [r (repair/repair! dir (:files result))]
           (println "   repaired:" (:repaired r) " newline added:" (:newlines r))
           (println "   ^ no retry budget was spent on that.\n"))
 
-        (println "4. The gates, cheap first, short-circuiting.\n")
+        (println "5. The gates, cheap first, short-circuiting.\n")
         (let [gr (gates/run-gates! dir [[:fmt "true"] [:lint "false"] [:test "true"]])]
           (pp/pprint (:gates/report gr))
           (println "\n   failed:" (:gates/failed gr) "— :test never ran.")
           (println "   Triage gets {which gate, its output}, not a composite log.\n")))
 
-      (println "5. Conformance — run every runner you write through this.\n")
+      (println "6. Conformance — run every runner you write through this.\n")
       (let [results (check/check-runner runner {:packet coder :expect-writes? true})]
         (doseq [{:keys [check pass?]} results]
           (println "  " (if pass? "ok  " "FAIL") (name check)))

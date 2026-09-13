@@ -12,13 +12,30 @@ those runs, not a design done on paper.
 > there is no library to require and no version to track. Delete what you don't need; the
 > parts you keep are meant to be changed.
 
-## Three parts
+## Four parts
 
 | | What it is |
 |---|---|
-| **[`method.md`](method.md)** | The method. Three phases — Plan, Foundation, Stages — run as one lean-agile discipline: lean decides *what* to build, agile decides *how*, and the flow is Kanban (pulled, WIP-limited, no timeboxes). Roles, the task-packet contract, the rule source, the decision log, the gate order, and a field guide of ten lessons each bought with a real run. |
+| **[`method.md`](method.md)** | The method. Three phases — Plan, Foundation, Stages — run as one lean-agile discipline: lean decides *what* to build, agile decides *how*, and the flow is Kanban (pulled, WIP-limited, no timeboxes). Roles, the task-packet contract, the rule source, the decision log, the gate order, and a field guide of twelve lessons each bought with a real run. |
 | **[`skeletons/`](skeletons/)** | Fillable plan documents — overview with a ranked risk register, requirements with MVP/post-MVP scoping, architecture, method-and-tooling, decision log, and just-in-time stage docs. |
-| **[`harness-seed/`](harness-seed/)** | ~1900 lines that actually run: a toolchain doctor, Malli shapes, the packet assembler, the gate runner, gate 0, the `AgentRunner` seam with a conformance check, and the rule source with a drift gate. |
+| **[`harness-seed/`](harness-seed/)** | A few thousand lines that actually run, with about as many again of tests: the packet assembler, the gate runner and gate 0, three-worktree provisioning, an API-backed runner, a per-run cost report, and the rule source with a drift gate. [Its own README](harness-seed/README.md) is the inventory. |
+| **[`sandbox/`](sandbox/)** | A deliberately trivial Clojure project the harness can be run *against* — a `deps.edn`, a real nREPL and four gates that actually execute. It is the self-check for changes to the seed, and the thing §03's readiness criteria 4 and 6 are closed against. |
+
+**Each document has one job**, and none of them repeats another:
+
+| | |
+|---|---|
+| [`NOTES.md`](NOTES.md) | what is missing, weak or open **now** |
+| [`RUNS.md`](RUNS.md) | every end-to-end run against `sandbox/`, and what it found |
+| [`runs/`](runs/) | the records those runs produced — every table in `RUNS.md` re-renders from one |
+| [`DEVLOG.md`](DEVLOG.md) | what changed, when, and why — newest first |
+| [`portability.md`](portability.md) | running the kit from a seat other than Claude Code, and the dispatch design that follows |
+| [`harness-seed/README.md`](harness-seed/README.md) | the seed itself: what is in it, how to adapt it, what is deliberately left out |
+| `CLAUDE.md` | working rules for an agent changing this repository |
+
+That separation is not tidiness. Two of these carried the same forward-looking list for a
+while and both went stale; the rule now is that a fact lives in one of them and the others
+link to it.
 
 ## Try the seed
 
@@ -28,7 +45,7 @@ what's missing and why each tool matters.
 ```bash
 cd harness-seed
 bb doctor     # what your Clojure toolchain has, and what it's for
-bb gates      # doctor -> format -> lint -> rules -> test
+bb gates      # doctor -> format -> lint -> rules -> reports -> test
 bb example    # the whole loop shape in one run — no model calls, no network
 ```
 

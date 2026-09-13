@@ -34,26 +34,60 @@
   fmt {:doc "Format with cljfmt"
        :task (shell "cljfmt fix src test dev")}
 
+  ;; Gate 0 for work done beside the loop. NOT part of `gates` — gate 0 runs
+  ;; before the gate sequence, not inside it.
+  repair {:doc "Gate 0: delimiter repair over the Clojure files you have changed"
+          :requires ([harness.repair :as repair])
+          :task (apply repair/-main *command-line-args*)}
+
   fmt-check {:doc "Check formatting (no changes)"
              :task (shell "cljfmt check src test dev")}
 
   lint {:doc "Lint with clj-kondo"
         :task (shell "clj-kondo --lint src test dev")}
 
-  rules-sync {:doc "Regenerate CLAUDE.md's rule block from resources/agent-rules.edn"
+  rules-sync {:doc "Regenerate AGENTS.md's rule block from resources/agent-rules.edn"
               :requires ([harness.rules :as rules])
               :task (apply rules/-main *command-line-args*)}
 
-  rules-check {:doc "Fail when CLAUDE.md has drifted from the agent-rule source"
+  ;; Both mirrors this repository generates. The second is THIS repo's sandbox,
+  ;; not part of the seed — a project that copies the seed should drop it and
+  ;; list its own. An unchecked generated mirror is correct only by luck.
+  rules-check {:doc "Fail when a generated rule mirror has drifted from the source"
                :requires ([harness.rules :as rules])
-               :task (rules/-main "--check")}
+               :task (rules/-main "--check" "AGENTS.md" "../sandbox/AGENTS.md")}
+
+  rules-prompt {:doc "Render the rules for one audience as a system-prompt block: --audience <name> [--out FILE] [--<key> <value>]..."
+                :requires ([harness.rules :as rules])
+                :task (apply rules/prompt-main *command-line-args*)}
 
   ;; Mirrors gates/default-gate-seq, minus :deps — the seed has no layers
   ;; to enforce. Written out rather than driven off the data, so a gate
   ;; failure here looks like a gate failure and not a harness failure.
-  gates {:doc "Quality gates, cheap first: doctor -> format -> lint -> rules -> test"
+  report {:doc "Render a run record (EDN on stdin) as a timing and cost report"
+          :requires ([harness.report :as report])
+          :task (apply report/-main *command-line-args*)}
+
+  ;; The second drift gate. RUNS.md publishes rendered reports the same
+  ;; way AGENTS.md carries a rendered rule block, so it gets the same
+  ;; treatment: generated content in markdown, checked against its source.
+  ;; Targets are arguments — the mechanism is the seed's, the documents are not.
+  report-check {:doc "Fail when a published report has drifted from its run record"
+                :requires ([harness.report :as report])
+                :task (report/check-main "../RUNS.md" "../runs")}
+
+  profile {:doc "Check a profile: shape, verifier independence, seat, key variables ([--seat NAME] [--file F] [--probe])"
+           :requires ([harness.profile :as profile])
+           :task (apply profile/-main *command-line-args*)}
+
+  sigs {:doc "Check a task spec's :deps-sigs against its :files/context (EDN on stdin)"
+        :requires ([harness.sigs :as sigs])
+        :task (apply sigs/-main *command-line-args*)}
+
+  gates {:doc "Quality gates, cheap first: doctor -> format -> lint -> rules -> reports -> test"
          :task (do (run 'doctor) (run 'fmt-check) (run 'lint)
-                   (run 'rules-check) (run 'test))}
+                   (run 'rules-check) (run 'report-check)
+                   (run 'test))}
 
   example {:doc "End-to-end tour: packet -> runner -> gate 0 -> gates. No model calls."
            :extra-paths ["dev"]

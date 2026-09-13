@@ -8,9 +8,18 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
-   [harness.rules :as rules]))
+   [harness.rules :as rules]
+   [harness.shapes :as shapes]))
 
 (def rule-source (rules/load-rules))
+
+(def ^:private audiences
+  "Every dispatched role, plus the human mirror — derived from shapes/Role
+  rather than written out, so a role added to the enum without rules fails
+  here instead of silently receiving an empty system prompt. The Reviewer was
+  exactly that: a first-class role everywhere except the rule source, and the
+  one role that reads no rules file at all."
+  (conj (set (rest shapes/Role)) :human))
 
 (def ^:private sample
   [{:id :alpha :group :non-negotiable :audience #{:coder :human}
@@ -26,14 +35,14 @@
     (doseq [rule rule-source]
       (is (keyword? (:id rule)) (pr-str rule))
       (is (contains? #{:non-negotiable :conventions} (:group rule)) (pr-str rule))
-      (is (set/subset? (:audience rule) #{:coder :tester :human}) (pr-str rule))
+      (is (set/subset? (:audience rule) audiences) (pr-str rule))
       (is (seq (:audience rule)) (str (:id rule) " reaches nobody"))
       (is (string? (:title rule)) (pr-str rule))
       (is (string? (:text rule)) (pr-str rule))))
   (testing "ids are unique — tests and triage reference them"
     (is (= (count rule-source) (count (distinct (map :id rule-source))))))
   (testing "every audience is actually served by a rendering"
-    (doseq [a [:coder :tester :human]]
+    (doseq [a audiences]
       (is (seq (rules/for-audience rule-source a)) (str "no rules for " a)))))
 
 (deftest precedence-rule-reaches-everyone
@@ -41,7 +50,8 @@
   ;; non-negotiable, and nothing tells the model which wins unless a rule does.
   (let [p (first (filter #(= :precedence (:id %)) rule-source))]
     (is (some? p) "the rule source must state its own precedence")
-    (is (= #{:coder :tester :human} (:audience p)))))
+    (is (= audiences (:audience p))
+        "precedence must reach every audience, including roles added later")))
 
 (deftest render-substitutes
   (is (= "port 7807" (rules/render "port {{repl-port}}" {:repl-port 7807})))
@@ -64,6 +74,30 @@
       (is (not (str/includes? block "##")))))
   (testing "an audience with no rules renders empty rather than throwing"
     (is (= "" (rules/rule-block [] :coder {})))))
+
+(deftest prompt-substitutions-derives-eval-how
+  (testing ":eval-how is derived from :repl-port when absent"
+    (is (= "clj-nrepl-eval -p 7807 \"<code>\""
+           (:eval-how (rules/prompt-substitutions {:repl-port 7807})))))
+  (testing "a caller-supplied :eval-how wins — the bridge is a string, not a dependency"
+    (is (= "EV" (:eval-how (rules/prompt-substitutions {:repl-port 7807 :eval-how "EV"})))))
+  (testing "no port, no derivation — a half-substituted rule is easier to spot than a wrong one"
+    (is (nil? (:eval-how (rules/prompt-substitutions {:layer "service"}))))))
+
+(deftest prompt-main-renders-the-requested-audience
+  (let [out (with-out-str (rules/prompt-main "--audience" "tester" "--repl-port" "7807"))]
+    (testing "every line is a prompt-shaped bullet"
+      (is (every? #(str/starts-with? % "- ") (str/split-lines out))))
+    (testing "unreserved flags substitute, so a new placeholder needs no code change"
+      (is (str/includes? out "clj-nrepl-eval -p 7807"))
+      (is (not (str/includes? out "{{"))))
+    (testing "audience filtering reaches the CLI"
+      (is (not (str/includes? out "Respect the boundaries of layer")))))
+  (testing "--out writes the block rather than printing it"
+    (let [f (str (fs/path (fs/create-temp-dir) "prompt.txt"))]
+      (rules/prompt-main "--audience" "coder" "--layer" "service" "--out" f)
+      (is (str/includes? (slurp f) "Respect the boundaries of layer service"))
+      (is (not (str/ends-with? (slurp f) "\n\n"))))))
 
 (deftest markdown-groups-and-filters
   (let [md (rules/markdown sample)]
@@ -99,7 +133,7 @@
 
 (deftest sync-writes-once-and-detects-drift
   (let [dir (str (fs/create-temp-dir))
-        doc (str (fs/path dir "CLAUDE.md"))]
+        doc (str (fs/path dir "AGENTS.md"))]
     (spit doc (str "# Doc\n\n" rules/begin-marker "\n" rules/end-marker "\n"))
     (testing "the first sync writes"
       (is (:changed? (rules/sync! doc))))

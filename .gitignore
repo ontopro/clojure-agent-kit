@@ -5,3 +5,6 @@
 target/
 *.log
 .DS_Store
+
+# Working material from runs — see .local/README.md. Never committed.
+/.local/
