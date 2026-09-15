@@ -2021,7 +2021,7 @@ line 99; its `require` and `test-vars` came back `""`, and `(require 'sandbox.co
 never ran a test. Gate 0 repaired the delimiter before the gates, and the record does not say so
 (row 14). Blank evaluation results also appear in D17's and D18's transcripts.
 
-**The tool was fixed before the last attempt** (`NOTES.md` row 16, `7a28882`, brought onto
+**The tool was fixed before the last attempt** (`NOTES.md` row 16, fixed 2026-09-15, brought onto
 `stage/s1` as `908a767`): the user chose to return stderr always and flag a failed evaluation,
 with a failed form, a timeout and an unreachable nREPL worded apart. **So D20's third Tester
 attempt ran on a different tool from its first two, and from D19**; `run_loop.clj` did not change.
