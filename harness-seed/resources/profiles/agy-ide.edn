@@ -53,23 +53,41 @@
           :params {:reasoning_effort "medium"
                    :provider {:only ["google-vertex"] :allow_fallbacks false}}}
 
-  ;; THE TESTER IS NOT THE CHEAP SEAT — see claude.edn for the run that
-  ;; established it. Same change here for the same reason: the Tester
-  ;; writes more than the Coder, from the contract alone, under more lint
-  ;; conventions. :only pins the serving provider; this model has exactly
-  ;; one, where the model it replaced had sixteen down to fp4.
+  ;; CHOOSE THE TESTER BY ITS TESTS, NOT ITS PRICE — see claude.edn for run
+  ;; D4, which established it, and bake-off B1, which chose this model on
+  ;; exactly those terms. Same Tester as that profile: the result does not
+  ;; depend on the seat, and openai is neither Coder's family. The standard
+  ;; endpoint rather than flex, because flex was rate-limited upstream on most
+  ;; requests when this was switched; claude.edn has the numbers, and why the
+  ;; "openai" pin is observed rather than guaranteed to mean standard.
   :tester {:family :openai
-           :model "openai/gpt-5.2-codex"
+           :model "openai/gpt-5.6-sol"
            :shape :openai
            :endpoint "https://openrouter.ai/api/v1"
            :key-env "OPENROUTER_API_KEY"
            :params {:reasoning_effort "medium"
-                    :provider {:only ["azure"] :allow_fallbacks false}}}
+                    :provider {:only ["openai"] :allow_fallbacks false}}}
 
   ;; Direct to Anthropic, which is the :anthropic tool-call shape. No
   ;; :provider pin: that endpoint does no routing, so there is nothing to pin.
+  ;;
+  ;; CLAUDE FABLE 5.1 AT LOW EFFORT, replacing claude-sonnet-5 (2026-09-14).
+  ;; The same settings as claude.edn's Coder, for the reasons given there:
+  ;; thinking counts against :max_tokens, no fallback model answers a refusal,
+  ;; and the cost is computed from :pricing because the endpoint reports none.
+  ;; Chosen on the user's judgement, not a run: no Anthropic model has yet been
+  ;; dispatched as Reviewer (DEVLOG.md, 2026-09-14 17:19).
   :reviewer {:family :anthropic
-             :model "claude-sonnet-5"
+             :model "claude-fable-5-1"
              :shape :anthropic
              :endpoint "https://api.anthropic.com"
-             :key-env "ANTHROPIC_API_KEY"}}}
+             :key-env "ANTHROPIC_API_KEY"
+             :params {:output_config {:effort "low"}
+                      :max_tokens 16000}
+             ;; USD per million tokens: base input, output, 5-minute and 1-hour
+             ;; cache writes, cache reads (0.025x on Fable 5.1; 0.1x elsewhere).
+             :pricing {:per-mtok {:in 10 :out 50
+                                  :cache-write-5m 12.5 :cache-write-1h 20
+                                  :cache-read 0.25}
+                       :source "https://platform.claude.com/docs/en/about-claude/pricing"
+                       :as-of "2026-09-14"}}}}

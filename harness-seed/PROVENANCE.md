@@ -15,6 +15,7 @@ harness that ran this loop across dozens of real dispatches.
 | `agents/interactive-programmer.md` | `.claude/agents/clojure-interactive-programming.md` | working tree |
 | `src/harness/doctor.clj` | — | written for the seed |
 | `src/harness/runner_check.clj` | — | written for the seed |
+| `dev/run_loop.clj` | — | written for the seed, from the drivers of runs D7–D9 |
 
 ## This is a fork, not a mirror
 
@@ -42,17 +43,33 @@ diverged, and each divergence has a reason:
   split and the independence check only became expressible once the kit had to
   work from a client other than the one it was written in.
 - **`Gates` drops `:cmd`.** Dead upstream: one writer, zero readers.
+- **`:property-targets` is on every packet, not only the Tester's.** Upstream declares
+  it on `TesterPacket` and `tester-packet` alone attaches it, so a contract decision
+  reaches the one role that tests it. Runs D7 and D8 each lost a decision that way. The
+  field moved to `PacketBase` and `packet/base`. The Coder is told to satisfy the
+  targets and the Reviewer to judge against them.
+- **`Feedback` has sources upstream lacks: `:triage` and `:architect`.** A retry's reason
+  can come from whoever routed the failure, or from a change to the contract, without
+  being misattributed to a gate or the Reviewer.
 - **`example-packet` was promoted** from a test fixture into `src`.
 - **The rule source is genericised** — upstream's layer names, project-specific `ex-info` type
   and datastore references are replaced with `<angle-bracket>` prompts. A `:precedence`
   rule is **added**, which upstream does not have: it states that the rules outrank any
   personal or global instruction, because rule files merge silently and upstream currently
   has a live collision between a global *"run `bb test`"* and its own *"never run the
-  gates"*.
+  gates"*. `:shapes-are-the-contract` also says to validate at the seams **once**, and that a
+  function recursing into itself crosses its own seam on every call. Three dispatched Coders
+  validated at every recursive call under the shorter wording upstream still has, so the
+  gap is a back-port item.
 - **Vocabulary: upstream says "corpus", the seed says "rule source".** Renamed because
   "corpus" collides with its NLP meaning (a body of text for training) in a document
   entirely about LLM agents. Same artifact, same shape — do not "fix" it back.
 - **`ManualRunner`'s REPL hint is injectable** rather than hardcoding one bridge.
+- **A role may carry `:pricing`, and `provenance/of` has a third arity that uses it.** Upstream
+  ran everything through OpenRouter, whose generation record reports cost. Direct to Anthropic
+  there is none, so the profile may name list prices with their source and date, and a cost
+  computed from them is marked `:list-price` and rendered with a `~`. The table is in the
+  profile, not the harness, on purpose (2026-09-14).
 - **`rules/-main` defaults to `AGENTS.md` in the cwd** rather than a sibling checkout, so
   the seed's drift gate needs nothing outside itself. Upstream mirrors into `CLAUDE.md`;
   the seed generates `AGENTS.md` — which the Antigravity IDE, OpenCode and Pi read natively

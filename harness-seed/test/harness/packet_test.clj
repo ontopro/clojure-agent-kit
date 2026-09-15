@@ -56,6 +56,36 @@
     (is (not (contains? p :repl/port)) "no eval: no REPL")
     (is (= {:fmt :pass :lint :pass :test :pass :deps :pass} (:review/gate-report p)))))
 
+(deftest every-role-gets-the-property-targets
+  ;; They were the Tester's alone. D7's amendment never reached the Coder; in
+  ;; D8 target 6 reached neither the Coder, who broke it, nor the Reviewer, who
+  ;; therefore could not see it broken. A property target is contract.
+  (let [diff "diff --git a/src/app/service.clj ..."
+        gates {:fmt :pass :lint :pass :test :pass :deps :pass}
+        packets {:coder (packet/coder-packet spec session)
+                 :tester (packet/tester-packet spec session)
+                 :reviewer (packet/reviewer-packet spec session diff gates)}]
+    (doseq [[role p] packets]
+      (testing (str (name role) " carries them, and its packet still validates")
+        (is (= ["diff(v,v) is empty"] (:property-targets p)))
+        (is (shapes/valid-packet? p))))
+    (testing "and none of them carries the key when the spec has no targets"
+      (let [bare (dissoc spec :property-targets)]
+        (is (not-any? #(contains? % :property-targets)
+                      [(packet/coder-packet bare session)
+                       (packet/tester-packet bare session)
+                       (packet/reviewer-packet bare session diff gates)]))))
+    (testing "the Tester's independence is untouched: still no implementation in its context"
+      (is (not-any? #{"src/app/service.clj"} (:files/context (:tester packets)))))))
+
+(deftest the-architect-can-announce-an-amendment
+  ;; D7 amended the property targets between attempts, and nothing could say so.
+  (let [r (packet/for-retry (packet/coder-packet spec session) 2
+                            [{:feedback/from :architect
+                              :feedback/text "property-targets amended: :div folds only when exact"}])]
+    (is (shapes/valid-packet? r))
+    (is (= [:architect] (mapv :feedback/from (:task/feedback r))))))
+
 (deftest validation
   (testing "a spec missing its impl file fails coder assembly loudly"
     (is (thrown-with-msg? Exception #"invalid task packet"
@@ -112,6 +142,15 @@
     (is (shapes/valid-packet?
          (packet/for-retry (packet/tester-packet spec session) 3 fb))
         "and it validates on the packet it is carried into")))
+
+(deftest triage-can-say-why-a-role-is-back
+  ;; D8: green gates, no Reviewer findings, and a contract broken on every
+  ;; invalid input — found by triage, which had no source to send it as.
+  (let [r (packet/for-retry (packet/coder-packet spec session) 2
+                            [{:feedback/from :triage
+                              :feedback/text "bind validates its output, not its input"}])]
+    (is (shapes/valid-packet? r))
+    (is (= [:triage] (mapv :feedback/from (:task/feedback r))))))
 
 (deftest feedback-is-clipped-because-a-retry-resends-it-every-turn
   ;; `harness.tools/max-output` clips tool results for exactly this reason and

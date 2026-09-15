@@ -64,7 +64,7 @@ a stub importing that file.)
 
 Those rules are **generated** from `resources/agent-rules.edn`. If one of them is
 wrong, fix it there and run `bb rules-sync` — never by hand-editing `AGENTS.md`, which
-`bb gates` will simply revert as drift.
+`bb gates` reports as drift and fails on.
 
 One rule applies differently to you than to a dispatched agent: the rules say *do not
 run the gates*, because for the loop, authoring and running are deliberately separate

@@ -4,7 +4,7 @@
    [babashka.process :as p]
    [cheshire.core :as json]
    [clojure.string :as str]
-   [clojure.test :refer [deftest is]]
+   [clojure.test :refer [deftest is testing]]
    [harness.packet]
    [harness.runner :as runner]
    [harness.runner-check :as check]
@@ -118,6 +118,28 @@
     (is (= ["src/app/service.clj"] (:files r)))
     (is (fs/exists? (fs/path dir "src/app/service.clj")))))
 
+(deftest a-retry-that-writes-nothing-reports-nothing
+  ;; NOTES.md row 18. D20's second Tester attempt started in a worktree holding the
+  ;; first attempt's file, wrote nothing, and reported that file, because git
+  ;; status lists it either way.
+  (let [dir (git-repo)
+        _ (spit (str (fs/path dir "src/app/service.clj")) "(ns app.service)\n")
+        quiet (stub [(text "the REPL stopped answering, so I wrote nothing")]
+                    #(runner/run-agent (runner/api-runner (profile %)) :coder (packet dir)))
+        rewrote (stub [(write-call "src/app/service.clj" "(ns app.service)\n(defn f [x] x)\n")
+                       (text "done")]
+                      #(runner/run-agent (runner/api-runner (profile %)) :coder (packet dir)))]
+    (is (= [] (:files quiet)) "the file was there before, and this dispatch did not touch it")
+    (is (= ["src/app/service.clj"] (:files rewrote)) "a retry that changes it still reports it")))
+
+(deftest written-since-is-what-changed-while-the-dispatch-ran
+  (is (= ["b.clj" "c.clj"]
+         (runner/written-since {"a.clj" "same" "b.clj" "old"}
+                               {"a.clj" "same" "b.clj" "new" "c.clj" "created"})))
+  (is (= [] (runner/written-since {"a.clj" "x"} {"a.clj" "x"})))
+  (is (= ["a.clj"] (runner/written-since nil {"a.clj" "x"})) "no snapshot is an empty one")
+  (is (= {} (runner/worktree-snapshot nil))))
+
 (deftest a-refused-write-does-not-appear-in-files
   ;; write_file refuses a path outside :files/target, and because :files comes
   ;; from git the result says so even though the model believes it succeeded.
@@ -143,6 +165,37 @@
     (is (= 1 (get-in r [:runner/meta :completions])))
     (is (= 14 (get-in r [:runner/meta :tokens])) "tokens are still measured")))
 
+(deftest a-priced-role-computes-a-cost-and-says-so
+  ;; Direct to Anthropic there is no generation record. With list prices in the
+  ;; profile the cost is usage x price, marked :list-price, with the counts and
+  ;; the rates beside it so the record can re-derive it.
+  (let [pricing {:per-mtok {:in 10 :out 50 :cache-write-5m 12.5 :cache-write-1h 20 :cache-read 0.25}
+                 :source "https://platform.claude.com/docs/en/about-claude/pricing" :as-of "2026-09-14"}
+        priced (fn [endpoint] (assoc-in (profile endpoint) [:roles :coder :pricing] pricing))
+        r (stub [(text "hi")]
+                #(runner/run-agent (runner/api-runner (priced %)) :coder (packet (git-repo))))]
+    ;; the stub reports 10 prompt and 4 completion tokens
+    (is (< (Math/abs (- 0.0003 (:cost r))) 1e-12))
+    (is (= :list-price (get-in r [:runner/meta :cost-source])))
+    (is (= {:in 10 :out 4} (get-in r [:runner/meta :usage])))
+    (is (= "2026-09-14" (get-in r [:runner/meta :pricing :as-of])))
+    (is (shapes/valid-result? r)))
+  (testing "without :pricing, no cost and no source, as before"
+    (let [r (stub [(text "hi")]
+                  #(runner/run-agent (runner/api-runner (profile %)) :coder (packet (git-repo))))]
+      (is (nil? (:cost r)))
+      (is (nil? (get-in r [:runner/meta :cost-source])))
+      (is (not (contains? (:runner/meta r) :pricing))))))
+
+(deftest a-request-sent-again-is-counted-in-runner-meta
+  ;; NOTES.md row 9: a rate limit is retried, and how many times is a fact
+  ;; about the endpoint the record keeps.
+  (let [r (stub [{:error {:message "temporarily rate-limited upstream" :code 429}} (text "hi")]
+                #(runner/run-agent (runner/api-runner (profile %) {:retry {:attempts 3 :interval-ms 1}})
+                                   :coder (packet (git-repo))))]
+    (is (= :done (:status r)))
+    (is (= 1 (get-in r [:runner/meta :retries])))))
+
 (deftest everything-provider-specific-lives-under-runner-meta
   ;; AgentResult is closed. Upstream, five keys accreted onto the top level
   ;; over two months and the orchestrator branched on all of them.
@@ -151,11 +204,20 @@
                                    (packet (git-repo))))]
     (is (= #{:status :files :stdout :cost :runner/meta} (set (keys r))))
     (is (every? (set (keys (:runner/meta r)))
-                [:model :iterations :capped? :completions :tool-calls :generation-ids]))))
+                [:model :iterations :capped? :completions :tool-calls :generation-ids
+                 :ms-completion :ms-provenance :ms-tools :service-tier :transcript :retries]))
+    (is (= [{:text "hi" :calls []}] (get-in r [:runner/meta :transcript]))
+        "the transcript rides in meta; the result stays closed")))
 
 ;; ---------------------------------------------------------------------------
 ;; failure
 ;; ---------------------------------------------------------------------------
+
+(deftest the-coder-and-reviewer-are-told-what-a-dependent-is-for
+  ;; A dependent in :files/context is only a path unless someone says why it is
+  ;; there. D12's Coder broke one it was never shown; now it is shown, and told.
+  (is (str/includes? (:coder runner/deliverables) "the files that require it, and they must keep working"))
+  (is (str/includes? (:reviewer runner/deliverables) "the files in :files/context that require it still work")))
 
 (deftest a-note-travels-and-a-final-message-does-not
   ;; The channel was never missing, it was PROSE. Run 4's Coder said the
@@ -270,7 +332,12 @@
     (try
       (runner/run-agent
        (runner/api-runner (profile (str "http://127.0.0.1:" (srv/server-port stop))))
-       :coder (packet dir))
+       :coder (harness.packet/coder-packet
+               {:task/id "t-01" :task/title "A task"
+                :blueprint/slice {:shapes [] :interfaces ['(f [x])]}
+                :files/impl ["src/app/service.clj"] :files/context ["src/app/store.clj"]
+                :layer/name :service :property-targets ["f is total over every x"]}
+               {:worktree/path dir :nrepl/port 7777}))
       (let [[sys user] (:messages @seen)]
         (is (= "system" (:role sys)))
         (is (str/includes? (:content sys) "Prototype forms in the live nREPL")
@@ -279,6 +346,10 @@
             "with this packet's layer substituted in too")
         (is (str/includes? (:content sys) "clj-nrepl-eval -p 7777")
             "with this dispatch's own port substituted in")
+        (is (str/includes? (:content user) "f is total over every x")
+            "a property target reaches the CODER's model, not only its packet")
+        (is (str/includes? (:content user) "satisfying every :property-targets entry")
+            "and the Coder is told what to do with it")
         (is (str/includes? (:content user) "src/app/service.clj")
             "and the packet arrives verbatim, not paraphrased")
         (is (str/includes? (:content user) "THE FILE MAY NOT EXIST YET")

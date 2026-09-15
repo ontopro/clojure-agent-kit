@@ -13,3 +13,13 @@
   (is (= 30 (api/calculate "x * y" {"x" 5 "y" 6})))
   (testing "the composition root is where the Bindings implementation is chosen"
     (is (thrown-with-msg? Exception #"unbound variable" (api/calculate "z + 1")))))
+
+;; NOTES.md row 20: `canonical` returning its input survived every test, since
+;; idempotence alone is satisfied by the identity. These pin the normal form.
+(deftest canonical-is-the-single-spaced-form
+  (is (= "1 + 2" (api/canonical "  1   +  2 ")))
+  (is (= "1 + 2" (api/canonical "1\t+\n2")))
+  (is (= "7" (api/canonical "  7  ")))
+  (is (= "-3 - x * y" (api/canonical "-3 -   x  *\ty")))
+  (testing "already canonical input comes back unchanged"
+    (is (= "x + 1" (api/canonical "x + 1")))))

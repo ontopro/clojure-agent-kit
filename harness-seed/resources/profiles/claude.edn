@@ -36,32 +36,79 @@
 
  :roles
  {;; Direct to Anthropic, which is the :anthropic tool-call shape.
+  ;;
+  ;; CLAUDE FABLE 5.1 AT MEDIUM EFFORT, replacing claude-sonnet-5 (2026-09-14).
+  ;; Three things differ from the model it replaced, and each is set here or
+  ;; handled in harness.adapter:
+  ;;
+  ;;   THINKING IS ALWAYS ON, and thinking tokens count against :max_tokens. The
+  ;;   adapter's default of 4096 would cut a turn off mid-thought, so 16000 — the
+  ;;   non-streaming ceiling the API guidance gives.
+  ;;
+  ;;   NO FALLBACK MODEL, on purpose. The API can re-route a refused request to
+  ;;   another model; here that would make a Coder dispatch answered by a model
+  ;;   this file does not name, and every report says which model answered. A
+  ;;   refusal fails the dispatch instead, and the adapter says why.
+  ;;
+  ;;   COST IS COMPUTED, NOT REPORTED. Anthropic direct returns usage and no
+  ;;   cost, so :pricing below carries the list prices, with their source and
+  ;;   date, and the report shows usage × price marked with a ~. Re-read the
+  ;;   page when the model or the date changes; nothing checks it for you.
   :coder {:family :anthropic
-          :model "claude-sonnet-5"
+          :model "claude-fable-5-1"
           :shape :anthropic
           :endpoint "https://api.anthropic.com"
-          :key-env "ANTHROPIC_API_KEY"}
+          :key-env "ANTHROPIC_API_KEY"
+          ;; EFFORT LOW, from 2026-09-14 (D17). Medium was the first setting
+          ;; (D14–D16); low is the trade the user chose after a day on both.
+          ;; D17 is D15 rerun with only this changed, to see whether a
+          ;; low-effort Coder still flags a contract conflict.
+          :params {:output_config {:effort "low"}
+                   :max_tokens 16000}
+          ;; USD per million tokens: base input, output, 5-minute and 1-hour
+          ;; cache writes, cache reads (0.025x on Fable 5.1; 0.1x elsewhere).
+          :pricing {:per-mtok {:in 10 :out 50
+                               :cache-write-5m 12.5 :cache-write-1h 20
+                               :cache-read 0.25}
+                    :source "https://platform.claude.com/docs/en/about-claude/pricing"
+                    :as-of "2026-09-14"}}
 
-  ;; THE TESTER IS NOT THE CHEAP SEAT, and run D4 is why this says so. It
-  ;; had `deepseek/deepseek-v4-flash` here; that model hit its iteration cap
-  ;; on all three attempts, broke two conventions its own system prompt
-  ;; states, and failed twice on the same exception with the gate output
-  ;; handed straight back. The Tester writes MORE than the Coder — 195 lines
-  ;; against 28 in that run — from the contract alone, under more lint
-  ;; conventions. The cheapest model was in the hardest seat.
+  ;; CHOOSE THE TESTER BY ITS TESTS, NOT ITS PRICE, and run D4 is why this
+  ;; says so. It had `deepseek/deepseek-v4-flash` here; that model hit its
+  ;; iteration cap on all three attempts, broke two conventions its own
+  ;; system prompt states, and failed twice on the same exception with the
+  ;; gate output handed straight back. The Tester writes MORE than the Coder —
+  ;; 195 lines against 28 in that run — from the contract alone, under more
+  ;; lint conventions. The cheapest model was in the hardest seat.
   ;;
-  ;; :only ["azure"] pins the serving provider. deepseek-v4-flash has SIXTEEN,
-  ;; at differing quantisations down to fp4, and D4 drew two different ones
-  ;; across three attempts — so "the model failed" was never a safe reading.
-  ;; This model has exactly one provider, so the pin is belt-and-braces: a
-  ;; second one appearing later should be a decision, not a surprise.
+  ;; gpt-5.6-sol WAS CHOSEN THAT WAY, by bake-off B1 (RUNS.md): same packet
+  ;; for every candidate, tests gated against a known-good implementation and
+  ;; run against eight mutants. It and gpt-5.3-codex both killed all eight;
+  ;; this one did it in 9 iterations for $0.035, against 21 and $0.175 — on
+  ;; the flex endpoint, which this profile no longer uses. glm-5.3 capped
+  ;; having written nothing. It replaced gpt-5.2-codex, which never
+  ;; wrote a generative test in D7. One task, one sample each.
+  ;;
+  ;; STANDARD, NOT FLEX, AND THAT IS MEASURED. B1 ran on :only ["openai/flex"].
+  ;; The first dispatches through that pin were rate-limited upstream: flex
+  ;; refused 3 of 4 requests inside 75s and 4 of 5 dispatches in a row, while
+  ;; this endpoint answered every time. Flex is not worth a Tester that
+  ;; fails for capacity rather than for its tests.
+  ;;
+  ;; "openai" IS ALSO THE PROVIDER'S NAME, so this pin is observed rather than
+  ;; guaranteed to exclude its flex and fast endpoints: seven requests through
+  ;; it all reached the same standard endpoint at service tier "default". The
+  ;; report shows any other tier beside the provider, so a routing change
+  ;; would be visible. A pin at all because D4 drew two different hosts for
+  ;; one slug across three attempts, and "the model failed" was never a safe
+  ;; reading after that.
   :tester {:family :openai
-           :model "openai/gpt-5.2-codex"
+           :model "openai/gpt-5.6-sol"
            :shape :openai
            :endpoint "https://openrouter.ai/api/v1"
            :key-env "OPENROUTER_API_KEY"
            :params {:reasoning_effort "medium"
-                    :provider {:only ["azure"] :allow_fallbacks false}}}
+                    :provider {:only ["openai"] :allow_fallbacks false}}}
 
   :reviewer {:family :google
              :model "google/gemini-3.8-flash"

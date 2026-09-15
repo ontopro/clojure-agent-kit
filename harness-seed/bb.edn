@@ -28,7 +28,8 @@
           :task (apply doctor/-main *command-line-args*)}
 
   test {:doc "Run the test suites"
-        :extra-paths ["test"]
+        ;; dev/ too: dev/run_loop.clj's pure half is tested.
+        :extra-paths ["test" "dev"]
         :task (run-test-nses! (test-nses))}
 
   fmt {:doc "Format with cljfmt"
@@ -88,6 +89,11 @@
          :task (do (run 'doctor) (run 'fmt-check) (run 'lint)
                    (run 'rules-check) (run 'report-check)
                    (run 'test))}
+
+  run-loop {:doc "The loop's steps as commands, triage by hand: <start|check|retry|amend|mutation|record|teardown> <run-dir> ..."
+            :extra-paths ["dev"]
+            :requires ([run-loop])
+            :task (apply run-loop/-main *command-line-args*)}
 
   example {:doc "End-to-end tour: packet -> runner -> gate 0 -> gates. No model calls."
            :extra-paths ["dev"]

@@ -113,6 +113,18 @@
   (is (= [:invalid] (errors (assoc base :seats [:claude :pi])))
       "a second seat cannot be expressed, which is the point of the shape"))
 
+(deftest a-price-without-its-source-and-date-is-refused
+  ;; A price table rots; one that names where and when it was read at least
+  ;; says how stale it is.
+  (let [pricing {:per-mtok {:in 10 :out 50 :cache-write-5m 12.5 :cache-write-1h 20 :cache-read 0.25}
+                 :source "https://example.test/pricing" :as-of "2026-09-14"}
+        with (fn [p] (assoc-in base [:roles :coder :pricing] p))]
+    (is (= [] (errors (with pricing))))
+    (is (= [:invalid] (errors (with (dissoc pricing :as-of)))))
+    (is (= [:invalid] (errors (with (dissoc pricing :source)))))
+    (is (= [:invalid] (errors (with (update pricing :per-mtok dissoc :cache-read))))
+        "every rate, or the arithmetic silently drops a term")))
+
 (deftest a-role-the-loop-does-not-dispatch-is-rejected
   ;; :roles is closed too, not only the profile around it. An :architect
   ;; entry silently ignored would read as configured and do nothing — and

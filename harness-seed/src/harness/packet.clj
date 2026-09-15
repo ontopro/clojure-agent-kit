@@ -12,7 +12,7 @@
      :files/test       [\"test/app/service_test.clj\"]
      :files/context    [\"src/app/store.clj\" ...]
      :layer/name       :service
-     :property-targets [...]}                       ; optional
+     :property-targets [...]}                       ; optional — every role gets them
 
   A *session* is a provisioned workspace: {:worktree/path _ :nrepl/port _}.
 
@@ -40,6 +40,16 @@
            :repl/port (:nrepl/port session)
            :layer/name (:layer/name spec)
            :gates (or (:gates spec) default-gates)}
+    ;; EVERY ROLE, NOT JUST THE TESTER. They were the Tester's alone, and that
+    ;; cost two runs: D7's amendment about :div never reached the Coder, and in
+    ;; D8 "throw check!'s ex-info on invalid input" reached neither the Coder,
+    ;; who validated the wrong thing, nor the Reviewer, whose "no findings" was
+    ;; accurate against the contract it was shown. A property target is
+    ;; CONTRACT. The Tester's independence comes from not seeing the
+    ;; implementation; it never depended on the others not seeing the contract.
+    (:property-targets spec)
+    (assoc :property-targets (vec (:property-targets spec)))
+
     (seq (:harness/wrote session))
     (assoc :harness/wrote (vec (:harness/wrote session)))))
 
@@ -65,12 +75,10 @@
   [spec session]
   (let [impl (set (:files/impl spec))]
     (validate!
-     (cond-> (assoc (base spec session)
-                    :task/role :tester
-                    :files/target (:files/test spec)
-                    :files/context (vec (remove impl (:files/context spec))))
-       (:property-targets spec)
-       (assoc :property-targets (:property-targets spec))))))
+     (assoc (base spec session)
+            :task/role :tester
+            :files/target (:files/test spec)
+            :files/context (vec (remove impl (:files/context spec)))))))
 
 (defn reviewer-packet
   "Reviewer: diff + slice + the green gate report. Read-only — no target,

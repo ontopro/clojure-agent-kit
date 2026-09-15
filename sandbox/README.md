@@ -52,6 +52,7 @@ the only place the rule-source conventions about generators are exercised — bo
 |---|---|
 | `parse` after `render` after `parse` equals `parse` | round-trip |
 | `canonical` is idempotent | round-trip |
+| `canonical` is the tokens single-spaced, over any spacing | round-trip (the normal form named, since the identity is idempotent too) |
 | `calculate` agrees with an independent token fold | cross-surface consistency |
 | every parsed expression conforms to the shape | the contract holds |
 

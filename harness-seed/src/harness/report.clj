@@ -49,17 +49,21 @@
   closed AgentResult puts provider-specific facts."
   [role result ms]
   (let [meta* (:runner/meta result)]
-    {:step/name role
-     :step/kind :dispatch
-     :step/status (if (= :done (:status result)) :done :fail)
-     :step/ms ms
-     :step/model (:model meta*)
-     :step/provider (:provider meta*)
-     :step/cost (:cost result)
-     :step/tokens (:tokens meta*)
-     ;; A runner that reported neither a model nor a cost measured nothing.
-     ;; Defaulting the other way is how a hand-made example becomes a record.
-     :step/source (if (or (:model meta*) (:cost result)) :measured :synthetic)}))
+    (cond-> {:step/name role
+             :step/kind :dispatch
+             :step/status (if (= :done (:status result)) :done :fail)
+             :step/ms ms
+             :step/model (:model meta*)
+             :step/provider (:provider meta*)
+             :step/cost (:cost result)
+             :step/tokens (:tokens meta*)
+             ;; A runner that reported neither a model nor a cost measured nothing.
+             ;; Defaulting the other way is how a hand-made example becomes a record.
+             :step/source (if (or (:model meta*) (:cost result)) :measured :synthetic)}
+      ;; Only when known, so a record from a runner that never saw a tier is
+      ;; byte-identical to one written before the field existed.
+      (:service-tier meta*) (assoc :step/service-tier (:service-tier meta*))
+      (:cost-source meta*) (assoc :step/cost-source (:cost-source meta*)))))
 
 (defn synthetic
   "A step whose numbers were made up — an example, a mock, a sketch.
@@ -77,6 +81,7 @@
   {:ms (reduce + 0 (keep :step/ms steps))
    :cost (reduce + 0 (keep :step/cost steps))
    :cost-known (count (filter :step/cost steps))
+   :list-priced (count (filter #(= :list-price (:step/cost-source %)) steps))
    :tokens (reduce + 0 (keep :step/tokens steps))
    :synthetic (count (filter #(= :synthetic (:step/source %)) steps))
    :step-count (count steps)})
@@ -133,12 +138,17 @@
   chat template. Collapsing them hides exactly the thing §10 says to log."
   [run]
   (let [steps (:run/steps run)
-        {:keys [ms cost cost-known synthetic step-count] tok :tokens} (totals steps)
+        {:keys [ms cost cost-known list-priced synthetic step-count] tok :tokens} (totals steps)
         ;; ONE PLACE. The format string and the truncation width are the same
         ;; fact, and when they were two the model column silently cut what the
         ;; format had room for. Run 4 taught this with the rule width; this is
         ;; the same mistake in the same function, found the same way.
-        w {:step 10 :kind 13 :model 50 :provider 14 :time 8 :cost 10 :tokens 9}
+        ;; :step IS DERIVED, because step names are data: a retry is named
+        ;; `<role>-r<n>`, and run D7's `reviewer-r1` overran a literal 10. Ten
+        ;; stays the floor so every report published before it re-renders
+        ;; byte for byte.
+        w {:step (apply max 10 (map (comp count name :step/name) steps))
+           :kind 13 :model 50 :provider 14 :time 8 :cost 10 :tokens 9}
         row (fn [a b c d e f g]
               (format (str "  %-" (:step w) "s %-" (:kind w) "s %-" (:model w)
                            "s %-" (:provider w) "s %" (:time w) "s %" (:cost w)
@@ -187,9 +197,19 @@
            (row (name (:step/name s))
                 (name (:step/kind s))
                 (cell (:step/model s) (:model w))
-                (cell (:step/provider s) (:provider w))
+                ;; The tier rides in the provider cell rather than a column
+                ;; of its own: it qualifies who answered, and "default" —
+                ;; what nearly every endpoint reports — says nothing.
+                (cell (let [tier (:step/service-tier s)]
+                        (cond-> (:step/provider s)
+                          (and (:step/provider s) tier (not= "default" tier))
+                          (str " " tier)))
+                      (:provider w))
                 (val (fmt-ms (:step/ms s)))
-                (val (fmt-cost (:step/cost s)))
+                ;; A computed cost carries its mark IN THE CELL, like a
+                ;; synthetic one: a caption is read once, a row many times.
+                (val (str (when (= :list-price (:step/cost-source s)) "~")
+                          (fmt-cost (:step/cost s))))
                 (val (fmt-tokens (:step/tokens s))))))
        [rule
         ;; A total of $0.0000 next to a footer saying nothing reported a cost
@@ -199,7 +219,7 @@
         (let [val (fn [v] (if (and (pos? synthetic) (not= v "—")) (str "[" v "]") v))]
           (row "total" "" "" ""
                (val (fmt-ms ms))
-               (if (zero? cost-known) "—" (val (fmt-cost cost)))
+               (if (zero? cost-known) "—" (val (str (when (pos? list-priced) "~") (fmt-cost cost))))
                (val (fmt-tokens tok))))
         ""
         (when (pos? synthetic)
@@ -236,12 +256,15 @@
                " money.")
           (format "  Cost covers %d of %d steps; the rest reported none."
                   cost-known step-count))
+        (when (pos? list-priced)
+          (format "  ~ = computed from list price for %d of them (usage × the profile's :pricing), not reported by the endpoint."
+                  list-priced))
         ""])))))
 
 ;; ---------------------------------------------------------------------------
 ;; The drift gate over published reports.
 ;;
-;; `RUNS.md` publishes eight rendered reports and the numbers in them are the
+;; `RUNS.md` publishes rendered reports, and the numbers in them are the
 ;; evidence for what the runs cost. That is generated content living in a
 ;; markdown file, which is exactly what `harness.rules` already gates for
 ;; AGENTS.md — so this is that mechanism a second time, not a new idea.
@@ -252,8 +275,15 @@
 ;; catches that is re-rendering EVERY report and comparing, in both directions.
 
 (def ^:private fenced
-  "An unlabelled fenced block, captured whole."
-  #"(?s)```\n(.*?)```")
+  "A fenced block whose fences start their lines, captured with its label and
+  its body. Labelled blocks are matched too, so that they are consumed whole.
+
+  THE LABEL IS WHY (NOTES.md row 19). The pattern was three backticks and a
+  newline, anywhere. A labelled opening fence does not match that, so its closing
+  fence opened the next block, and every block after it paired wrong: D20's table,
+  the first published after a ```sh block, was reported missing, and a table
+  with no record after one would have raised nothing."
+  #"(?ms)^```([^\n`]*)\n(.*?)^```[ \t]*$")
 
 (defn published-reports
   "Every report published in a markdown document, as {run-id block}.
@@ -264,9 +294,10 @@
   failure this check exists to catch."
   [markdown]
   (into {}
-        (keep (fn [[_ body]]
-                (when-let [id (second (re-find #"Run (\S+) ·" body))]
-                  [id (str/trim body)])))
+        (keep (fn [[_ label body]]
+                (when (str/blank? label)
+                  (when-let [id (second (re-find #"Run (\S+) ·" body))]
+                    [id (str/trim body)]))))
         (re-seq fenced markdown)))
 
 (defn drift

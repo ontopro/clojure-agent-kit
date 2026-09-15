@@ -53,7 +53,10 @@
            "\n\n[truncated at " max-output " characters of " (count s) "]"))))
 
 (defn- ok [s] {:error? false :content (clip s)})
-(defn- err [s] {:error? true :content (str "ERROR: " s)})
+;; Clipped too. An error used to be short — a missing file, a refused path —
+;; until `nrepl_eval` started returning a failed evaluation's whole output
+;; through here.
+(defn- err [s] {:error? true :content (clip (str "ERROR: " s))})
 
 ;; ---------------------------------------------------------------------------
 ;; the tools
@@ -94,19 +97,81 @@
               (spit (str (fs/path dir path)) content)
               (ok (str "wrote " path " (" (count content) " characters)")))))
 
+(def clojure-error-prefixes
+  "How `clojure.main/ex-str` begins every error it reports, one phase at a time:
+  reading source, macroexpanding (a spec failure or an unexpected error),
+  compiling (likewise), reading or printing the eval result, and execution.
+  Read from `clojure/main.clj` in Clojure 1.12.5. `clj-nrepl-eval` prints that
+  text on stderr, so a line of stderr beginning with one of these is a failed
+  evaluation."
+  ["Syntax error" "Unexpected error" "Error reading eval result"
+   "Error printing return value" "Execution error"])
+
+(def timeout-marker
+  "What `clj-nrepl-eval` prints when an evaluation outlives its timeout: on
+  STDOUT, with exit 0, so no stderr check sees it (bbin commit d341c23)."
+  "Timeout hit, sending nREPL :interrupt")
+
+(defn eval-result
+  "What `nrepl_eval` returns for one `clj-nrepl-eval` run: `{:exit :out :err}`.
+
+  `clj-nrepl-eval` EXITS 0 WHEN THE CODE FAILS. A form that throws, a file that
+  will not read, a symbol that will not resolve — each prints its error on
+  stderr and exits 0. This returned stdout alone on exit 0, so every one of
+  them reached the model as an empty or partial success. In D20 a Tester called
+  the stub it had been given, which throws by design, saw three blank results,
+  and stopped under `:no-repl-no-edits` with the nREPL alive; its first attempt
+  never saw that its own test file did not read. Stderr now always comes back.
+
+  ERRORS ARE NAMED BY WHOSE THEY ARE, because that rule tells a model to stop
+  when evaluation stops working. A form that failed says the nREPL answered and
+  the error is the code's; a non-zero exit says the nREPL could not be reached;
+  a timeout says the form did not finish. The three must not read alike, or a
+  Tester calling a stub three times reads its own errors as a dead REPL.
+
+  STDERR IS NOT AN ERROR BY ITSELF — a reflection warning or a print to `*err*`
+  goes there on success — so a result is flagged only for a line beginning
+  with one of `clojure-error-prefixes`. The two streams are captured
+  separately, so their relative order is gone, and a failed result puts stderr
+  FIRST: clipping then cuts long output, never the error."
+  ;; NOT `{:keys [exit out err]}`: a local named `err` shadows the `err` result
+  ;; helper, and the version before this one called a string as a function on
+  ;; every non-zero exit, so an unreachable nREPL came back as "String cannot be
+  ;; cast to IFn" and never as the connection error.
+  [{:keys [exit] :as shelled}]
+  (let [stdout (str (:out shelled))
+        stderr (str (:err shelled))
+        block (fn [label s] (when-not (str/blank? s) (str "[" label "]\n" s "\n")))
+        stderr-block (block "stderr — captured apart from stdout, so its order relative to it is lost" stderr)
+        stdout-block (block "stdout" stdout)
+        failed (fn [why] (err (str why "\n\n" stderr-block stdout-block)))]
+    (cond
+      (not (zero? exit))
+      (failed (str "clj-nrepl-eval exited " exit ": the nREPL could not be reached, or the "
+                   "command itself failed. This is not an error in your code."))
+
+      (str/includes? stdout timeout-marker)
+      (failed (str "your evaluation timed out and was interrupted. The nREPL is reachable; "
+                   "the form did not finish."))
+
+      (some (fn [line] (some #(str/starts-with? line %) clojure-error-prefixes))
+            (str/split-lines stderr))
+      (failed (str "a form you evaluated failed. The nREPL is reachable and answered: this "
+                   "is an error in the evaluated code, not in the tool or the REPL. Forms "
+                   "before it may have run."))
+
+      (str/blank? stderr) (ok stdout)
+      :else (ok (str stdout (when-not (str/blank? stdout) "\n") stderr-block)))))
+
 (defn- nrepl-eval
   [{:keys [dir port]} {:keys [code]}]
   (cond
     (str/blank? code) (err "code is required")
     (nil? port) (err "no REPL is attached to this workspace")
     :else
-    (let [_ (doctor/require-tool! :clj-nrepl-eval)
-          {:keys [exit out err]} (p/shell {:dir dir :out :string :err :string
-                                           :continue true}
-                                          "clj-nrepl-eval" "-p" (str port) code)]
-      ;; A non-zero exit is still the model's to read: an exception from an
-      ;; evaluated form is information, not an infrastructure fault.
-      (if (zero? exit) (ok out) (err (str out err))))))
+    (do (doctor/require-tool! :clj-nrepl-eval)
+        (eval-result (p/shell {:dir dir :out :string :err :string :continue true}
+                              "clj-nrepl-eval" "-p" (str port) code)))))
 
 (defn- note
   "Record an observation for whoever is dispatched next.

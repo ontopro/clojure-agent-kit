@@ -72,7 +72,7 @@
   :group :non-negotiable
   :audience #{:coder :tester :human}
   :title "Stay inside your packet."
-  :text "Write only your `:files/target`. `:files/context` files are read-only upstream dependencies — call only the signatures you were given in `:deps-sigs`, never modify them and never reach into their implementation."}
+  :text "Write only your `:files/target`. `:files/context` files are read-only upstream dependencies — call only the signatures you were given in `:deps-sigs`, never modify them and never reach into their implementation. A check after assembly compares every call you make into a context namespace against `:deps-sigs`, and a call it did not grant fails the run before any gate; if you need one it lacks, say so with `note` rather than calling it."}
 
  {:id :review-read-only
   :group :non-negotiable
@@ -163,11 +163,18 @@
   :title "Generators and properties are values."
   :text "Bind them with `def`, not `defn`. `defspec` shape: `(defspec name num-tests (prop/for-all [...] ...))`."}
 
+ ;; "— once" is measured. Runs D7 (fold), D8 (bind) and D10 (measure) each had a
+ ;; Coder validate at every recursive call, re-checking every subtree: quadratic
+ ;; on deep input. D10's measure took 3,780ms at 800 nodes and 10ms once
+ ;; validation moved to the entry. The Coder had "validate at the seams" and a
+ ;; docstring saying "Seams throw; interiors assume" open, and did it anyway, three
+ ;; times, so the fix is the specificity those lacked, not a second copy (method
+ ;; §10 lesson 12). NOTES.md row 12.
  {:id :shapes-are-the-contract
   :group :conventions
   :audience #{:coder :human}
   :title "Shapes are the contract."
-  :text "Data-first: agree the shapes before the functions, and validate at the seams. <Name your validation library and the ex-info type a boundary failure throws.>"}
+  :text "Data-first: agree the shapes before the functions, and validate at the seams — once. A seam is a public entry, not every call: a function that recurses into itself crosses its own seam on every call and re-validates every subtree, which is quadratic on deep input. Validate at the entry, then recurse through a private helper that assumes the shape. <Name your validation library and the ex-info type a boundary failure throws.>"}
 
  {:id :formatting
   :group :conventions

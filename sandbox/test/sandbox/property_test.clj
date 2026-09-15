@@ -47,6 +47,23 @@
                 (let [c (api/canonical s)]
                   (= c (api/canonical c)))))
 
+;; The same expression with its whitespace disturbed: every gap becomes one to
+;; four spaces, tabs or newlines.
+(def gen-padded-expr-string
+  (gen/let [s gen-expr-string
+            pads (gen/vector (gen/vector (gen/elements [" " "\t" "\n"]) 1 4)
+                             (count (str/split s #" ")))]
+    (str/join (map (fn [tok pad] (str tok (str/join pad)))
+                   (str/split s #" ")
+                   pads))))
+
+;; NOTES.md row 20: idempotence is satisfied by the identity, so this says
+;; what the normal form IS — the tokens, single-spaced — over any spacing.
+(defspec canonical-is-the-tokens-single-spaced 200
+  (prop/for-all [s gen-padded-expr-string]
+                (= (str/join " " (remove str/blank? (str/split s #"\s+")))
+                   (api/canonical s))))
+
 ;; ---------------------------------------------------------------------------
 ;; §05 target: cross-surface consistency — two paths to the same answer agree
 ;; ---------------------------------------------------------------------------

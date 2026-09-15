@@ -246,3 +246,26 @@
           "named by role, so triage knows who to dispatch again")
       (is (not (fs/exists? (fs/path gate "src/impl.clj")))
           "and nothing was assembled — a half-built change must not reach the gates"))))
+
+(deftest the-review-diff-shows-the-files-a-task-created
+  ;; Found preparing D7: every driver built the Reviewer's diff with
+  ;; `git diff HEAD`, which omits untracked files — so the D5 and D6 Reviewers
+  ;; got the layers.edn change and not one line of the code or tests they reviewed.
+  (let [root (repo) wt (str (fs/create-temp-dir))
+        coder (prov/provision! (provision-opts root wt :coder))
+        gate (prov/provision! (assoc (provision-opts root wt :reviewer) :nrepl? false))
+        arch (str (fs/create-temp-dir))]
+    (testing "nothing assembled says so, rather than handing over an empty string"
+      (is (= "(no diff)" (prov/review-diff gate))))
+    (spit (str (fs/path (:worktree/path coder) "src" "fresh.clj")) "(ns fresh)\n(def created 1)\n")
+    (fs/create-dirs (fs/path arch "src"))
+    (spit (str (fs/path arch "src" "seed.clj")) "(ns seed)\n(def modified 2)\n")
+    (prov/assemble! gate [[coder ["src/fresh.clj"]]] {:from arch :files ["src/seed.clj"]})
+    (let [d (prov/review-diff gate)]
+      (testing "a file the task created is in it"
+        (is (str/includes? d "src/fresh.clj"))
+        (is (str/includes? d "+(def created 1)")))
+      (testing "and so is a tracked file it changed"
+        (is (str/includes? d "+(def modified 2)"))))
+    (prov/teardown! coder root)
+    (prov/teardown! gate root)))

@@ -17,6 +17,10 @@
            (assoc base :task/role :tester
                   :files/target ["test/app/service_test.clj"]
                   :property-targets ["diff(v,v) is empty"]))))
+    (testing "and so may a coder packet — they are contract, declared on every packet"
+      (is (shapes/valid-packet? (assoc base :property-targets ["diff(v,v) is empty"])))
+      (is (not (shapes/valid-packet? (assoc base :property-targets "diff(v,v) is empty")))
+          "declared, so a malformed one fails rather than riding along on an open map"))
     (testing "a reviewer packet has no target and needs no REPL port"
       (is (shapes/valid-packet?
            (-> base

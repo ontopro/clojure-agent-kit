@@ -55,12 +55,17 @@ benefit. It is also a product artifact, and also not addressed to you.
 - **Never hand-edit `harness-seed/AGENTS.md`'s marker block.** It is generated. Edit
   `resources/agent-rules.edn` and run `bb rules-sync`; `bb gates` fails on drift. Same for
   any rule text — the source is the only place a rule may be written.
-- **The run records are committed in `runs/`; the drivers are not.** `RUNS.md`
-  publishes eight report tables and 22 cost and token figures, and `runs/` is what
-  they re-render from — a published number nobody can re-derive is an unverifiable
-  claim, which is the one thing this repo is most against. The drivers, task specs
-  and session files stay in the gitignored `.local/runs/`: they hardcode paths and
-  the next run replaces them. `.local/README.md` says what is there and that
+- **The run records and the driver are committed; each run's working files are not.** `RUNS.md`
+  publishes every run's report table and every cost and token figure in them, and
+  `runs/` is what they re-render from (`bb report-check` says how many; no count is
+  typed here to rot). A published number nobody can re-derive is an unverifiable
+  claim, which is the one thing this repo is most against. The driver is
+  `harness-seed/dev/run_loop.clj` (`bb run-loop`), committed once D7–D9 had run on one
+  script. A run's own directory — `spec.edn`, `loop.edn`, `state.edn`, triage and mutation
+  files, packets, full transcripts — stays in the gitignored `.local/runs/`: it is per-run, and its
+  evidence moves into `runs/<id>.edn` when the run is recorded (the record carries each
+  run's final files, each red gate's output, and each dispatch's transcript with every
+  string capped at 500 characters). `.local/README.md` says what is there and that
   deleting it is safe. Keep both halves on the right side of that line.
 - **`LICENSE` must stay the canonical MIT text and nothing else.** Third-party notices live
   in `NOTICE`. Appending them to `LICENSE` made GitHub classify the repo "Other" and cost

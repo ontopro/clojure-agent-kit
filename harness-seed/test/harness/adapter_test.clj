@@ -33,6 +33,17 @@
       (is (= msgs (:messages body)) "and the messages are untouched")
       (is (not-any? #(= "system" (:role %)) (:messages body))))))
 
+(deftest anthropic-requests-ask-for-automatic-prompt-caching
+  ;; A tool loop re-sends the conversation on every completion; the cache
+  ;; re-reads it at 0.025x-0.1x the input price. Top-level, so the API places
+  ;; the breakpoints; the profile can still override it through :params.
+  (let [{:keys [body]} (adapter/request anthropic-role "RULES" msgs nil)]
+    (is (= {:type "ephemeral"} (:cache_control body))))
+  (let [{:keys [body]} (adapter/request (assoc anthropic-role :params {:cache_control nil}) "RULES" msgs nil)]
+    (is (nil? (:cache_control body)) "a profile that says no gets no"))
+  (is (nil? (:cache_control (:body (adapter/request openai-role "RULES" msgs nil))))
+      "not an OpenAI-shape parameter"))
+
 (deftest each-api-gets-its-own-auth-header-and-url
   ;; PATH stands in for a key variable: it is always set, so this tests the
   ;; header shape without depending on a real key being present.
@@ -116,7 +127,20 @@
     (is (= ["read_file"] (mapv :name (:tool-calls o))))
     (is (= ["read_file"] (mapv :name (:tool-calls a))))
     (is (= {:in 20 :out 8} (:usage o)))
-    (is (= {:in 30 :out 12} (:usage a)))))
+    (is (= {:in 30 :out 12} (select-keys (:usage a) [:in :out])))))
+
+(deftest anthropic-usage-keeps-the-cache-counts
+  ;; :in is the UNCACHED input; cache reads and writes are billed at their own
+  ;; rates, so a cost computed from :in alone would be wrong the day a prompt
+  ;; is cached. Absent counts stay nil, not 0.
+  (let [a (adapter/parse :anthropic anthropic-tools)]
+    (is (= {:in 30 :out 12 :cache-write nil :cache-read nil} (:usage a))))
+  (let [a (adapter/parse :anthropic (assoc anthropic-tools :usage
+                                           {:input_tokens 5 :output_tokens 7
+                                            :cache_creation_input_tokens 100 :cache_read_input_tokens 400
+                                            :cache_creation {:ephemeral_5m_input_tokens 60 :ephemeral_1h_input_tokens 40}}))]
+    (is (= {:in 5 :out 7 :cache-write 100 :cache-read 400 :cache-write-5m 60 :cache-write-1h 40}
+           (:usage a)))))
 
 (deftest a-plain-answer-is-not-a-tool-use
   (let [o (adapter/parse :openai openai-text)]
@@ -147,3 +171,34 @@
     (is (= 429 (:status e)))
     (is (= "rate limited" (:message e))))
   (is (= "no message" (:message (adapter/error 500 {})))))
+
+(deftest a-200-carrying-an-error-is-an-error
+  ;; Seen live on 2026-09-14: OpenRouter answered HTTP 200 with an upstream
+  ;; rate limit in the body, and the dispatch reported :done with nothing in it.
+  (let [body {:id "gen-1" :error {:message "openai/gpt-5.6-sol is temporarily rate-limited upstream."
+                                  :code 429 :metadata {:error_type "rate_limit_exceeded"}}}
+        e (adapter/error 200 body)]
+    (is (= :api-error (:harness/error e)))
+    (is (= 429 (:status e)) "the code the body carries, not the 200 the transport said")
+    (is (re-find #"rate-limited" (:message e))))
+  (is (= 200 (:status (adapter/error 200 {:error {:message "odd" :code "not-a-number"}})))
+      "a code that is not a number falls back to the transport status")
+  (is (nil? (adapter/error 200 {:id "gen-2" :choices []})) "an ordinary success is still one"))
+
+(deftest a-refusal-or-a-truncation-is-not-a-completion
+  ;; Switching the Coder to Claude Fable 5.1: it can decline with stop_reason
+  ;; "refusal", and its always-on thinking counts against max_tokens. parse read
+  ;; both as a finished, empty answer.
+  (let [e (adapter/error 200 {:id "msg_1" :content [] :stop_reason "refusal"
+                              :stop_details {:type "refusal" :category "cyber"
+                                             :explanation "declined"}})]
+    (is (= :api-error (:harness/error e)))
+    (is (= "refusal" (:stop-reason e)))
+    (is (re-find #"refused \(cyber\): declined" (:message e)) "the category reaches the run log"))
+  (is (= "the model refused" (:message (adapter/error 200 {:stop_reason "refusal"})))
+      "stop_details may be absent, and the message still says what happened")
+  (let [e (adapter/error 200 {:content [{:type "thinking" :thinking ""}] :stop_reason "max_tokens"})]
+    (is (= "max_tokens" (:stop-reason e)))
+    (is (re-find #"raise :max_tokens" (:message e))))
+  (is (nil? (adapter/error 200 {:content [] :stop_reason "end_turn"})))
+  (is (nil? (adapter/error 200 {:content [] :stop_reason "tool_use"}))))

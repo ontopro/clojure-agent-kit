@@ -1,8 +1,10 @@
 (ns harness.tools-test
   (:require
    [babashka.fs :as fs]
+   [babashka.process :as p]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [harness.doctor :as doctor]
    [harness.tools :as tools]))
 
 (defn- workspace []
@@ -110,6 +112,100 @@
         _ (spit (str (fs/path dir "big.txt")) (apply str (repeat 30000 "x")))
         r (call dir "read_file" {:path "big.txt"})]
     (is (str/includes? (:content r) "[truncated at 20000 characters of 30000]"))))
+
+;; ---------------------------------------------------------------------------
+;; nrepl_eval: what comes back when the evaluated code fails
+;; ---------------------------------------------------------------------------
+
+;; Every `{:exit :out :err}` below is what `clj-nrepl-eval` (bbin d341c23)
+;; printed against a live Clojure 1.12.5 nREPL on 2026-09-15, trimmed.
+
+(def reachable "The nREPL is reachable")
+
+(deftest a-form-that-throws-is-an-error-the-model-can-read
+  ;; D20: the stub the Tester was given throws by design; clj-nrepl-eval exited
+  ;; 0 with the error on stderr, and the model got "".
+  (let [r (tools/eval-result
+           {:exit 0 :out ""
+            :err (str "Execution error (AssertionError) at sandbox.constants/fold-constants (constants.clj:12).\n"
+                      "not implemented — generated stub: fold-constants\n")})]
+    (is (true? (:error? r)))
+    (is (str/starts-with? (:content r) "ERROR: "))
+    (is (str/includes? (:content r) "not implemented — generated stub: fold-constants"))
+    (is (str/includes? (:content r) reachable)
+        "a failed form must not read like a dead REPL")))
+
+(deftest every-clojure-main-error-phase-is-flagged
+  ;; One first line per phase of clojure.main/ex-str, 1.12.5.
+  (doseq [line ["Syntax error reading source at (sandbox/constants_test.clj:99:53)."
+                "Syntax error macroexpanding clojure.core/let at (REPL:1:1)."
+                "Unexpected error (ClassCastException) macroexpanding foo at (REPL:1:1)."
+                "Syntax error compiling at (REPL:0:0)."
+                "Syntax error (ClassNotFoundException) compiling at (REPL:1:1)."
+                "Unexpected error compiling at (REPL:1:1)."
+                "Error reading eval result (ClassCastException) at foo (REPL:1)."
+                "Error printing return value at user$eval7747$reify__7748/toString (NO_SOURCE_FILE:1)."
+                "Execution error (ExceptionInfo) at user/eval7743 (REPL:1)."
+                "Execution error - invalid arguments to foo at (REPL:1)."]]
+    (is (true? (:error? (tools/eval-result {:exit 0 :out "" :err (str line "\ncause\n")})))
+        line)))
+
+(deftest an-error-after-other-output-is-still-flagged-and-both-streams-come-back
+  ;; Two forms: the first printed a warning and returned, the second threw.
+  (let [r (tools/eval-result {:exit 0 :out "=> nil\n*======== user | clj ========*\n"
+                              :err "warn first\nExecution error (ExceptionInfo) at user/eval7753 (REPL:1).\nthen boom\n"})]
+    (is (true? (:error? r)))
+    (is (str/includes? (:content r) "warn first"))
+    (is (str/includes? (:content r) "then boom"))
+    (is (str/includes? (:content r) "=> nil"))
+    (is (str/includes? (:content r) "Forms before it may have run"))))
+
+(deftest stderr-without-an-error-is-shown-but-not-flagged
+  ;; A reflection warning goes to stderr on a successful evaluation.
+  (let [r (tools/eval-result {:exit 0 :out "=> :ok\n*======== user | clj ========*\n"
+                              :err "Reflection warning, NO_SOURCE_PATH:1:38 - reference to field length can't be resolved.\n"})]
+    (is (false? (:error? r)))
+    (is (str/includes? (:content r) "=> :ok"))
+    (is (str/includes? (:content r) "Reflection warning"))))
+
+(deftest a-clean-result-is-exactly-stdout
+  (let [out "=> 2\n*======== user | clj ========*\n"]
+    (is (= {:error? false :content out} (tools/eval-result {:exit 0 :out out :err ""})))))
+
+(deftest a-timeout-is-its-own-error
+  ;; On stdout, exit 0, stderr empty: no stderr check sees it.
+  (let [r (tools/eval-result {:exit 0 :err ""
+                              :out "\n⚠️  Timeout hit, sending nREPL :interrupt …\n✋ Evaluation interrupted."})]
+    (is (true? (:error? r)))
+    (is (str/includes? (:content r) "timed out"))
+    (is (str/includes? (:content r) reachable))))
+
+(deftest an-unreachable-repl-says-so-and-not-that-the-code-failed
+  (let [r (tools/eval-result {:exit 1 :out ""
+                              :err "----- Error -----\nType:     java.net.ConnectException\nMessage:  Connection refused\n"})]
+    (is (true? (:error? r)))
+    (is (str/includes? (:content r) "could not be reached"))
+    (is (str/includes? (:content r) "Connection refused"))
+    (is (not (str/includes? (:content r) reachable)))))
+
+(deftest a-long-failed-evaluation-is-clipped-and-keeps-its-error
+  ;; Stderr goes first on a failure, so clipping cuts output, never the error.
+  (let [r (tools/eval-result {:exit 0 :out (apply str (repeat 30000 "x"))
+                              :err "Execution error (ExceptionInfo) at user/eval1 (REPL:1).\nboom\n"})]
+    (is (true? (:error? r)))
+    (is (str/includes? (:content r) "boom"))
+    (is (str/includes? (:content r) "[truncated at 20000 characters of"))))
+
+(deftest nrepl-eval-hands-clj-nrepl-eval-output-to-eval-result
+  ;; Through invoke, so the wiring is tested and not only the function. The
+  ;; non-zero exit is the branch that called a string as a function.
+  (with-redefs [doctor/require-tool! (fn [_] nil)
+                p/shell (fn [& _] {:exit 1 :out "" :err "Message:  Connection refused\n"})]
+    (let [r (tools/invoke {:dir "." :port 7 :targets []}
+                          {:id "c1" :name "nrepl_eval" :args {:code "(+ 1 1)"}})]
+      (is (true? (:error? r)))
+      (is (str/includes? (:content r) "Connection refused"))
+      (is (not (str/includes? (:content r) "cannot be cast"))))))
 
 ;; ---------------------------------------------------------------------------
 ;; arguments arrive in two shapes

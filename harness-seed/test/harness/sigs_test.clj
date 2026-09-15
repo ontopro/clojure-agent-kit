@@ -154,8 +154,167 @@
     (is (nil? (some #{:unknown-var :unknown-namespace} (map :violation out)))
         "and nothing is claimed about what the unreadable file defines")))
 
+;; ---------------------------------------------------------------------------
+;; what the implementation calls, against the slice (NOTES.md row 11)
+;; ---------------------------------------------------------------------------
+
+(defn- with-impl [impl-src]
+  (tree! {"src/a/store.clj" store-src "src/a/seam.clj" proto-src "src/a/impl.clj" impl-src}))
+
+(defn- calls [impl-src sigs]
+  (sigs/undeclared-calls (with-impl impl-src)
+                         {:files/impl ["src/a/impl.clj"] :files/context ctx
+                          :blueprint/slice {:deps-sigs sigs}}))
+
+(deftest an-implementation-that-calls-only-its-slice-is-clean
+  ;; D8's bind.clj called expr/literal? with no entry naming it, and nothing
+  ;; noticed. Core, libraries and the impl's own vars are not seams.
+  (is (= [] (calls "(ns a.impl (:require [a.store :as store] [clojure.string :as str]))
+(defn- helper [x] (str/upper-case x))
+(defn go [q] (helper (store/query nil q {})))"
+                   '[(a.store/query [store q opts])]))))
+
+(deftest a-call-the-slice-did-not-grant-is-named-with-its-line
+  (let [[v :as vs] (calls "(ns a.impl (:require [a.store :as store]))
+(defn go [q]
+  (store/query nil q {})
+  (store/variadic 1 2))"
+                          '[(a.store/query [store q opts])])]
+    (is (= 1 (count vs)))
+    (is (= :undeclared-call (:violation v)))
+    (is (= 'a.store/variadic (:call v)))
+    (is (= 4 (:line v)))
+    (is (re-find #"impl\.clj" (:file v)))))
+
+(deftest an-arity-the-slices-argv-does-not-accept-is-a-violation
+  (is (= [:arity-mismatch]
+         (mapv :violation (calls "(ns a.impl (:require [a.store :as store]))
+(defn go [q] (store/query q))" '[(a.store/query [store q opts])]))))
+  (testing "a variadic argv accepts anything from its fixed count up, and a bare name any arity"
+    (is (= [] (calls "(ns a.impl (:require [a.store :as store]))
+(defn go [q] (store/variadic q 1 2 3))" '[(a.store/variadic [a & more])])))
+    (is (= [] (calls "(ns a.impl (:require [a.store :as store]))
+(defn go [q] (store/query q))" '[a.store/query])))))
+
+(deftest a-rewrite-calling-its-own-namespace-is-not-a-seam-crossing
+  ;; A rewrite's own file can be in :files/context (the Architect showing the
+  ;; old implementation); its calls to itself are not calls into a seam.
+  (let [dir (with-impl "(ns a.impl (:require [a.store :as store]))
+(defn- helper [x] x)
+(defn go [q] (helper (store/query nil q {})))")]
+    (is (= [] (sigs/undeclared-calls dir {:files/impl ["src/a/impl.clj"]
+                                          :files/context (conj ctx "src/a/impl.clj")
+                                          :blueprint/slice {:deps-sigs '[(a.store/query [store q opts])]}})))))
+
+(deftest a-call-outside-the-context-is-not-this-checks-business
+  ;; gate 4 catches a namespace outside the layer; this only judges calls into
+  ;; the namespaces the packet showed.
+  (is (= [] (calls "(ns a.impl (:require [clojure.set :as set]))
+(defn go [q] (set/union q q))" []))))
+
+(deftest a-missing-impl-file-is-reported-not-skipped
+  (is (= [:missing-impl-file]
+         (mapv :violation (sigs/undeclared-calls (both) {:files/impl ["src/a/impl.clj"] :files/context ctx
+                                                         :blueprint/slice {:deps-sigs []}})))))
+
 (deftest verify-throws-so-a-wrong-packet-cannot-reach-an-agent
   (let [dir (both)]
     (is (= [] (sigs/verify! dir ctx '[(a.store/query [s q o])])))
     (is (thrown-with-msg? Exception #"do not match :files/context"
                           (sigs/verify! dir ctx '[(a.store/defaults [])])))))
+
+;; ---------------------------------------------------------------------------
+;; what depends on a file a task will rewrite
+;; ---------------------------------------------------------------------------
+
+(defn- project []
+  (tree! {"src/app/render.clj" "(ns app.render)\n(defn render [e] (str e))"
+          "src/app/api.clj" "(ns app.api (:require [app.render :as r]))\n(defn show [e] (r/render e))"
+          "src/app/both.clj" "(ns app.both (:require [app.render] [app.store]))"
+          "src/app/store.clj" "(ns app.store)"
+          "src/app/unrelated.clj" "(ns app.unrelated (:require [app.store]))"
+          "test/app/render_test.clj" "(ns app.render-test (:require [app.render :as r]))"
+          "test/app/api_test.clj" "(ns app.api-test (:require [app.api]))"}))
+
+(deftest two-context-files-with-the-same-name-are-both-read
+  ;; Review R1: definitions matched clj-kondo's filenames to paths by bare file
+  ;; name, so src/a/web/core.clj shadowed src/a/util/core.clj and a correct
+  ;; signature for a.util.core was reported :unknown-namespace. Reached from a
+  ;; dependent that `with-dependents` added, with nothing the Architect wrote.
+  (let [dir (tree! {"src/a/util/core.clj" "(ns a.util.core)\n(defn f [x] x)"
+                    "src/a/web/core.clj" "(ns a.web.core (:require [a.util.core]))\n(defn g [y] y)"})
+        both ["src/a/util/core.clj" "src/a/web/core.clj"]]
+    (testing "both namespaces are defined, each under its own path"
+      (is (= {"src/a/util/core.clj" 'a.util.core "src/a/web/core.clj" 'a.web.core}
+             (:ns-of (sigs/definitions dir both)))))
+    (testing "a signature in either checks out"
+      (is (= [] (sigs/violations dir both '[(a.util.core/f [x]) (a.web.core/g [y])]))))
+    (testing "and through the dependents path that exposed it"
+      (let [spec (sigs/with-dependents {:files/context ["src/a/util/core.clj"]}
+                   (sigs/dependents dir ["src/a/util/core.clj"]))]
+        (is (= both (:files/context spec)))
+        (is (= [] (sigs/violations dir (:files/context spec) '[(a.util.core/f [x])])))))))
+
+(deftest a-rewrite-is-shown-what-requires-it
+  ;; D12: the first dispatched rewrite broke test/sandbox/property_test.clj,
+  ;; which requires sandbox.render and was in no packet.
+  (let [dir (project)]
+    (testing "direct dependents in src and test, sorted, each once"
+      (is (= ["src/app/api.clj" "src/app/both.clj" "test/app/render_test.clj"]
+             (sigs/dependents dir ["src/app/render.clj"]))))
+    (testing "not transitive: api_test requires api, not render"
+      (is (not-any? #{"test/app/api_test.clj"} (sigs/dependents dir ["src/app/render.clj"]))))
+    (testing "several impl files: the union, each file once, never an impl file itself"
+      ;; api.clj requires render.clj but is itself being rewritten, so it is not
+      ;; a dependent; both.clj requires two impl namespaces and appears once.
+      (is (= ["src/app/both.clj" "src/app/unrelated.clj" "test/app/api_test.clj" "test/app/render_test.clj"]
+             (sigs/dependents dir ["src/app/render.clj" "src/app/api.clj" "src/app/store.clj"]))))
+    (testing "a namespace being created has no dependents yet"
+      (is (= [] (sigs/dependents dir ["src/app/brand_new.clj"]))))
+    (testing "a scan path that does not exist is skipped, not an error"
+      (is (= ["src/app/api.clj" "src/app/both.clj"]
+             (sigs/dependents dir ["src/app/render.clj"] ["src" "no-such-dir"]))))))
+
+(deftest a-tasks-own-test-file-is-not-its-dependent
+  ;; Review R2: dependents excluded :files/impl but not :files/test, so a rewrite
+  ;; with existing tests listed the Tester's own target as a file to keep working.
+  (let [dir (project)
+        spec {:files/impl ["src/app/render.clj"] :files/test ["test/app/render_test.clj"]}]
+    (is (some #{"test/app/render_test.clj"} (sigs/dependents dir ["src/app/render.clj"]))
+        "the raw query does see it — it does require the namespace")
+    (is (= ["src/app/api.clj" "src/app/both.clj"] (sigs/task-dependents dir spec))
+        "but a task's dependents leave out its own test file")
+    (is (= ["src/app/api.clj" "src/app/both.clj" "test/app/render_test.clj"]
+           (sigs/task-dependents dir {:files/impl ["src/app/render.clj"]
+                                      :files/test ["test/app/other_test.clj"]}))
+        "a test file that is not the task's own is still a dependent")))
+
+(deftest dependents-join-the-context-after-the-architects-entries
+  (let [spec {:files/context ["src/app/store.clj" "src/app/api.clj"]}]
+    (is (= ["src/app/store.clj" "src/app/api.clj" "test/app/render_test.clj"]
+           (:files/context (sigs/with-dependents spec ["src/app/api.clj" "test/app/render_test.clj"])))
+        "the Architect's order first, and a file already listed is not repeated")
+    (is (= spec (sigs/with-dependents spec [])) "no dependents, no change")
+    (is (= spec (sigs/with-dependents spec nil)))))
+
+;; ---------------------------------------------------------------------------
+;; what the implementation defines that the Tester never saw (NOTES.md row 5)
+;; ---------------------------------------------------------------------------
+
+(deftest impl-names-are-the-vars-the-slice-did-not-grant
+  (let [dir (with-impl "(ns a.impl (:require [a.store :as store]))
+(defn- helper [x] x)
+(def ops {:add +})
+(defn go [q] (helper (store/query nil q {})))
+(defn extra [q] q)")
+        spec {:files/impl ["src/a/impl.clj"] :blueprint/slice {:interfaces '[(go [q])]}}]
+    (is (= '[{:ns a.impl :name extra} {:ns a.impl :name helper} {:ns a.impl :name ops}]
+           (sigs/impl-names dir spec))
+        "the interface `go` is the Tester's to name; the helper, the value and the extra public are not")
+    (is (= [] (sigs/impl-names dir (assoc-in spec [:blueprint/slice :interfaces] '[(go [q]) (extra [q]) helper ops])))
+        "every form parse-sig reads grants its name")
+    (is (= [] (sigs/impl-names dir (assoc spec :files/impl ["src/a/absent.clj"])))
+        "an absent impl file contributes nothing — no refusal on a guess")
+    (is (= '[{:ns a.impl :name extra} {:ns a.impl :name helper} {:ns a.impl :name ops}]
+           (sigs/impl-names dir (assoc spec :files/impl ["src/a/absent.clj" "src/a/impl.clj"])))
+        "and an absent one beside a present one is skipped, not handed to clj-kondo")))

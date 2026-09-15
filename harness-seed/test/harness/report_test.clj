@@ -30,7 +30,13 @@
     (is (= "claude-sonnet-5" (:step/model s)))
     (is (= "anthropic" (:step/provider s)) "provider is separate from model on purpose")
     (is (= 0.0312 (:step/cost s)))
-    (is (shapes/valid-step? s)))
+    (is (shapes/valid-step? s))
+    (is (not (contains? s :step/cost-source)) "no source known, no key — older records replay unchanged"))
+  (testing "a computed cost says where it came from"
+    (let [s (report/dispatch-step :coder {:status :done :files [] :stdout nil :cost 0.05
+                                          :runner/meta {:model "m" :cost-source :list-price}} 1)]
+      (is (= :list-price (:step/cost-source s)))
+      (is (shapes/valid-step? s))))
   (testing "ManualRunner knows none of it, and the step says so rather than guessing"
     (let [s (report/dispatch-step :coder {:status :done :files [] :stdout nil :cost nil} 900)]
       (is (nil? (:step/model s)))
@@ -100,6 +106,40 @@
         "every kind produced a row")
     (is (= 1 (count widths))
         (str "the table has ragged rows: " (sort widths)))))
+
+(deftest the-table-stays-aligned-whatever-the-longest-step-name-is
+  ;; Run D7: a Reviewer's second dispatch is `reviewer-r1`, eleven characters
+  ;; in a ten-character column, and its row ran one column right. The same
+  ;; mistake as the kind column in run 4, one column to the left — a width
+  ;; typed as a literal for data that varies.
+  (let [step (fn [n] {:step/name n :step/kind :dispatch :step/status :done
+                      :step/ms 10 :step/source :measured})
+        out (report/render {:run/id "r" :task/id "t" :run/status :done
+                            :run/steps (mapv step [:coder :reviewer-r1 :a-much-longer-step-name])})
+        lines (vec (str/split-lines out))
+        rules (keep-indexed #(when (str/includes? %2 "───") %1) lines)
+        table (subvec lines (dec (first rules)) (inc (inc (last rules))))]
+    (is (= 1 (count (set (map count table))))
+        (str "the table has ragged rows: " (sort (set (map count table)))))
+    (is (some #(str/includes? % "a-much-longer-step-name dispatch") table)
+        "a long name is widened for, not truncated")))
+
+(deftest a-computed-cost-is-marked-in-the-cell-and-the-footer
+  ;; §10 lesson 11: a computed number in a real frame reads as measured. The
+  ;; mark goes on the value, on the total, and in the footer.
+  (let [step (fn [nm src] (cond-> {:step/name nm :step/kind :dispatch :step/status :done :step/ms 10
+                                   :step/source :measured :step/model "m" :step/cost 0.5}
+                            src (assoc :step/cost-source src)))
+        out (report/render {:run/id "r" :task/id "t" :run/attempts 1 :run/status :done
+                            :run/steps [(step :coder :list-price) (step :tester :reported)]})]
+    (is (str/includes? out "~$0.500000"))
+    (is (str/includes? out " $0.500000") "the reported one carries no mark")
+    (is (str/includes? out "~$1.000000") "a total with a computed part is marked too")
+    (is (str/includes? out "~ = computed from list price for 1 of them"))
+    (testing "a step with no source renders exactly as before"
+      (let [out (report/render {:run/id "r" :task/id "t" :run/attempts 1 :run/status :done
+                                :run/steps [(step :coder nil)]})]
+        (is (not (str/includes? out "~")))))))
 
 (deftest a-real-microdollar-cost-does-not-render-as-free
   ;; The first real dispatch through harness.adapter cost $0.000003642 and
@@ -187,6 +227,38 @@
     (testing "and the footer says what the brackets mean"
       (is (str/includes? out "[bracketed] = SYNTHETIC: 1 of 1 steps")))))
 
+(deftest the-provider-cell-says-which-tier-answered
+  ;; The Tester moved to OpenAI's flex endpoint after bake-off B1. Flex and
+  ;; standard both report provider "OpenAI", at different prices, so without
+  ;; the tier a flex run's report reads exactly like a standard one.
+  (let [result (fn [tier] {:status :done :files [] :stdout nil :cost 0.0354
+                           :runner/meta (cond-> {:model "openai/gpt-5.6-sol-20260709"
+                                                 :provider "OpenAI" :tokens 36917}
+                                          tier (assoc :service-tier tier))})
+        row (fn [step]
+              (->> (report/render {:run/id "r" :task/id "t" :run/status :done
+                                   :run/steps [step]})
+                   str/split-lines
+                   (filter #(str/includes? % "tester "))
+                   first))]
+    (testing "dispatch-step carries the tier, and the step is still a valid RunStep"
+      (let [s (report/dispatch-step :tester (result "flex") 118000)]
+        (is (= "flex" (:step/service-tier s)))
+        (is (shapes/valid-step? s))))
+    (testing "a non-default tier is shown beside the provider"
+      (is (str/includes? (row (report/dispatch-step :tester (result "flex") 118000))
+                         "OpenAI flex")))
+    (testing "\"default\" says nothing, and nothing is added for it"
+      (let [r (row (report/dispatch-step :tester (result "default") 118000))]
+        (is (str/includes? r "OpenAI "))
+        (is (not (str/includes? r "default")))))
+    (testing "a runner that saw no tier writes no key, so older records render as they did"
+      (is (not (contains? (report/dispatch-step :tester (result nil) 118000)
+                          :step/service-tier))))
+    (testing "a fabricated step brackets the provider and tier as one value"
+      (is (str/includes? (row (report/synthetic (report/dispatch-step :tester (result "flex") 118000)))
+                         "[OpenAI flex]")))))
+
 (deftest a-fully-measured-run-carries-no-marks
   (let [out (report/render {:run/id "r" :task/id "t" :run/attempts 1 :run/status :done
                             :run/cost nil :run/started-at (java.util.Date.)
@@ -247,6 +319,24 @@
       (is (= 1 (count found))))
     (testing "a fenced block that is not a report is ignored"
       (is (empty? (report/published-reports "```\nbb gates\n```"))))))
+
+(deftest a-labelled-fence-does-not-swallow-the-report-after-it
+  ;; NOTES.md row 19: a ```sh block's closing fence opened the next match.
+  (let [labelled (str "```sh\nbb report-check\n```\n\nProse.\n\n" (doc a-run))]
+    ;; Drift against the record, not just the key: mis-paired, a block can
+    ;; swallow prose that mentions the run and still yield a d9 key.
+    (is (empty? (report/drift labelled {"d9" a-run})) "found, and it is the report")
+    (testing "so a table with no record after one is drift, not silence"
+      (is (= [:no-record] (mapv :problem (report/drift labelled {})))))
+    (testing "a labelled block that looks like a report is not one"
+      (is (empty? (report/published-reports
+                   (str "```text\n" (report/render a-run) "\n```\n")))))
+    (testing "a line inside a block that ends in backticks closes nothing"
+      (is (empty? (report/drift (str "```text\nwrap code in ```\n```\n\n" (doc a-run))
+                                {"d9" a-run}))))
+    (testing "backticks inside a line open nothing"
+      (is (empty? (report/drift (str "Inline ``` fences ``` in prose.\n\n" (doc a-run))
+                                {"d9" a-run}))))))
 
 (deftest a-document-matching-its-records-has-no-drift
   (is (empty? (report/drift (doc a-run) {"d9" a-run}))))

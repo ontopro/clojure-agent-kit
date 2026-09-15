@@ -365,6 +365,8 @@ Wherever tests are authored by a role, that role should never also *run* the ful
 - **Transitivity** — if `A ⊑ B` and `B ⊑ C`, the derived store agrees that `A ⊑ C`.
 - **Cross-surface consistency** — two paths to the same answer (an API and a query) agree on every sampled input.
 
+**Hand the property targets to every role, not just the Tester.** They are contract: the Coder has to satisfy them and the Reviewer has to judge against them. The Tester's independence comes from never seeing the *implementation*; it does not depend on the others not seeing the *targets*. Giving them to the Tester alone lost a decision twice in the seed's own runs. In one, a clarified edge case never reached the Coder. In another, a validation rule reached neither the Coder, who broke it, nor the Reviewer, who therefore could not see it broken.
+
 ---
 
 ## 06 — Blueprint & task packets
@@ -498,7 +500,7 @@ flowchart LR
 1. **Provision** — an isolated workspace and eval environment per task. Give each concurrently-dispatched task its own process, not a session shared with other in-flight tasks; shared session state between "simultaneous" tasks is a silent contamination source.
 2. **Gate 0** — a pre-gate, not a gate: whatever's purely mechanical and fully automatable (formatting-on-write, delimiter repair) runs here, before it can consume an agent's capped retry budget.
 3. **Gates** — ordered cheap to expensive, each short-circuiting on first failure (§09). A failing gate's log goes straight back to the owning agent; **no Reviewer involvement yet.** Don't pay a frontier model to look at code that doesn't compile.
-4. **Triage** — route a failure to the role that *owns* it: an implementation bug to the Coder, a design flaw to the Architect, a defective test to the Tester — not reflexively back to whoever wrote last. Default ownership of a failing test is the Coder (make it green); if the Coder judges the *test* mis-encodes the contract, that is a triage decision, not the Coder's to make alone.
+4. **Triage** — route a failure to the role that *owns* it: an implementation bug to the Coder, a design flaw to the Architect, a defective test to the Tester — not reflexively back to whoever wrote last. Default ownership of a failing test is the Coder (make it green); if the Coder judges the *test* mis-encodes the contract, that is a triage decision, not the Coder's to make alone. And what a retry *carries* is part of the routing: the Tester never receives the Reviewer's findings or anything that names the implementation — its independence is that it derives tests from the contract, and one quoted line undoes it. The seed's driver refuses such feedback unless the judgement to send it is recorded.
 5. **Review** — only on green gates, by the independent-family Reviewer, focused on what tools can't catch: design, idiom, logic, naming, edge cases. Edge cases it surfaces return to the Tester as new cases and to the Coder for the fix.
 
 **Exit:** formatted, lint-clean, independently-authored tests green, boundaries green, Reviewer approved.

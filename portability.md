@@ -225,9 +225,9 @@ Cost: three worktrees and two JVMs per task in flight. §07 starts the WIP limit
 
 ### What the end-to-end runs found
 
-Five runs against `sandbox/`, all through `ManualRunner` with the roles played
-by hand. **[`RUNS.md`](RUNS.md) is the record**; this section keeps only what
-they changed about the design above.
+The first five runs against `sandbox/` went through `ManualRunner` with the roles
+played by hand; thirteen dispatched runs have followed. **[`RUNS.md`](RUNS.md) is the
+record**; this section keeps only what the manual five changed about the design above.
 
 - **The Tester cannot satisfy `:repl-first` on a greenfield task** — its
   worktree correctly holds no implementation, so it cannot `require` the
@@ -292,7 +292,8 @@ GET https://openrouter.ai/api/v1/generation?id=<generation_id>
 So **every dispatch is two calls**, and the runner must tolerate a generation record that is not
 ready yet — retry briefly, or record the id and backfill. This is the only way to satisfy §10's
 *"log which agent, model, and serving provider served every call"*, and the only way to get real
-cost rather than tokens times list price.
+cost rather than tokens times list price. Where there is no record — direct to Anthropic — the
+profile can carry `:pricing`, and the report shows usage × list price marked with a `~`.
 
 Routing must be pinned request-side, or the provider you logged yesterday is not the one you get
 today:
@@ -321,14 +322,21 @@ parameters:
                     :key-env "OPENROUTER_API_KEY"
                     :params {:reasoning_effort "medium"
                              :provider {:only ["google-vertex"] :allow_fallbacks false}}}
-         :tester   {:family :openai :model "openai/gpt-5.2-codex" :shape :openai
+         :tester   {:family :openai :model "openai/gpt-5.6-sol" :shape :openai
                     :endpoint "https://openrouter.ai/api/v1"
                     :key-env "OPENROUTER_API_KEY"
                     :params {:reasoning_effort "medium"
-                             :provider {:only ["azure"] :allow_fallbacks false}}}
-         :reviewer {:family :anthropic :model "claude-sonnet-5" :shape :anthropic
+                             :provider {:only ["openai"] :allow_fallbacks false}}}
+         :reviewer {:family :anthropic :model "claude-fable-5-1" :shape :anthropic
                     :endpoint "https://api.anthropic.com"
-                    :key-env "ANTHROPIC_API_KEY"}}}
+                    :key-env "ANTHROPIC_API_KEY"
+                    :params {:output_config {:effort "low"} :max_tokens 16000}
+                    ;; optional: list prices for an endpoint that reports no cost,
+                    ;; USD per million tokens, with where and when they were read
+                    :pricing {:per-mtok {:in 10 :out 50 :cache-write-5m 12.5
+                                         :cache-write-1h 20 :cache-read 0.25}
+                              :source "https://platform.claude.com/docs/en/about-claude/pricing"
+                              :as-of "2026-09-14"}}}}
 ```
 
 The seat is a Google client, so Gemini writes the code and Anthropic verifies
@@ -342,16 +350,16 @@ different keys.
 
 **Built** — `harness.profile`, `resources/profiles/`, `bb profile`, and since
 D3 its consumer too: `harness.runner/api-runner` dispatches each role to the
-model its profile names. Four runs have gone through it; see
+model its profile names. Every dispatched run, D3 to D15, has gone through it; see
 [`RUNS.md`](RUNS.md) part 2.
 
 **Two worked examples ship, one per seat**, and they are near mirror images:
 
 | | seat `claude` | seat `agy-ide` |
 |---|---|---|
-| coder | `anthropic` · `claude-sonnet-5` · direct · `:anthropic` | `google` · `gemini-3.8-flash` · OpenRouter · `:openai` |
-| tester | `openai` · `gpt-5.2-codex` · OpenRouter · `:openai` | `openai` · `gpt-5.2-codex` · OpenRouter · `:openai` |
-| reviewer | `google` · `gemini-3.8-flash` · OpenRouter · `:openai` | `anthropic` · `claude-sonnet-5` · direct · `:anthropic` |
+| coder | `anthropic` · `claude-fable-5-1` (effort low) · direct · `:anthropic` | `google` · `gemini-3.8-flash` · OpenRouter · `:openai` |
+| tester | `openai` · `gpt-5.6-sol` · OpenRouter · `:openai` | `openai` · `gpt-5.6-sol` · OpenRouter · `:openai` |
+| reviewer | `google` · `gemini-3.8-flash` · OpenRouter · `:openai` | `anthropic` · `claude-fable-5-1` (effort low) · direct · `:anthropic` |
 
 Anthropic writes and Google reviews, or the reverse. Between them both `:shape`
 adapters have a worked example, which is why there are two rather than one —

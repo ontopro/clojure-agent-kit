@@ -15,6 +15,7 @@
 
   Run every implementation you add through harness.runner-check."
   (:require
+   [babashka.fs :as fs]
    [clojure.pprint :as pp]
    [clojure.string :as str]
    [harness.agent :as agent]
@@ -88,10 +89,13 @@
   yet, and wrote nothing. The packet carries the CONTRACT — shapes, signatures,
   which files may be touched — and the rules carry the CONSTRAINTS. Neither
   says what finishing looks like, because in the manual runs a human knew."
-  {:coder (str "Implement every signature in :blueprint/slice's :interfaces and "
+  {:coder (str "Implement every signature in :blueprint/slice's :interfaces, "
+               "satisfying every :property-targets entry your packet carries, and "
                "write the complete namespace to your :files/target with "
                "write_file. THE FILE MAY NOT EXIST YET — create it; do not go "
-               "looking for it. Prototype in the REPL first, then write once.")
+               "looking for it. If it already exists, :files/context also lists "
+               "the files that require it, and they must keep working. "
+               "Prototype in the REPL first, then write once.")
    ;; "THEN WRITE ONCE" IS THE LOAD-BEARING CLAUSE, and the Tester did not
    ;; have it. The Coder converged in five iterations on both tasks it was
    ;; given; the Tester churned to its cap on two — at 15 and again at 24 —
@@ -106,7 +110,10 @@
                 "you cannot finish without calling write_file.")
    :reviewer (str "Report findings on the diff in :review/diff. You write "
                   "nothing and you have no REPL. Judge what the gates cannot: "
-                  "design, idiom, logic, naming, edge cases.")})
+                  "design, idiom, logic, naming, edge cases — whether the "
+                  "implementation honours every :property-targets entry, and "
+                  "whether the files in :files/context that require it still "
+                  "work with the change.")})
 
 (defn packet-prompt
   "The opening message for a dispatched role.
@@ -138,10 +145,31 @@
          "\nWhen you are done, reply with a short summary: what you evaluated, "
          "what came back, and what you wrote.")))
 
+(defn worktree-snapshot
+  "Each file git reports changed or untracked in `dir`, mapped to its content —
+  what is already on disk before a dispatch starts."
+  [dir]
+  (if dir
+    (into {} (for [p (repair/changed-files dir)] [p (slurp (str (fs/path dir p)))]))
+    {}))
+
+(defn written-since
+  "The paths in `after` whose content is new, or different from `before`; both
+  are `worktree-snapshot`s.
+
+  A RETRY STARTS IN A WORKTREE THAT ALREADY HOLDS THE LAST ATTEMPT'S FILE
+  (NOTES.md row 18). git status reports that file whether or not this dispatch
+  touched it, so D20's second Tester attempt, whose final message said no file
+  was written, reported the first attempt's file and `:done`, and `check` ran
+  over it unchanged. What a dispatch wrote is what changed while it ran."
+  [before after]
+  (vec (keep (fn [[p content]] (when (not= content (get before p)) p)) (sort after))))
+
 (defn- outcome
   "An AgentResult from a finished conversation.
 
-  `:files` COMES FROM GIT, never from the model's reply. A model that says it
+  `:files` COMES FROM GIT, never from the model's reply, and is only what changed
+  while the dispatch ran (`written-since`). A model that says it
   wrote a file is making a claim; `repair/changed-files` is looking. The two
   disagree often enough — a refused write it did not notice, a file it meant to
   write and did not — and the loop feeds `:files` straight to gate 0.
@@ -150,7 +178,7 @@
   as the cost of a dispatch is the same understatement the report's footer
   exists to prevent, one layer down; the partial goes in `:runner/meta` where
   it cannot be mistaken for the total."
-  [role packet {:keys [status text steps calls iterations capped? error]}]
+  [role packet {:keys [status text steps calls turns iterations capped? error ms-provenance-wait retries]} cfg before]
   (let [;; The `note` tool writes nothing; its whole purpose is to be CAPTURED.
         ;; `converse!` already keeps every call it made, so collecting them is
         ;; a filter rather than new machinery.
@@ -166,20 +194,55 @@
         placed (set (:harness/wrote packet))
         files (if (or (= :reviewer role) (= :failed status))
                 []
-                (vec (remove placed (repair/changed-files (:repl/worktree packet)))))]
+                (vec (remove placed (written-since before (worktree-snapshot (:repl/worktree packet))))))]
     (cond-> {:status status
              :files files
              :stdout text
              :cost (when complete? (reduce + costs))
              :runner/meta (cond-> {:model (some :model (reverse steps))
                                    :provider (some :provider (reverse steps))
+                                   ;; Chosen like :provider, and needed beside it:
+                                   ;; OpenAI's flex and standard endpoints both
+                                   ;; report provider "OpenAI".
+                                   :service-tier (some :service-tier (reverse steps))
                                    :tokens (when (seq steps) (reduce + 0 (keep :tokens steps)))
                                    :iterations iterations
                                    :capped? (boolean capped?)
                                    :completions (count steps)
+                                   ;; Requests sent again on a transient error
+                                   ;; (429, 5xx, no connection): a fact about
+                                   ;; the endpoint the record keeps.
+                                   :retries (or retries 0)
                                    :cost-known (count costs)
                                    :tool-calls (count calls)
-                                   :generation-ids (vec (keep :generation-id steps))}
+                                   :generation-ids (vec (keep :generation-id steps))
+                                   ;; Where the dispatch's time went. The three
+                                   ;; do not sum to its wall time — the rest is
+                                   ;; the harness's own work between them.
+                                   :ms-completion (reduce + 0 (keep :ms/completion steps))
+                                   :ms-provenance (reduce + 0 (keep :ms/provenance steps))
+                                   ;; What the dispatch actually WAITED for them —
+                                   ;; once, at the end, since the fetches run beside
+                                   ;; the loop. :ms-provenance is their own summed
+                                   ;; duration and no longer adds to wall time.
+                                   :ms-provenance-wait (or ms-provenance-wait 0)
+                                   :ms-tools (reduce + 0 (keep :ms calls))
+                                   :reasoning-tokens (when-let [rs (seq (keep :reasoning-tokens steps))]
+                                                       (reduce + rs))
+                                   ;; Where the cost came from, and the counts
+                                   ;; and rates behind it, so a record can
+                                   ;; re-derive a list-price figure.
+                                   :cost-source (cond (empty? costs) nil
+                                                      (some #(= :list-price (:cost-source %)) steps) :list-price
+                                                      :else :reported)
+                                   :usage (when (seq steps)
+                                            (reduce (fn [acc u] (merge-with + acc (into {} (filter (comp some? val)) u)))
+                                                    {} (keep :usage steps)))}
+                            (:pricing cfg) (assoc :pricing (:pricing cfg))
+                            ;; What the model said and ran, per completion
+                            ;; (NOTES.md row 8). Runner-specific, so it lives
+                            ;; here and not on the closed result.
+                            (seq turns) (assoc :transcript turns)
                             (not complete?) (assoc :cost-partial (when (seq costs) (reduce + costs)))
                             error (assoc :error error))}
       (seq notes) (assoc :notes notes))))
@@ -192,17 +255,20 @@
     ;; four tool round-trips loses a run that has already been paid for.
     (try
       (if-let [cfg (get-in profile [:roles role])]
-        (outcome role packet
-                 (agent/converse!
-                  cfg
-                  (rules/rule-block role (rules/prompt-substitutions
-                                          {:repl-port (:repl/port packet)
-                                           :layer (some-> (:layer/name packet) name)}))
-                  (packet-prompt packet)
-                  {:dir (:repl/worktree packet)
-                   :targets (vec (:files/target packet))
-                   :port (:repl/port packet)}
-                  (assoc opts :tools (tools/for-role role))))
+        (let [before (when-not (= :reviewer role) (worktree-snapshot (:repl/worktree packet)))]
+          (outcome role packet
+                   (agent/converse!
+                    cfg
+                    (rules/rule-block role (rules/prompt-substitutions
+                                            {:repl-port (:repl/port packet)
+                                             :layer (some-> (:layer/name packet) name)}))
+                    (packet-prompt packet)
+                    {:dir (:repl/worktree packet)
+                     :targets (vec (:files/target packet))
+                     :port (:repl/port packet)}
+                    (assoc opts :tools (tools/for-role role)))
+                   cfg
+                   before))
         {:status :failed :files [] :cost nil
          :stdout (str "the profile has no " (name role) " role")
          :runner/meta {:error {:harness/error :no-such-role :role role}}})

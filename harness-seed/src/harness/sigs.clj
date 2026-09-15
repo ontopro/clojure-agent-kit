@@ -94,8 +94,19 @@
   undefined, which is exactly the false accusation this must not make."
   [dir paths]
   (let [{:keys [analysis findings]} (kondo dir paths)
-        file-of (into {} (map (juxt fs/file-name identity)) paths)
-        norm (fn [f] (get file-of (fs/file-name f) f))
+        ;; BY PATH, NOT BY FILE NAME. The first version keyed this on the bare
+        ;; file name, so two context files called `core.clj` in different
+        ;; directories collapsed into one, and the namespace of the other was
+        ;; reported as unknown. Once `sigs/dependents` began adding files to
+        ;; :files/context, that could refuse a correct spec with nothing the
+        ;; Architect wrote (review of experiments/d7-d15, R1). clj-kondo reports
+        ;; each file as it was given, relative to `dir`; normalising both sides
+        ;; covers `./src/...`, and an absolute report is made relative to `dir`.
+        rel (fn [f]
+              (let [n (fs/normalize f)]
+                (str (if (fs/absolute? n) (fs/relativize (fs/absolutize dir) n) n))))
+        file-of (into {} (map (juxt rel identity)) paths)
+        norm (fn [f] (get file-of (rel f) f))
         unparsed (into #{} (comp (filter #(= :syntax (:type %)))
                                  (map #(norm (:filename %))))
                        findings)
@@ -221,6 +232,72 @@
         (into (keep #(some-> (parse-sig %) (check-sig analysis)))
               deps-sigs))))
 
+(defn undeclared-calls
+  "Every call the implementation makes into a context namespace that its
+  `:deps-sigs` did not grant — NOTES.md row 11.
+
+  `violations` checks the slice against the source; this checks the source
+  the Coder wrote against the slice. Only calls INTO the namespaces the
+  context files define count: clojure.core, libraries and the impl's own
+  namespace are not seams the packet governs, and a namespace outside the
+  context altogether is gate 4's business. A call to a var no entry names is
+  `:undeclared-call`; a call whose arity the entry's argv does not accept is
+  `:arity-mismatch`. A missing impl file is reported, never skipped.
+
+  Returns `[{:call sym :arity n :file path :line n :violation kw :detail str}]`."
+  [dir {:keys [files/impl files/context blueprint/slice]}]
+  (let [{missing false present true} (group-by #(fs/exists? (fs/path dir %)) impl)
+        granted (into {} (keep (fn [s] (when-let [{:sig/keys [ns name argv]} (parse-sig s)]
+                                         [[ns name] argv])))
+                      (:deps-sigs slice))
+        seams (set (vals (:ns-of (definitions dir context))))
+        usages (when (seq present) (:var-usages (:analysis (kondo dir present))))
+        accepts (fn [argv n]
+                  (or (nil? argv)
+                      (let [[fixed [_ & more]] (split-with #(not= '& %) argv)]
+                        (if (seq more) (>= n (count fixed)) (= n (count fixed))))))]
+    (-> []
+        (into (map (fn [p] {:call nil :arity nil :file p :line nil :violation :missing-impl-file
+                            :detail (str p " is not in the worktree — nothing could be checked")}))
+              (sort missing))
+        (into (comp (filter #(and (contains? seams (:to %)) (not= (:to %) (:from %))))
+                    (keep (fn [{:keys [to name arity row filename]}]
+                            (let [call (symbol (str to) (str name))
+                                  base {:call call :arity arity :file filename :line row}]
+                              (cond
+                                (not (contains? granted [to name]))
+                                (assoc base :violation :undeclared-call
+                                       :detail (str call " is called and no :deps-sigs entry names it"))
+                                (and arity (not (accepts (get granted [to name]) arity)))
+                                (assoc base :violation :arity-mismatch
+                                       :detail (str call " is called with " arity " args; the slice gives "
+                                                    (pr-str (get granted [to name]))))))))
+                    (distinct))
+              (sort-by (juxt :filename :row) usages)))))
+
+(defn impl-names
+  "The vars the implementation defines that the Tester's packet never shows —
+  NOTES.md row 5.
+
+  Every var `:files/impl` defines, minus the names the slice's `:interfaces`
+  declare: `(fold [e])` grants the Tester the name `fold`, so `fold` in its
+  feedback is the contract, not a leak. What is left — private helpers and
+  publics the slice never named — is exactly what the Tester was kept from
+  reading, and feedback that names one of them was derived from the
+  implementation. Returns a sorted vector of `{:ns sym :name sym}`. An impl
+  file that is absent or does not parse contributes nothing (clj-kondo skips
+  the one and `definitions` discards the other): this must not refuse
+  feedback on a guess."
+  [dir {:keys [files/impl blueprint/slice]}]
+  (let [{:keys [defs]} (if (seq impl) (definitions dir impl) {:defs {}})
+        granted (into #{} (keep #(:sig/name (parse-sig %))) (:interfaces slice))]
+    (->> (for [[ns names] defs
+               [nm _] names
+               :when (not (contains? granted nm))]
+           {:ns ns :name nm})
+         (sort-by (juxt (comp str :ns) (comp str :name)))
+         vec)))
+
 (defn verify!
   "`violations`, but throwing. The dispatch-time counterpart to
   `provision/assemble!` refusing a scope violation: a packet whose signatures
@@ -232,6 +309,76 @@
       (throw (ex-info "the Blueprint's :deps-sigs do not match :files/context"
                       {:violations v})))
     v))
+
+;; ---------------------------------------------------------------------------
+;; what depends on the files a task will rewrite
+;; ---------------------------------------------------------------------------
+
+(defn dependents
+  "The files under `scan-paths` that require a namespace defined in
+  `impl-paths`, relative to `dir`, sorted, each once, the impl files excluded.
+
+  WHY. Run D12 was the first dispatched rewrite. Its contract changed what
+  `sandbox.render` emits, and `test/sandbox/property_test.clj` — which requires
+  it — broke at the test gate, in a file no role had been shown. The gate caught
+  it, but only after a full paid attempt, and no role could have seen it coming:
+  nothing put the dependents in front of them. clj-kondo's analysis already
+  records every `:require` as a namespace usage, so they are one query away.
+
+  DIRECT dependents only. A file that requires a dependent is not listed: the
+  point is the code that calls the rewritten namespace, and following the graph
+  outward would hand a role most of the project.
+
+  Empty when no impl file exists yet — a namespace being created has nothing
+  requiring it — so a greenfield task is unaffected. `scan-paths` that do not
+  exist are skipped."
+  ([dir impl-paths] (dependents dir impl-paths ["src" "test"]))
+  ([dir impl-paths scan-paths]
+   (let [exists? #(fs/exists? (fs/path dir %))
+         impl (filter exists? impl-paths)
+         scan (filter exists? scan-paths)]
+     (if (or (empty? impl) (empty? scan))
+       []
+       (let [norm #(str (fs/normalize %))
+             impl-set (set (map norm impl))
+             {:keys [analysis]} (kondo dir (distinct (concat scan impl)))
+             rewritten (into #{} (keep (fn [{:keys [name filename]}]
+                                         (when (impl-set (norm filename)) name)))
+                             (:namespace-definitions analysis))]
+         (->> (:namespace-usages analysis)
+              (filter #(rewritten (:to %)))
+              (map (comp norm :filename))
+              (remove impl-set)
+              distinct
+              sort
+              vec))))))
+
+(defn task-dependents
+  "The dependents of a task `spec`: what requires its `:files/impl`, minus its own
+  `:files/test`.
+
+  A task's test file is the Tester's target, not someone else's code to keep
+  working. When a rewrite already had tests, `dependents` alone listed that file:
+  the Coder was told it must keep working, the Reviewer to check it, the Tester
+  saw its own target as read-only context, and a careful Coder noting the expected
+  breakage would stop the run on the note pause for nothing (review of
+  experiments/d7-d15, R2)."
+  [dir spec]
+  (let [own-tests (set (map #(str (fs/normalize %)) (:files/test spec)))]
+    (vec (remove own-tests (dependents dir (:files/impl spec))))))
+
+(defn with-dependents
+  "`spec` with `deps` added to its `:files/context`: the Architect's entries
+  first, then the dependents, each file once. Unchanged when there are none.
+
+  Into `:files/context` rather than `:files/target`: a dependent is something
+  a role must keep working and may read, not something it may edit. Every
+  packet carries `:files/context`, so the Coder, the Tester and the Reviewer all
+  see them, and `tester-packet` still strips the implementation."
+  [spec deps]
+  (if (seq deps)
+    (update spec :files/context #(vec (distinct (concat % deps))))
+    spec))
 (defn -main
   "bb sigs — check a task spec's :deps-sigs against its :files/context.
 

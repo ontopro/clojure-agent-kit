@@ -8,8 +8,9 @@ dispatches them to agents, and runs the quality gates.
 deliberately left out, and the order to add the rest back.** Other documents link
 here rather than restating it.
 
-**It is a seed you copy and edit, not a framework you depend on.** About 3,400
-lines of source and 2,600 of tests. Much of the source is commentary: nearly every
+**It is a seed you copy and edit, not a framework you depend on.** About 4,000
+lines of source, 650 of driver, and 3,500 of tests (`wc -l` over `src/`, `dev/` and
+`test/`, 2026-09-14). Much of the source is commentary: nearly every
 namespace says WHY it exists and what run taught it, because that is the part you
 cannot reconstruct from the code. Delete what you don't need; the parts you keep
 are meant to be changed.
@@ -27,7 +28,7 @@ bb example    # the whole loop shape in one run: no model calls, no network
 gate 0. `bb doctor` tells you what's missing and why it matters — run it first.
 The first `bb test` fetches malli into `~/.m2`; everything after that is offline.
 
-## The six pieces
+## The pieces
 
 | Namespace | What it is | The lesson it encodes |
 |---|---|---|
@@ -40,9 +41,9 @@ The first `bb test` fetches malli into `~/.m2`; everything after that is offline
 | `harness.provision` | Three worktrees per task, each with its own nREPL; assembly as a filter | Isolation asserted is isolation absent. Only a role's declared `:files/target` crosses into the gate workspace, and anything else is refused by name. |
 | `harness.stub` | The Blueprint slice as code the Tester can load | A worktree is a checkout of the whole repo, so the previous implementation is sitting there to be read. Write the contract over it. |
 | `harness.profile` | One seat, and a family/model/endpoint per dispatched role | §05's independence rule — *verifier ≠ Coder family* — had lived in prose since it was decided. This is the first thing that can fail on it. Two worked examples ship, because a single one reads as *your* configuration. |
-| `harness.sigs` | The slice's `:deps-sigs`, checked against the source they describe | A wrong signature is worse than a missing one: the agent is told a function exists and the failure surfaces as *its* fault, two gates later. |
-| `harness.adapter` + `harness.provenance` | Two request shapes, and the second call that says who answered | A completion names no provider. One slug can be served by several hosts at several quantisations, and which one answered decides the chat template. |
-| `harness.tools` + `harness.agent` | `read_file`, `write_file`, `nrepl_eval`, and the loop that drives them | A tool failure returns to the model as data. `nrepl_eval` is a shell, unavoidably — the containment is the worktree, not the tool list. |
+| `harness.sigs` | The slice's `:deps-sigs`, checked against the source they describe; the implementation's calls, checked against the slice; and a rewrite's dependents, for `:files/context` | A wrong signature is worse than a missing one: the agent is told a function exists and the failure surfaces as *its* fault, two gates later. A dependent nobody was shown breaks at the test gate, after a paid attempt. |
+| `harness.adapter` + `harness.provenance` | Two request shapes, and the second call that says who answered; for an endpoint with no such call, usage × the profile's list prices, marked as computed | A completion names no provider. One slug can be served by several hosts at several quantisations, and which one answered decides the chat template. A price table in the harness would rot; one in the profile carries its source and date. |
+| `harness.tools` + `harness.agent` | `read_file`, `write_file`, `nrepl_eval`, and the loop that drives them, which keeps a transcript — what the model said and ran, per completion — and sends a request again on a rate limit or an overloaded host, counting how often | A tool failure returns to the model as data. `nrepl_eval` is a shell, unavoidably — the containment is the worktree, not the tool list. A dispatch that wrote nothing used to leave nothing to say why. |
 | `harness.report` | Per-step time, cost, model and serving provider for a run, and the drift gate over the reports a document publishes | A number nobody measured must say so, in the cell. A total that silently omits three dispatches is worse than no total. And a published number whose record has gone missing is unverifiable, so `bb report-check` fails on it — the same treatment `AGENTS.md` gets, applied to the other kind of generated content this repository commits. |
 
 ## The rule source
@@ -51,7 +52,7 @@ The first `bb test` fetches malli into `~/.m2`; everything after that is offline
 > text for training. Every other place that holds rules is a *rendering* of it.
 
 `resources/agent-rules.edn` is that file: every rule an agent is told to follow is stated
-there once. Each rule carries an `:audience` — `#{:coder :tester :human}` — and two
+there once. Each rule carries an `:audience` — a subset of `#{:coder :tester :reviewer :human}` — and two
 renderings derive from it:
 
 - **into a headless agent's system prompt**, filtered by audience, with `{{placeholders}}`
@@ -211,6 +212,17 @@ Each of these was considered and cut, not forgotten:
   who is usually at fault.
 - **Per-gate timeout** — a real hazard, but no run in the source project ever hung
   on a gate. `gates/run-gate` is the insertion point if you need one.
+
+What *is* here is `dev/run_loop.clj` (`bb run-loop`): the loop's steps as commands —
+start, continue, check, retry, amend, mutation, record, teardown — pausing wherever a role
+leaves a note, and with a human writing a triage
+decision before every retry. It is the manual version, committed after three runs
+(D7–D9) went through one script. The loop that routes failures by itself is still left
+out; what it does instead is the mechanical half of triage: on a red gate, `check` records
+which role owns the files the gate named and what a retry would carry, as a proposal beside
+the decision that follows, and `retry tester` refuses feedback that names the
+implementation — the Reviewer's findings, an impl file, a var the slice never granted, a
+code block — unless `--allow-leak` records the judgement to send it.
 
 The build order for adding them back, once you have felt where the manual version
 hurts. Provisioning and the first headless runner are done — see `../DEVLOG.md`;

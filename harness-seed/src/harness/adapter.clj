@@ -80,7 +80,16 @@
    :body (cond-> (merge {:model model
                          :system system
                          :messages messages
-                         :max_tokens (or (:max_tokens params) 4096)}
+                         :max_tokens (or (:max_tokens params) 4096)
+                         ;; AUTOMATIC PROMPT CACHING (2026-09-14). A tool loop
+                         ;; re-sends the whole conversation every completion:
+                         ;; D17's Coder sent ~40-50k input tokens over ten
+                         ;; turns for a conversation that ended at 12k. With
+                         ;; this top-level field the API caches what it has
+                         ;; seen and re-reads it at the cache-read rate; the
+                         ;; usage reports the split and the profile's :pricing
+                         ;; prices it. A profile :params entry overrides it.
+                         :cache_control {:type "ephemeral"}}
                         (dissoc params :max_tokens))
            (seq tools) (assoc :tools tools))})
 
@@ -121,7 +130,14 @@
      :tool-calls (vec (for [b blocks :when (= "tool_use" (:type b))]
                         {:id (:id b) :name (:name b) :args (:input b)}))
      :stop (if (= "tool_use" (:stop_reason body)) :tool-use :end)
-     :usage {:in (:input_tokens usage) :out (:output_tokens usage)}
+     ;; Four counts, not two: :in is the UNCACHED input, and the cache reads
+     ;; and writes are billed at their own rates. Absent stays nil, not 0.
+     :usage (cond-> {:in (:input_tokens usage) :out (:output_tokens usage)
+                     :cache-write (:cache_creation_input_tokens usage)
+                     :cache-read (:cache_read_input_tokens usage)}
+              (:cache_creation usage)
+              (assoc :cache-write-5m (get-in usage [:cache_creation :ephemeral_5m_input_tokens])
+                     :cache-write-1h (get-in usage [:cache_creation :ephemeral_1h_input_tokens])))
      :id (:id body)
      :raw body}))
 
@@ -132,14 +148,55 @@
   retries, and the caller decides. The message is kept because it is the only
   useful part of a failed dispatch and it goes in the run log."
   [status body]
-  (when-not (<= 200 status 299)
+  ;; A 2xx CAN BE A FAILURE. OpenRouter streams keep-alive whitespace before it
+  ;; knows the outcome, so an upstream 429 arrives as HTTP 200 with the real
+  ;; code inside `error`. Checking the status alone read that as a completion
+  ;; with no text, no tokens and no model — found switching the Tester to
+  ;; gpt-5.6-sol on flex, whose first dispatch was rate-limited and reported
+  ;; itself :done.
+  (cond
+    (or (not (<= 200 status 299)) (:error body))
     {:harness/error :api-error
-     :status status
+     :status (let [code (get-in body [:error :code])]
+               (if (and (<= 200 status 299) (int? code)) code status))
      ;; `(str nil)` is "", not nil, so an `or` over it silently picks the
-   ;; empty string and the run log records an error with no message.
+     ;; empty string and the run log records an error with no message.
      :message (or (get-in body [:error :message])
                   (when-let [e (:error body)] (str e))
-                  "no message")}))
+                  "no message")}
+
+    ;; AND A 200 CAN BE A REFUSAL OR A TRUNCATION. Anthropic reports both as a
+    ;; normal response with a `stop_reason`, and `parse` would have read either
+    ;; as a finished, empty answer. Claude Fable 5.1 can decline with
+    ;; `refusal`; its thinking counts against `max_tokens`. Both are failed
+    ;; dispatches that triage must see. The profile configures no fallback
+    ;; model, so nothing else answers in their place.
+    (= "refusal" (:stop_reason body))
+    {:harness/error :api-error
+     :status status
+     :stop-reason "refusal"
+     :message (let [{:keys [category explanation]} (:stop_details body)]
+                (str "the model refused"
+                     (when category (str " (" category ")"))
+                     (when explanation (str ": " explanation))))}
+
+    (= "max_tokens" (:stop_reason body))
+    {:harness/error :api-error
+     :status status
+     :stop-reason "max_tokens"
+     :message (str "the response hit max_tokens before it finished; raise :max_tokens "
+                   "in the role's :params (thinking counts against it)")}))
+
+(defn transient?
+  "Whether an `error` is the kind a second request may not get: a rate limit
+  (429), an overloaded or unavailable host (500, 502, 503, 529) or no
+  connection at all (status 0). A refusal, a truncation, a 400 with no
+  credit or a 401 are not — sending them again spends money on the same
+  answer."
+  [error]
+  ;; The status alone decides: a refusal or a truncation arrives as a 200 and
+  ;; a 200 is never transient, so no second guard is needed.
+  (boolean (and error (contains? #{0 429 500 502 503 529} (:status error)))))
 
 ;; ---------------------------------------------------------------------------
 ;; continuing a conversation

@@ -256,3 +256,24 @@
         ;; be able to tell what an agent produced from what the Architect did.
         :architecture (vec (keep #(copy! from %) files))
         :into gate-dir}))))
+
+(defn review-diff
+  "What the Reviewer is shown: the gate workspace against HEAD, NEW FILES
+  INCLUDED.
+
+  Every dispatched run until D7 built this by hand, as `git diff HEAD` — which
+  does not show an untracked file, and everything a task creates is untracked.
+  So the D5 and D6 Reviewers — D4 never reached review — were handed the
+  `layers.edn` change and neither the implementation nor the tests. The loop assembles NEW namespaces
+  by design, so the omission was the common case, not an edge. Intent-to-add
+  records a path in the index without staging its content, which is exactly
+  enough for `git diff` to see it; the gate workspace is disposable, so
+  touching its index costs nothing.
+
+  Returns \"(no diff)\" rather than an empty string, because a Reviewer handed
+  nothing should be told so rather than left to wonder whether it was cut."
+  [gate-session]
+  (let [dir (:worktree/path gate-session)]
+    (git! dir "add" "--intent-to-add" "--all" ".")
+    (let [d (git! dir "diff" "HEAD")]
+      (if (str/blank? d) "(no diff)" d))))

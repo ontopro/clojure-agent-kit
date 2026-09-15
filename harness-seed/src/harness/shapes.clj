@@ -67,9 +67,21 @@
   `:feedback/from` is the SOURCE, not the author's opinion of it: `:gate` is a
   gate's own output, `:reviewer` a finding, and `:coder`/`:tester` a note the
   other role left with the `note` tool. A role reads a gate failure and a
-  sibling's observation differently, and flattening them to prose loses that."
+  sibling's observation differently, and flattening them to prose loses that.
+
+  `:triage` is whoever routes a failure — method §07's Orchestrator, and so
+  far a human. Run D8 went green with a Reviewer reporting no findings, and
+  triage found the implementation breaking the contract on every invalid input
+  it tried. There was no source to send that as: labelling it `:reviewer`
+  would have put words in the Reviewer's mouth, which is the flattening this
+  enum exists to prevent.
+
+  `:architect` announces a change to the contract. D7 amended its property
+  targets between attempts and nothing could say so: a role had to notice the
+  packet had changed. An amendment is not a finding and not a routing
+  decision, so it is neither `:reviewer` nor `:triage`."
   [:map {:closed true}
-   [:feedback/from [:enum :gate :reviewer :coder :tester]]
+   [:feedback/from [:enum :gate :reviewer :coder :tester :triage :architect]]
    [:feedback/text [:string {:min 1}]]])
 
 (def PacketBase
@@ -82,6 +94,11 @@
    [:repl/worktree [:string {:min 1}]]
    [:repl/port [:int {:min 1024 :max 65535}]]
    [:layer/name :keyword]
+   ;; The properties the contract promises, in words. On EVERY packet: the Coder
+   ;; must satisfy them and the Reviewer judge against them, as much as the
+   ;; Tester must test them. They were declared on the Tester's packet alone,
+   ;; and runs D7 and D8 each lost a decision to that. See `harness.packet`.
+   [:property-targets {:optional true} [:vector :string]]
    ;; Paths the HARNESS placed in this workspace, copied from the Session.
    ;; The runner derives :files from git, and git cannot tell a generated
    ;; stub from something the agent wrote — run D4 had the Tester report
@@ -110,8 +127,7 @@
   (mu/merge
    PacketBase
    [:map
-    [:files/target [:vector {:min 1} :string]]
-    [:property-targets {:optional true} [:vector :string]]]))
+    [:files/target [:vector {:min 1} :string]]]))
 
 (def ReviewerPacket
   "Read-only: diff + slice + the green gate report. No :files/target, and no
@@ -175,7 +191,20 @@
    [:endpoint [:string {:min 1}]]
    [:key-env {:optional true} [:string {:min 1}]]
    [:params {:optional true} [:map-of :keyword :any]]
-   [:serving {:optional true} [:map-of :keyword :any]]])
+   [:serving {:optional true} [:map-of :keyword :any]]
+   ;; List prices, for an endpoint that reports usage and no cost (Anthropic
+   ;; direct). A cost computed from these is marked as computed wherever it is
+   ;; shown. :source and :as-of are REQUIRED with the rates: a price with no
+   ;; date is the rot harness.provenance's docstring warned a price table would
+   ;; suffer, and the profile is where the user, not the harness, keeps it.
+   [:pricing {:optional true}
+    [:map {:closed true}
+     [:per-mtok [:map {:closed true}
+                 [:in number?] [:out number?]
+                 [:cache-write-5m number?] [:cache-write-1h number?]
+                 [:cache-read number?]]]
+     [:source [:string {:min 1}]]
+     [:as-of [:string {:min 1}]]]]])
 
 (def Profile
   "One seat, and one model per dispatched role.
@@ -287,7 +316,14 @@
    [:step/source [:enum :measured :synthetic]]
    [:step/model {:optional true} [:maybe :string]]
    [:step/provider {:optional true} [:maybe :string]]
+   ;; Which of a provider's tiers answered. OpenAI's flex and standard
+   ;; endpoints both report provider "OpenAI" at different prices, so without
+   ;; this a flex run's report is indistinguishable from a standard one.
+   [:step/service-tier {:optional true} [:maybe :string]]
    [:step/cost {:optional true} [:maybe number?]]
+   ;; Where the cost came from: the endpoint's own record, or usage times the
+   ;; profile's list prices. The renderer marks the second with ~, in the cell.
+   [:step/cost-source {:optional true} [:maybe [:enum :reported :list-price]]]
    ;; Total native tokens. A single number because this is a report column;
    ;; the prompt/completion split belongs in :runner/meta, which is where
    ;; :tokens already lived upstream (see PROVENANCE.md) before it was one of
