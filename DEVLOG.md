@@ -3,1643 +3,2264 @@
 What changed, when, and why — newest first. A running record, appended to as
 work happens.
 
-The three documents around it each keep one job, and this one does not repeat
-them: [`RUNS.md`](RUNS.md) is the analysis of every end-to-end run against
-`sandbox/`, [`NOTES.md`](NOTES.md) is what is still open *now*, and
+The documents around it each keep one job, and this one does not repeat
+them: [`NOTES.md`](NOTES.md) is what is still open *now*, and
 [`portability.md`](portability.md) is the standing design analysis. What lives
 only here is the **sequence** — the order things were tried in, and every place
 a later change corrected an earlier one. That is the part no other document
-keeps, and on this evidence it is the part worth keeping.
+keeps.
 
-**These entries were 32 commits.** They were collapsed into one on 2026-09-13 so the
-published history is six commits rather than thirty-seven, and this file is what
-they left behind — which is why it carries the reasoning rather than a list of
-subjects. The original commits are kept on a local `history/pre-squash` branch
-and are not published, so they are deliberately not cited here: a reference no
-reader can resolve is worse than none.
+**This log starts on 2026-09-16, when the loop was rebuilt.** The entries before
+that date - the extraction, the first runs by hand, the first bake-offs - are in
+this file's history on `main`, and nothing here cites a run id or a register row
+from them: a reference a reader cannot resolve is worse than none.
 
-Entries before 2026-09-11 21:56 are in `git log`: the repository's first five
-commits are unsquashed and describe themselves.
-
----
-
-## Next
-
-- **Squashed onto `main` (2026-09-15).** The branch `experiments/d7-d15` — 42 commits over
-  `5c2df19` with this one, summarised in the 14:56 entry below — is squashed onto `main` as one
-  commit and pushed, by the user's decision. The branch stays local as the history: the hashes
-  this log's entries cite resolve there, not on `main`. `NOTES.md`'s register and `RUNS.md` name
-  dates instead.
-- **Nothing in `NOTES.md`'s register is *open*.** Row 20 (nothing tested `canonical`'s output)
-  was fixed on 2026-09-15; row 1's remainder (the judgement routings) was decided the same day as a
-  person's call and is *watch*. Row 2 (tier or family in D4) is *obsolete*, not to be run. Rows 3, 6,
-  7, 10, 13 are `watch`; everything else is fixed, rows 14–20 included. *(This bullet listed rows 14,
-  15, 17 and 18 as open through the commits that fixed them; corrected with row 19's.)*
-- **Stage S1 is done** (`RUNS.md` Part 4): D19–D21 merged onto the local `stage/s1`, Step 5's
-  integration tests on it (`0f13229`), every exit criterion met, accepted at Human gate #2 and kept
-  local (2026-09-15 11:25). The driver was unchanged through the stage. The five driver gaps it
-  found (rows 14, 15, 17, 18, 19) were fixed after it, one commit each, and D19–D21 re-recorded.
-  The summary is `RUNS.md` §S1 · What the stage showed.
-- **Exercised live by D20:** the `:routing` proposal beside a
-  real decision (it agreed on the role, not the sources, and its Tester rule is row 17), and the
-  leak check on two live Tester retries (clean both times; it has still never refused one).  D21's
-  Tester was the first dispatch to read the fixed `nrepl_eval`'s `ERROR:` result, and carried on.
-- **The contract-conflict prompt change stays optional.** Planned after D13's Sonnet 5 Coder
-  stayed silent; D14, D15 and D17's Fable 5.1 Coders, at medium and at low, did not need it.
-  Keep it in reserve for a less capable Coder.
-- **The seam rule has held in every run since it changed** (D11–D18; D12–D15 and D17 are one
-  task, D16 and D18 another). One Coder that validates per call would refute it.
-- **Row 12, source 2 stays accepted** (02:37 below).
-- **Push.** Held until the tree is in a state worth publishing.
+**How it names things.** The KIT was tried by building projects with it. They are
+named here by their order - the first project built with the KIT, the second, and
+so on - and their records are theirs, not this repository's; so are the records
+of the KIT's own early runs (`a1`-`a4`). Figures measured on them are not quoted,
+because nothing here can re-derive them: what was learned is said in words. The
+development branch reached `main` as one commit, so its commits are not cited
+either; an entry's date is its reference.
 
 ---
 
-## 2026-09-15
-
-### 14:56 · What the branch amounted to
-
-`experiments/d7-d15` is squashed onto `main` after this entry: 41 commits over two days, 60 files,
-about 6,000 lines added, half of them in `harness-seed/`. The commit message points here. The
-branch is kept locally as the history, and every hash the entries below cite still resolves on it.
-
-**The harness gained**
-
-- **A committed driver.** `bb run-loop` walks one task through the loop against real models, a
-  command per step, and pauses when a role leaves a note. Every retry needs a written triage
-  decision, and `continue` needs a stated reason.
-- **Records that replay.** Each run's record carries its final files as gated, every red gate's
-  output, every dispatch's transcript, and the cost computed from usage. Every table in `RUNS.md`
-  re-renders from `runs/*.edn`, and `bb report-check` enforces it.
-- **A shielded Tester.** Feedback that names the implementation is refused unless overridden, and a
-  role is shown what depends on the namespace it rewrites.
-- **Mechanical checks around the models.** Undeclared calls into a context namespace fail the run
-  before any gate. A red gate gets a routing proposal recorded beside the human's decision. A
-  transient API error is retried and counted.
-- **Tool fixes the runs forced.** The REPL tool reports a failed evaluation instead of hiding it.
-  Prompt caching is on and measured.
-
-**What was run.** D7 to D21 and bake-off B1, all recorded in `RUNS.md`. D19 to D21 were the first
-multi-task stage, S1: a Blueprint, integration tests and both human gates, kept on a local
-`stage/s1`. One code review of the branch, four findings fixed. Two audits of the documents against
-the records.
-
-**What was decided.** The Coder and the `agy-ide` Reviewer run on Fable 5.1 at low effort. The
-judgement routings stay a person's call, from the record: the spec was at fault in five of seven
-retries. The D4 tier-or-family question is obsolete.
-
-**Where it stands.** `NOTES.md`'s register has nothing *open*. What remains waits on evidence from
-later runs: the leak check has never refused, the routing rule has met no real implementation bug,
-the Reviewer's worth is unmeasured.
-
-### 14:25 · Row 2 obsolete: tier or family in D4 is not to be run
-
-Row 2 asked whether D4's Tester failed because of its tier or its family, a question D5 confounded
-by changing the model and pinning the provider in one step, and D6 then answered in a third way:
-the prompt lacked a stop condition. The experiment that would separate tier from family was never
-run, and the user has decided it will not be: it would spend a run on a model the kit stopped
-dispatching at D5, to learn nothing the profile needs. The register gains a fourth Status,
-*obsolete*, for a question that no longer applies, with the reason in the row (the user's
-term; the entry first said *closed*, which the register already uses for things fixed). What the row keeps is the
-lesson: a run that swaps a model changes nothing else. No code changed. Fable 5.1 at medium.
-
-### 14:17 · Row 20: `canonical`'s output is tested
-
-D21's mutation left one survivor: `sandbox.api/canonical` returning its input passed the whole
-suite, because the only test that called it checked idempotence, which the identity satisfies,
-and the S1 Blueprint had left `canonical` to `api.clj`'s dependents. Two tests now say what the
-normal form is rather than only that it is stable. `api_test.clj` pins examples — padded, tabbed
-and newlined input comes back single-spaced, a lone operand trimmed, canonical input unchanged —
-and `property_test.clj` adds a generator that disturbs every gap in a generated expression with
-one to four spaces, tabs or newlines, and the property that `canonical` of that equals the tokens
-joined by single spaces. Against these, D21's survivor and a trim-only `canonical` both die
-(`bb .local/runs/d21/mutate.bb` over `.local/runs/row20/mutants.edn`, 2 of 2 killed, original
-restored, suite green after). `sandbox/README.md`'s property table has the new row. The sandbox
-fixture that every later run starts from is one deftest and one defspec bigger than S1 found it;
-`sandbox/` gates green, 16 tests. The register has nothing *open*. Fable 5.1 at medium.
-
-### 14:10 · Row 1's remainder: the judgement routings stay a person's call
-
-Row 1 had one half open since `0ecb64d`: whether routing after a Reviewer's or triage's finding
-should get mechanical help like the red-gate proposal. Decided from the record rather than argued.
-Seven triggers on record led to a retry or a `continue` on a decision (`bb
-.local/runs/triage/judgement.bb`, local, over `runs/*.edn`): five judgement — D7's Reviewer
-finding, D8's hand probe, the notes at the pause in D15, D17 and D19 — and two the rule covers,
-D12 and D20. At five of the seven the Architect amended the spec first; the exceptions were D8
-(the Coder's defect, found from outside the loop) and D19 (an observation, continued). The
-judgement at each point was the same question, *is the contract at fault?*, and nothing the driver
-sees — gate output, a note's text, a finding — carries the answer; D20 showed both readings of
-the sentence were allowed by it. What fits mechanically is already there: the pause, the leak
-check over Reviewer text, the file-and-role proposal on a red gate. No rule over these seven
-would have changed a decision, so none is built; row 1's Status carries the remainder as *watch*,
-with the two things that reopen it. The more interesting reading of the same numbers is not about
-routing: if the amend rate holds over more tasks, the judgement belongs on the Blueprint's
-sentences before dispatch, not on routing after. Decided on Fable 5.1 at medium; no code changed.
-
-### 13:50 · Row 19 names its commit; the flex price ratio and a session-model note come out
-
-Row 19's Status now names `399addc`. The user dropped the one price ratio that named no source —
-§B1's "standard lists at twice" flex — since the Tester stays on OpenAI's standard endpoint and flex
-is history; the same unsourced ratio was also in `claude.edn`'s Tester comments ("half the price",
-twice) and came out there too. And the Next list no longer suggests a model for deciding the merge:
-the user switches this session's model as the work needs, and a committed document is not where
-that preference lives.
-
-### 12:42 · Row 19: a labelled fence no longer swallows the report after it
-
-`bb report-check` found a block as three backticks and a newline anywhere, so a labelled block's
-closing fence opened the next match; writing D20 up, its table was reported missing, and a table with
-no record after such a fence would have raised nothing. Fences now start their lines, labels are
-captured, and labelled blocks are consumed whole and publish nothing. `RUNS.md` parses to the same
-26 reports as before, compared as data, and §D19's command block has its `sh` label back with the
-check in sync — the case that failed. Three mutants; the one that survived showed the tests checking a report's key
-rather than its content, and died once they checked drift. That closes the five driver gaps stage S1 found. The
-Next list's "still open" bullet had gone on naming rows 14, 15, 17 and 18 through their own fixes,
-and is corrected here.
-
-### 12:33 · Row 18: a dispatch reports what it changed, and a driver that says when it changed nothing
-
-`:files` came from git status, which lists a retry's inherited file whether or not the retry
-touched it; D20's second Tester attempt wrote nothing and reported the first attempt's file, and
-`check` ran over it. The runner now snapshots what git lists before the dispatch and reports only
-what is new or different after (`written-since`). The driver also prints WROTE NOTHING, with the
-start of the final message, when a Coder or Tester dispatch changed no file — the Orchestrator's
-slip in D20 was not reading that message. Five mutants, every one killed, including the old rule
-(`.local/runs/row18/`).
-
-### 12:24 · Row 17: a red test in the task's own tests is proposed as the Coder's
-
-The routing proposal, built from D7–D17's hand decisions, gave any failure naming only a test file to
-the Tester. An assertion failure always names only its test file, so every red test was proposed as
-the Tester's, where method §07 makes the Coder the default owner; D20's first live proposal was
-right only by coincidence. Now the test gate's proposal is the Coder, with advice naming the other
-way out as a triage decision, and the Tester keeps a test file that did not compile or failed format
-or lint. Run over every recorded red gate, D12–D17's proposals are unchanged and D20's would now
-disagree with the decision taken — which is what a proposal beside a decision is for. Four mutants, every one killed
-(`.local/runs/row17/`).
-
-### 12:12 · Row 15: a continue that decides nothing says why
-
-D19 was continued on a Coder note that was an observation, and the record said `:continued` with
-no reason; the reason sat in a local file. `continue` now takes `<decision.edn>`, `{:decision
-"..."}` — like a retry's triage file, written before the dispatch — and refuses without it when no
-`amend` or `retry` was recorded since the last pause (`decided-since-pause?`), since those carry
-their own reasons. The decision goes on the `:continued` event. After an `amend` or `retry` nothing
-changes, so D15's and D17's records replay unchanged; D7–D18 replay byte for byte. Six mutants: five
-died at once; the sixth, `-main` dropping the decision file, survived until the command line got a
-test of its own (`.local/runs/row15/`).
-
-### 11:55 · Row 14: the record holds the bytes the gates passed, and says what gate 0 changed
-
-The user chose to fix the stage's driver gaps on this branch, one commit per row. `record!` took
-each role's files from its own worktree; gate 0 works in the gate worktree, which the gates, the
-Reviewer and a merge all read. Now `record!` copies the gate worktree's bytes whenever that copy is
-current — a gate run after every Coder and Tester dispatch, no refused assembly after it — into
-`final/<path>`, keeps each file gate 0 changed as written in `final/as-written/<path>` and the record's
-`:run/files-as-written`, and `check!` records a `:gate-0` event with the hunks of what it changed
-(`git diff --no-index`, header dropped so no temporary path reaches a record). `final/` is by path
-now; a flat one still reads, so D7–D18 replay byte for byte. D19–D21 were re-recorded from the
-bytes copied out of their gate worktrees before teardown: D20 and D21 byte for byte, D19 with the
-gated Tester file, which passes `cljfmt`, and the written one beside it. D9–D13 cannot be: their gate
-worktrees are gone. Five tests; thirteen mutants, every one killed (`.local/runs/row14/`).
-
-### 11:33 · S1's summary
-
-`RUNS.md` Part 4 ends with what the stage showed: a per-task table, cost by role re-derived by a
-command over `runs/d19.edn`–`d21.edn` (the Coder is two thirds of ~$0.94), what held, what the
-stage found that single-task runs had not, what it could not show — the Reviewer's worth among
-them, after three reviews with nothing to find — and where the kit stands, labelled a judgement.
-Writing it corrected Part 4's intro, which still said the three tasks ran under one version:
-the driver did, and `nrepl_eval` did not.
-
-### 11:25 · S1 accepted at Human gate #2, and kept local
-
-The user accepted the stage and kept `stage/s1` a local branch, as planned before dispatch: the
-kit's `sandbox/` stays the fixture every run starts from. The branch and worktree are kept; the
-stage's run directories (`d19`–`d21`, `s1`) were copied into this checkout's `.local/runs/`, checked
-identical with `diff -r`. Both human gates of method §07 have now been taken in a run.
-
-### 11:15 · S1 Step 5 — integration across the three tasks; every exit criterion met
-
-Method §07's Step 5, the second step no run had exercised. A test namespace on `stage/s1` for
-what only holds across the three merged namespaces: two passes with split bindings equal one,
-`calculate` agreeing through `simplify` with bindings split at random, no variable surviving full
-binding, and the stage document's §11 examples. Each property was checked over 1,000 cases before
-it was written. Against six mutants across `substitute`, `constants` and `api`, run with only this
-namespace, five died; the sixth — no fold into the right subtree — is unreachable from any string
-the parser accepts, and D20's tests kill it. `bb gates` on the stage: 40 tests, 11 namespaces.
-Every exit criterion in §11 is met. Human gate #2 has not been taken. `RUNS.md` has the section.
-
-### 11:11 · D21 · `t-23-simplify` — green, and every prediction held
-
-The stage's last task: `simplify` composing the two merged namespaces through `sandbox.api`, the
-first dispatched task to edit a namespace rather than create or rewrite one. All five predictions
-held — dependents listed, `calculate` and `canonical` kept with no note, `:calls` green over the
-whole file, an edit in the Reviewer's diff, green first time. ~$0.285, 2m25s of steps. Its Tester
-was the first model to read the fixed `nrepl_eval`: it called the stub, got the `ERROR:` result
-naming it, and carried on where D20's second attempt had stopped — one case. It also wrote the
-stage's first two `defspec`s. Seven of eight mutants died; the eighth, `canonical` returning its
-input, survived the whole suite because nothing tests `canonical`'s output (row 20, open).
-Merged onto `stage/s1` as `b8d02ae`: 36 tests over 11 namespaces. The stage's three tasks cost
-~$0.94.
-
-### 10:46 · D20 · `t-22-constants` — red twice, and green on the Tester's last attempt
-
-The fix below went in, was brought onto `stage/s1` as `908a767`, and the Tester got its third and
-last attempt with the amendment again, a note naming the stub and the unmatched bracket in its own
-file, and the gate output. It fixed both, rewrote the validate-once test to compare by identity,
-and every gate went green; the Reviewer found nothing and all eleven mutants were killed. None of
-its evaluations failed, so the fixed error path went unexercised. Merged onto the stage as
-`c09c536` from the gate worktree, which matched `final/` this time. `RUNS.md` §D20 has the
-first live routing proposal — the Tester, for a reason its rule cannot see (row 17) — and the
-replay behind row 16; the wall time, 944m57s against 4m23s of steps, is the overnight pause.
-
-**Writing it up found row 19.** `bb report-check` reported D20's record as unpublished with the
-table in place: §D19's command block had a labelled fence, and the report parser pairs fences so
-that a labelled one's close opens the next block. Checked with `report/drift` on a made-up
-document: a table with no record after such a fence raises nothing. The block is unlabelled now;
-the parser is not changed. The Tester subtotal was also first typed as $0.149602; the record says
-$0.149298.
-
-### 10:26 · Row 16: `nrepl_eval` returns what a failed evaluation printed
-
-D20's test gate went red on a Tester assertion that counted every `sandbox.shapes/check!` call,
-including the one-node checks `expr/literal` makes on each literal it builds. Target 8 allowed
-that reading (D19's Tester, on the same sentence, did not take it), so it was amended and the
-Tester retried. The retry wrote nothing: its final message said the nREPL had stopped returning
-results. It had not. Replaying its calls through `harness.tools/invoke` against the same nREPL
-showed `clj-nrepl-eval` exiting 0 with the error on stderr — the stub's `AssertionError`, which
-it throws by design — and the tool returning stdout alone, `""`. The first attempt had been
-misled worse: its test file did not read (an unmatched `]`), the `require` failed silently, and
-`:loaded` after it printed. It never ran a test. Gate 0 repaired the delimiter before the gates.
-
-Three fixes were laid out — pass stderr through; that plus a flag; or talk to nREPL directly —
-and the user chose the second, with the mitigations its risks called for: the full set of
-`clojure.main/ex-str` prefixes rather than two (read from 1.12.5's source; a probe had already
-shown "Error printing return value" missed by the obvious pair), a timeout detected on stdout
-where it actually appears, a failed form worded so the rule that stops on a dead REPL cannot read
-it as one, and both result paths clipped with stderr first. Writing it found the old non-zero
-branch had never worked: a destructured `err` shadowed the `err` helper, so an unreachable nREPL
-came back as "String cannot be cast to IFn" — and the first draft of the fix repeated the
-shadowing, caught before any test ran. Nine tests; seventeen exact-match mutants, every one killed
-(`.local/runs/row16/mutate.bb`). `NOTES.md` row 16 is *fixed*; D20's other two findings are rows
-17 (the routing proposal's Tester rule contradicts §07 for a test assertion) and 18 (a dispatch
-that wrote nothing reports the previous attempt's file), both *open*. The stage's driver is
-unchanged; its tool is not, from D20's third Tester attempt on, and `RUNS.md` §D20 will say so.
-
-## 2026-09-14
-
-### 18:48 · Stage S1 begins; D19, and the first merge finds the record is not what was gated
-
-The user asked for a full end-to-end run to see where the kit stands. Every run so far was one
-task against an unchanged `sandbox/`, never merged, so the full run became a stage: three tasks
-in dependency order, each merged by hand before the next, then an integration pass —
-method §07's Steps 2 and 5, which no run had exercised. The user chose a three-task stage, the
-`claude` seat, and a local `stage/s1` branch never merged into the kit. No driver change: the
-driver asks git for the repository root from the run directory, so run directories inside a
-`stage/s1` worktree make that branch every task's base. The stage document and Blueprint were
-filled in from `skeletons/stages/`, their examples checked against a throwaway REPL composition,
-and signed off at 18:19.
-
-D19 (`t-21-substitute`) went green on the first attempt, ~$0.276, after pausing on a Coder note
-that was an observation rather than a conflict; continued without amendment. Merging it from
-`final/` failed the stage's format gate: `record!` copies from each role's worktree, and gate 0
-had reformatted the Tester's file in the gate worktree. Merged from the gate worktree instead
-(`stage/s1` `8447cc6`). Five committed records, D9–D13, carry a file their format gate cannot
-have passed as recorded. Both that and the missing reason on `continue` are `NOTES.md` rows 14
-and 15, left open until the stage ends so its tasks run on one driver. D19 was written up now
-rather than at the stage's end, at the user's direction; `RUNS.md` gains Part 4. Its intro also
-said D3–D18 cost "about $1.64"; the records sum to $1.997, which its totals already said.
-
-### 17:19 · The `agy-ide` Reviewer moves to Fable 5.1 at low effort
-
-`resources/profiles/agy-ide.edn`'s Reviewer was `claude-sonnet-5` with no `:params`. It is now
-`claude-fable-5-1` with `claude.edn`'s Coder settings — `:output_config {:effort "low"}`,
-`:max_tokens 16000`, and Fable 5.1's list prices under `:pricing` — for the reasons that file
-gives. The reason for the switch is the user's: Fable 5.1 at low effort is far superior to
-Sonnet 5 and Opus 5 at every effort level.
-
-That is a judgement, and the record cannot back it or refute it yet. No run has used the
-`agy-ide` profile, so no Anthropic model has ever been dispatched as Reviewer: every Reviewer
-row in `RUNS.md`'s tables that names a model names `gemini-3.8-flash` (15 of them; the other 3
-are the pre-dispatch stubs), and no Coder row names a Gemini model —
-
-```sh
-grep -E "^\s+[a-z]+(-r[0-9])?\s+dispatch" RUNS.md | awk '{print $1, $3}' | sed -E 's/-r[0-9]//' | sort | uniq -c
-```
-
-— and `grep -ci opus RUNS.md runs/*.edn` is 0 in every file. The one side-by-side of the
-two Anthropic models is D13 against D14: one task, as Coder, where Sonnet 5 stayed silent on a
-contract conflict that Fable 5.1 named. The profile's comment says the choice was not a run's.
-`portability.md`'s copy of the profile and its seat table now show the new Reviewer; `bb profile
---seat agy-ide` passes.
-
-### 16:48 · Rows 1 and 5: the driver proposes the mechanical routings and enforces the Tester's shield
-
-Nine triage decisions were on record (D7, D8, D12, D15, D17). Three routed by rule — a red
-gate in a file no role owns, a note at the pause — and every one of the three Tester retries
-was shielded by hand from the Reviewer's findings and the implementation's names, once
-imperfectly (D7's note still said `expr/literal`). Four options were laid out — write the rules
-down, mechanise the mechanical part, a triage role, wait — and the second was chosen: build
-only what the record shows being done the same way every time, leave the judgement where it is.
-
-Two pieces. `check` records a `:routing` event on a red gate: the impl, test and dependent
-files the output names, the owner that implies, the role and sources a retry would carry.
-Naming the files needed one thing the plan did not foresee: a whole-suite test gate prints
-`Testing <ns>` for every namespace, green ones too, and a failure's own line names the throw
-site (`parse.clj:25` for D12's failure in `property_test.clj`), so a failure is attributed to
-the `Testing` block above it, and that namespace to the spec's path by convention. `retry
-tester` runs `leaks` over the feedback — a `:reviewer` source, an impl path, a var the impl
-defines that `:interfaces` did not grant (`sigs/impl-names`), a fenced block — and refuses
-unless `--allow-leak`, recording the leaks and the judgement on the `:triage` event either way.
-
-Over the record (`.local/runs/triage/retro.bb`): D13, D14 and D17's red gates name the two
-dependents and no owner, which is what D12 and D17 decided; D12 itself names nothing, its
-record predating the dependents list. D8 and D12's Tester feedback is clean, D7's is refused
-on the Reviewer source, and D7's findings would be refused twice over. Twenty-one mutants
-(`triage/mutate.bb`); three survived the first pass — a Tester file beside a dependent and a
-symbol character before the name, which got their tests, and a filter skipping absent impl
-files, which clj-kondo already does, so the line was removed rather than tested. D7–D18
-replay byte for byte (`triage/replay.bb`): no record changes shape until a run goes red or
-retries the Tester. `method.md`'s triage stage now says what the Tester never receives.
-`NOTES.md` row 5 is *fixed*; row 1 stays *partly fixed*, and says which half.
-
-### 15:18 · Row 9: a transient error is sent again, and the record counts it
-
-`post!` returned a 429 as a failed dispatch and the caller "owned the retry" — no caller ever
-did, so on flex 3 of 4 requests inside 75s each cost a dispatch. Now `adapter/transient?`
-names the errors a second request may not get (429, 500, 502, 503, 529, status 0) and
-`post!` sends those again, up to four attempts in all, waiting `Retry-After` when the host
-sends it and otherwise 2s × the attempts so far. A 400 — D17's "credit balance is too low" —
-a 401, a refusal or a truncation is not sent again: the same request gets the same answer.
-The count travels: `:retries` in `converse!`'s result and `:runner/meta`, and on the dispatch
-event only when non-zero, so D7–D18 replay byte for byte.
-
-Five tests (429 then 200; attempts exhausted; a 400 sent once; `Retry-After: 0` honoured;
-retries summed across a tool loop's completions) and one through the runner. Ten mutants at
-first, three of which survived: a redundant guard (removed rather than tested), the sum
-across completions and the meta count, each of which then got its test. Not yet exercised by
-a live rate limit — the Tester left flex before this existed. `NOTES.md` row 9 is *fixed*;
-what stays open there is that a dispatch failing after four tries still fails the run.
-
-### 14:57 · The register gets a Status column, and the stamp gets a rule
-
-Rows 8 and 11 were closed today by rewriting their prose and flipping `Kind` to `watch`, and
-the user could not see that anything had closed. `NOTES.md`'s register is now `# | Finding |
-From | Status | What was done, and what remains`, on the pattern of the R1–R4 review table:
-the finding stays the original gap, the status names the commit (`fixed`, `partly fixed`,
-`open`, `accepted`, `watch`, `question`), and the closure text moves to the last column. Every
-row's text was moved by a script, nothing dropped. The file's "Updated" stamp had also sat at
-10:17 through six edits; it now carries its own rule, and the rule is in my memory too.
-
-### 14:29 · D18 · `t-20-names` — the cache measured, and the tokens column corrected
-
-D16's task rerun with caching on. Green first attempt, $0.198 measured, 2m14s. The Coder's
-recorded usage: 10 uncached input tokens, 5,503 written to cache, 12,475 read back, 1,435 out
-— of 17,988 input tokens, ten were billed at the base rate. The `~$0.143756` in the row
-re-derives by hand from those counts and the profile's rates; uncached, the same usage would
-have cost $0.251630: input down 60%, the dispatch 43%. Lower than the 85% input estimate
-because a four-completion conversation is mostly cache *writes* at 1.25×; the reads cost
-$0.003. Output, thinking included, is half the dispatch at $50/MTok. `RUNS.md` §D18.
-
-**A defect the run exposed.** The tokens column first said 1,445: `provenance/of` counted
-uncached input and output only, so the cached 17,978 tokens the request moved were invisible.
-Fixed (`of` now adds cache writes and reads; one test), and the Coder step in D18's `state.edn`
-was recomputed from its own event's usage before `record` — 19,423 — with the original kept
-as `state.pre-tokens-fix.edn`. Older records have no cache counts and replay unchanged.
-
-The `:calls` check ran live for the first time: 242ms, clean. Run on Claude Fable 5.1 at
-medium effort.
-
-### 14:17 · Row 11: the implementation's calls are checked against its slice
-
-`harness.sigs` checked the slice against the source and never the other way; D8's `bind.clj`
-called `expr/literal?` with no entry naming it and nothing noticed. `sigs/undeclared-calls`
-now reads clj-kondo's `:var-usages` from the impl files and flags every call into a namespace
-the context files define that no `:deps-sigs` entry names (`:undeclared-call`), or whose arity
-the entry's argv rejects (`:arity-mismatch`); calls into `clojure.core`, libraries, the impl's
-own namespace and namespaces outside the context are not its business — the last is gate 4's.
-`bb run-loop check` runs it as the `:calls` step right after gate 0, cheap before expensive:
-a hit records a `:calls` event with the violations, fails the run as a red gate with the calls
-as feedback, and runs no shell gate. When the slice was wrong, `amend` then `check` again
-recovers with no dispatch. The `:stay-inside-your-packet` rule now says a check enforces it
-and to `note` a missing signature rather than call it (both mirrors re-synced).
-
-**Retro-check** (`.local/runs/row11/retro.bb`): each of D7–D17's recorded implementations,
-placed in a copy of today's sandbox source and checked against its own spec, gives exactly one
-hit — D8's `expr/literal?` — and nothing else. Six tests; ten exact-match mutants, all killed
-once a test for the own-namespace case was added. D7–D17 replay byte for byte. Not yet hit by
-a live run; row 11 moves to `watch`.
-
-**Prompt caching is on for direct Anthropic calls** (same commit). `adapter/request
-:anthropic` sends a top-level `:cache_control {:type "ephemeral"}`, the automatic mode; a
-profile `:params` entry can override it. Estimated from D17's transcript and prompts: a
-10-completion Coder re-sent ~40–50k input tokens for a 12k-token conversation, so caching
-should cut its input cost by ~85% and the dispatch by ~28% at Fable 5.1 rates (output,
-thinking included, is the larger half). Estimate only — records before today hold no split;
-the next run's `:usage` shows `cache-read` and prices it.
-
-### 13:39 · A Coder cost, computed from usage and the profile's list prices
-
-Every Coder dispatch since D3 has shown `—` for cost: direct to Anthropic there is no
-generation record, and `harness.provenance` refused a price table on purpose — it would rot
-and would read as measured (§10 lesson 11). The user wanted the number anyway, and the design
-keeps both halves of that rule:
-
-- **The table is in the profile, not the harness.** `RoleProfile` gains an optional `:pricing`
-  — five USD-per-MTok rates (base input, output, 5-minute and 1-hour cache writes, cache
-  reads) with a required `:source` and `:as-of`; `bb profile` refuses a price without its date.
-  `claude.edn`'s Coder carries Fable 5.1's, read from
-  platform.claude.com/docs/en/about-claude/pricing today: $10 / $50 / $12.50 / $20 / $0.25.
-- **The number is marked as computed wherever it is shown.** `provenance/list-price` turns the
-  adapter's four usage counts (`:in` is uncached input; cache reads and writes now parsed) into
-  dollars; `provenance/of`'s new arity uses it only when the endpoint reported no cost, marks
-  the step `:cost-source :list-price`, keeps `:usage`, and names the provider from the
-  endpoint's host — `api.anthropic.com` is `Anthropic API`, a fact about where the request went.
-  The report prefixes such a cost and any total containing one with `~` and adds a footer
-  line saying how many steps are priced that way. The dispatch event carries the counts and
-  the rates, so a record can re-derive its own figure.
-
-Checked against the pricing page's two worked examples to the cent, in `provenance_test`.
-Sixteen exact-match mutants over the new lines, all killed (`.local/runs/cost/mutate.bb`).
-D7–D17 replay byte for byte: no source, no key. 230 tests.
-
-Not backfilled: D3–D17's Coder steps hold one token total, not the split, so they stay `—`
-and `RUNS.md` says so under the running total. The next run is the first with a `~$` Coder
-cost; its write-up checks the figure by hand from the record's `:usage` and `:pricing`.
-
-### 13:00 · D17 · `t-19-render` — low effort flags the conflict too; the run finishes green
-
-Resumed after the credit top-up: `retry coder` as `coder-r2` with the same triage decision,
-then `check`. Every gate passed with `property_test.clj`, the Reviewer walked all seven targets
-and found nothing, and eleven exact-match mutants — D15's set, finds adapted — were all killed
-(`.local/runs/d17/mutate.bb`, results in the record). The Tester needed no retry: it had seen
-version 2 before the failed dispatch, which is also why the driver's red gate was red.
-
-**The answer to D17's question is yes.** A Fable 5.1 Coder at low effort noted the contract
-conflict as medium did in D14 and D15, and its transcript shows it ran `parse` on a
-parenthesised string and saw `:bad-token` two turns before writing the note. It used fewer
-iterations, seconds and tokens than D15's on both dispatches (10/57s/71k against 14/80s/107k;
-5/40s/42k against 7/56s/64k). One pair of runs; direction consistent. The profile stays at low.
-
-The record is 75,980 bytes, the largest yet — four capped transcripts, a red gate's output, the
-files and the mutants. Wall time 26m34s includes 22 minutes waiting for credit; the steps
-account for 5m34s. $0.099 measured, $0.068 of it the Tester dispatch the driver should not
-have made. `RUNS.md` §D17 has the rest; the 12:34 entry has the driver fix.
-
-### 12:34 · `continue` refuses to build on a failed dispatch — found by D17, mid-run
-
-`claude.edn`'s Coder moved to `:effort "low"` (the user's trade after a day on medium), and
-D17 is D15 rerun with only that changed. Its first half went as D15's did: the low-effort
-Coder read `property_test.clj`, ran `parse` on a parenthesised string in the REPL, saw
-`:bad-token`, and only then wrote the note — the transcript (row 8, a day old) is what
-shows the order. The run paused, the Architect amended to version 2 with D15's feedback
-verbatim, and the Coder was retried.
-
-**The retry failed in 405ms: HTTP 400, "Your credit balance is too low to access the
-Anthropic API."** 0 completions. Then `continue` did what it was told: dispatched the Tester
-($0.05) against the `render.clj` the retry had never rewritten, and the test gate went red
-on round-trip. `continue!` checked only that the run was paused, never that the dispatch it
-followed had succeeded. Now it refuses while the last dispatch is `:failed`, names the step,
-and leaves the pause standing (`last-dispatch-failed`, one test, the guard's mutant killed).
-D17 resumes with `retry coder` once there is credit; the Tester saw version 2, so its tests
-stand. `RUNS.md` §D17 will carry the run when it finishes.
-
-### 12:15 · D16 · `t-18-names` — the dispatches keep their transcripts (row 8)
-
-`converse!` already held every call and every message and `outcome` dropped both. It now
-keeps `:turns` — one map per completion, the model's text and its tool calls with arguments,
-results, errors and timing — on every exit, the failed one included, since the turns before a
-failure are the diagnosis. `outcome` carries them as `:runner/meta :transcript`; `AgentResult`
-stays closed. `bb run-loop` writes the whole transcript to `<step>.transcript.edn` beside the
-packet and records a copy on the dispatch event with every string cut to 500 characters, the
-cut announced (`cap-transcript`). Three new tests, one extended; nine exact-match mutants, one
-of which survived until the boundary case (a string of exactly the cap) was added
-(`.local/runs/row8/mutate.bb`). D7–D15 replay byte for byte: no transcript in their state, so
-no key. 224 tests.
-
-**D16 ran to see it.** A trivial new namespace, `var-names`, through all three roles: green
-first attempt, $0.057, 2m10s. Every dispatch event has one turn per completion and the record
-is 23,208 bytes, 8.7 KB more than D11's. The Coder's transcript shows the `nrepl_eval` behind
-its *"Evaluated in the REPL"* — the kind of claim the 11:00 audit could only soften. `RUNS.md`
-§D16 has the rest. Row 8 moves from `gap` to `watch`: B1, D3 and D6 stay blank, and the
-capped copy is a shape, not the content.
-
-Cap chosen by the user: 500. Run on Claude Fable 5.1 at medium effort.
-
-### 11:43 · The rest of the documents, audited
-
-The 11:00 audit covered `RUNS.md` §D7 on, `NOTES.md` and this file's next steps. This pass
-took every other committed document except this file's dated entries and the `skeletons/`
-templates. A script resolved every path, `bb` task, commit hash and NOTES row the documents
-name; the pre-D7 records were compared with §Run 3–§D6 by hand. Seven claims were wrong or
-stale, each fixed in place:
-
-- `harness-seed/README.md`: the line counts (3,400 / 2,600) were 3,951 / 3,521 by `wc -l`,
-  now stated with the command and date; "The six pieces" headed a thirteen-row table; the
-  audience set omitted `:reviewer`.
-- `portability.md`: "Five runs … all through `ManualRunner`" and "Four runs have gone
-  through it" predate D7–D15.
-- `RUNS.md` §Run 5 said `api_test.clj` depends on `render` and stayed green by luck. It
-  requires only `sandbox.api` and never renders — the claim NOTES row 1 had already
-  retracted, still standing where it was first made.
-- `NOTES.md` said eighteen tasks; eighteen runs, seventeen task ids, and D3 was one role.
-- `interactive-programmer.md` said `bb gates` reverts drift; it fails on it.
-
-Pre-D7 records carry steps only, so the iteration caps and assertion counts §Run 3–§D6
-quote cannot be checked from `runs/`; `runs/README.md` now says so. Everything else
-checked held: every reference resolves, every per-step figure in §Run 3–§D6 matches its
-record, and the branch's edits to `portability.md`, `PROVENANCE.md`, `CLAUDE.md` and
-`method.md` match the code. The scripts are in `.local/runs/claim-audit/full/`. This pass
-ran on Claude Fable 5.1 at medium effort, the fixes at low.
-
-### 11:26 · The records carry the code and the red gate output
-
-The 11:00 audit found claims that were true but checkable only in the gitignored
-`.local/runs/`: D13's failing token, the docstrings §D11 and §D13 quote, the tests behind
-"validates once" and "cannot fail", and B1's `defspec` counts. That was a gap in the record,
-not in the documents, so it was closed first, ahead of a wider audit.
-
-**`bb run-loop` now records two more things.** A red `:gates` event carries the failing gate's
-output as `:feedback`, which is the same value `last-gate-feedback.edn` gets (`gates-event`). And
-`record` puts the run's impl and test files in the record as `:run/files`, keyed by spec path. It
-reads them back from `final/` rather than the worktrees, so a replay after `teardown` writes the
-same record (`final-files`). Two paths with one file name are refused, because `final/` is
-flat and one would overwrite the other. Two new tests and one extended test cover this, including `check!` itself on a red gate, and eight exact-match mutants of
-the new lines were all killed (`.local/runs/record-gap/mutate.bb`). 222 tests.
-
-**Backfilled.** Each of D7–D15 was replayed through the committed `record`, in a copy of its run
-directory. D7–D9's state predates the driver and has no `:config`, so the copy got only its run
-id. D12–D14's one red gate first got the output from their own `last-gate-feedback.edn`. Every
-new record, with `:run/files` and that `:feedback` removed, equals the committed one as data and
-byte for byte. B1's two passing records gained `:defspecs`, 10 and 4, counted from the test files
-the candidates wrote. `bb report-check` still passes on all 20 tables, because the report reads
-only steps.
-
-**One more claim was wrong, and the backfill found it.** §D12 said the Coder's retry got the
-failing gate's output. Triage sent a 370-character excerpt: a header, the two `ERROR` lines and
-the test summary. Its failing tests and tokens match the full output pair for pair. The sentence
-is corrected in place.
-
-**A mistake of mine while doing this.** A first baseline "replay" of D7–D15 reported all nine
-identical. For D7–D9, `record` had exited on the missing `loop.edn`, and `cmp` compared an old
-`run.edn`. That result was worthless. The backfill's own assertions, which fail on a non-zero
-exit, are the check that counts.
-
-Still not in any record: the per-token price ratios in §D14, §B1 and the 09:02 entry.
-
-### 11:00 · A claim audit of the documents against `runs/*.edn`
-
-The code review could not check prose, so `RUNS.md` §D7–§D15 and §B1, `NOTES.md` and this
-file were checked against the committed records. The at-a-glance totals and costs, the
-headline sums, and every per-dispatch time, iteration, token, tool-call and cost figure
-matched. Eight claims did not, and each is corrected in place with a dated note:
-
-- **§D9** said ten mutants covered every target. They covered five of seven; targets 1 and 5
-  had none.
-- **§D11** said `paths-to` was within a millisecond of one `check!` at every size. That holds
-  with the name absent; with the match at the bottom it is 3.8ms above at 800 nodes.
-- **§D13** said the test gate's output is in the record. `runs/d13.edn` has only the failure;
-  the output, and P3's `"(z"`, stayed in the run's gitignored directory.
-- **At a glance** headed its time column "Wall". It was each report's steps total, which
-  leaves out triage by hand: D7's is 17m31s against a wall time of 20m30s. It is now "Steps".
-- **§B1** said the Tester failed or capped in every dispatched run since D4. D5's did neither.
-- **`NOTES.md` row 12** still said the seam rule had two samples, and the list above said it
-  had held twice. D13–D15 held too, on the same task as D12.
-- **§D14, §D15 and `NOTES.md` row 1** said the Fable Coder confirmed `parse`'s failure in the
-  REPL, as the 09:09 entry below does. Its summaries report the failure but do not list it
-  among what they evaluated, and with no transcripts (row 8) nothing shows it. The three
-  documents now say it reported it; the entry is left as written.
-- **§D12** said 1m41s was triage by hand. That was wall time minus the steps. The red gate to
-  `coder-r1` starting is 1m39s.
-
-Some claims are true but rest on no committed record: D13's and D11's docstring quotations
-and B1's `defspec` counts are in `.local/runs/` only. The per-token price ratios in §D14,
-§B1 and the 09:02 entry name no source. The audit's scripts are in
-`.local/runs/claim-audit/`. The at-a-glance row labels now link to their sections.
-
-### 10:17 · A review of the branch, and its four findings fixed
-
-Before a stable point, the uncommitted work was committed as a checkpoint on a local branch,
-`experiments/d7-d15` (`4e6c4eb`), so that `/code-review high` could see untracked files
-through the branch diff. Four bugs came back, all in this branch's new code and none tested.
-Each was checked against the code, triaged *fix now* (`NOTES.md`, "Code review of
-`experiments/d7-d15`") and fixed in its own commit with a regression test:
-
-- **R1 `b2be718`** — `sigs/definitions` matched files by bare name, so two `core.clj` files
-  collapsed and a valid spec could be refused. Matched by relative path now.
-- **R2 `bb1bd7a`** — a task's own test file could be listed as its dependent. `sigs/task-dependents`
-  leaves it out, and `start` uses it.
-- **R3 `353b983`** — the Tester's stub went stale after an amendment. `amend` regenerates it
-  when the slice changed.
-- **R4 `864ccbd`** — a failed `start` orphaned worktrees and could not be restarted. Sessions
-  are saved as they are provisioned, and `teardown` of a run that dispatched nothing resets it.
-
-The `start` tests replace provisioning, packets and dispatch, so they run with no network.
-Building them turned up two mistakes of mine, both in the test fixture rather than the fixes: a
-missing `first-packet` replacement meant `start` threw before dispatch, and three tests failed
-for that reason until it was read, not guessed. Across the four fixes, every mutant that reverts
-or weakens one fails a test. R4 was also checked live against real git: a refused start,
-teardown, start again, teardown — no branches or worktrees left. 220 tests.
-
-### 09:31 · D15 · `t-17-render` — the note pause, live
-
-D14 rerun with the note pause as the only change; its spec was checked equal to D14's as data.
-All four predictions held. The Coder noted the conflict again. The run paused before the Tester.
-From the note alone, the Architect amended to D12's version 2 in 35 seconds and retried the
-Coder with `:architect` feedback. `continue` went on to the Tester, one gate run, which passed,
-and the Reviewer. The Tester was never retried, because it first saw version 2. Eleven mutants
-over all seven targets were killed, including the dependency mutant that survived in D12.
-
-Against D12, which reached the same final contract: 1 Tester dispatch where D12 had 2, 1 test
-gate run where it had 2, 0 red gates where it had 1, and $0.070 of Tester cost against $0.139.
-That comparison is uncontrolled — D12 had a Sonnet 5 Coder and no dependents shown — so it
-shows the mechanism end to end, not a typical saving.
-
-### 09:20 · `bb run-loop` stops where a role left a note
-
-D14's Coder noted exactly why the contract would break `property_test.clj`. The driver went on
-and dispatched the Tester and ran the gates into that failure. Now `start`'s sequence pauses
-after any dispatch that leaves notes: after the Coder, before the Tester, and after the Tester,
-before `check`. It records a `:paused` event carrying the notes, prints them with the commands
-to use, and dispatches nothing more. `bb run-loop continue` resumes with the pending step and
-may pause again; in between, a human can `amend` and `retry`. `:pause-on-notes? false` in
-`loop.edn` turns it off, and it is on by default.
-
-This is the first piece of triage, and it is deliberately not automatic. The loop still decides
-nothing about a note: it only stops being the thing that ignores one. The decision logic —
-`pause?` and `next-step` — is pure and tested. The sequence itself is tested with the
-dispatches stubbed: a Coder note stops before the Tester, `continue` goes on to the Tester and
-the gates, a Tester note stops before the gates, off means off, and `continue` on an unpaused
-run is refused. Seven mutants fail tests. On D14's recorded Coder result, `pause?` is true,
-with the Tester next, and D7–D14 still replay byte for byte. It has not paused a live run yet.
-
-### 09:09 · D14 · `t-16-render` — a Fable 5.1 Coder names the conflict
-
-D13 rerun with only the Coder's model changed, to Claude Fable 5.1 at medium effort. The spec
-was checked equal to D13's as data (but for the task id) before dispatch. **The prediction D13
-refuted held.** The Coder confirmed in the REPL that `parse` rejects parentheses, and left a note
-naming both `property_test.clj` properties that would fail and the two ways out. It then
-implemented the contract as written, and said so. P1, P3, P4 and P5 held too: exact
-dependents, the gate red as the note foretold, validation once, and no refusal. It was not
-retried; the question was answered.
-
-One pair of runs, and "only the model" means the Coder role's model *and* its settings. The
-Fable Coder took 58s, 7 iterations and 55k tokens where Sonnet took 22s, 5 and 32k, and its cost
-cannot be seen. What D14 exposes next is not about models: the note reached the run log and
-nobody else, and the loop went on into a failure it had already been told about.
-
-### 09:02 · The Coder is Claude Fable 5.1 at medium effort
-
-`claude.edn`'s `:coder` moved from `claude-sonnet-5` to `claude-fable-5-1`, with
-`:params {:output_config {:effort "medium"} :max_tokens 16000}`. The family is unchanged
-(Anthropic), so verifier independence is too. `agy-ide.edn`'s Coder is Gemini and was not
-touched. Three things about Fable 5.1 shaped the change:
-
-- **Thinking is always on and counts against `max_tokens`.** The adapter's default was 4096,
-  so 16000, the non-streaming ceiling the API guidance gives.
-- **A 200 can be a refusal or a truncation.** `parse :anthropic` read every `stop_reason` but
-  `tool_use` as a finished answer. `adapter/error` now returns an error for `refusal`,
-  carrying its category and explanation, and for `max_tokens`. `converse!` ends such a
-  dispatch `:failed`. Four mutants fail tests.
-- **No fallback model,** by the user's choice. The API can re-route a refusal to another
-  model, which would put an answer from a model the profile does not name into a record that
-  says which model answered.
-
-Checked live through the committed profile, about $0.05:
-
-- A two-turn `read_file` round trip returned the token; effort and `max_tokens` were accepted.
-- A three-turn probe returned `thinking` blocks on both tool-calling turns, replayed them with
-  no 400, and computed the file name correctly.
-- A real Coder dispatch through `api-runner`, with the full rules prompt, rendered as
-  `claude-fable-5-1`, 2,868 tokens, cost "—".
-- **The new refusal path fired on its first live chance.** The first version of the thinking
-  probe was worded as "decoy files, only one holds the answer". The cyber classifier refused
-  it, and the dispatch failed with the category and explanation. The old code would have
-  shown an empty "done". The plain rewording went through. Whether real tasks draw refusals
-  is unmeasured (`NOTES.md` row 9).
-
-Cost is the other change nobody will see. Fable 5.1 lists at five times Sonnet 5's per-token
-price, and Anthropic direct reports tokens, not cost, so the run report's Coder cost stays "—".
-
-### 08:28 · D13 · `t-15-render` — shown the dependents, and did nothing different
-
-This was the test of 08:18's change with a model: D12's attempt 1 rerun, identical except that
-the dependents were in every packet. P1, the dependents computed exactly, held. P3, the test gate
-red in `property_test.clj`, held. P4, validate once, held. **P2 was refuted: no role flagged
-the conflict.** The telling detail is the Coder's docstring, which copies "the inverse of
-sandbox.parse" from the original `render.clj`. It read the file that explains round-trip, had
-the dependent in context and an instruction to keep it working, and implemented the conflicting
-contract silently.
-
-Deliberately not retried. The question was answered, and the retry would be D12's amendment
-again. It is recorded as failed, like D4. The finding narrows row 1 from "roles are not shown
-their dependents", now fixed, to "roles are not told what to do when the contract and what they
-were shown disagree". The `note` tool's triggers do not cover it.
-
-### 08:18 · A rewrite is shown what requires it
-
-`NOTES.md` row 1, after D12 met it. `sigs/dependents` asks clj-kondo's analysis, which
-`harness.sigs` already runs, which files require a namespace the task's `:files/impl`
-defines. It returns direct dependents only, from `src` and `test`, never the implementation
-files themselves, and nothing at all for a namespace not yet written. `sigs/with-dependents`
-appends them to `:files/context` after the Architect's entries. `bb run-loop start` computes
-them once, from a worktree no role has touched, records them as a `:dependents` event, and
-`effective-spec` applies them to every packet, while `spec.edn` stays the Architect's own. They
-go into context, not target: a dependent is kept working, not edited. The Coder is told that,
-and the Reviewer is told to check them.
-
-Checked: for `sandbox.render` it returns exactly `api.clj` and `property_test.clj`, the file
-D12 broke. For D11's new `paths.clj` it returns nothing, and all three packets built from
-D12's version-1 spec now list both. D7–D12 still replay byte for byte. Eleven mutants were
-tried. Ten fail tests. One is equivalent and survives: clj-kondo reports a missing scan path
-as a finding, not an error, so skipping it changes nothing. Two of the ten came from gaps the
-first round exposed. My multi-file fixture had no implementation file requiring another, and
-no test checked the new instruction text; both fixed.
-
-Not yet shown: that a model given the dependents does anything different. That needs a
-rewrite run.
-
-### 08:09 · D12 · `t-14-render` — the first dispatched rewrite
-
-This was the first time a model was handed existing code to change. The dependents of
-`sandbox.render` were deliberately left out of every packet, and the spec said so before
-dispatch. As predicted, attempt 1 met contract version 1 and turned the test gate red in
-`property_test.clj`, a file no role owned, and no role mentioned the dependents. That is row 1,
-meeting a model for the first time. The whole-suite gate is the safety net that caught it.
-
-Triage made it the Architect's, and ran that path for the first time: amend `spec.edn` to
-version 2 with `bb run-loop amend`, then retry both roles with `:architect` feedback. Version 2
-parenthesises only right operator operands, so everything `parse` produces renders unchanged.
-Both roles converged, and `property_test.clj` passes 4 of 4 against the final `render`.
-
-Two things found checking it. The Tester's test that `render` does not require `parse` can
-never fail, and gate 4 enforces that target instead (`NOTES.md` row 13). One of my mutants was
-invalid: it was killed by a compile error, not a test. It was replaced, and the record says why.
-Also fixed in passing: row 1 had claimed `api_test.clj` depends on `render`, and it does not.
-The seam rule held for the second time.
-
-### 02:47 · D11 · `t-13-paths` — the sharpened seam rule held
-
-This was the test of the 02:32 rule change: a recursive task that rebuilds no tree, run
-through `bb run-loop`. The Coder validated once and recursed through a private
-`paths-to*`, and its summary cites the rule. `paths-to` measured linear, 11.6ms at 800
-nodes, against one `check!`'s 11.2ms; D10's `measure` took 3,780ms. Every role went green
-first time for $0.062. Twelve mutants covered all seven targets and all were killed.
-
-The mutants ran through a new runner, `.local/runs/d11/mutate.bb`. It applies each mutant
-as an exact literal string and refuses any that does not match exactly once, so D10's
-regex-hit-the-docstring mistake cannot happen silently again. One run is one sample, so
-`NOTES.md` row 12 says "supported, not established".
-
-### 02:37 · The constructor's cost is accepted, for now
-
-Row 12's source 2 is `sandbox.expr/binary` validating the whole subtree on every rebuild, which
-makes any rebuilding task quadratic no matter what its Coder writes. It stays. For a task of its
-own: it is the last quadratic source, and rewriting a namespace eight others require would
-exercise row 1. Against: fixing it means weakening a deliberate design, validation at
-construction, for speed that sandbox inputs never need. It would also move the baseline D1–D10
-were measured on. The deciding point was D11. D11 exists to test the sharpened seam rule, and a
-task rewriting `sandbox.expr` would test two things at once, answering neither. So D11 uses a
-recursive task that rebuilds nothing, and this is revisited if a run ever needs linear rebuilds.
-
-### 02:32 · The seam rule says "once"
-
-`:shapes-are-the-contract` now tells the Coder to validate at the seams *once*. It says a
-function recursing into itself crosses its own seam on every call, and to validate at the
-entry and then recurse through a private helper. Both mirrors were regenerated. The Coder's
-prompt carries the new text and the Tester's does not, which is correct for the rule's
-audience.
-
-The question asked was whether a *Reviewer* rule would help, and the answer was: not much.
-A Reviewer rule makes the finding more reliable, but in D8 and D10 triage chose not to act
-on this finding, because no property target mentions cost, so a more reliable finding would
-change no code. It also acts late: the pattern starts with the Coder, which already had
-"validate at the seams" and `check!`'s own "Seams throw; interiors assume" open, and
-validated inside the recursion three times anyway. Method §10 lesson 12 says a rule already
-read is not fixed by writing it again. What those two lacked was specificity, so the change
-adds that rather than another copy.
-
-It is a prompt change, and §10 lesson 3 says to test one against a live run. D11 will. Row 12
-records it as unverified.
-
-### 02:25 · D10 · `t-12-measure` — the committed driver works, and row 12 had two sources
-
-The first run through `bb run-loop`, and the driver's first dispatch. It worked end to end,
-with no hand edits: `start` snapshotted the config and profile, `mutation`, `record` and
-`teardown` produced `runs/d10.edn`, and the report renders from it. Every role went green on
-its first attempt for $0.053, the Reviewer walked all six targets, and ten mutants were all
-killed. Two had first matched a docstring copy of the code; they were re-run on the code
-line and the record says so.
-
-The task was picked to keep row 12 out, since it rebuilds nothing, and it did not.
-`measure` validates at every recursive call and measures quadratic. Validating once makes
-it linear: 3,780ms becomes 10ms at 800 nodes. Timing D8's `bind` both ways separated the
-two sources. The per-level `check!` is fixable in-task; the constructor's validation is
-not, and `bind` paid for both. That falsifies three sentences written after D9: that D7's
-retry "removed nothing", that D8's per-level check "does not" cause the cost, and that "no
-task can fix it". All three are corrected in place in `RUNS.md`, marked as corrections,
-and row 12 is rewritten. The D9 entry below is left as it was written.
-
-### 02:13 · The driver is committed: `bb run-loop`
-
-`harness-seed/dev/run_loop.clj`, from the script D7 introduced and D8 and D9 carried
-forward. The changes from the throwaway:
-
-- **Paths out, run directory in.** Everything hardcoded moved into `loop.edn`: the run id,
-  the profile, the project subdirectory, the architecture files, the worktree directory, and
-  optionally the gates and nREPL command. The run's spec, state and outputs live beside it.
-- **The profile is read once, at `start`, and kept in `state.edn`.** The scripts re-read it
-  every command, and during the Tester switch that nearly moved a role to a different
-  model between attempts.
-- **The pure half is separate and tested.** Config resolution refuses a missing `:run/id`
-  or `:profile` instead of inventing one. The step names, the retry cap, and the dispatch
-  event are pure functions, and so is the run record, which still stops the clock at the
-  last dispatch or gate. Five mutants all fail tests. Refusals throw, and `-main` turns
-  them into an exit code, where the scripts called `System/exit` mid-function.
-
-**Verified without spending anything:** D7's, D8's and D9's `state.edn`, fed to the committed
-`record`, reproduce `runs/d7.edn`, `d8.edn` and `d9.edn` byte for byte. That replay found a
-bug first: `context` asked git for the repository root on every command, so a run
-directory outside a repository could not even be recorded. Now it asks only when there is
-no state yet, and says so when it cannot. **Not yet verified:** `start` and `retry` against
-real models. Their calls are the ones D7–D9 made, but this wiring has not dispatched; D10
-will.
-
-It is still not the orchestration loop. A human routes every failure, so `README.md`'s
-"deliberately left out" stands, and the section now says what is here instead.
-
-### 02:02 · D9 · `t-11-rename` — the property targets reach everyone, and it goes green honestly
-
-This was the first run after row 4 closed, with every decision in `:property-targets` and
-none copied into the title. Both predictions written into the spec held. No role was
-dispatched twice, which last happened in D5. And the Reviewer went through all seven
-targets against the diff, which no earlier Reviewer could have done. Its "no findings"
-was then checked: ten mutants, at least one per target, all killed, including sequential
-renaming and `m` validated before `e`. The whole run cost $0.058 and took 2m11s.
-
-Timing the result found something about the *sandbox*, and a claim `RUNS.md` had to take
-back. Rebuilding a tree through `sandbox.expr/binary` is quadratic, because the
-constructor validates its whole subtree. D9's `rename` and D7's final `fold` both measure
-~4× per doubling. So D7's retry, credited with fixing an O(N²) check, fixed nothing, and
-D8's Reviewer was not missing a fixable defect. `RUNS.md` §D7 and §D8 carry dated
-corrections in place, and `NOTES.md` row 12 is rewritten from a Reviewer-consistency
-watch into the gap it actually is.
-
-### 01:53 · Row 4 closed: the property targets reach every role
-
-`:property-targets` moved from `TesterPacket` to `PacketBase`, and from `tester-packet`
-to `packet/base`, so the Coder's and the Reviewer's packets carry them too. Now the
-Coder's instruction says to satisfy every entry, and the Reviewer's to judge whether the
-implementation honours each one. `Feedback` gained `:architect`, so an amendment like
-D7's can be announced rather than left for a role to notice.
-
-Why this and not a field on the slice: the targets were already the right field, in
-the right words, and in the right spec. They were attached to one role. `method.md` §05
-already said Coder and Tester derive "independently from the same written contract";
-the harness just was not handing one of them the whole contract. The Tester's
-independence is unaffected. What makes tests independent is an implementation-free
-context, and the test that asserts that stayed green.
-
-The test that matters most checks the prompt, not the packet. A property target has to
-reach the Coder's *model*, not just the map, which is the same lesson as D3's
-deliverables. Four mutants were tried, one per change, and all four fail tests: `base`
-dropping the targets, the schema no longer declaring them, `:architect` removed, and the
-Coder's instruction reverted. Upstream still attaches them to the Tester alone, so this
-is a `PROVENANCE.md` divergence and a back-port item.
-
-### 01:39 · D8 · `t-10-bind` — green, reviewed, and wrong about its own boundary
-
-The first loop run on `gpt-5.6-sol` as Tester, and it is fast: 58s and 8 iterations on
-the first attempt, where D7's first attempt took 5m49s. Of those 58s, 47.3s was the
-model. Attempt 1 went green, the Reviewer found nothing, and the implementation broke
-property target 6 on all five invalid inputs tried, including a StackOverflowError on
-`nil` and malformed `:vars` silently turned into valid literals. The one mutant that
-survived deleted the validation.
-
-The reason is row 4, wider than D7 showed. **Only the Tester's packet carries
-`:property-targets`**, so neither the Coder nor the Reviewer ever saw target 6. The
-workaround of copying decisions into the title missed that one.
-
-Triage needed a voice, so `Feedback` gained `:triage`: a test, and a mutant that fails it.
-Both roles retried and converged in under a minute each: all probes correct, 8 of 8
-mutants killed. Two things were recorded rather than retried: the retry re-validates at
-every recursion, the O(N²) shape D7's Reviewer caught and D8's did not (`NOTES.md` row 12);
-and the Coder called a signature outside its slice, which nothing checks (row 11).
-
-The driver's first write of the attempt-2 mutation record carried attempt-1's
-substitution text for three mutants. It was corrected before `runs/d8.edn` was taken.
-Evidence that says what ran, and not what nearly ran, is the point of the record.
-
-### 01:20 · The Tester moves from flex to the standard endpoint
-
-Both profiles' `:tester` now pin `:only ["openai"]`. Flex failed on capacity, not on
-quality: 3 of 4 requests refused inside 75s and 4 of 5 dispatches in a row, each an
-upstream 429, while the standard endpoint answered every request. A Tester that fails
-for OpenRouter's capacity would make D8 measure the wrong thing.
-
-**`"openai"` is also the provider's name**, so it was worth checking what the pin
-selects before relying on it. The error for this morning's made-up tag listed the
-model's providers as "openai, azure", with no tags. Six parallel requests through
-`:only ["openai"]`, plus the one this morning, all reached the same endpoint id
-(`a54c5de0…`) at service tier `default`. Their cost matched standard pricing: 24 in and
-5 out came to $0.000098, which is $2/M in and $10/M out. That is observation, not a
-guarantee that flex and fast are excluded, and the profile comment says so. If routing
-ever picks another tier, the report's provider cell will show it.
-
-The end-to-end check through the committed profile succeeded on its first attempt, with
-provider `OpenAI` and tier `default`, rendered as plain `OpenAI`. `NOTES.md` row 9 is
-narrowed to what stays open: nothing retries a rate limit, for any role.
-
-### 01:13 · The Tester is gpt-5.6-sol on flex; a 200 can be an error
-
-**The switch.** Both shipped profiles' `:tester` now name `openai/gpt-5.6-sol` with
-`:only ["openai/flex"]`, on B1's result. Their comments were rewritten so each sentence
-is true again. "This model has exactly one provider" no longer was, and "the Tester is
-not the cheap seat" became "choose the Tester by its tests, not its price", which is
-what B1 did. `bb profile --seat claude` and `--seat agy-ide` both pass. `portability.md`'s
-quoted profile and seat table follow.
-
-**The tier is in the report.** Flex and standard both report provider "OpenAI", so a
-flex run's table would have read like a standard one. `:runner/meta` carries
-`:service-tier`, `RunStep` accepts `:step/service-tier`, and `report/dispatch-step`
-writes it only when it is known. The provider cell reads `OpenAI flex` for any tier but
-`default`. The 12 published reports carry no such key and re-render unchanged. Five
-mutants all fail tests.
-
-**The first dispatch through the switched profile found a harness bug.** It came back
-`:done` in 716ms, with no text, no tokens and no model, and its generation record never
-appeared. The raw body was **HTTP 200** holding `{"error": {"code": 429, ...}}`:
-OpenRouter streams keep-alive whitespace before it knows the outcome, so an upstream
-rate limit arrives inside a success. `adapter/error` read only the status. It now treats
-an `error` in the body as an error, and takes the body's code when it is a number. A
-status-only mutant fails six tests. Before this fix, a rate-limited Tester in a real
-loop would have been reported as a model that produced nothing, and assembly would
-have refused it by name, blaming the model for OpenRouter's capacity.
-
-**And flex is rate-limited, intermittently.** Four tiny flex requests over ~75s: three
-429s and one answer. The standard `openai` endpoint answered at once. The end-to-end
-check through the committed profile needed five attempts, and on the fifth rendered
-`openai/gpt-5.6-sol-20260709 · OpenAI flex · $0.001618`. What to do about it is not
-decided here — `NOTES.md` row 9.
-
-### 00:51 · B1 · three Tester candidates, judged by their tests
-
-Smoking a model only shows the plumbing works; D4's `deepseek-v4-flash` would have
-passed that. So each candidate — `gpt-5.3-codex` (Azure), `gpt-5.6-sol` (OpenAI flex),
-`glm-5.3` (Z.AI) — got one real Tester dispatch with the identical packet: D7's amended
-contract, a first attempt. Its tests were then gated against D7's green `fold.clj` and
-run against D7's eight mutants. The reference went in through `assemble!`'s
-architecture argument, which exists for files that belong to no role.
-
-Both OpenAI models passed every gate and killed all eight mutants, and both wrote
-generative properties, which `gpt-5.2-codex` never did. `gpt-5.6-sol` on flex took 9
-iterations and $0.035; `gpt-5.3-codex` took 21 and $0.175. `glm-5.3` capped at 24 having
-written nothing, and assembly refused it by name. Why cannot be recovered: nothing keeps
-a dispatch's transcript, which is `NOTES.md` row 8.
-
-The same records confirm 00:33's fix on real dispatches. The summed fetch time was
-158s, 68s and 183s; the loop waited 7–9s, once. `RUNS.md` §B1 has the table and the
-reports, and `runs/b1-*.edn` the records. No profile file was changed.
-
-### 00:33 · The loop stops waiting on bookkeeping
-
-**Why the Tester is slow, measured.** In D7 the Tester took 21.8s an iteration and
-the Coder 4.7s, and the Tester sent fewer tokens per call. `converse!` fetched the
-OpenRouter generation record synchronously after every completion. That record is
-written asynchronously and takes seconds to appear, and the Coder, going direct to
-Anthropic, has none to wait for. Until this change nothing timed anything inside a
-dispatch, so that stayed an inference.
-
-It is measured now. Steps carry `:ms/completion` and `:ms/provenance`, and tool calls
-carry `:ms`. `provenance/of` keeps `:reasoning-tokens`, `:generation-ms` and
-`:service-tier`, and `:runner/meta` sums them. A two-completion tool round trip against
-D7's Tester (`gpt-5.2-codex`, Azure) and Reviewer (`gemini-3.8-flash`, Vertex), run
-twice each:
-
-| | wall, before | completion | waiting on the record | tools | wall, after |
-|---|---|---|---|---|---|
-| Tester model | 21.4s, 17.8s | 2.6s, 2.9s | 18.8s, 14.9s | ~1ms | 11.4s, 10.9s |
-| Reviewer model | 20.6s, 19.2s | 3.1s, 3.4s | 17.5s, 15.8s | ~1ms | 9.2s, 9.9s |
-
-**6.8–10.5s of waiting per completion — 84–88% of the round trip.** Nothing in the loop
-reads a generation record, so each fetch now starts in a `future` the moment its
-completion returns, and one helper derefs them all on every exit: the answer, the cap
-and an API error. The error exit matters because a failed dispatch has still paid for its
-earlier completions. What remains at the end is one wait for the slowest pending record,
-not one wait per iteration. Steps keep their shape and their order, and the existing
-agent and runner tests pass unchanged. Two new tests fail under the two obvious mutants:
-deref inside the loop, and no deref on the error path.
-
-**What it should be worth on a real dispatch — an estimate, not a measurement.** At
-~8.4s saved on every completion but the last, D7's Tester would have lost ~2m of its
-5m49s, and its retry ~3m of 8m41s. That leaves ~14s an iteration of model time and tools
-that the probe cannot explain: its prompts are trivial and produced no reasoning tokens.
-D8 will show it, if its driver records the new fields.
-
-### 00:15 · Two Tester candidates smoked, no profile touched
-
-`openai/gpt-5.6-sol` and `z-ai/glm-5.3-flash`, through `harness.adapter` and
-`harness.agent/converse!` with role maps built in the script. Each got a plain
-completion, plus a tool round trip: `read_file` on a file holding a token nobody could
-guess, which the model had to repeat exactly. Both passed every probe, with the token
-returned exactly and arguments intact, in 2 iterations. The whole smoke test cost
-$0.00064. The results and raw generation records are in `.local/runs/smoke-tester/`.
-
-**`:only` accepts an endpoint tag, and validates it.** `["openai/flex"]` was served at
-exactly half the standard endpoint's cost for identical native tokens (21 in, 5 out),
-which is the listed flex discount. A made-up `["openai/no-such-tier"]` was refused
-with a 404 rather than quietly served.
-
-**The generation record tells flex apart; the harness drops it.** Of 45 fields, the
-tier shows in `:service_tier` (`"flex"` against `"default"`) and in
-`:provider_responses[].routed_service_tier`. `:provider_name` is `"OpenAI"` for both,
-and that is the only field `provenance/of` keeps — so a report of a flex run would
-look like a standard one.
-
-**Unpinned GLM changes host from call to call.** Its plain completion went to Parasail
-(fp8), and both completions of its tool probe went to Z.AI. It has 26 endpoints,
-quantised from fp4 upward: D4's confound, available again on request.
-
-### 00:00 · The step column sizes to its steps; a count nobody could re-derive
-
-D7's report put `reviewer-r1`, eleven characters, in a ten-character column. Run 4 made
-the same mistake in the kind column, and the fix then was to derive the rule from the
-header — which left the column widths themselves as literals. Step names are data, so
-that width is derived now, with ten as its floor so every table published before it
-re-renders unchanged. `report-check` confirms that it does.
-
-Updating the counts for D7 found one that could not be updated: `CLAUDE.md` said
-`RUNS.md` published *22 cost and token figures*. Counting the `$` amounts and token
-cells in the eight rendered reports gives 15 and 21. No reading that was tried gives
-22. The sentence now names `bb report-check` for the count and types no number, and
-`NOTES.md`'s *twenty-five findings fixed* went the same way. The 22 is left standing
-in the 14:10 entry below, which is history; this is the correction.
-
-## 2026-09-13
-
-### 23:33 · D7 · `t-09-fold` — the return channel meets a model
-
-The first run to offer the `note` tool and the first to call `packet/for-retry`, which
-were `NOTES.md` rows 4 and 5 and are now answered. The contract's silence on `:div` was
-deliberate; nothing else was.
-
-Attempt 1 went green with a fold that throws on `(div 7 2)` and tests that checked no
-value. The Reviewer found the gap and left the first note any model has left. Triage
-was by hand and written down before each dispatch: amend the contract, finding to the
-Coder, note (not finding, which quotes code) to the Tester. Both converged, and all
-eight mutants of the second attempt die.
-
-The prediction written into the triage file was wrong. It expected the amendment to
-reach both roles unannounced; it never reached the Coder, because `coder-packet` does
-not carry `:property-targets`. That is `NOTES.md` row 4 now. `RUNS.md` §D7 has the rest,
-and `runs/d7.edn` is the first record to carry `:run/events`, so the notes, feedback and
-triage decisions it quotes can be checked.
-
-### 23:30 · The Reviewer is shown the files the task created
-
-Found writing D7's driver, before anything was dispatched. Every driver since D4 built the
-Reviewer's diff as `git diff HEAD`, which does not list an untracked file — and the loop
-assembles new namespaces, so everything a task creates is untracked. D5's and D6's
-Reviewers were given the `layers.edn` change and nothing else. Their replies were not
-kept, so what they actually reviewed is not recoverable.
-
-`provision/review-diff` intent-adds before diffing, so a driver cannot get this wrong
-again by writing the obvious command. Its test fails with the intent-to-add removed.
-
-### 14:48 · A second drift gate, over the reports RUNS.md publishes
-
-Committing the records made the figures checkable by hand. Nothing checked them.
-
-`bb report-check` closes that, and it is deliberately not a new idea: `rules-check`
-already gates `AGENTS.md`'s generated block against `agent-rules.edn`, and `RUNS.md`'s
-report tables are the same kind of thing — generated content living in a markdown file.
-Every published report re-renders from `runs/<id>.edn` and must match byte for byte. It
-runs in `bb gates` between `rules-check` and `test`, in-process, in milliseconds.
-
-**Checked in both directions**, which is the half worth arguing for. A published table with
-no record is the failure that prompted all this. A record nothing publishes is the other
-half, and without it the gate could be satisfied by deleting the evidence instead of fixing
-the table. The bidirectional check is also what caught the `run3`/`r-03` filename mismatch
-by hand earlier today.
-
-**The obvious gate was the wrong gate.** "Run every command the documents tell a reader to
-run" is what suggested itself first, and it would not have caught this: the command
-`.local/README.md` published named `d6`, and `d6` renders. What was false was the claim
-around it. `NOTES.md` said otherwise for half an hour and now says this instead — a command
-runner catches path rot, not a true example supporting an untrue sentence.
-
-Six mutations of `harness.report` confirm the seven new tests bite: drift silenced, the
-no-block direction dropped, a changed number accepted, every fenced block counted as a
-report, a non-record undetected, an unrenderable record swallowed. All six caught.
-
-### 14:10 · The run records committed; only the scaffolding stays local
-
-Writing the `.local/` convention up as a *general* rule for `~/.claude/CLAUDE.md`
-exposed that the specific case here was half wrong. `.local/` held two unlike
-things: 253 KB of scaffolding — drivers, specs, session files, all hardcoding
-paths and superseded by the next run — and 13 KB of **run records**, which are
-what `RUNS.md`'s eight tables and 22 cost and token figures were rendered from.
-Keeping the second half where no reader can reach it means this repository
-publishes precise numbers nobody can re-derive, which is the exact failure its
-own rules exist to prevent: `:step/source` is required with no default and
-synthetic rows are bracketed, and then the evidence was put out of reach.
-
-So `runs/` is committed, named by `:run/id`, beside the document it is evidence
-for. The drivers stay in `.local/`.
-
-**Two of the eight were not records at all.** `bb report` threw a
-`NullPointerException` on `d1/smoke-out.edn` and `d3/result.edn` — both raw
-results, from before there was a run record and from a single-role dispatch.
-Their tables had been rendered by a shaping script that was then thrown away,
-so "re-render it yourself" would have needed a script that is not there. Both
-were reconstructed from their own fields, and the general rule grew a third
-bullet: **commit the evidence in the shape the committed tool reads**, not the
-raw output it was shaped from.
-
-Verified by diffing, not by reading: all eight rendered reports are byte-identical
-to the fenced blocks published in `RUNS.md`, and the set is closed in both
-directions — every block has a record and every record has a block. Neither
-`/tmp`, `/Users` nor any key name appears in the committed files.
-
-### 13:32 · Documents given one job each, and this file written
-
-The session ended with 32 unpushed commits carrying 1,360 lines of message — a
-lot of reasoning living somewhere nobody greps. This file is where it went, and
-the commits were collapsed to one.
-
-Auditing the documents while extracting them found the same failure twice more.
-**Three forward-looking lists existed and two had drifted** — `harness-seed/README.md`
-and `method.md` §12 both still said "the first headless runner" was to come,
-a week after the seed had one. They were duplicates of each other, which is why
-both were wrong: nobody updates a list they think another file owns.
-
-So each document now states its job at the top, and the root README carries a
-map of which is which. The seed's README is the authority on what the seed
-contains and what is left out; `method.md` §12 argues the question and points at
-it; `NOTES.md` is the state right now; this file is the history. The `LICENSE`
-story was in two files verbatim and is now in `CLAUDE.md` alone, where it is a
-working rule rather than a limitation.
-
-`RUNS.md` gained a timestamp, an outcome and its report table for every run —
-**regenerated from the surviving run records, never retyped.** Runs 1 and 2 have
-no record and say so rather than carrying reconstructed numbers. Doing that
-turned up a hand-abbreviated D5 table I had written into the file earlier, which
-is the same failure as an unmarked synthetic number and is now deleted.
-
-**No TODO file.** There were already three places carrying forward-looking work
-and two were stale; a fourth is that pattern by construction. The immediate
-queue is the `## Next` block above.
+## 2026-09-28
+
+### The documents prepared for `main`: what the KIT ships says only what it can show
+
+The person's decision: the builds that tried the KIT are over, the next project built with it
+is a real one, and it should stand on `main`. So the development branch's documents were read
+for everything a reader of `main` could not resolve, and four kinds of thing went.
+
+**Names and paths.** A project built to try the KIT is named by its order and nothing else; no
+document, comment or test carries a project's name, a path on the machine the KIT was developed
+on, or where the older records are kept. Two tests and a docstring used a project's namespace as
+their example; they use `app.` now. The workflow's diagram names its example project `xyx`, as the
+README does.
+
+**Figures.** A cost, a count or a share measured on one of those builds is not quoted, because
+nothing in this repository can re-derive it - the rule `CLAUDE.md` has always stated, applied to
+the figures that had been let through as evidence. What was learned stays, in words: the register,
+the two profile examples' comments, the rule source's comment on `:data-conventions`, and this
+log. One sentence had to change its claim and not only its wording: the harness README quoted
+what a spec review costs; it now says what the cost depends on and that a project's own records
+give the figure (row 42).
+
+**Commits of the development branch.** The branch reaches `main` as one commit, so a hash from
+it would point at nothing. The register's Status column keeps its dates; this log's entries are
+referred to by date. Hashes of the template fork and of the upstream harness stay: those
+repositories hold them.
+
+**Plan labels.** Step names from the working plans (a letter and a number) meant something only
+beside plans that are not in the repository. Each is replaced by what the step did.
+
+**The register** is cut where it could be: a fixed row whose lesson lives in code, a test or a
+document is one line; a row that is open, watched, provisional or written keeps what remains to
+be done, since that text is the only specification of the work. 78 rows before and after.
+
+**Sentences that had stopped being true.** `portability.md` still said the dispatch harness was
+set up for nothing and that the loop, triage and the run log were out of scope; it says what was
+built, and keeps the design's reasoning. `harness/AGENTS.md`'s hand-written frame told a reader
+it was probably a dispatched agent; the file is the harness's own mirror, for work on the
+harness by hand and as the first file `bb rules-check` holds, and says so. `harness/CLAUDE.md`
+said to copy the off-loop role by hand, which `bb init` does.
+
+Checked: `git grep` over the tracked files for the development machine's home path, the
+projects' name, and the name of the folder and the branch the older records are kept in prints
+nothing; for the word that folder is named by, one line, the plan template's own sentence about
+superseded plan documents; every line naming a run table or the ignored working folder read, each
+a project's report or the KIT's own folder; `bb repair && bb gates` green, 513 tests, after the code and test edits and again after
+this entry.
+
+### Teardown deletes a recorded run's branches
+
+Row 78, from a build's closing note: dozens of task branches left in its application,
+rehearsal and merged alike, because `teardown` removed the worktrees and kept every dispatched
+run's three branches for ever, so the work stayed reachable. It is reachable elsewhere: `record`
+copies the gated bytes, the final files and the transcripts into run.edn, and a merged run's gate
+commit is on the base branch by the --no-ff merge. After the record, the branches hold nothing
+it does not, and nothing said whether they were evidence or litter.
+
+The line is the record. `teardown` on a run that dispatched and is recorded deletes its three
+branches and says so; on a run that dispatched and is not recorded it keeps them and says
+`record` first; `--keep-branches` keeps them for a run somebody means to reopen; a run that
+dispatched nothing is reset as before. `merge` records and tears down, so a merged run's
+branches go with the merge. The happy-path merge test, which asserted the branches stay, now
+asserts they are gone and the work is on main; a new test covers the three cases. The `:merged`
+next-steps line and the usage say it. 513 tests.
+
+### Row 62 measured: the CSS watcher does not outlive the JVM on the known-good set
+
+The person asked what could be fixed before the next build and chose row 62 among three: the template's
+`bb serve`, stopped by killing its JVM, leaves its Tailwind watcher behind, from the fifth
+build's note. Measured before touching the fork: an application generated from the fork at
+`kit-v1` through `KIT_TEMPLATE_LOCAL`, served, its four processes listed by pid, and four stops
+tried - SIGTERM and SIGKILL to the JVM, SIGTERM and SIGINT to `bb serve` alone. Nothing survives
+any of them; the watcher is the JVM's child through the library's process component and dies
+with the JVM's pipes. The fifth build's stop command matches no process on this machine, so its
+observation cannot be reconstructed.
+
+Two things worth keeping from the way there. The first pass reported SIGINT to bb alone as a leak
+that left everything alive, and a one-line hardening (`:shutdown p/destroy-tree` on the serve
+task's shell call) was applied to the fork's working tree, an application generated from it, and
+the four stops run again - and the SIGINT case was unchanged. The harness was the leak: a job
+started with `nohup … &` from a non-interactive shell inherits SIGINT ignored, so bb never saw
+the signal. With the disposition reset before `bb serve` starts, the unfixed application is
+clean on SIGINT too. The hardening was reverted; no fork commit, no `kit-v2`, no pin bump. The
+row goes to watch with the table and what reopens it. The second: a measurement that contradicts
+a note is not the last word until the harness that took it has been checked, which cost one
+extra cycle here and would have cost a template version otherwise.
+
+### The stop says how many reviews the run has bought
+
+Row 16, open since the first project: the retry cap counts rounds, and a `check` typed after a
+rule-source or Blueprint change buys a fresh Reviewer dispatch that is not a round, so one run
+took five reviews for most of its money with nothing saying so. `orchestrate/reviews-bought`
+counts the Reviewer's dispatch events and prices them from the report steps of the same names
+(`:reviewer`, `:reviewer-r1`, …), and `announce!` prints the line at every stop that follows a
+review - the count, the cost when the steps have one, and that none of it counts against the
+cap. The cap itself is unchanged: each review is a person's choice, and the number in front of
+them at the moment of choosing is what the row asked for. Two tests: the count and the pricing
+as data, and the line in the reviewed stop's output.
+
+### Row 47 closed: the plan template knows what the KIT decided, and the check over the given parts had landed
+
+From the person's question of what could be fixed before the next build: the register's
+open rows read in full, and row 47 turned out to be done. Its three halves landed on three days -
+the rules overlay (2026-09-24), the three-part `02` and `03` (the same day) and the check
+over `layers.edn` not loosened and the gate keys in order (`plan/given-problems`, tested as
+"the given parts: layers loosened, gates reordered") - and the row's last sentence still said the
+check was left to do. Status to fixed, the closing sentence written; no code changed. What the
+three parts cost was row 76, fixed on 2026-09-27.
+
+## 2026-09-27
+
+### The `layers.edn` entry's route to a run is written where an adopter reads
+
+Row 77, the proof build's third finding and the last of the six to land. The KIT's rules keep
+every dispatched role inside its target, the boundary gate fails a namespace nobody declared,
+and the way out - the Architect's `layers.edn` in the run directory's `arch/`, named as
+`:architecture {:from "arch" :files ["layers.edn"]}` in the run's `loop.edn`, copied by assembly
+into the gate worktree - was in the driver's docstring, the provisioning code and the health
+check's one task, and in none of the documents that tell an adopter to declare the namespace.
+The adopter's plan review asked where the executable sequence was; the first resolution was
+wrong; the right one came from reading `health.clj`.
+
+The sentence now sits in three places an adopter meets in order: the architecture template's §4
+note (one row here, one entry there, and this is how the entry travels), `method.md` §03 step 3
+right after the gate that makes it necessary, and the header comment of the `loop.edn` that
+`bb init` writes into the plan, which every run directory copies - with the key to add. No code
+changed; `init_test` asserts the header carries it.
+
+With this the six findings of the proof build are ported, one commit each.
+
+### The plan check leaves a given part's blockquotes alone
+
+Row 76, the proof build's second finding. `bb plan-check` took every blockquote line of
+every template document as an instruction - the template's notes to the reader, which a filled
+plan deletes once acted on - and the template's rewrite had put `02` and `03` in three parts, the first of which,
+Given, is the KIT's own prose and is not edited. `03` §10 carries a five-line blockquote on rule
+layers inside that part. The adopter kept it, as the README says to, ran the check, and was told
+five lines of the template's instructions were still standing; the check gates the first
+dispatch, so the lines lost their `>` markers and the given part was edited to satisfy the rule
+that says not to edit it.
+
+`plan/without-given-part` cuts a template document from `# Part 1 — Given` to the line before
+`# Part 2` before `instruction-lines` reads it, so a given part's blockquote is prose and the
+opening note before Part 1 and every blockquote in the chosen and domain parts are still
+instructions. The test reads the shipped template: `03` §10's line is not an instruction, `02`
+§4's and `03`'s opening note are, and the cut is checked on its own for a document with no Part 1
+or no Part 2. The plan template's README says it in one sentence. 511 tests.
+
+### `bb init` writes the records' folder and their document
+
+Row 75, the proof build's first finding, seen when its workspace was made and left
+for the adopter to find. Four documents - the method's §03, the plan template's README, and the
+workspace and plan READMEs that `bb init` writes - said the plan holds `runs/` and `RUNS.md` from
+`bb init`; `workspace.edn` pointed at both; and `bb init` wrote neither. Row 65 (records in the
+plan) gave `record` the copy and `report-check` the hold, and the documents were written as if
+the folder and the document came with them. The adopter found no folder, watched `record` make
+it on the first copy, and wrote `RUNS.md` by hand with `bb report`'s output pasted in before the
+gate would pass.
+
+`bb init` now writes both: `runs/`, empty until the first record (git tracks it from then), and
+`RUNS.md` with a header that says how a report gets in and that publishes none - a report is a
+plain fenced block opening `Run <id> ·`, which is what `published-reports` finds - so
+`report-check` holds an empty folder to it from the first gate run. Asserted in `init_test`
+(`:both`, no published report, no drift) and checked live in a scratch clone: `bb init n1check`
+makes both, the plan's first commit tracks the document, `bb report-check` from that clone says
+"reports in sync: 0", and nothing of the project is in the clone. The plan template's README stops counting "the
+four beside `docs/`" - its tree lists six - and says which `bb init` writes and which command
+makes `reviews/` and `bake-offs/`.
+
+### The KIT's gates pass in a workspace's clone
+
+Row 74, the proof build's sixth finding and the one that failed the build's own
+verification. The adopter ran `bb gates` in its clone at the build's end, as `harness/README.md` says a
+workspace does, and the test gate was red on two assertions of one test: `balance/split-args`
+given a record alone was expected to return no profile, "outside a workspace" - which the KIT's
+development folder is, and a workspace's clone is not. The seven other gates were green; the
+KIT's clone stayed clean. Every gate run before had been in the development folder, so a test
+that was true only there had never been false.
+
+`split-args` now takes the workspace's profile as a second argument, and the one-argument form
+supplies `profile/project-profile` as before; the test passes nil and a path and asserts both
+ways, including `bb balance` alone from a clone meaning the project's profile. Verified where it
+failed rather than where it had always passed: a clone of the previous commit inside a
+scratch workspace (a `workspace.edn`, a plan folder with the shipped `claude` profile and the
+overlay `bb init` writes) failed the same two assertions; the same clone with the fix copied in
+runs 510 tests green, and `bb gates` there is green. A first attempt to reproduce by exporting
+`KIT_WORKSPACE` was not the adopter's situation: the variable wins over the walk-up and four
+workspace tests that probe the walk-up with an explicit directory fail under it. Noted in the row
+and left - it is a hazard of the development folder, not of a clone.
+
+### A `:deps-sigs` entry is qualified, and both readers of the slice say so
+
+Row 73, the proof build's second finding. Its home-page task wrote `:deps-sigs [(base [title
+content]) (header [...])]` the way `method.md` §06's example packet and the Blueprint template's
+packet showed it - unqualified - and `start` passed it: `sigs/violations` resolved an unqualified
+name by searching every context file for a definition, and a test asserted that a truthful slice
+may hold one. But `sigs/undeclared-calls`, the `calls` gate, grants by `[ns name]`, so the same
+entry granted nothing, and the Coder's first `views/base` was a red gate after a Coder and a
+Tester had been paid and triage had routed it to the Architect. Two readers of one key, two
+rules; the documents taught the one that fails late.
+
+One rule now: an entry is `ns/f`. `violations` reports an unqualified entry as `:unqualified`
+with the form to write, in place of the search; `sigs/check-deps-sigs` is the same as pure data in
+`stub/check-slice`'s shape (an entry `parse-sig` cannot read is named too), and
+`blueprint/spec-for` and `driver/start!` run it beside `check-slice` and `check-files`, before
+the schema, the spec review and provisioning. The example packet, the method's sentence on
+`:deps-sigs`, the template's packet and a new note in its §4, and the Blueprint reviewer's rule
+text all say qualified. The ambiguity case (two context files defining one name, once skipped
+"rather than guessed") is refused as unqualified now and resolves when qualified, which the same
+test still checks. 510 tests.
+
+### A two-file packet is refused before a review is paid for
+
+Row 72, from the proof build: an adopter session that built a two-stage project on the KIT
+after the state move and wrote nothing into its clone. Its fourth task named
+`handlers.clj` and `routes.clj` under one `:files/impl`. `shapes/TaskSpec` said `[:vector {:min 1}
+:string]`, so the extraction validated it, `sigs` passed it, and `start` ran two spec reviews
+and provisioned three worktrees before `stub/write!` threw the one-file rule; the run was
+torn down and the task split, one run more than planned. The rule was always right - a slice is
+one namespace's shapes and signatures, so a second file has no way to say which interface is
+whose - but only the last reader enforced it, which is the same shape as the slice entries the
+stub could not read (the fourth project's crash, `stub/check-slice`).
+
+The fix follows that precedent: `stub/check-files` returns the rule as data in `check-slice`'s
+shape; `blueprint/spec-for` runs it first and refuses by name (`:blueprint/error :multi-impl`,
+"split it into one packet per namespace"); `driver/start!` runs it beside `check-slice`, before
+the spec review and before anything is provisioned, so the refusal has nothing to tear down. The
+schema now says `{:min 1 :max 1}` as well, for a reader that validates without the rule; the
+Blueprint template's packet comment and `method.md` §06 say one file per task. Three tests:
+the check and `write!`'s message; the extraction refusing a two-file packet from the template
+fixture; `start` refusing it with no provisioning, no signature check, no `state.edn`.
+
+The build's other five findings follow, one commit each; the adopter's own records stay in its
+workspace.
+
+## 2026-09-25
+
+### Bake-offs are a tool: `bb models`, `bb bake-off`, and a judge that reads blind
+
+Row 46, deferred since the first bake-offs were run as throwaway scripts
+and scored by hand. Decided with the person before the proof build: a bake-off is data - an act,
+candidates, a judge - and the mechanism is the same for every act; the person types three lines
+and the tool generates the rest; the judge maps consensus and disagreement rather than deciding;
+one pass per candidate, no samples.
+
+`bb models <query>` (`harness.models.catalogue`) is the lookup every brief did by hand: OpenRouter's
+public listing as rows, newest first, the family read off the slug's prefix, prices per million
+through BigDecimal (0.0000016 × 1e6 in doubles prints 1.5999999999999999), whether reasoning is
+taken, the providers serving one model; no key is sent. `resources/routes.edn` is how each family
+is reached - endpoint, key variable, shape, provider pin, effort parameter and levels, `max_tokens`
+- what the two shipped profiles already said, written once so a slug can become a role block.
+
+`bb bake-off run <plan>/bake-offs/<id>/bake-off.edn` (`harness.models.bake-off`) expands the spec -
+`{:role :blueprint-reviewer :candidates ["anthropic/claude-opus-5.5 high" "grok medium"] :judge
+"openai/gpt-6-astra high"}` - through the catalogue and the routes into `RoleProfile` blocks,
+written beside as `resolved.edn`; refuses by name a model the listing lacks, a family with no route,
+an effort the route does not know, fewer than two candidates, no judge, a judge that is a candidate.
+The act names the profile role, how its cases are found on disk (the plan; each Blueprint under
+`docs/stages/`; each `spec.edn` under `work/runs/`) and how one case is run: the three review
+namespaces gained a `read!` that takes a role block instead of a profile file and returns the
+findings, the model as served, the cost, the time and the text sent, so a candidate sits in the
+seat without touching the plan's real review files. One record per case per candidate under
+`records/`; a candidate whose call fails is recorded and the others go on. Then the judge, one call
+per case, given the candidates' input and their answers as A, B, C in a shuffled order the record
+keeps, asked for one row per distinct finding with the letters that raised it, a note where they
+disagree and its own opinion; the letters are mapped back only in the record. `TABLE.md`: per
+candidate the findings raised, rows raised, rows raised alone, cost, time, and real findings per
+dollar from the person's `marks.edn` alone (a row index per case → true/false); per case the
+cross-reader table. `bb bake-off table` re-renders after marks; `bb bake-off-check` holds every
+table to its records and is in `bb gates`' workspace half beside `report-check`. `bb bake-off new`
+asks in order at a terminal - the act by number, each candidate resolved and confirmed back, the
+judge held to the rule and asked again, the cases on disk - and writes the spec; without a
+terminal it says to write the file. The dispatched roles' runner - a loop run per candidate - is
+the row's residue.
+
+Checked: `bb gates`; the catalogue on a canned listing in the listing's shape (a word → the newest
+slug, an alias skipped, an exact slug, an empty word names nothing, prices, the family, the routes
+file's shape and a family with no route refused); the expansion and every refusal; the letters'
+seeded shuffle; the run end to end against a stub that answers by who is asking (records, the
+judge's record with its order and rows, the table before and after marks, the check catching an
+edited table and a lost record; a dead endpoint for one candidate recorded and the others judged);
+`new` on a scripted terminal. Live, free: `bb models grok` and `--endpoints` for one model. Live,
+paid: one bake-off on an earlier build's stage 1 Blueprint - three readers and a fourth model
+as judge: every row raised by all three was judged real, and most rows raised by one reader
+alone were the slowest reader's literal readings of the one-promise rule; what the calls
+reported as their cost is what the balance moved by once the last call had posted. The table
+and the records are kept outside the repository. `fs/glob` matches files and not
+folders, found by the check's test. Row 46 fixed with its residue.
+
+### The Blueprint is read before sign-off: `bb blueprint-review`, and a sixth role in the profile
+
+Row 70, opened the same morning by the roster, closed. `method.md` §07 step 2 promised a read of
+the Blueprint - the Orchestrator asks whether it is over-engineered, then the human signs off - and
+nothing ran it: the harness's orchestrator role is triage, and a Blueprint's packets met a model
+one at a time, in the spec review, which cannot see a layer with one use, a shape nothing needs, or
+a packet that builds for a later stage. Two projects wrote the read as a throwaway script each.
+
+Now `bb blueprint-review <blueprint.md>` (`harness.setup.blueprint-review`) sends the stage
+document the Blueprint's header names as its input, then the Blueprint, then two sections read
+from `method.md` at the call - §07's strategic-planning step and §06 from its data-shapes-first
+rule through the rules for property targets - to a new profile role, `:blueprint-reviewer`: one
+completion, no tools, the prompt saying which parts are given. The findings are parsed as the plan
+review's are, printed with the cost, and written to `<plan>/reviews/<stage>/blueprint-review.edn`
+with the history of earlier reads; the Architect resolves them in the stage document, then signs
+off. Not a gate. A Blueprint not under `docs/stages/`, a profile without the role, a stage document
+the header does not name (the read goes on, saying so) and a missing method heading are each said
+by name.
+
+The role: `harness.contract.shapes/Profile` closes over six roles now, `profile/roles` lists it
+first (a build meets it before any `start`), both shipped examples carry it - Claude Opus 5.5 at
+high effort over OpenRouter pinned to Anthropic, no cache, no pricing. In the `claude` example that
+is the seat's family, which §05's reasoning forbids as it forbids it for the spec reviewer; the
+decision (the person's, 2026-09-25) is an accepted exception from a measurement - on one build
+three families read both Blueprints cold and this one alone found each round's load-bearing
+defect - written in the profile's comment, left unchecked by `bb profile` on purpose, and watched
+as row 71 with what would reverse it. In the other example it is not the seat's family and needs
+no exception.
+
+Checked: `bb gates`; the checklist (both sections, their ends, each missing heading refused by
+name); the stage document from the header; the reviews folder from the file name; the input's
+order; the prompt; the command against the stub model server (the write and its history, the
+missing stage document named, an answer with no block, the two refusals); the profile schema, the
+role order, the exception's test; `bb profile --seat claude` and `--seat agy-ide` green. Then ONE
+LIVE CALL, on a real stage 1 Blueprint and its stage document from an earlier build, copied to
+scratch with the shipped profile; the cost the call reported is what `bb balance` showed
+before and after. It found name divergences between the stage document and the
+Blueprint, a boundary error the seam does not name, bare-name vars, targets requiring a
+var no interface asks for, one target that is a description, and several findings reading a target as
+two promises; no over-engineering finding, which on a tight stage is the right answer. The written record
+is kept outside the repository. `method.md`
+§05 (a row) and §07 step 2, `harness/roster.md`, `workflow.md`, `portability.md`'s role table,
+`harness/README.md` (the pieces table, the profile row's count, "Adapting it"), `harness/AGENTS.md`'s
+task table and the workspace `CLAUDE.md` and plan README `bb init` writes name the command.
+
+### The roster and the workflow: who acts, and in what order
+
+Two documents, written from a question about how many reviews a build has. Nothing in the KIT
+mapped every act in a build - each review, gate, dispatch and human gate - to the role behind it:
+`method.md` §05 has the roles and `portability.md` the roles' models, and the answer was a table
+neither held. `harness/roster.md` is that table: Act, When, Kind, Profile role, Model (the shipped
+`claude` example, dated; `bb profile` is the live answer), Notes - and writing it found the row with
+nothing behind it, the Blueprint review, opened as row 70. `workflow.md`, at the root beside the
+method, is the sequence the roster's acts happen in: one Mermaid diagram in five parts - setup, the
+plan, Foundation, a stage, the loop per task - the diamonds the human gates, and a table of the
+fourteen steps with who, the question each answers, what runs and what exists afterwards. The root
+README's document map, the harness README, `method.md` §05 and `portability.md` point at them.
+
+Checked: the diagram rendered (the machine's Chrome behind the Mermaid CLI): every node in its
+part, the loop its own box, the return edge to the next stage. Row 70 written open.
+
+### The Blueprint's packet is the spec the harness reads, and a command pulls it out
+
+Row 69, written and fixed in this commit.
+
+§4 of the Blueprint template wrote a packet with keys the harness does not read - `:contract` for
+the slice, `:workspace {:repl/port :dir}`, `:gates {:cmd "bb gates" :retry-cap <n>}` - and without
+two it does, `:task/title` and `:property-targets`. `PacketBase` reads `:blueprint/slice {:shapes
+:interfaces :deps-sigs}`, `:files/target`, `:files/context`, `:layer/name`, `:property-targets`,
+`:task/title` and `:gates {:retry-cap}`; the worktree and the port are the driver's, bound at
+dispatch from what it provisions. The method's §06 block has been held to the schema since the
+seed - it is `shapes/example-packet`, and `bb test` validates it - but the template, the document
+an Architect actually fills, was held to nothing, and the step from a Blueprint to a run's
+`spec.edn` was a hand copy: open the Blueprint, take the fence, paste in every shape it named from
+§1, rename the keys. Every build did it, each a little differently.
+
+Now the template's packet is a `TaskSpec` - a new schema in `harness.contract.shapes`, the part of
+`PacketBase` the Architect writes: `:files/impl` and `:files/test` where a role's packet has its
+`:files/target`, no role, no worktree, no port, `:gates` optional - and the note under it says what
+the driver adds at `start`. `blueprint_test` reads the fence out of the template, placeholders
+standing, validates it as a spec, checks its slice with `stub/check-slice` and cuts the Coder's,
+the Tester's and the Reviewer's packets from it with a fake session, so the template and the
+schema cannot drift apart again. The placeholders are single tokens for that reason - `<Shape>`,
+`<schema>`, `<Named>`, `[<args>]` - and the quotes are gone, since the driver reads `spec.edn` as
+EDN and EDN has none. The mark count `plan_test` holds the template to is unchanged: a fence is
+not counted, and the note carries no angle bracket.
+
+`bb spec-from-blueprint <blueprint.md> <task-id> [<out.edn>]` is the copy as a command
+(`harness.contract.blueprint`): every fence whose first form is a map with a `:task/id` is a
+packet; the one whose id matches is taken; every shape it names under `:shapes` is replaced by
+§1's definition of it, verbatim - a `(def Name schema)` stays a def, a `[Name schema]` a pair,
+both of which the stub reads - the named ones first in §1's order and the packet's own inline
+entries after; the result is validated as a `TaskSpec`, checked as a slice, and written
+pretty-printed in the template's key order, or printed to stdout with the report on stderr so it
+pipes into `bb sigs`. A shape §1 does not define, a task id the Blueprint does not carry, a
+Blueprint with no `## 1.` section, a packet that is not a spec (in the schema's own words) and a
+slice the stub cannot read are each refused by name, exit 1. The tests derive their Blueprint
+from the template inside the test, so a placeholder the template drops breaks the derivation and
+a test says so: found and inlined in §1's order, the two refusals, the written spec valid and
+read back equal, the command's stdout read back as the spec. Run by hand: the template itself is
+refused on `<Named>`; the fixture piped into `bb sigs` against a one-file context checks out.
+`method.md` §07 says where a packet comes from, the template's note says what the harness reads
+and what the driver adds, `harness/README.md` and `harness/AGENTS.md` carry the command.
+
+### The `claude` example ships the route every build ran on
+
+Row 68, written and fixed in this commit; row 25 extended.
+
+The shipped `claude.edn` had its Coder and Orchestrator direct to Anthropic, with `:pricing`
+tables and a comment explaining why the cost was computed. No build ran that way. The routing
+decided on 2026-09-18 from the probe row 25 records - the Anthropic roles through OpenRouter,
+pinned to `anthropic` (Vertex's cache missed intermittently, Anthropic's never), `:cache_control`
+asked for on the Coder and not on the triage call, no `:pricing` - was applied by hand to the
+plan's profile in each of the three builds since, while `bb init` went on copying the direct
+example. The example contradicted the money tooling built alongside it: `bb balance` and the two
+lines around a run read OpenRouter's key and account, and Anthropic's API has no balance
+endpoint; the report prints a reported cost as the endpoint's word and a computed one marked `~`;
+a 402 stops the loop by name, and with every role on one key there is one account to stop it.
+
+Now the file ships that routing, and its comments say why in those terms - one key and one
+balance, the cost reported not computed, the credit stop, the generation record - with the
+dated decision and the three builds named as builds. The header no longer says this file
+exercises the `:anthropic` adapter; it says the pair still covers both tool-call shapes because
+`agy-ide.edn`'s Reviewer and spec reviewer are direct, which is where that shape's worked
+example now is. The Tester, Reviewer and spec reviewer are as they were. `profile_test`'s
+shipped-pair test holds because of `agy-ide`; its provider-pin test now covers two more roles;
+a new test holds the example to the row (the route, the pin, the key, no `:pricing`, the cache
+on the Coder alone). `harness/README.md`'s profile bullet, `portability.md`'s seat table and
+role table and the plan template's §12 say what the example now is, and what a direct role
+needs instead. Nothing in the harness changed: the health check's loop copies this profile
+and calls no model, and its balance line reads *no role is on Anthropic's API directly*.
+
+### The workspace test holds the sync to what it did, not the clone to being clean
+
+Row 67, written and fixed in this commit.
+
+`app_test`'s *the two parts meet in one workspace* ends by proving that an overlay edit in a
+workspace's plan re-renders the application's mirror and reaches nothing in the KIT's clone. It
+proved the second half by asserting the clone's `git status --porcelain` for `harness/AGENTS.md`
+and `harness/resources/` was empty. That is a claim about the tree the test runs on, not about
+the sync: any uncommitted edit under those paths failed it, and the repo's rule is to run
+`bb gates` before committing - exactly when such an edit stands. It failed once, when the health
+record was written, on the known-good set `bb health --record` had just written; a rule-source
+edit before its commit would have failed it the same way, and the message would have said the
+sync leaked.
+
+Now the test reads the clone's state before the sync - the status of the two paths, the
+mirror's contents, the rule source's contents - and asserts the state after is equal. A dirty
+tree stays dirty and passes; a sync that wrote into the clone changes the mirror's contents or the
+status and fails. Checked with an untracked file standing under `harness/resources/`: the
+namespace green, 4 tests and 26 assertions; then `bb repair` and `bb gates` on the dirty tree
+with this entry and the row standing.
+
+## 2026-09-24
+
+### The documents say what the state move did, and the health check records its loop
+
+Stage 2's last step before its proof: the documents written against everything the state move
+changed, the doctor's seat rows made honest, and one extension to `bb health`. Rows 49 (its
+residue), 65 and 66.
+
+**The documents.** After the six steps before this one, a project's state - its rules overlay,
+its profile, its run records - lives in the plan repository, `bb plan-check` reads the filled plan
+before Foundation and `bb plan-review` runs §02's pass; and the documents an adopter meets first
+still described the clone as the place the profile went and the plan as a folder of documents.
+Now: the workspace `CLAUDE.md` `bb init` writes names the two commands in the plan's own bullet
+(the file is held to one screen, its line bound raised by three for them); the workspace README's
+plan row and the plan's README name `bb plan-check` as what reads the plan before the first
+dispatch; `harness/README.md`'s "Adapting it" gains the bullet for the two commands, its pieces
+table the rows for `harness.setup.init` + `app` + `workspace` and for `plan` + `plan-review`
+(thirty-three namespaces now, and the size sentence re-measured); the root README's three-part
+table says the plan template is half-written on purpose and that `bb init` copies it beside the
+overlay, the profile and the records; `method.md` §03 step 1 lists what the plan repository holds
+and its readiness checklist's item 2 now ends with `bb plan-check` passing; the plan template's
+README shows the four files beside `docs/` in its tree, since an adopter reads it from inside the
+plan. Nothing in the KIT's own words changed meaning; the words caught up with the code.
+
+**The seats.** All five stay, by decision. So each seat's doctor entry says where it stands:
+`claude` is the seat every build has run from and the one the health check's profile names;
+`agy-ide` has its profile example and no build yet; `opencode`, `opencode2` and `pi` have no
+example, so `bb init --seat` refuses them by name - which was true since the profile moved into the plan and said nowhere an
+adopter would read before being refused. `harness/README.md`'s profile bullet and
+`portability.md`'s seat table say the same. Row 66 holds the open half: an example per seat and a
+build from each, the person's, after the KIT is proved in `claude`.
+
+**The health check records its loop.** The records' move left the health loop stopping `:awaiting-merge` and
+tearing down without `record`, so the copy in the plan's `runs/` and the three commits were held by
+a hand step and the unit tests. `check-loop` now runs `record` before the teardown, as `method.md`
+§03 step 5 tells an adopter to, and holds the record to what it claims
+(`harness.setup.health/loop-problems`, pure, one sentence per breach, tested): `run.edn` written
+with status `:awaiting-merge`; `:run/kit-commit`, `:run/app-commit` and `:run/plan-commit` each
+equal to that repository's HEAD as the check reads it now, nil only where the workspace has no such
+repository; the copy at `<plan>/runs/health.edn` present and byte-equal to `run.edn`; and the
+loop's rules overlay and profile resolved under the plan, since a loop that read the clone's
+would prove the wrong thing. The selfcheck subject has no plan and is held to a nil plan commit and
+no copy. The detail line says which files the loop read and where the record went. Still seven
+checks: the record is the loop's last step, not a check of its own, and the README's health block
+is unchanged - its row is a dated claim about the run it names. Run on the working tree: healthy,
+7 checks, 58 s; the kept workspace's record, read by hand, carried the three HEADs, and `bb report`
+printed them on its `Commits:` line. One correction to the loop check's docstring while there: it
+said *no network*, and `start` has asked the OpenRouter key's status since the balance line was
+added, when a key is in the shell - never failing the run; `record` asks once more. Said so.
+
+### A filled plan is read before Foundation: `bb plan-check` is the gate, `bb plan-review` the reading
+
+Row 49. The plan is the Architect's session's to fill, and nothing read it: a mark left standing
+reached the next reader as literal text - the rule source's failure, one level up - and
+`method.md` §02 described a review pass that two projects ran as a throwaway script each, with the
+checklist pasted in by hand. Two commands now, in `harness.setup.plan` and
+`harness.setup.plan-review`, and one hook.
+
+**`bb plan-check [<plan-dir>]`** is the gate, and it is cheap. Over the governing documents - everything
+under `docs/` except the template's own `README.md`, which explains the marks and so carries one, and
+the two stage templates, copied per stage with their marks standing by design - it reports every
+`<mark>` left (`plan/placeholders`) and every line of the template's instructions
+still standing. An instruction is known by its content, a set of every blockquote line the shipped
+template carries, so a project's own quotation passes and a stage document filled from the stage
+template is read under its new name. Then, when the plan is in a workspace: the overlay's
+placeholders (`rules/unfilled` over the merged set), and the given parts - the overlay's refusal of a
+KIT rule, said by name; the application's `layers.edn` against the pin's layers, where a template
+namespace may not require a template namespace the pin did not let it (a layer the project adds,
+and a template layer that uses it, are the chosen part and pass); the plan's `loop.edn` gate keys
+in the KIT's order, a project's gate after them. Exit 1 with the list, one sentence each. On the
+template as `bb init` writes it, fifteen sentences; on a filled fixture, none, and each way of
+breaking it is one.
+
+**`start` runs it once per workspace**, before the contract's slice is read and before a spec
+review is paid for. Once is known by a hash of everything the check reads - the governing
+documents, the overlay, `layers.edn`, `loop.edn` - kept at `work/plan-check.edn`; a plan that has
+not changed prints *unchanged since* and is not read again, one that has is read again, and a
+failure does not move the hash on. The stop is `:plan-check`, the Architect's, like the spec
+review's; `:plan-check? false` in `loop.edn` switches it off, which the health check's generated
+application sets - its plan is the template as shipped, unfilled on purpose, and the health check
+proves the machine, not a plan.
+
+**`bb plan-review [<plan-dir>]`** is §02's pass, run: the six Phase A documents in the order they are
+written, a missing one named as such, and §02's checklist - read from `method.md` at the call, from
+its heading to the section's end, so the method and the review cannot drift apart - to the
+profile's `:spec-reviewer`, one completion, no tools. The prompt says which parts are given and
+not the project's to have decided, that PROVISIONAL-with-a-spike and OPEN-with-an-owner are the
+method working, and that RESOLVED-on-no-evidence is a finding. Findings are printed with the
+call's cost and written, with the history of every earlier review of the plan, to
+`<plan>/reviews/plan-review.edn`; the person resolves them in the overview's table. Not a gate: a
+review that found nothing proves nothing. Tested against the same stub model server the spec
+review's tests use.
+
+**Under the check, the template.** Two marks in `03-method-and-tooling.md` had a mark nested inside
+(`<… with \`<type>\`.>`): the fixture counted the inner one, and an adopter who filled it met the
+outer one as a new mark. Both un-nested; `03` counts 37 now. `method.md` §02, the template's README
+and the overview's §5 note name the two commands; the workspace documents `bb init` writes follow in the next step.
+
+### The plan template knows what the KIT decided: given, chosen, theirs
+
+Rows 47 (the template half), 48 and 59. The plan template predated the inversion: `02-architecture.md`
+asked which datastore and `03-method-and-tooling.md` asked the adopter to fill in roles, packet,
+isolation and gates as if choosing them, when adopting the KIT had fixed all of it. Both are now in
+three parts. GIVEN states what adopting fixed, as references to where the KIT says it and not as
+questions - the stack as pinned, the six layers as `layers.edn` declares them, the roles and the
+independence rule, the packet, the three worktrees, the five gates with their keys, triage and the
+routes, the stops and their owners, the tooling, the rule source and the precedence of its layers -
+and is not edited; changing a given part leaves the certified pair. CHOSEN is decided once, in
+Foundation, and recorded in the log - the layers above the template's, the seams, the datastore, the
+overlay's three placeholders, the models per role, the numbers with their keys and defaults
+(`:retry-cap` 3, `:spec-review/max` 2, the money cap and floor a person holds), the write-time hook
+and the stage-end driver, the pins. THEIRS is the domain: the diagram, the surfaces, the property
+targets, the stage-end checks, the readiness record - whose fourth line now says the trivial task is
+run to `:awaiting-merge`, recorded and torn down, never merged, as `method.md` §03 step 5 and its
+checklist now say too (two projects merged theirs; one paid a run for the flaky test it left).
+`01-requirements.md` gains a *Derived from* line and a *Revisions* section naming the mechanism a
+stage's lesson enters through. A new `source.md`, written first, is the record of what the plan
+derives from - handed over, read, asked - so a requirement cites evidence by number instead of
+carrying it; `reviews/` is named as the home for a review's raw material. The README, the overview's
+document table, `method.md` §02's document set and the orientation `bb init` writes say all of this.
+
+A namespace to read a plan by: `harness.setup.plan/placeholders` is the definition of a mark a
+project fills - an angle bracket outside a fenced block, not an autolink or a comment, and not
+`<name>` or `<kit>`, which the workspace knows - and `placeholder-counts` over the shipped template
+is the fixture the check over a filled plan is written against.
+
+Checked: `bb gates`; `bb init --dry-run` into a scratch folder counts nine plan documents where the last commit had eight; the definition of a mark (the two known tokens, a fence, an autolink, a comment,
+inline code counting); the counts per shipped document, and that they cover exactly what `bb init`
+lists; the given part of each of the two documents carrying no mark past its header and opening
+note. Rows 48 and 59 fixed; row 47 extended, open for the check over `layers.edn` and the gate keys.
+
+### A KIT kept outside its workspace is pointed at it, and a run's workspace is the command's
+
+Row 45, open since `bb init` first allowed `bb init <name> <dir>`: every command in `harness/`
+found its workspace by walking up from the working directory, so a clone kept outside the
+workspace - or one clone serving several projects - found nothing. The rule tasks then missed the
+application's mirror (a generated file nothing checked), and since the overlay landed the same
+lookup carried the project's rules, so from such a clone every rendering read the source alone,
+placeholders and all, with nothing saying why. Now one function answers where a command runs,
+`workspace/current`, in order: the run's workspace, when a loop command is running - `run-loop`
+binds it from the run directory, which walks up as before, so a run's rules are its own workspace's
+whatever the shell says; the folder `--workspace <dir>` names; the folder `KIT_WORKSPACE` names;
+else the walk-up from `harness/`, unchanged. The flag is on `rules-sync`, `rules-check`, `profile`
+and `report-check`, taken out of the arguments before the rest are read (the mirror list is now
+computed inside `rules/-main`, after the flag, rather than in `bb.edn` before it); the variable is
+read by every command, so `bb balance` and `bb rules-prompt` follow with no change of their own. A
+named folder with no `workspace.edn` at or above it is refused by name, flag or variable, exit 1 -
+a KIT pointed at nothing is otherwise indistinguishable from a KIT in no workspace. The walk-up
+answers nil as it did. `:workspace/from` in the map says which of the four answered.
+
+Checked: `bb gates`; the flag taken out of the arguments and refused without a value; the flag
+over the variable over nothing; `current` from inside a workspace (walk-up), from outside (nil),
+pointed by the flag from outside (found, paths absolute), pointed at a folder under the workspace,
+pointed at nothing (refused, naming the flag or the variable), and under the run's binding (the run's,
+over the flag); `mirror-paths`, `plan-profile` and `check-targets` each from a folder outside the
+workspace, bare and pointed. Then from this clone against a scratch workspace kept elsewhere, with
+its overlay filling one placeholder: `bb rules-check --workspace <ws>` reported the application's
+mirror drifted, `bb rules-sync --workspace <ws>` rendered it with the overlay's text and the clone's
+own two mirrors untouched, `bb rules-check` pointed by the flag and by the variable then passed;
+`bb profile --workspace <ws>` printed the plan's profile; `bb report-check` pointed both ways found
+the records folder and failed on the missing table, as it should; the flag with a folder in no
+workspace, and with no folder, each refused in a sentence. Row 45 fixed.
+
+### A run record has a home in the plan, and names the commits it was taken at
+
+The third part of stage 2's state move, and the last file of a project's that had nowhere to go.
+`record` wrote `run.edn` into the run directory - scratch under `work/` - and two builds copied
+it into their plan by hand, by a convention nothing enforced; which KIT, application and plan
+commit a record ran against was answered from memory. Now `workspace.edn` names
+`:workspace/records` (`<name>-plan/runs`) and `:workspace/run-tables` (`<name>-plan/RUNS.md`),
+`bb init` writes both, and `find-workspace` makes them absolute like the rest. `resolve-config`
+keeps the records folder and the three repositories in the run's config at `start`, as it keeps
+everything; `record` copies `run.edn` to `<records>/<run-id>.edn` and writes `:run/kit-commit`,
+`:run/app-commit` and `:run/plan-commit` from `git rev-parse HEAD` in each - nil where there is no
+such repository, and the report then prints `—`; a record from before them prints *not recorded*,
+as the roles line does. The schema has the three as optional strings. `bb report-check` takes its
+two targets from `workspace.edn` when given none, and `bb gates` now runs it: in a workspace's
+clone a record nobody published, or a table whose record is gone, fails the gates there; in the
+KIT's own folder there is no workspace and it says so and passes. One target given is a usage
+error, not a guess at the other.
+
+Checked: `bb gates`; `find-workspace` with and without the keys; `resolve-config` in a workspace
+and bare (the KIT then the repository this runs from); `record` in a workspace fixture with a
+commit in each of the three repositories - the copy by run id, the same record in it, the three
+hashes - and outside one (no copy, the application's hash, nil for a folder that is not there
+and for the plan it has none of); the schema; the report's line and the older record's; the
+targets from arguments, from a workspace, from one without the keys, and with one argument. Then
+end to end: `bb health --keep` green (7 checks, 62 s), `bb run-loop record` on its kept run
+copied the record into the generated workspace's `hc-plan/runs/health.edn` with the three hashes
+equal to `git rev-parse HEAD` in the KIT, the application and the plan; `bb report-check` on that
+plan failed with the record unpublished and passed once `RUNS.md` carried the rendered report.
+Row 65 written and fixed.
+
+### A project's profile lives in its plan, and the driver reads it there
+
+The second part of stage 2's state move. The profile - which model answers for which role, and
+the seat - was the one file the README still sent into the clone: `resources/profile.edn` on a
+branch of the KIT, the destination row 55 named a day ago because the folder beside it is held
+to the shipped examples by the KIT's own tests. Now `bb init` writes `<name>-plan/profile.edn`
+- the shipped example for the seat, whole, its header kept, under a line saying what the copy is
+- and the plan's `loop.edn` says `:profile "profile.edn"`. `--seat <name>` picks another example
+(default `claude`; a seat the KIT ships no example for is refused by name, before anything is
+written). The driver's `resolve-config` resolves `:profile` against the workspace's PLAN when
+`workspace.edn` names one, and against the working directory otherwise - the health check's
+selfcheck has no plan and keeps the shipped path - so `start`, `run-loop run` and `bb reprice`
+read the plan's file with no change of their own. `bb profile` with no argument checks the plan's
+profile of the workspace this clone is in (`profile/project-profile`, found by walking up) and
+falls back to the shipped examples, structurally, outside one; `bb balance` no longer requires
+the profile argument - a first argument that reads as a profile (a map with `:roles`) is one,
+anything else is a record and the profile is the workspace's - so the stop text's bare
+`bb balance` now works from a workspace's clone. The shipped examples' headers say where the
+copy goes. The clone now carries nothing of a project's configuration: rules and profile
+are both in the plan.
+
+Checked: `bb gates`; `resolve-config` in a workspace with a plan, without one, and with an
+absolute path; `context` from a run directory under `work/` with the plan's copy of the shipped
+example; the layout's file (the default seat's example, `--seat agy-ide`'s, the refusal for a
+seat with none) and the parsed arguments; `project-profile` outside a workspace, in one with no
+profile yet, and from the clone's `harness/`; `bb balance`'s argument split; `bb health` green
+(the generated application's loop ran from the plan's profile). Row 55 extended.
+
+### A project's rules live in its plan, and the KIT's clone is never edited for them
+
+The first half of stage 2's state move. Until now the rule source's three placeholders were filled
+on a branch of the KIT's clone, so `git pull` was a merge and a project's rules sat in a repository
+that was not its own - row 47's *nothing holds the given parts*. Now `bb init` writes
+`<name>-plan/rules.edn` - the three placeholder rules, text as shipped - and `workspace.edn` names it
+(`:workspace/rules-overlay`). `harness.rules/overlay` merges it over the source by id: an entry for a
+placeholder rule replaces its text, an entry with a new id is a project rule and must be whole, and
+an entry for any other rule of the source is refused by name, every problem at once - the check that
+holds the KIT's own rules against an edit made by accident. `load-rules` returns the merged set, so
+every rendering reads it: each role's prompt, the spec review's, triage's data conventions,
+`bb rules-prompt`, and `start`'s list of what still stands, which now names the overlay as the place
+to fill. A mirror renders from the project's rules only when its workspace lists it
+(`rules-for-mirror`): the KIT's own `AGENTS.md` and the selfcheck's sit inside the workspace by
+default and keep rendering from the source, so `bb rules-check` in the clone is green whatever the
+project fills, and the application's mirror drifts when the overlay changes until `bb rules-sync`
+runs. The plan is now written before the application, so the application's mirror is rendered from
+the overlay at generation. A `workspace.edn` without the key, from before, reads the source alone;
+one that names an overlay it does not have is a fault, not the source.
+
+Checked: `bb gates`; the merge (replace, add, an empty overlay, the refusals by name, a rule that is
+not whole, a duplicate id); a workspace fixture where the application's mirror renders the fill and
+the KIT's mirror inside it does not; `bb init`'s layout (the file's ids and text are the source's
+placeholders; the plan before the application); a created workspace whose mirror follows an edit to
+the overlay with nothing reaching the clone; `bb health` green. Rows 45 and 47 extended; row 47 stays
+open for the template's rewrite and the check over `layers.edn` and the gate keys.
+
+### A `tooling` route: the loop can now say the machine is at fault, not the run
+
+Two gaps, one namespace apart. On a note, the routes were contract-shaped - `continue`,
+`architect`, `human`, the noting role - so a Coder's note that the harness itself was broken could
+only be `continue`d, rightly, and the defect cost the next role a third of its turns (row 12, open
+since the first project). On a red gate, a merged property test that rounds onto its bound on
+some seeds failed a later task's gate in the fifth build; no role in that run owned the file,
+triage routed `human`, rightly, and the fix went through the loop as a run of its own (row 61).
+Now `tooling` is a route. On a note it is always offered. On a red gate it is offered only when
+the driver's proposal says so: `propose-routing` proposes `:tooling` when the test gate's every
+failing namespace is none of the impl, test or dependent files' - `:foreign-namespaces` names
+them, `:retry-role` is nil - so the model is not handed an exit from every hard call. The loop
+stops `:tooling`, person-owned; on a red gate the reason names the namespaces; the next steps are
+`check` again for a seed-dependent failure, else a fix outside the run and, on a red gate, the
+task started again (the worktrees cannot see a fix made after they were cut), or on a note a
+`continue` with the decision that the machine is fixed. The fallback on a foreign failure is the
+same stop.
+
+The finding under it: `failing-namespaces` read only clojure.test's `Testing <ns>` lines, and the
+pinned template's runner prints none - it names the namespace on the failure, `FAIL in
+app.util-test/clamp-above-hi-spec (util_test.clj:46)`. The fifth build's proposal therefore named
+no file and no owner where the namespace was on the line. It reads both shapes now.
+
+Checked: `bb gates`; the proposal (foreign alone, foreign beside the run's own, a lint gate), the
+offer (a note always, a red gate only on the proposal, never a rejection; a verdict of `tooling`
+where it is not offered falls back), and both stops in the loop, with a `continue` after the
+note's. One paid replay of the fifth build's red-gate triage prompt with the route spliced in as
+`render-prompt` now emits it, against the run's own orchestrator model: it routed `tooling` and
+named the namespace and the mechanism. Rows 61 and 12 fixed.
+
+### `bb reprice` fills the cost a generation record was too late to give
+
+A dispatch whose generation record lagged past the fetch budget is written with no cost; the
+footer says how many steps the total covers, the sum sits under the key's counter by that
+step, and nothing could put a later-fetched number in the record (row 17, open since the first
+project and confirmed on every build since). Now `bb reprice <run.edn>` fetches the records of
+every dispatch step with no cost and fills it - marked `:cost-source :repriced`, the endpoint's
+word fetched later, and only when every one of the step's ids answered, since a partial sum is
+the understatement the footer exists to prevent - recomputes `:run/cost`, rewrites the record
+and says that a document publishing the table now fails `bb report-check` until re-rendered.
+The report's footer counts the repriced steps.
+
+The finding under the fix: the completion ids the runner always had never reached the record.
+`dispatch-step` kept model, provider, cost and tokens from the runner's meta and not the ids,
+and the provenance docstring said they were recorded "so a run log can be backfilled" - true of
+a map that lived for the length of one dispatch. The step now keeps `:step/generation-ids`, the
+record's `:run/roles` keep each role's endpoint and the NAME of its key variable (never a key),
+and the schema admits both, optional, so older records are unchanged. Which means nothing
+written before this commit can be repriced: the fifth build's one unpriced Coder step included.
+`bb reprice` on a scratch copy of that record says so in one line and touches nothing; the
+planned live check on it is therefore not possible, and the first record this can fix is the
+next build's. Row 17 fixed.
+
+Checked: `bb gates`; the stub-server tests (both ids answer, one does not, no endpoint on the
+roles and a `--profile` supplying it, an endpoint with no generation record, `-main` rewriting
+a temp file and a second run leaving it alone); the live run on the copy, above.
+
+### `start` says what the checkout holds that the worktrees will not see
+
+The worktrees are cut from the last commit of the application, and nothing said so: an edit
+sitting in the checkout - a hand fix a session meant to commit, a document half written - is
+invisible to every role and every gate of the run, and the difference surfaces later, as a red
+gate on a file nobody in the run touched or as a merge that carries the committed version over
+it. `start` now runs `git status --porcelain` in the application's root before provisioning,
+leaving out the run directory and the worktrees folder when they sit inside the repository (the
+loop's own files, not the application's), and warns with the count and the lines; `:allow-dirty
+true` in `loop.edn` silences the warning. Warns, not refuses: a person may mean it. Either way
+a `:dirty-tree` event carries the count, the first twenty lines and whether it was allowed, so
+the record says what the run was cut from. A checkout that is not a repository, or no `git`,
+yields nothing and never fails the run. Row 64 written and fixed.
+
+Checked: `bb gates`; the unit on a scratch repository (a modified file, an untracked one, an
+ignored one, the run directory inside it), and the loop test with and without the key.
+
+### A provider refusing for credit is a stop of its own, and its text stays out of the record
+
+A 402 was a failed dispatch like any other: the stop said *retry it*, and the retry was refused
+for the same reason with the same text - which, from OpenRouter, is a message carrying a dashboard
+URL with the key's id, and the first project built on the KIT had it in the console, `state.edn`
+and the run log before anyone read it (row 13, open since then). Now the adapter reads a 402 -
+the status, or the code inside a 200 body - as `:harness/error :credit` and cuts its message to
+the first line, before any URL, before anything keeps it; the agent adds the role's endpoint and
+the NAME of its key variable; the dispatch event carries `:error/kind`; and `next-action` stops
+`:credit`, person-owned, ahead of `:dispatch-failed`, saying who answered 402 to which dispatch
+and which variable holds the key. Its next steps are `bb balance` and a `retry` after the top-up,
+not a retry. The spec review's own 402 says the same in its exception. Every other status is what
+it was. Tests: the adapter on a 402 with a URL and a second line, the agent against a stub server
+answering 402, the event's kind, and the loop stopping `:credit` with the Tester never
+dispatched and a second `run` the same stop. Row 13 fixed.
+
+Checked: `bb gates`.
+
+### A stage's end checks what no gate can: the interaction check, named in the method
+
+Two builds of one project: the fourth accepted its search swap unverified, since its tests call
+a handler as a function of a request map and can prove the fragment comes back with the right
+header but not that the page swapped it in; the fifth verified it with a ten-line script driving
+headless Chrome at both widths, outside the loop, for one `npm install`. The method's §04 exit
+criteria now ask for that check for every behaviour the tests verify only as an HTTP contract -
+not a gate and not a test in the suite, because it starts a server and a browser, which the
+Testers' rule keeps out; recorded beside the screenshots with the driver named. The plan
+template's `03-method-and-tooling.md` gains §7.7, stage-end checks: real-viewport screenshots
+with a measurement file (the fourth build had shot 390 px through an iframe because headless
+Chrome's window floor is wider), one script per contract-only behaviour, the driver the
+adopter's with `puppeteer-core` as the worked example, and the process-group kill until the
+template's serve stops cleanly (row 62). Row 63, written and closed.
+
+### `bb balance` reads the account's credit beside the key's limit
+
+`/key` gives a key's spending limit and what is left of it; `/credits` gives the account's
+purchased credit and its usage, and they are not the same number: a key limited to $80 on an
+account holding $30 stops at $30. The line showed the key's figure alone and called it the
+balance (row 26, open since the second project). `openrouter-key-status` now reads both and the
+line names each - the account's as *the number a cap is really against* - or says the account's
+is unavailable when that endpoint does not answer. Stub-server tests for both cases. Row 26
+fixed.
+
+Checked: `bb gates`; one live read of both endpoints on the key in use, the figures never
+printed.
+
+### Row 14 to watch: an application is never an empty `src/` since `bb init`
+
+The row (a greenfield project's empty `src/` dropped from the classpath for the first task's
+REPLs) came from a bare-`deps.edn` project. Every application since is generated from the pinned
+template with its `src/` populated; the case survives only on the bring-your-own-application
+path, which no build has taken. Watched, not fixed; the first of a batch of small fixes made before stage 2.
+
+### The fifth build: the same contracts on the fixed KIT, and what the register learned from it
+
+A fifth build reran the fourth's tasks on the KIT with the day's fixes, the plan and
+Blueprints reused as resolved and no model reads: every run merged (one a fix of Foundation's own test
+through the loop), no rejection, for less money than the fourth's runs.
+Where the fourth paid a person stop per task on the stub and read its red test gates by hand,
+the fifth met neither: its red gates were read whole by triage and routed to the Tester
+against the mechanical proposal, right each time; rework fell to a small share of the loop.
+That is the measurement the fixes were made for; its figures are kept outside this repository.
+
+Two things the register did not have. **Row 61:** a property test merged in Foundation's trivial
+run built a value that rounded onto its bound and failed a later task's gate at random on the
+seed; no role in that run owned the file, triage routed `human`, rightly, and the fix went
+through the loop as a new run - the loop has no route for *a merged file, or the tooling, is at
+fault*, on a gate as on a note (row 12). **Row 62:** the template's `bb serve`, stopped by killing
+its JVM, leaves its CSS watcher behind - the template fork's to fix. Five rows extended with what
+the build confirmed: 2 (triage on the seat's family: every route agreed with the reader, the
+first live evidence), 10 (a Tester's own parse helper cost a round twice before it became a
+sentence), 17 (an unpriced step, again), 36 (a second read of an amended spec drew many
+findings of one shape the rule source already decides), 42 (a long conventions rule did not
+price the reviews out). No code in this entry; the one-line fix is the next.
+
+### A clean spec review says it carries on
+
+`start` reviews a spec and, on zero findings, carries on - the stop exists so a list is read,
+and an empty list has no reader (2026-09-21). The line printed beside a clean review still read
+*fix the contract or not, then `start`*, the stop's instruction, above a loop that had already
+started: on the fifth build, in most runs. It now says *0 findings, so the loop carries
+on*. One conditional in `spec-review!`.
+
+Checked: `bb gates`.
+
+### The data-conventions placeholder asks whether the template's own suite is the pattern
+
+*Nothing in a test starts a server* is the guidance the placeholder gives for Testers, and the
+pinned template ships a system smoke test that boots Jetty and the database under `bb test`,
+on purpose - which caught a closed component schema before a merge on the fourth project,
+where five merged tasks had once failed to start on the third. The project worded its rule as
+*nothing a Tester writes starts a server* and named the smoke test as the one exception; the
+placeholder now asks every adopter to do the same: say whether the template's suite is the
+pattern, name the exception, keep the rule for what a Tester writes. One sentence in the
+placeholder, mirrors re-synced. Row 60, opened this morning, closes; the rerun's Foundation is
+its first check, since that fills the placeholders again.
+
+Checked: `bb rules-sync`, `bb gates`.
+
+### The register, read against the fourth project
+
+Seven rows the build touched get a sentence saying so: 3 and 4 (the Tester's slips and the
+cap - one capped run whose cause was the harness's, row 50), 17 (the counter
+lags, every run), 23 (`amend` before `start`, met on the first run), 25 (caching through
+OpenRouter: most of the Coder's prompt tokens were cache reads), 38 (a closed component schema, this time caught by
+the template's smoke test inside the gate, before a merge) and 39 (its neighbour, row 54). Two
+rows open: 59, the plan template's missing slots - for what a plan is derived from, and for a
+review's raw material - which is stage 2's beside rows 47-49; and 60, the template's own smoke
+test booting a server inside the test gate against the Testers' rule, which earned its place
+and needs one sentence in the `:data-conventions` placeholder. No code.
+
+### Four one-sentence fixes from the fourth project, one commit each
+
+Each was a row in that project's findings that cost minutes or a round and needed a sentence:
+
+- **The profile's destination** (register row 55). `resources/profiles/` is held by
+  `profile_test` to exactly the shipped examples; the shipped profile's header said to copy it to
+  `resources/profile.edn`, but the README and the `loop.edn` that `bb init` writes never named
+  that path, and the project's profile placed in the folder failed the clone's `bb test`. The
+  README's adoption list and the `loop.edn` comment now name `resources/profile.edn` on the
+  project's branch and say the folder is reserved.
+- **What to do at the spec-review stop** (row 56). `amend` needs a started run, and the stop
+  where an Architect most often amends is before `start`; two projects met the refusal there.
+  Both messages - the refusal and the stop - now say to edit `spec.edn` in place, keep the
+  previous file beside it for the diff, and `start` again, which reviews the edited spec.
+  Recording that amendment as an event is still row 23's.
+- **What the balance line calls Anthropic spend** (row 57). It summed every provider whose
+  name contained *Anthropic*, the serving provider behind OpenRouter included, and printed
+  "Anthropic spend" with a sum on a project where no role was on Anthropic's API. It now counts only
+  `Anthropic API` steps and prints the clause only when a role is on that API directly;
+  otherwise it says the key's usage is the whole spend. The report's line prints only when there
+  is such spend. A test covers the OpenRouter-only case.
+- **A generator is a value** (row 58). Testers called a generator as a
+  function and failed their file at load, a round each; the rule said only *def, not defn*.
+  `:generators-are-values` gains the clause with the example; the mirrors are re-synced.
+
+Checked: `bb rules-sync`, `bb repair`, `bb gates` once over the four together (each changes a
+different file), then one commit per row.
+
+### Where the ask for presentation lives, and a packet example that shows what the roles receive
+
+Two method gaps the fourth project paid for. Rule 11 of §06 kept every review and test off
+styling, as designed, and said nothing about where the ASK for styling lives; a Coder's packet
+holds targets and rules, neither says *style it*, and the project's first four merged views
+arrived with no classes at all. One sentence in `:data-conventions` naming the theme tokens
+fixed it for the next stage with no hand change, so rule 11 now says that: the ask is a
+conventions sentence every role reads - the Reviewer included, so it knows the classes are
+expected and not review material - or a packet instruction labelled as a working instruction,
+never contract. And the packet example showed `:shapes [Concept Release]`, names; the project
+copied the form, the spec review reported the schemas undefined, and every role would have
+received bare symbols. `shapes/example-packet`, the method's §06 block and the Blueprint
+template's packet now define one shape inline and name one, with the function and the var
+interface forms beside them (previous entry), and a note under the block says the roles receive
+exactly what the packet holds: inline what the task defines, name what arrives as context, and
+a convention true of one Blueprint only - which has no place in the rule source - goes into
+every target that uses it, in full. Register rows 53 and 54.
+
+Checked: `bb gates` (the example packet still validates against the schema).
+
+### A var is a deliverable, and a slice the stub cannot read is refused by name before provisioning
+
+The fourth project's routing task delivered a `def` of route data. The packet had no form for
+that: `:interfaces` was read only as `(name [args])`, a bare symbol threw *Don't know how to
+create ISeq from Symbol* from the stub generator - after three worktrees and two nREPLs
+existed, with an error pointing at the `let` in `-main` and nothing to say which key - and an
+empty `:interfaces` was refused outright. The spec went out with a placeholder signature
+`(routes [])` and the truth in its title. Now `(name)` is a var to define: the one-element form
+`sigs/parse-sig` already read under `:deps-sigs` for a var a task may read, so the two halves
+of a contract say "var" the same way. The stub emits `(declare name)` for it - unbound, so a
+test that uses it errors, the guarantee a throwing body gives a function. `stub/check-slice`
+(previous entry) now covers `:interfaces` too: empty, a bare symbol, a list with no argument
+vector, each named with its reason, and `start` refuses on it before the spec review and
+before a worktree exists. The Coder's deliverable and the Blueprint template say which form
+is which. Register row 52.
+
+Checked: `bb repair`, `bb gates`. New tests: a bare symbol and an argless list are refused by
+name while the function and the var pass; `(routes)` renders a `declare`, the stub loads, the
+var is unbound.
+
+### A gate's output is what a terminal would show, and triage reads its tail
+
+The fourth project's test gate is cloverage over eftest, which draws a progress bar by
+rewriting one line with a carriage return, hundreds of times. Captured to a string, every
+rewrite survived: a red test gate's output was kilobytes of `0/27 0% […] ETA`, and the clip triage
+receives kept the first 6000 characters - the progress, never the failure report the runner
+prints last. Three red test gates were routed to a person with the assertion unseen and read by
+hand in the gate worktree; each was a one-line route to the Coder had the output been whole,
+and each cost a triage call for the wrong answer. Two changes, one commit. `gates/tidy-output`
+collapses carriage-return rewrites at capture, in `run-gate`, so every reader - triage, the
+routing proposal's scan for file names, the record - sees what a terminal would have left;
+and `triage/clipped` keeps the head AND the tail of a long output, 1,500 and 4,500 of the
+6,000 characters, with the omission marked between them, because a runner's report is at the
+end. Register row 51.
+
+Checked: `bb repair`, `bb gates`. New tests: a synthetic progress-bar capture collapses to its
+last line and the report, through `run-gates!` as well as the function; a 20 KB output whose
+report is last reaches the clip's tail with its head intact.
+
+### The stub reads a `(def …)` shape, escapes its docstring, and refuses what it cannot read before anything is provisioned
+
+The fourth project built with the KIT inlined every shape into its packets - as the method asks,
+so the roles receive the contract and not a name - and wrote them as `(def Name schema)` forms.
+`stub/shape-def` read only `[Name schema]` pairs, so every one fell through as a shape merely
+*named* and was `str/join`-ed into the stub's docstring; the first shape carrying an
+`:error/message` string put an unescaped quote inside that docstring and the Tester's namespace
+would not load. More than half the runs paid a Tester note, a triage call and a person stop for it,
+and one Tester spent its whole iteration budget on the unloadable stub and wrote no file - the
+project's one failed dispatch. Three changes, one commit: `shape-def` reads the def form as the
+pair it is; the docstring is escaped whatever reaches it; and a new `stub/check-slice` returns
+every `:shapes` entry the stub cannot read, as data, which `driver/start!` runs over `spec.edn`
+before the spec review is paid for and before a worktree exists - the refusal names the entry
+and the key, and there is nothing to tear down. `render` refuses the same entries, so a slice
+that reaches it by another path fails the same way. Register row 50.
+
+Checked: `bb repair`, `bb gates`. New tests load the rendered stub with a quoted string in both
+shape forms and check the refusal names its entries. One `bb gates` run failed a single
+assertion and the two after it passed unchanged (419 tests, 2201 assertions); the first run's
+output was not kept, so it joins the register's timing-dependent test as noted, not explained.
 
 ---
 
-## 2026-09-12
+## 2026-09-23
 
-### 23:44 · Gate 0 delegates config discovery; feedback is clipped
+### Who fills the plan, said where it is read
 
-Two issues the previous two commits had introduced.
+The plan template's README told a reader to delete the instructional blockquotes once acted on,
+without saying who that reader was. It is the Architect's session - the person, or the model they
+work with in the session started at the workspace root - in Phase A, before any loop exists; no
+dispatched role writes a plan document, and nothing in the KIT had said so. Two sentences: the
+template's README says it, and the workspace `CLAUDE.md` `bb init` writes says the plan is filled
+in that session, in the README's order, reviewed by `method.md` §02, and that a `<placeholder>`
+left standing is not a decision - the failure the rule source's own placeholders had (row 15),
+one level up. For that the README now travels with the documents into `<name>-plan/docs/`
+(eight files, not seven): the order of writing belongs beside what is written in that order.
 
-`config-root` searched for `.cljfmt.edn`, and cljfmt also reads `cljfmt.edn`
-without the dot — the bug fixed 9 minutes earlier, wearing a different
-filename. Adding the second name would have patched the wrong idea: **cljfmt
-searches ancestors for its config**, verified rather than assumed, so the
-hand-rolled search was never needed. And the invariant gate 0 owes is not
-"find the config" but *agreement with the fmt gate*, which delegates. So
-`format!` now runs cljfmt once per directory, from that directory, and
-`config-root` is gone along with the repository-root guard it needed.
+Checked: gates; a workspace generated from the working tree has `docs/README.md` and the
+`CLAUDE.md` sentence. Not built, noted for stage 2: a plan review read cold the way `spec-review`
+reads a spec, and a check that no angle bracket remains before Foundation.
 
-The test changed with it and is better for it: it asserted *where a config
-file was found* — a fact about our own search — and now runs `cljfmt check`
-the way `bb gates` does and asserts there is nothing left to say.
+### `skeletons/` is `plan-template/`
 
-`:task/feedback` had no size limit while `harness.tools/max-output` clips tool
-results at 20,000 characters and explains why: output is charged as input
-tokens on every subsequent turn. A retry's reason has exactly that property. I
-wrote that reasoning in one namespace and did not apply it one layer up.
-Clipped at 4,000 and announced, at the point feedback *enters* the packet
-rather than where it is rendered.
+The KIT ships two templates and `bb init` generates from both: the application template - the
+pinned fork - and the plan template, the seven documents that were `skeletons/`. The old name
+said what the files looked like; the new one says what they are for, in the vocabulary the KIT
+already uses (`template-pins.edn`, `harness.setup.template`). Not `plan/`: in a workspace the
+KIT's clone sits beside `<name>-plan/`, which IS the plan, and a `plan/` inside the KIT would read
+as the KIT's own. The person's choice, 2026-09-23. `init/plan-template-files`, the request key
+`:plan-template`, the refusal's wording, the READMEs and `method.md`'s links follow; the folder's
+own README no longer says to copy it by hand, which `bb init` had made stale.
 
-### 23:35 · Gate 0 runs cljfmt under each sub-project's config
+Checked: `bb gates` from `harness/` and the root (the root once exited 1 in a chained command
+and 0 on two plain re-runs; the log of the failing run was not kept, so it is noted, not
+explained); `bb init zz --dry-run` found 7 plan documents (8 once the README travelled with them, next entry).
 
-`bb repair` reported success and `bb gates` then failed on the file it had just
-repaired. cljfmt reads `.cljfmt.edn` from the process directory and
-`repair/-main` runs from the git toplevel; this repository keeps its config in
-`harness-seed/` and `sandbox/` and has none at the root. D5 and D6 never saw it
-because a provisioned worktree's project root *is* `sandbox/`.
+### The KIT publishes no run records of its own
 
-Mutation caught a test of mine holding for the wrong reason — "falls back to
-the root rather than escaping it" asserted the fallback with no config above
-the root to escape *to*. Third time this session.
+`runs/` (`a1`–`a4`) and `RUNS.md` are gone from the KIT. They were the loop with real models
+against what was then `sandbox/`, on 2026-09-16/17 - the KIT's own runs, not a project's - and
+the KIT carried them to every adopter's clone, naming `harness-seed` and `sandbox/`, both gone,
+while `report-check` guarded two files that would never change again. They are not lost: they are
+kept outside this repository, with the runs before them and the first bake-offs. The person's
+decision, 2026-09-23, on that basis.
 
-### 23:30 · A return channel on the packet
+What replaces them as the KIT's committed evidence is `harness/health/records/`: re-run on every
+machine, rendered into the README, drift-gated. What stays is the mechanism a project needs -
+`record` writes `run.edn`, `bb report` renders it, `bb report-check <markdown> <records-dir>`
+holds a publishing document to its records - now with its two targets required rather than
+defaulting to files the KIT no longer has; `bb gates` no longer runs it. `CLAUDE.md`'s rule about
+committed records is rewritten to say this; the README's document table, the harness README and
+`portability.md` say the same. Where a project's records live is stage 2's question.
+This log's entries of those dates still cite the run ids; they are history and were left.
 
-Two open findings pointing in **opposite** directions turned out to be two
-halves of one circuit. A Coder with no way to report an edge the Blueprint is
-silent about (outbound, run 4); a packet with no field for why a role is being
-dispatched again (inbound, D4). Neither is worth anything alone: a note that
-reaches nobody is a diary, a retry with no reason is the same dispatch twice.
-
-**The outbound channel was never missing — it was prose.** Run 4's Coder did
-say the contract was silent about dividing 7 by 2; D3's did say why it declined
-a `:deps-sigs` entry. Both into `:stdout`, which nothing reads.
-
-A `note` tool, available to every role including the Reviewer. It writes
-nothing — `converse!` already keeps every tool call, so capture is a filter.
-`:notes` is *declared* on `AgentResult` against that map's own standing advice
-to use `:runner/meta`, because the test is whether the loop must branch on it.
-Inbound: `:task/attempt` and `:task/feedback`, set by `packet/for-retry`, which
-refuses empty feedback and refuses attempt 1. Rendered **first** in the prompt.
-
-A test found a real bug: the OpenAI shape delivers tool arguments as a JSON
-string and my extraction stringified it, so a note came back as its own JSON.
-`harness.tools/invoke` owns that decoding, so it now returns what it decoded.
-
-*Opened:* `NOTES.md` rows 4–5 (nothing calls `for-retry`; no model has seen
-`note`). *Closed:* the two return-channel findings from run 4 and D4.
-
-### 23:12 · The five open findings as a table
-
-`NOTES.md` carried three of them as a run-on sentence and omitted two. Now a
-table with what each costs. Two of the five say plainly that they are not
-defects: the tier-or-family question is an experiment nobody ran, and the
-one-level fixture is a habit for review to watch for.
-
-The 23 fixed findings are deliberately **not** duplicated from `RUNS.md`. A
-second copy of a list is the drift these runs kept catching in the code.
-
-### 16:10 · Bring the documents back to what is true
-
-`RUNS.md` was created one commit before D1, and six dispatch runs then left
-their findings only in commit messages. Its front matter asserted something
-false: *"All five … no model was called and no money was spent."*
-
-Five more claims had gone stale the same way: `portability.md` still showed the
-disproven profile *and* said the runner was unbuilt; `NOTES.md` still said no
-request is ever made to a model; the seed README was missing four of seventeen
-namespaces and still listed headless runners as deliberately left out; the line
-count was wrong in three places.
-
-The line count is now stated in **one** place. It had been wrong twice, and
-three copies of a hand-maintained number is two too many.
-
-Root `CLAUDE.md` gained the working rule that was meant to stop the
-recurrence — and did not, see 23:12 the next evening.
-
-### 15:34 · D6 · `t-08-substitute` — the confirmation run that refuted a finding
-
-A different task on purpose, because replaying `t-07-vars` would confirm
-nothing about anything but `t-07-vars`. Detail in [`RUNS.md`](RUNS.md).
-
-Confirmed: gate 0 running cljfmt, and `reasoning_effort "medium"`.
-
-**Refuted, and the framing was mine.** D5 read as *gpt-5.2-codex converges
-where deepseek did not*. D6's Tester hit the cap at 15 having written nothing,
-then again at 24. The transcript showed it working correctly and never stopping
-prototyping. The difference from the Coder was one clause — the Coder's
-deliverable ends *"then write once"* and the Tester's had no stop condition.
-Fourteen words of prompt, not a model.
-
-**And the worse finding:** when the Tester produced nothing, assembly copied
-the Coder's implementation, silently skipped the absent test file, and all four
-gates went green over zero new tests. `assemble!` already refused an *extra*
-file loudly; the inverse was never covered and is the more dangerous direction.
-
-### 14:57 · D5 · `t-07-vars` again — the loop completes
-
-First green run end to end. Stronger Tester, providers pinned,
-`reasoning_effort` down to medium.
-
-**Gate 0 running cljfmt is the change with the best ratio** — it turned a
-failed run green in 315ms with no further dispatch.
-
-**`reasoning_effort` was wrong everywhere, and this is measured:** the Reviewer
-at `high` produced 27,706 tokens, 4m09s and an **empty** final message; the
-identical dispatch at `medium` answered in 63s for half the money with real
-findings. The original sketch put `high` on every OpenRouter role and nobody
-had asked.
-
-Two things I got wrong while making the gate-0 change, corrected in place: I
-blamed relative paths for cljfmt doing nothing and wrote that into a comment
-(sorting is not a default; `:sort-ns-references?` enables it), and the test
-fixture had no `.cljfmt.edn`, so it would have passed against a gate 0 that
-never formatted anything.
-
-### 09:54 · D4 · `t-07-vars` — the whole loop, and it failed honestly
-
-All three roles dispatched for the first time. 16m54s, 410,225 tokens,
-$0.016014 across 3 of 25 steps. **The run failed, and that is the result.**
-
-`claude-sonnet-5` as Coder wrote a correct namespace in 5 iterations, first
-attempt. `deepseek-v4-flash` as Tester hit its cap on all three attempts and
-never produced a passing test namespace, breaking two conventions its own
-system prompt states.
-
-**One confound, visible only because the provider column exists:** the three
-attempts were served by StreamLake, then Baidu, then StreamLake.
-
-Fixes it forced: `:harness/wrote` now rides on the packet as well as the
-session, because the Tester reported the generated stub as its own output; and
-the report gained wall time and minutes.
-
-*Opened:* the packet has no field for why a role is dispatched again — found by
-running triage by hand.
-
-### 09:25 · D3 · `t-06-clamp` — the first real dispatch
-
-`harness.runner/api-runner`. `:files` comes from `repair/changed-files`, never
-from the model's reply — a model that says it wrote a file is making a claim,
-git is looking.
-
-**The first dispatch failed and both causes were mine.** `nrepl_eval` IS a
-shell — the model ran `clojure.java.shell/sh` calling `find` — and the
-docstring claimed it was not. A Clojure REPL is arbitrary code execution; the
-containment is the worktree, not the tool list. And nothing told the role what
-*finishing* looked like: told only to "work through it", the Coder hunted for a
-file that did not exist yet. `runner/deliverables` states it per role now.
-
-The second dispatch took 6 iterations and wrote a namespace that passed
-everything. It also **declined a signature it was given** and said why — which
-is `:fix-the-cause` and `:final-message` working unprompted, in a model the
-rules were not written for.
-
-### 09:10 · D2 · the tool loop
-
-`harness.tools` and `harness.agent`. A tool failure returns to the model as
-data, never a throw. The cap does not throw either: a capped run may have
-written usable files.
-
-Message accumulation turned out to be shape-specific, so two more adapter
-methods were needed — OpenAI wants the `tool_calls` array echoed and one
-message per result; Anthropic wants the original content blocks verbatim.
-
-**Mutation found two of my own tests passing for the wrong reason.** Deleting
-the path-containment check reddened nothing, because the escape test used a
-non-existent path that later checks caught anyway.
-
-Also from D1's findings: the generation poll became a steady one second, and
-the model column went to 50 with its width derived from the same table as the
-format string — the two-places-that-must-agree bug run 4 found, in the same
-function.
-
-### 08:56 · D1 · two adapters and two-call provenance
-
-Two real calls, 20 tokens each, ~$0.00001. Three findings:
-
-- The generation record took **8.6 seconds** against a 1.5s budget, so the
-  first real cost came back `nil` — the exact thing the namespace exists to
-  produce. The new budget was measured by polling a fresh id, not guessed.
-- The record returns the **resolved** model: `deepseek-v4-flash-20260423` for
-  a request that said `deepseek/deepseek-v4-flash`.
-- $0.000003642 rendered as `$0.0000`. A row asserting a run was free when it
-  was not is the same class of lie as an unmarked fabricated number.
-
-The `:anthropic` adapter exists because OpenRouter's normalisation hides three
-real differences, of which one is dangerous: the system prompt is a top-level
-parameter, and sent as a message it is **accepted and ignored** — the rules
-would silently never reach the model.
-
-### 08:33 · Split RUNS.md out of portability.md
-
-`portability.md` had grown to 605 lines, 246 of them a chronological account of
-five runs — and it had been cut once already for exactly that. A diary belongs
-somewhere else.
-
-`NOTES.md` was not stale but *wrong* in three places, including listing
-provisioning as unbuilt.
-
-### 08:20 · Fix the profile: the Coder's family follows the seat
-
-Shipped with `:seat :agy-ide` and the Coder on `claude-sonnet-5`. The seat is
-the client the human drives, so the Coder's family follows it; the roles were
-internally consistent and attached to the wrong seat.
-
-Two worked examples now, near mirror images, because **a single committed
-profile reads as *your* configuration** — which is how this was misread, and
-the misreading landed on a real mistake.
+Checked: `bb gates` from `harness/` and the root; `bb report-check` with no arguments prints
+usage and exits 2; the report tests run the check with explicit targets and pass unchanged.
 
 ---
 
-## 2026-09-12 (early hours)
+## 2026-09-22
 
-### 01:31 · Profiles
+### `sandbox/` is `harness/health/selfcheck/`
 
-Three things were being conflated: the interactive **seat**, the dispatch
-harness, and the model **family** per role.
+The checked-in project the harness is run against had one job left - the first subject of
+`bb health`, the harness's mechanics shown in seconds before an application is generated - and a
+name that said a place to play. The person chose `selfcheck` (2026-09-22), and it moved inside the
+harness under `health/`, which now holds everything the health check owns: the project and the
+records (`health/records/`, from `resources/health/`). The project's root namespace is `selfcheck`;
+its `deps-check` reaches the harness by `../../bb.edn`; its mirror is listed in the harness's own
+`resources/rule-mirrors.edn`, and the root `rule-mirrors.edn` - which existed only to list a mirror
+from outside - is gone. `--sandbox-only` is `--selfcheck-only`. The harness's tests that use
+`sandbox.x` as example namespace names, and the docstrings that tell what the sandbox taught, are
+left as they are: those are fixtures and history, not the folder.
 
-**§05's independence rule can now fail.** *Verifier ≠ Coder family* had lived
-in prose since it was decided — the same gap `:shapes` and `:deps-sigs` had, in
-the rule the whole method rests on.
+One slip on the way: a rewrite script changed `:subject :sandbox` in the committed health
+RECORD, which is exactly the hand edit a record must never get; restored from `HEAD`, and the record
+below is a new run after the move, citing its commit.
 
-Deliberately *not* checked: two verifiers may share each other's family.
-Putting a stricter rule in code than the decision log supports is how a check
-starts describing its author rather than the method.
+Checked: the harness's gates and the root's, exit 0; the selfcheck's own `bb gates` green, red at
+`:deps` after `bb break seam`; `bb doctor` from `harness/` shows no `[pin …]` - the project's
+`.mise.toml` is below the harness, not above; `bb health --record` after the move (next entry's
+record).
 
-Mutation-tested on my own tests: removing the independence check reddened four,
-but opening the `:roles` map reddened **none** until a case was added.
+### The namespaces, in six groups
 
-### 01:16 · Run 5 · `t-05-render` — the first rewrite
+Thirty flat namespaces became six groups - `harness.setup` (workspace, init, app, template,
+doctor, health), `harness.loop` (orchestrate, driver, triage, log, provision), `harness.contract`
+(shapes, packet, stub, sigs, targets, spec-review), `harness.gates` (`run`, which was
+`harness.gates` itself; repair; boundary), `harness.models` (runner, runner-check, agent, adapter,
+tools, profile, provenance), `harness.money` (balance, report) - with `harness.rules` left where
+it was, since every document names the rule source by that name. Files moved with `git mv`, every
+reference rewritten longest-name-first (so `runner-check` went before `runner`), test namespaces
+with them, path mentions in the documents too; history (`DEVLOG.md`, `RUNS.md`, `runs/`) left as
+written. The grouping was the person's observation on 2026-09-22 and was deferred to here so the
+sweep would be one commit a reader can skip.
 
-The stub's second purpose — written *over* an existing implementation — had
-been a design claim and nothing more. It works.
+Checked: gate 0 over the moved files, `bb gates` from `harness/` and from the root, the sandbox's
+own gates, `bb example`, `bb health --sandbox-only`; a grep for any flat name left outside
+history found one docstring, fixed.
 
-**The finding, and the most serious of the runs.** `(is (thrown? Exception
-(render e)))` PASSED against the stub, because `ex-info` is an `Exception`. Two
-of seven cases were green before any implementation existed — precisely the
-failure `harness.stub` exists to make impossible, present since the namespace
-was written. It now throws an `AssertionError`, which `thrown? Exception`
-cannot catch. The test that pins it *evaluates* the generated source rather
-than grepping it.
+### Step E: five rows closed against the health check, and the documents say what the KIT now is
 
-*Opened:* nothing tells a rewrite what else depends on the namespace
-(`NOTES.md` row 1).
+`harness-seed/` is `harness/` (the path replaced everywhere but history). The documents
+that still described a seed an adopter copied now describe the KIT an adopter clones: the root
+README opens with *clone it and build beside it* and the three installs; `method.md` §03's
+Foundation is `bb doctor` → `bb health` → `bb init`, its steps 2–5 say what the template and the
+harness already do, and its readiness checklist is four items, one of them the health check;
+§04's example exit criteria include *the system boots*, with the third project's story; §12's
+step 1 exits on the two verdicts and the health check, and its checklist and closing paragraph
+match; `skeletons/03` §7.1–7.2 are the workspace commands and the record to keep; the harness
+README's opening, *Adapting it* (what the harness needs of a project, where the mirror is, where
+records stay) and *Versions* (floors, one pin, the known-good set, the fork's pins as the
+example) are rewritten, its line counts re-counted; `CLAUDE.md`'s bb-only rule says what is
+JVM-free and what is not; `PROVENANCE.md` says what "the seed" below it meant; `NOTICE` carries
+the fork's upstream MIT notice; the agent file's comment says who copies it where. Plan v1's
+sentence that `neil new` would be pointed at the fork is superseded: nothing points `neil`
+anywhere, and `neil` left the toolchain in step C.
 
-### 01:00 · harness.sigs reads clj-kondo's analysis
+Register rows 20, 38, 41, 43 and 44 are FIXED against the health check - each row says what was
+observed: a generated application's gates green untouched with its own lint and format config
+(20); `bb serve` held to 200 (38); the Foundation wording rewritten (41); `babashka = 1.13.223`
+seen in a generated `.mise.toml` (43); no licence file in a generated application (44). Row 32
+was closed in B.9.
 
-Hand-rolling a reader was the wrong instinct. The right reflex was *parse,
-never evaluate* — but clj-kondo already computes exactly this and is already a
-**required** tool here. It knows what a form expands to: `defrecord`'s
-generated `->R`, `(def f (fn [x y]))`, `defmulti`, macros — none of them
-handled by the hand-rolled version.
+Not done here, on purpose: the namespace regrouping (six groups over 30 flat namespaces) - a
+second mechanical sweep, kept apart from this one so each can be read; and the retirement of
+`runs/` and `RUNS.md`, which are the evidence behind sentences this log and the README still
+make (run `a4`), and whose home after stage 2 is `<name>-plan/` - the person's call.
 
-It also reports `:syntax` errors per file, closing a hole the first version had
-no way to see: partial analysis of an unreadable file would report every var it
-never reached as undefined.
+Checked: `bb gates` from `harness/`, from the root, and the sandbox's own; `bb health
+--sandbox-only` after the rename; the NOTICE licence text diffed against the fork's `LICENSE`
+(identical but for trailing blanks). NOT checked: every rewritten sentence against a fresh
+reader - the first build in a workspace is that reading.
 
-### 00:50 · Run 4 · `t-04-reduce` — the first with the precondition
+### Step D, second half: the record, the README block, and the first record
 
-**The precondition paid for itself on its first run.** Two deliberate errors of
-the class run 3 shipped, caught in 56ms before either agent was dispatched.
+`bb health --record`, on a healthy full run, writes `resources/health/<platform>.edn`: when, the OS
+and architecture and nothing else of the host, the KIT commit (and whether the tree was dirty),
+the template pin, the required tools' versions the doctor saw, and every check's outcome and time -
+never its detail, which carries scratch paths. The same run rewrites `resources/known-good.edn`,
+so what the doctor shows as known-good is what a health run saw and not what someone typed (the
+hand-written set of step C is gone). `bb health-sync` renders every record into the root README
+between `<!-- health:begin -->` markers - one row per platform, and the sentence that a platform
+not in the table has none - and `--check`, in `bb gates`, fails on drift, the `rules-sync` pattern;
+`rules/splice` now takes its markers. The date is the claim: nothing says it still holds today.
 
-`:step/kind` gained `:precondition` — and adding it broke the table, because
-the column width and the rule under it were two literals that had to agree.
+The first commit of this half was made on a red lint gate - three unresolved namespaces - because
+the command that committed did not read the gate's exit; amended. Then `--record` wrote the
+known-good set beside `bb.edn` and not into `resources/`: the resource NAME was spit to, and the
+test had masked it with an absolute path. Fixed, and the record below was made after that fix.
 
-*Opened:* a Coder that discovers an edge the Blueprint is silent about has no
-channel to say so.
+Checked, by running it: `bb health --record` on a clean tree - seven checks, 57s, the
+record and the known-good set written; `bb health-sync` renders the block, `--check` in sync,
+`bb doctor` shows the set with the record's date and platform; the README carries the first row.
+Gates exit 0, 417 tests. NOT checked: a second platform (the table's sentence about them is
+rendered, not observed); the age of a record shown anywhere (the date is shown; age is the
+reader's arithmetic).
 
-### 00:32 · Give `:deps-sigs` a consumer
+### Step D, first half: `bb health` - one piece of code, two subjects
 
-The last slice field no code read. Run 3 supplied the evidence: a zero-arity
-call signature for something that is a map, which rode through packet
-validation, two dispatches, four gates and review with nothing looking.
+The health check the plan asked for, and the shape decided before B.9: `harness.health` takes a
+SUBJECT - a project directory, its gate commands, its nREPL command, its root namespace - and runs
+the same checks against two. The sandbox, COPIED to a scratch workspace and made a repository (the
+checked-in one is never written to, and the loop's branches land where the check's cleanup deletes
+them, not in the KIT's clone; the KIT's `.gitignore` goes with the copy, or `.nrepl-port` is a
+file a role wrote). And an application `bb init` generates from the pinned template into scratch,
+by the same code an adopter's command runs. Per subject, each recorded as data: every gate green
+untouched; every gate FAILED by a breaker at its own key - the breakers are harness data needing
+only the root namespace (mis-indented form, unused binding, false assertion, undeclared namespace),
+one form per line because the generated application's `.cljfmt.edn` lays out an `ns` form its
+own way and the first multi-line test breaker failed at `:fmt`; one trivial task - §03's `clamp`,
+in a new namespace declared through `:architecture`, the case that mechanism exists for - through
+the whole loop with a scripted runner in every model's seat and everything else real: three
+worktrees, two nREPLs by the subject's command, the REPL probe, gate 0, the gates, the review, to
+`:awaiting-merge`, then torn down; and, for the application, `bb serve` until `GET /` is 200, the
+process tree stopped, the port free again. A busy port is reported, not tried around: the
+template's port is configuration, not a flag (a fork-side `PORT` override would change that).
+Never part of `bb gates`; `--sandbox-only` skips generation; `--keep` leaves the scratch.
 
-**It runs before dispatch, not as a gate.** A gate judges an agent's output;
-this judges the packet the agent is about to be given. **And it never guesses**
-— a check that cries wolf about a correct packet is switched off within a week.
+Checked, by running it: `bb health` here - seven checks, 57s, every one ok, both scratch folders
+gone afterwards; `--sandbox-only` 16s; from the KIT's root the same. Before the fix, the
+application's test breaker failed at `:fmt` and the sandbox's loop stopped `:assemble-refused` -
+both recorded above, both by running it. Unit tests cover the breakers' mechanics against shell
+gates that fail exactly when a breaker is present, the trivial task, and the scratch sandbox. NOT
+yet: the record and the README block (the second half of step D); a machine with a slow first
+fetch (the template was cached here); `--keep`'s folder read by a person.
 
-### 00:19 · Run 3 · `t-03-analyze` — the first with shapes emitted
+### Step C: the doctor guides, holds one version, and judges twice
 
-The emitted schema arrived as a single 161-character line. cljfmt does not
-reflow long lines, so it passed the fmt gate and was still unreadable — and
-reading it is the Tester's whole job. Loadable *and* legible, or it does half
-the work.
+Three projects failed `bb doctor` on a version RULE, never on a missing tool: a calendar version
+read as a major, a patch level read as a break, a host's pin read as this project's. The rules are
+now: every pin - the nearest `.mise.toml`, walking up, or an entry's `:min` - is a FLOOR, compared
+over as many segments as the pin names (`temurin-21` is a major; `21.0.12.1` neither exceeds nor
+falls short of it), and newer is said and fine. The one exception is the JDK, `:major 21` on its
+own entry, the KIT's constraint rather than any file's: another major is *wrong version* with or
+without a pin, and a pin on another major with 21 installed is *change the pin, not the JDK*. The
+three clojure-mcp-light tools are probed by RUNNING them - `--help`, empty stdin, five seconds -
+because in `bbin ls` and on PATH was reported ok for a tool that could not run; each was checked
+to answer `--help` in under a second and write nothing before the probe was written.
 
-The shape settled three questions the Tester would otherwise have guessed,
-answered by evaluating it rather than asking. §05's data-first claim doing
-visible work.
+Two verdicts - *the KIT's gates can run here* (the Babashka tier) and *a loop can run here* (plus
+JDK 21, the Clojure CLI, `clj-nrepl-eval`) - and `--tier` says which decides the exit code:
+`bb gates` runs `bb doctor --tier gates`, so the KIT's own gates stay JVM-free; `bb init` refuses
+without the loop verdict. Every unusable tool prints its fix: a documented command where there is
+one (the three `bbin install` lines are from clojure-mcp-light's README, read 2026-09-22), else the
+official page. The KIT guides and installs nothing. Beside what is installed the table shows the
+KIT's dated KNOWN-GOOD SET, `resources/known-good.edn` - written by hand today from this machine,
+which ran the gates, `bb init` and the generated application's gates on these versions; step D's
+health check is to write it from its record - and a newer version is *newer than tested*, never a
+fault. `clj-depend` and `neil` left the toolchain: the KIT ships its own boundary gate, and `bb init`
+replaces scaffolding by hand. The root README opens with the three installs (JDK 21, the Clojure
+CLI, Babashka ≥ 1.12.212), one route each, then the doctor.
 
-### 00:08 · Give `:shapes` a consumer
+Checked, by running it: `bb doctor` here, both verdicts yes, exit 0; `--tier gates` exit 0; against
+the template's own `.mise.toml` (comment lines, prefix pin, `[alias]`), every pin read, no notes;
+against `java = temurin-21, clj-kondo = 2025.06.05, babashka = 1.12.206` (row 20's case) all ok
+with *newer than the pin* notes, exit 0; against `java = temurin-25, clj-kondo = 2027.01.01`: the
+JDK ok with *change the pin*, clj-kondo TOO OLD with its fix, both verdicts NO, exit 1; with a
+failing shim and a hanging shim ahead on PATH, both DOES NOT RUN, the hang cut at five seconds.
+Gates exit 0, 408 tests. NOT checked: a machine with a tool actually missing (every fix line is a
+documented command or page, none was run), and the README's install routes on a clean machine.
 
-`grep :shapes harness-seed/src/` found a docstring and nothing else. Run 2
-showed the cost: a declared shape with no consumer is invisible to every tool,
-so only review could catch it.
+### Row 32: the boundary gate ships with the KIT, and a generated application has layers
 
-Two forms are legitimate and mean different things: `[Name schema]` defines and
-is emitted; a bare symbol names one defined elsewhere and is **not invented**.
+Method §09's gate 4 existed once, as `sandbox/dev/deps_check.clj` - outside what an adopter
+took - and the pin's `loop.edn` defaults listed three gates because no generated project had a
+`bb deps-check`. `harness.boundary` is that check, ported and generalised: a namespace's OWN tree
+is whatever shares its first segment, so no ruleset names a root; and a third violation kind,
+`:orphan` - an entry with no file - closes the limitation the sandbox README had recorded. That
+kind caught the sandbox's own `sandbox.red-seam` entry, declared for a file that exists only while
+`bb break seam` is in place; the ruleset's one keyword key, `:boundary/fixtures`, now says so.
+
+THE GATE RUNS AGAINST THE PROJECT, the way `cljfmt` does: `bb --config <kit>/harness-seed/bb.edn
+boundary` from the project's directory. A generated application's `bb.edn` carries nothing of the
+KIT (the fork stays app-level); the plan's `loop.edn` gains `[:deps "bb --config
+{{kit}}/harness-seed/bb.edn boundary"]` with `{{kit}}` made the KIT's ABSOLUTE path at `bb init`,
+because the gate runs in a worktree under `work/` and no relative path to the KIT holds from there.
+The application's `layers.edn` is data beside the pin - the template's require graph at the pinned
+commit, as tails under the root namespace - written into the second commit with `AGENTS.md` and
+`CLAUDE.md`; a template shipping its own is kept. `sandbox/` keeps `layers.edn` and `red/` as the
+proof the gate discriminates; its `bb deps-check` delegates to the harness and `dev/deps_check.clj`
+is gone. `default-gate-seq` keeps `bb deps-check` - the sandbox's key contract and every recorded
+run - and its docstring says what the pin writes instead.
+
+Decided before this step, and recorded for STEP E rather than done here: the health check is one
+piece of code with two subjects (`sandbox/` for the harness's mechanics, with red breakers becoming
+harness data applied to any project; the generated application for the certified pair);
+`harness-seed/` is a misnomer since the design inverted and becomes `harness/`; the 27 flat
+namespaces group six ways (workspace & setup, the loop, the contract, gates, models, rules & money)
+- one sweep with the document rewrite, not two. B.9 stays flat.
+
+Checked, by running it: in `sandbox/`, `bb deps-check` green (9 namespaces), red at `:deps` after
+`bb break seam` (forbidden) and after `bb break deps` (undeclared), `bb gates` green after
+`bb restore`. The adopter's way in a scratch folder cloning this working tree: `bb init demo` exit 0,
+`layers.edn` in commit two; the gate against `demo-app` green - 6 namespaces, so the pin's declared
+graph matches the template's - and red on one added `demo.views` requiring `demo.db`; the exact
+string written to `demo-plan/loop.edn` run with `:dir` the application, from the application and
+from `/tmp`, exits 0. Gates exit 0, 404 tests. NOT checked: the gate inside a full loop run against
+a generated application (no run has yet been made against one); red breakers as harness data (D).
 
 ---
 
-## 2026-09-11
+## 2026-09-21
 
-### 23:55 · Run 2 · `t-02-between`
+### Three projects compared; the kit gets its own template and a health check; the register takes the findings
 
-All four gates green on the first attempt, where run 1 needed a triage cycle —
-the evidence that a more precise Blueprint produces a cleaner run.
+A new line of work, starting from the harness the third project ran on.
 
-**The stub was itself a scope violation.** The harness writes it into the
-Tester's worktree and the check blamed the Tester, so no task using a stub
-could ever have assembled. Same class as `.nrepl-port`, reintroduced by the fix
-for the previous run's finding, and caught only by running the loop again.
+The three projects built on the kit were compared, from their records. What the comparison says
+about this repository: rework fell from project to project while the money lost to runs that
+never merged rose; two rows this register
+had marked *fixed* recurred (20, and 19 one branch over); one defect was made by a port (the
+tests of row 27); and the question *can ordinary input reach this?* cost a rejection in every project.
 
-A src-only nREPL made `:repl-first` unsatisfiable a second way.
+**Decided by the person, 2026-09-20/21, and the reason for the branch:**
 
-### 23:48 · Close both gaps the first run found
+- The kit is an opinionated framework on Clojure Stack Lite, and the harness is meant to work with
+  the template the kit PROVIDES. Copying `harness-seed/` into an arbitrary project stops being the
+  supported path. The template will be a fork the kit controls (MIT, as upstream is), with
+  `neil new` / `clojure -Tnew create` pointed at the fork — because six of the third project's
+  findings were the upstream template's own and cannot be fixed from outside it.
+- The first step on a machine is a health check: prerequisites checked by running them; for anything
+  missing, a helpful message and the command that installs it — **the kit guides and does not
+  install**; then the check again, certifying the kit ready as of that run.
+- A health-check project ships with the harness, separate from `sandbox/`: an instance of the kit's
+  template, stub models, ending in a server a person opens at `http://localhost:8000`. It is first
+  of all this repository's own regression test — row 20 recurred three times because it was checked
+  in an empty repository — and an adopter re-runs it after any JDK, Clojure or tool upgrade, or
+  points it at the project they are building.
+- Versions: JDK 21 is the one constraint with a reason; everything else is a minimum, plus one dated
+  known-good set that is the KIT's own, the template's pins compared against it at each refresh. The
+  README carries that report, rendered from a committed record.
 
-`harness.stub`: the contract as code the Tester can load. Every stubbed body
-throws — a stub returning a plausible value would let a test pass against
-nothing, the same failure as an unmarked synthetic number one layer down.
-Written *over* an existing file it also closes the rewrite hole: one mechanism,
-two problems.
+**In this commit:** register rows 4, 10, 17, 19, 20, 21 and 23 extended; rows 27–44 added. The XTDB
+claim is scoped to what was verified: its documentation states a MINIMUM of 21 (read 2026-09-20), and
+*fails at class-load on newer JDKs* was seen on 2.0.0 and 2.1.0 and has not been re-checked — three
+sites said "needs 21 exactly".
 
-`assemble!` takes architecture as a third argument, reported separately from
-agent output.
+**Tried and NOT established:** that a bbin-installed tool can sit on the PATH and be unable to run.
+One machine's write hook failed repeatedly over five days with *Clojure tools not yet in expected
+location*, and stopped the day that folder appeared. Two attempts to reproduce it —
+`DEPS_CLJ_TOOLS_DIR` pointed at an empty folder, then the same with a cold `CLJ_CACHE` — both ran
+`clj-paren-repair --help` to exit 0 without fetching anything. So the cause is still inferred, the
+advice *run `bb clojure -Sdescribe` to fetch the jar* is unverified (with an empty install dir it
+printed its map and fetched nothing), and no register row was written. The doctor probing tools by
+RUNNING them stands on its own merits; this incident is not yet evidence for it.
 
-### 23:38 · Run 1 · `t-01-clamp` — the first end-to-end run
+**Order of work**: the fixes the
+template cannot affect, rows 27 and 28 first, one finding a commit so the upstream backport can take
+them alone; then the fork, the health-check project, the doctor and the report; then rows 20, 32, 38
+and 41 and the rewrite of the documents that still say *copy the seed*; then the design-sized rows
+(23's remainder, 31, 10).
 
-§03 step 5 and readiness criterion 6, neither of which the kit had ever closed.
+### Row 27: the seed's tests no longer need its placeholders standing
 
-**The bug it found:** `changed-files` mixed two path bases — `git diff` reports
-from the repository root, `ls-files --others` from the current directory — and
-the existence filter then silently dropped every *modified tracked* file. An
-agent editing a file it was never given was invisible. Every fixture until then
-had the project at the worktree root, where the two agree; **unit tests could
-not have found this.**
+The README tells an adopter to fill the three rule-source placeholders; two tests added with the
+placeholder check itself asserted the SHIPPED file still had three, one of them by reading
+the live file through `start`. Filled, the seed's test gate went red: 3 failures, 1 error. Both now test
+the mechanism on a fixture - `orchestrate_test` by redefining `rules/load-rules`, so `start` is shown
+a source with three fixture placeholders and then a filled one. Reproduced before and after in a
+scratch copy with every placeholder replaced (`bb rules-sync && bb test`): old tests exit 1, new exit 0.
+This had to precede any health check, whose project fills its placeholders by construction.
 
-What worked is the other half of the evidence: gate 4 caught a Blueprint defect
-rather than a Coder defect, and the Reviewer found a branch the gates could
-not.
+### Row 33: a worktree's REPL ignores the personal `deps.edn`; `CLAUDE.md` names the driver that exists
 
-### 23:24 · Provisioning: three worktrees per task
+The Clojure CLI merges `~/.clojure/deps.edn` into a project's, so a personal alias with a project
+alias's name contributes its `:main-opts`. The default `:nrepl/cmd` gains `-Srepro` at both sites
+that state it. `sandbox/` defines its own `:nrepl` alias and resolves under it. `CLAUDE.md` said the
+driver was `harness-seed/dev/run_loop.clj`, a file promoted to `src/harness/driver.clj` long ago.
+Row 28's suspect test was checked too: it already prints its fallback reason, so nothing to change.
 
-The Tester's independence was a prompt rule with nothing behind it. Assembly
-into the third workspace is a **filter**, so a file written outside a packet
-cannot reach the gates at all, and it refuses loudly rather than dropping
-silently.
+### Row 19, the other branch: an amendment makes a GATE result history too
 
-Details that came from running it rather than designing it: `:worktree/path` is
-the project root and `:worktree/git-root` is what git made, and conflating them
-works until the first monorepo; a failed launch used to leave the branch, so
-the next attempt died naming the wrong cause; and `.nrepl-port` was being
-reported as a scope violation, invisible only because every project gitignores
-it.
+The fix of 2026-09-18 made an amendment set a rejected review aside. A red gate answered by an
+amendment took the same wrong path one `cond` clause lower: `gated-current?` was still true - no
+role had written since - so `next-action` sent the recorded red result to triage, against a spec
+that no longer said what the gate had judged. `amended-since-gates?` now sends it to `:check` first.
+`gated-current?` keeps its meaning (the gate worktree holds the latest files), because `record` and
+`merge` depend on it and an amendment changes no file. Replayed on the recorded events of the run
+that met it: `:triage` before, `:check` after. The lesson is about the first fix, not this one: it
+was written to the example in front of it, and the register said *fixed*.
 
-### 23:07 · §10 lesson 12: a rule already read is not fixed by writing it again
+### Row 29: what the spec-review limit counts, when a review stops the loop, what makes a spec new
 
-From using `python3` for file surgery across a session working on a Babashka
-kit, against a standing instruction to use `bb`. The instruction had been read
-and then not applied, which is a different failure from not having one.
+Three decisions, the person's. The limit counts reviews that FOUND something: a spec whose first
+reading was clean had reached it on its first amendment. A review with nothing on its list no longer
+stops the loop - the stop exists so the list is read - though an answer with no findings block at all
+still does, since nothing was recorded. And a review is of the spec WITHOUT `:files/context`: removing
+two paths from that list had made *a different spec* and bought a review. That last one has a price,
+written into the register: a context file can change what a target means. `method.md` section 07 says
+all three.
 
-**No gate could have caught it.** No `.py` file was produced and `bb gates` was
-green throughout, correctly. The artifacts were clean and the process was
-wrong — which is why the Reviewer reads the diff rather than the result.
+### Row 34: the Reviewer and triage are given the question only the Architect had
 
-No rule was added to the rule source, per lesson 3.
+Two rules met on one finding and pointed opposite ways. *Types are followed as the language defines
+them* put `(keyword "")` in the domain; *can ordinary input reach it* put it out, because the
+project's content came only from a file format that cannot write it. The Reviewer held the first rule
+and rejected; triage routed the Coder; a round was paid; the Architect, who alone held the second, was
+never asked. The person approved one sentence for where they meet - **the type decides what a value
+is; where the project says its input comes from decides whether it can occur** - and it went to the
+Reviewer's deliverable, triage's rejection prompt, the types rule, and `method.md`. It is narrow by
+design: this rule was born from an Architect twice calling a reachable input unreachable, so only a
+source the rule source names counts, and absent one every value the type admits can arrive.
 
-### 22:40 · Cut portability.md to what is still true
+Triage had never been shown a rule. It is now shown one, on a rejection only: the project's
+`:data-conventions`, once filled. Nothing here has been run against a model.
 
-Six of ten entries in its coupling table no longer described anything. **A
-document asserting facts about code that has since changed is worse than no
-document.** 469 → 316 lines; `NOTES.md` 106 → 66.
+### Row 4, a third time: what a Tester does with a target it cannot test
 
-Client facts gained a dated verification line naming the binary versions they
-were read from — they rot faster than anything else here.
+Capped Tester dispatches had three causes in three projects, and the deliverable had answered two:
+tests re-run against a stub that throws, and a file bracket-checked as a string. The third was a target
+whose fixture did not exist - turn after turn searching the classpath, no file, no note, a failed
+dispatch. The deliverable now gives the general form as well as the case: do not search; write the
+rest; mark the target *not a test* with what is missing; say so with `note`. The exemption keeps the
+`targets` gate honest and the note pauses the loop, so the gap reaches the Architect for the price of
+a triage call instead of a run.
 
-### 22:32 · Bracket synthetic values, and add a tokens column
+### Row 30: a context file need not be Clojure
 
-Brackets rather than a sigil, because they need no legend: `[anthropic]` reads
-as a placeholder wherever the row is quoted or pasted out of the table.
+`:files/context` is whatever a role should be handed, and the signature check read all of it as
+Clojure: a Markdown note on a library - which `method.md` recommends - and a fixture that is
+unreadable on purpose each refused a correct spec, under a message that named neither the file nor
+the reason. Only source files are analysed now, in `violations` and in the `calls` gate, and the
+precondition failure prints every violation.
 
-### 22:26 · Mark fabricated model and provider cells too
+### Rows 35, 36, 37, 39, 40, 42: six things the method and the skeletons now say
 
-A made-up provider is the worst cell on the row — "anthropic" reads as a fact
-about who served the call — and it was unmarked while the numbers beside it
-were not.
+Words, no code. A value handed into a function crosses a seam, and what its caller guarantees is
+written like any other guarantee (rule 4; the architecture skeleton's seams note). A spec review's
+count is one sample, and a zero is not a pass (section 07). The project's own gates run before any
+commit a worktree is cut from (rule 7). Naming a shape does not grant it (the blueprint skeleton). A
+project decides who owns presentation after a merge (a new rule 11 - at the end, because rules 4, 6,
+7 and 10 are cited by number elsewhere; the first draft of this edit renumbered them and was undone).
+And the seed README's line on what a spec review costs was rewritten (since 2026-09-28 it quotes
+no price: a project's own records give the figure).
 
-### 22:23 · Make fabricated data label itself
+That ends the fixes the kit's own template cannot affect, except the design-sized ones. Rows 20, 32,
+38 and 41 wait for the template; rows 10, 23 and 31 want design.
 
-**The incident this repository's honesty rules come from.** An example report
-rendered from hand-written values was read as a record of three model calls
-that had never happened. The prose above it said three times that cost and
-model were unpopulated. It still misled: *a plausible number in a real-looking
-frame is a measurement whatever the caption says.* The caption was accurate and
-the table lied.
+### The design turned over: the kit is what is adopted, and it brings a pinned template
 
-Rule `:label-fabricated`, and `:step/source` required on every step with no
-default, so a caller who has not thought about provenance gets a validation
-failure rather than a silent `:measured`. The renderer marks the row, every
-number in it, **and the total** — a total is fabricated the moment one of its
-inputs is.
+Superseding this day's first entry where they differ. The person's decisions, reached in discussion:
 
-It took three passes to get right (22:23 → 22:26 → 22:32), which is itself the
-lesson: the first fix marked the row, and the row is not what gets read alone.
+- **The kit is the thing an adopter takes**, and it brings a specific, versioned, tested
+  `ontopro/clojure-stack-lite` with it - a PINNED dependency. The fork (public, MIT, default branch
+  `kit`, first tag `kit-v1`; its `master` stays an exact mirror of upstream) carries only what the
+  application needs on its own: nothing kit-specific, no copy of the harness. The earlier sentence
+  *`neil new` / `clojure -Tnew create` pointed at the fork* is withdrawn; so is any idea of the
+  template scaffolding the harness. There is one harness, here, and nothing to keep in sync.
+- **The adopter's sequence:** clone the kit, install the README's prerequisites, `bb doctor` until
+  it certifies the kit ready, `bb init <name>`, `bb serve`.
+- **A workspace is three sibling git repositories inside a plain folder** - the kit, the
+  application, the plan - as the private harness this one was extracted from already does. The
+  person's three reasons: separation of concerns; an adopter may use another framework or none
+  (the harness never looks inside one - supported is not the same as possible, and only the pinned
+  pair is certified); and three independent lifecycles. So `bb init` is two separable parts -
+  create the workspace, generate the application - and the template is named in data.
+- **Moving a project's state into its plan folder is a later stage.** Until then it stays beside
+  the harness on the adopter's own branch of the clone. One part cannot wait: the harness has to
+  be told where the project is.
 
-### 21:57 · Add `sandbox/`
+### A root `bb.edn`: the kit's front door
 
-Temp-directory fixtures prove the functions work; they do not prove the harness
-works against a project with a `deps.edn`, a JVM, a real nREPL and four gates
-that actually run.
+`bb doctor` and `bb gates` run from the root of the clone. Each delegates to `harness-seed/`;
+nothing is implemented twice. ONLY tasks without a path argument are offered there, because a
+relative path typed at the root would be read from inside `harness-seed/` and mean another file -
+`run-loop`, `balance`, `report` and the rest stay where they were. Checked: `bb doctor` prints
+the same report from both places, `bb doctor --edn` passes its flag through, and `bb gates` exits
+0 from the root and, unchanged, from `harness-seed/`.
 
-`red/` proves the gates discriminate — five fixtures each failing exactly one
-gate. **A suite that has only ever been green proves nothing.** Building them
-found two bugs in the fixtures and one in the kit.
+### The template pin, as data
 
-### 21:57 · Record per-step time, cost, model and serving provider
+`harness-seed/resources/template-pins.edn` names the template the kit brings:
+`io.github.ontopro/clojure-stack-lite` at the full commit behind the fork's tag `kit-v1`, with the
+deps-new version that generates from it. `harness.template` reads it and builds - purely, as an
+argv - the command `bb init` will run: `clojure -Srepro -Sdeps {…} -X org.corfield.new/create`,
+with deps-new and the template as plain dependencies, so an adopter installs no Clojure tool
+first. A second entry, or a different default, is a data change; an unknown name is an error that
+lists the names, never a fallback. `KIT_TEMPLATE_LOCAL` will point generation at a local clone for
+someone developing the template (the function takes `:local-root`; nothing reads the variable
+yet - that is `bb init`'s).
 
-§10 has two measured lessons that nothing in the seed could reproduce. Model
-and provider get separate columns because they are different facts: one slug
-can be answered by several hosts, and which one answered decides the chat
-template.
+Checked, not assumed: the argv the function returns for the shipped pin was RUN, from a directory
+with no clone in it, and produced a project carrying the fork's two test namespaces and its dated
+pin file. That answers the plan's first open question - deps-new does generate non-interactively
+from a pinned git sha. What it needs cached to run OFFLINE is still not known: each run printed
+*Resolving … as a git dependency*.
 
-**What the report will not do is imply it knows more than it does.** A
-mechanical step has no cost, so it renders as absent rather than zero, and the
-footer states how many steps the total actually covers.
+### A name: the KIT
 
-### 21:56 · Make the interactive seat harness-neutral
+The template fork's working branch is `kit` and its tags are `kit-v1`, `kit-v2` …, and a project's
+workspace keeps its clone in `kit/`. So the product gets a written name of its own: **the KIT**,
+short for *the Clojure Agent Kit* - the person's decision. The root `README.md` defines it and
+lists the three lowercase uses, the fork's README says the same from its side, and `CLAUDE.md`
+makes it vocabulary. The one confusion worth heading off is the tag: `kit-v1` is version 1 of THE
+TEMPLATE as the KIT pins it, not version 1 of the KIT. Existing prose is not swept - this log is
+history, the register is summarised before `main`, and the adopter-facing documents are due a
+rewrite anyway.
 
-The kit read as a Claude Code template and was not: §05 requires the agent
-verifying the Coder to run on a different model family, and the rule source
-exists precisely because a client-specific rules file cannot reach one.
+### The harness is told where the project is
 
-`AGENTS.md` became the single generated mirror; `bb rules-prompt` shipped the
-prompt rendering, which had been tested, called by its own docstring *"the one
-that must never be skipped"*, and had **no caller**. The rule source gained a
-`:reviewer` audience — the Reviewer was first-class in `shapes/Role` and
-received no rules at all.
+Until now the project was wherever the run directory was: `git rev-parse --show-toplevel` there,
+applied AFTER `loop.edn`, so nothing could say otherwise. That was true of every run recorded so
+far, because the harness had always been copied into the project it built. In a workspace - the
+KIT, the application and the plan as sibling repositories in a plain folder - a run directory
+under `work/` is in no repository, and one inside the KIT's clone would have had worktrees of
+the KIT cut and called the project.
+
+`driver/project-root` decides, most explicit first: `:repo/root` in `loop.edn`, relative to the run
+directory; the application named by the nearest `workspace.edn` at or above the run directory
+(`driver/find-workspace`); and only then the run directory's own repository, which keeps every
+existing run and test as it was. Whatever is chosen must BE a repository, and an error says which
+of the three it came from - a typo in `workspace.edn` should not surface as a failed
+`git worktree add`. In a workspace the worktrees also move from the system's temp folder to
+`<work>/worktrees/<run-id>`.
+
+This is the one part of moving a project's state out of the KIT's clone that could not wait; the
+rest - rule source, profile, `loop.edn`, records into the plan folder - is a later stage.
+
+Checked: a table of the three sources and the three errors; and one whole loop, to the merge
+stop, with the run directory in no repository and the application beside it - which passes, and
+errors on the driver as it was before this change (`{:pass 3}` against `{:error 1}`, run both ways).
+
+### `bb init`, the first of two parts: the workspace, and nothing about any template
+
+`bb init <name> [dir] [--dry-run]`, at the KIT's root or in `harness-seed/`, creates the workspace:
+`workspace.edn`, a `README.md`, a `CLAUDE.md` that imports the KIT's, the off-loop agent file under
+`.claude/agents/`, `<name>-plan/` - its own repository, one commit: `docs/` copied from `skeletons/`
+with the tree kept so the skeletons' relative links still resolve, a README, `loop.edn` defaults -
+and `work/runs/`. **It does not generate the application yet**, and says so when it finishes: the
+workspace NAMES `<name>-app` and the harness reports, as before, that the folder is not a
+repository. That is deliberate, not a stub left in: `harness.init` takes the application as
+`:app-fn`, a function of one folder, and what only a generator knows (`:rule-mirrors`,
+`:loop/defaults`) as arguments. Bringing your own application is this part plus a repository put
+there. The second part supplies the function for the pinned template.
+
+`layout` is pure - every path and every file's content as data - `refusals` is pure over `survey`'s
+facts, and `create!` writes what `layout` said. So the command prints every path before it writes
+one, and refuses, giving every reason at once, when: the name cannot be a folder and a namespace; it
+is not run from a clone of the KIT; the target is inside the KIT's clone; any planned path exists
+(a folder is named once, not once per file; a bare `.claude/` is no conflict); the DEFAULT target -
+the folder the clone is in - holds other repositories (an explicit `dir` is consent and is not
+second-guessed); or `bb doctor` has a required tool unusable. The KIT is recorded relatively when it
+is inside the workspace, so the folder can be moved whole, and absolutely when it is kept elsewhere.
+
+It writes nothing into the KIT's clone, so the application's rule mirror cannot go in
+`../rule-mirrors.edn`. It goes in `workspace.edn` as `:workspace/rule-mirrors`, and
+`rules/mirror-paths` - which replaces the function `harness-seed/bb.edn` kept in its `:init` - reads
+the seed's list, the repository's, and the workspace's. For that the workspace lookup moved out of
+the driver into `harness.workspace`: the driver requires `harness.rules`, so the rules could not
+have required the driver. It now also makes `:workspace/kit` and the mirrors absolute.
+
+Checked, by running it: `bb init xyx --dry-run` at this clone's root refuses, because
+a `CLAUDE.md` is already in the folder the clone sits in; `bb init demo <scratch dir>` from
+`harness-seed/` exits 0 and leaves 20 paths, a plan repository with one commit and a clean tree, and
+an absolute `:workspace/kit`; a second run exits 1 naming what exists; an unwritable target gives a
+sentence and not a stack trace; `../ws-rel-check --dry-run` means `KIT/ws-rel-check` at the root and
+`clojure-agent-kit/ws-rel-check` in `harness-seed/`, as the docstring says - and the second is then
+refused as inside the clone. `harness.init-test` does the same in a temp folder, and checks
+`git status` of the KIT is unchanged by a creation. NOT checked: a machine whose git has no
+identity (the plan's first commit would fail, with git's message); a session actually started in a
+created workspace reading the imported `CLAUDE.md`.
+
+### KIT development has two parts; the workspace `CLAUDE.md` orients and imports nothing
+
+Decided by the person, 2026-09-21, after `bb init` was whole. **Two parts, not options.** The
+DEVELOPER session starts in the development folder - `KIT/`, a plain folder holding the
+development clone `clojure-agent-kit/` - and is aware of every experiment beside it: it reads their
+records and findings and ports what it learns. An EXPERIMENT is a real adopter workspace made the
+adopter's way, `KIT/xyx/`, replacing the hand-built experiment folders of the three projects so far:
+`mkdir KIT/xyx && cd KIT/xyx && git clone ../clojure-agent-kit && cd clojure-agent-kit && bb doctor
+&& bb init xyx`, then an ADOPTER session started in `KIT/xyx/` in another window. It reads what an
+adopter reads and nothing else; its findings stay in the experiment; a fix lands in the development
+clone and `git pull` in the experiment's clone is the upgrade path, tested each time.
+
+Two consequences. **The development folder has no `CLAUDE.md`.** Claude Code loads a parent
+folder's `CLAUDE.md` at start, so one in `KIT/` would reach every experiment session below it with
+the KIT's own development rules; `clojure-agent-kit/CLAUDE.md` loads on the first file read in the
+repository, which comes before any edit. And **the workspace `CLAUDE.md` `bb init` writes imports
+nothing.** It had imported the KIT's `CLAUDE.md` - the working rules for an agent CHANGING the KIT:
+run its gates, write its logs - which would have handed those to a project's Architect. It is now
+orientation only: whose session this is, the four folders in a line each, where to read (the method,
+the loop's commands, the plan, the application's `AGENTS.md`, the off-loop role), and one sentence
+that the KIT's own `CLAUDE.md` is the KIT's rules and not this project's. It restates no rule: the
+rule source stays the only place a rule is written.
+
+One guard, from the discussion: `bb init xyx` run from the DEVELOPMENT clone would have made `KIT/`
+itself a workspace, and nothing refused it - one repository, nothing planned exists. The default
+target is now refused when the folder already holds workspaces (a subfolder with `workspace.edn`),
+saying to make the workspace folder and clone the KIT into it. An explicit `dir` is consent, as
+before. Also closed here: the root `README.md` name table and `CLAUDE.md`'s vocabulary rule said a
+workspace's KIT folder is `kit/`; it is `clojure-agent-kit/`, the name `git clone` gives it.
+
+Checked, by running it: in `KIT/` with a throwaway `zz/workspace.edn` beside the clone, `bb init xyx
+--dry-run` refuses naming `zz` and the development folder; without it, after `KIT/CLAUDE.md` was
+deleted, the dry run passes. The adopter's four lines in a scratch folder, cloning this working tree:
+exit 0; the generated `CLAUDE.md` has no `@` line, and each of the six paths it names exists
+(`test -e`, all six). Gates exit 0, 401 tests. NOT checked: a Claude Code session actually started in
+a generated workspace, and what it loads.
+
+### `bb init`, the second part: the application, from the pin
+
+`harness.app/app-fn` is the function the first part was waiting for. It runs the argv
+`harness.template` builds from the pin, beside the application's folder; commits the result
+UNTOUCHED, the message naming the template, its tag and its commit; then writes `AGENTS.md` - a
+hand-written frame whose marker block `rules/sync!` fills from the KIT's rule source - and a
+`CLAUDE.md` stub importing it, as a second commit of exactly those two files. `git diff` against
+the first commit is, for ever, everything done to the application after generation. A template
+that ships its own `AGENTS.md` or `CLAUDE.md` keeps it and the command stops; a generation that
+fails carries the last fifteen lines of its output; one that exits 0 and leaves nothing is not a
+success. `KIT_TEMPLATE_LOCAL` replaces the pinned commit with a local clone, and the first commit's
+message then says *NOT the pinned commit*.
+
+What a run must be told about this template's projects is DATA beside the pin, `:loop/defaults` in
+`template-pins.edn`: the three gates a generated `bb.edn` has, which replaces the harness's default
+sequence and with it `bb deps-check`, a task no generated project has until the boundary gate ships;
+and `clojure -Srepro -M:test:nrepl`. `bb init` writes them into `<name>-plan/loop.edn`, and the
+application's mirror into `workspace.edn`. `harness.init` still requires no template: its `-main`
+is the one place the two parts meet. The command's ending is now `cd <name>-app && bb serve`.
+
+Checked, by running it: `bb init demo <scratch dir>` from the KIT's root, generating from the
+pinned GitHub commit - exit 0, under four seconds with the template already fetched (a first fetch
+was not timed); the application has the two commits and a clean tree; in it `bb fmt-check`,
+`bb lint` and `bb test` each exit 0, untouched. And the DEFAULT layout, in a scratch folder holding
+only a clone of this repository with the working files copied in: `bb init demo` exits 0, records
+`:workspace/kit "clojure-agent-kit"`, leaves the clone's `git status` as it was, and from that
+clone `bb rules-check` lists `demo-app/AGENTS.md` in sync - then exits 1 naming it after one word of
+its block is changed. `harness.app-test` replaces the JVM with a function that writes files, and
+runs git for real. NOT checked: `bb serve` on THIS generated application (the fork's own check of
+it is the evidence so far; step D makes it part of the health check); a run of the loop against a
+generated application with these `loop.edn` defaults; a machine with nothing fetched and no network.
+
+One finding, register row 45: a KIT kept OUTSIDE its workspace - which an explicit `dir` allows -
+walks up from `harness-seed/` and never finds `workspace.edn`, so its rule tasks do not see the
+application's mirror. `bb rules-sync <path>` works there and was run; the check does not.
+
+---
+
+## 2026-09-18
+
+### The `:openai` shape reads cached tokens
+
+A paid probe of serving the `claude` seat's Anthropic roles through OpenRouter found that a profile edit alone turns prompt caching off, that the record could not have
+said so either way, and that Vertex's cache misses intermittently where Anthropic's does not. One
+thing from it is ported here, because it is small, tested, and everything downstream of a record
+depends on it: `parse :openai` now reads the cached-token fields. The rest of what the probe found is
+in `NOTES.md` row 25, not done.
+
+It goes in before the next project copies the seed, so that project's baseline has it rather than
+carrying it as a divergence from its first commit.
+
+### Port from the second project, tier 3: a place for what the project's data is, and three things about reading a contract
+
+The most productive thing written during the second project was not code and was not in the seed:
+a rule saying what a hiccup tree is there and how it is walked. Many of that project's first
+spec-review findings were that one question, asked a different way by each spec. The seed had two
+placeholders — layers, and the validation library — and neither was for it; and the one the
+project's brief pointed at for the seam's guarantee does not reach the Tester. So there is a third,
+`:data-conventions`, for every role (`NOTES.md` row 24), and the architecture skeleton's seams
+table gains the column it is filled from.
+
+With three placeholders, the first project's finding that an unfilled one reaches agents as literal
+text (row 15) could not stay open. Its proposed fix — `rules-check` fails — does not work: the seed
+ships with them standing and must pass its own gates. `start` lists them instead.
+
+`method.md` §06 gains two rules on writing targets and an extension to two more, and §07's spec
+review says what it buys beyond rounds and what its cap costs. Rules 9 and 10 are both about the
+Architect, who in both projects was the session at the seat: *emphasis is a promise* — a person
+deleted three words where the Architect had proposed a bound and a rule — and *a finding is dismissed
+by asking whether ordinary input can reach it*, which the Architect got wrong in both projects on
+the same finding.
+
+### Port from the second project, tier 2: the record tells what a reviewed run cost
+
+Asked whether the first port had covered the run record, the answer was *partly, and then it was
+outrun*. Tier 3 of that port put the spec review into the record as one event — correct for a command
+typed once before `start`. Two commits later `start` ran the review itself, stopped, and reviewed an
+amended spec again, and the record-keeping stayed where it was: the last reading only, and no review
+cost in any total. Nothing new had to be collected — `spec-review.edn` kept every reading already,
+to enforce the two-review limit — only carried over and printed. `NOTES.md` row 23.
+
+Kept: `runs/README.md`'s line that a review is a desk step and not a row, and the meaning of
+`:run/cost`, so that no published report changes. Not done, deliberately: events for the
+`:spec-reviewed` stops that happen before a run has state.
+
+A design outrun by the next two commits is the same shape as the rule-mirror list in tier 1: the
+mechanism was right and nobody re-ran the case it was for once the ground had moved.
+
+### Port from the second project, tier 1: five fixes a second project's stops paid for
+
+The seed was copied a second time and built the same small
+website again, this time with the spec review, stop owners and the first port's fixes. Its
+evidence stays with that project, as
+the first project's does. It stopped for a person far less often than the first — and two of
+its problem stops had a cause the first project had already written down. This tier
+is the mechanical half of what it found; `NOTES.md` rows 11 and 19–22 have each one.
+
+- **The leak check no longer refuses the contract's own words** (row 11). Open since the first
+  project, where it was `view`; it cost the second a person-owned stop over `header`, which is a
+  property target's own word. The row had asked for a design and a word list. The design is one
+  sentence — the Tester already holds the title and the targets, so a word that stands in them
+  discloses nothing — and needs no list.
+- **An amendment makes the review before it history** (row 19). The loop re-triaged a rejection of a
+  contract that had just been changed to answer it.
+- **A copy of the seed passes its gates as copied** (row 20). Moving the mirror list to data after the
+  first project fixed the mechanism and left the defect: the data still shipped this repository's
+  sandbox. A fix is not finished until the failing case has been run again, and this one had not been.
+- **The spec review's rule block is labelled** (row 21) — changed, not measured.
+- **A writer cut off at its cap is named at the stop** (row 22).
+
+Each was checked against the second project's own records rather than a constructed example: the
+refused retry replayed through `leaks`, a run's events through `next-action`, its records through
+`cut-off-writers`, and the working tree's seed copied into an empty repository and gated there.
+
+### Stops have owners; a spec that keeps drawing findings stops for a person
+
+The user wants the retest as automated as possible: a spec review's findings go to the Architect, who
+amends and continues, and a person is asked only when a problem is beyond an amendment. The Architect
+is the seat, so this is mostly a protocol between the person and the session driving the loop — but
+two things belong in the harness so the protocol is visible and bounded. `orchestrate/owner`: a stop
+is the Architect's when its answer is an amendment (the spec review, any `architect` route) and the
+person's otherwise; the announce line and `run-task!`'s return carry it. And `spec-review.edn` keeps
+the history of reviews of a run's spec; when a spec has drawn findings twice and is amended again,
+`start` stops `:spec-review-limit` — a person's stop — rather than review it a third time
+(`:spec-review/max`, default 2). The amendments themselves were already recorded by `amend`; the
+person reviews them in a batch at the end of a stage.
+
+### The performance section: time and money, derived from the record
+
+The user asked for a report after every run with total time, ACTIVE time (not waiting on a person),
+the OpenRouter funds, and time and cost per model and provider — accurately — and agreed six additions:
+cost by role, rounds and their causes, tokens with the Anthropic cache share, effort per role, measured
+vs list-priced, and the mechanical share. It is a second section below the footer, so the step table
+keeps its shape and a record from before a field says "not recorded".
+
+- **Instrumentation, three things:** `event!` stamps `:at` (absolute) into the state's copy of every
+  event, not only the log line — the record's `:event/at-ms` is an offset from a counter that
+  accumulates across invocations, which is the figure that once read below the sum of the steps;
+  `start` and `record` write a `:balance` event from OpenRouter's key endpoint; `record` copies each
+  role's model, family and effort into `:run/roles`.
+- **Derivation** (`report/performance`): waiting is the gap after each `:stopped` event until the next
+  event — a person reading and deciding — so active = total − waiting, per stop. Anthropic stays
+  spend, since its API has no balance endpoint, and the line says so.
+- **The four published reports were re-rendered** (71 lines added, none changed above the footer);
+  `report-check` is green. Their sections say "not recorded" for time, balance and roles, which is
+  the truth about them.
+
+Prompted by my telling the user the triage measurement "took 25 minutes" when the timestamps said 18,
+and the calls under two: an estimate repeated after the fact as if it were the measurement. Method §10
+now has that as its thirteenth item.
+
+### Triage runs at low effort
+
+`claude.edn`'s `:orchestrator` goes from high to low, on a measurement over the first adopter's
+saved triage prompts: re-asked at low, blind, they gave the same route on all but one
+uncontested call, the same split on the contested one, and on the single disagreement the better
+route under the ambiguity rule — for a little less. Not half: triage's cost is its prompt, and effort
+changes only what the model writes. The comment that said "high, because this is judgement work"
+now says what was measured. `portability.md`'s two tables updated (and the agy-ide Reviewer's medium,
+the spec-reviewer rows, which the two-seat table had not caught up with).
+
+### The spec reviewer is a role of its own
+
+The review borrowed the `:reviewer` role. That hid which model reads specs, tied its effort to the
+Reviewer's, and let nothing check its independence from the spec's writer. The user decided it should
+be explicit: `:spec-reviewer` is the fifth role in `Profile` — required, no fallback to `:reviewer` —
+and a verifier in `harness.profile/verifiers`: the Architect who writes the spec is the seat, the
+seat's family is the Coder's by convention, so `bb profile` checks it against the Coder's family as
+it does the Tester's and the Reviewer's. Both shipped profiles have the entry (claude: the Reviewer's
+model, the configuration measured; agy-ide: its Reviewer's, unmeasured); `portability.md`'s table
+has the row; method §05's role table has the role.
+
+The agy-ide entry first said effort high with an "unmeasured" note; the user caught it. Fable 5.1 WAS
+measured at both efforts on the claude seat, and high cost nearly twice as much a call for no more
+recall than low — so the entry is low, and the comment says what was measured and what was not.
+
+Same file, same day: the Reviewer (Fable 5.1) goes from high to MEDIUM effort, the user judging high
+overkill for a review; the comment records the one measurement behind it (high found nothing more than
+low on the spec review, at twice the price) and that medium is untried on this seat.
+
+### The spec review joins the loop; the money is printed around every run
+
+Two changes the user asked for before the second project:
+
+- **`start` reviews the spec itself.** A hand-run command is a habit, and the point was to have the
+  loop enforce it: `start` now runs the review for any `spec.edn` that has no review of THIS spec beside
+  it (the hash is of the spec as data, so a comment edit does not re-review and a target edit does),
+  prints the list, and stops `:spec-reviewed` before anything is provisioned; the next `start`
+  proceeds and records the count. `run` treats that stop as a stop. `:spec-review? false` in
+  `loop.edn` skips it — the seed's own tests, and a deliberate re-dispatch.
+- **`bb balance`, and two lines around `run`.** OpenRouter's key status is a balance (`/api/v1/key`);
+  Anthropic's API has none, so its half is SPEND from the run's steps, and the line says which is which.
+  The first adopter was stopped by each provider's credit once, mid-run, with no warning.
+
+**A cost this change incurred.** Two `driver_test` fixtures build their config by hand, without
+`resolve-config`, so they had no `:spec-review?` key and the default is on: the first test run after
+the change made two live spec-review calls through the shipped profile, a few cents in all, before the
+fixtures were given `:spec-review? false`. A default that spends money when a key is absent is the
+kind of default this repository keeps finding; it is on because the user wants the review in the
+loop, and the tests now say so explicitly.
+
+### Port from the first adopter, tier 3 · the spec review as a step, and the documents
+
+- **`bb run-loop spec-review <run-dir>`** (`harness.spec-review`): the Architect's desk step. One
+  call, no tools, to the profile's `:reviewer` role — a different family from the Architect who
+  wrote the spec, on purpose — asking for every two-readings place and every unmentioned input.
+  Writes `spec-review.edn`; refuses once `state.edn` exists; `start` records what it finds as a
+  `:spec-review` event, and the report footer prints the count. An answer with no findings block
+  writes nothing, so a silent failure cannot be recorded as a clean review. The prompt carries the
+  type rule in the review's own voice, because in the rules alone it changed nothing. Tested
+  against a stub model, including that the Architect's comments in `spec.edn` never reach it.
+- **`method.md`**: §05 gains what independence does not protect against — a shared misreading —
+  and why the spec's reviewer is another family; §06 gains the eight target-writing rules and the
+  type rule as the user stated it; §07 gains Step 2½, the spec review. The Blueprint skeleton asks
+  what each seam guarantees, and records the spec review's count per packet.
+- **`NOTES.md`** rows 10–17, open, one per finding that wants design rather than a patch; row 18,
+  watch, for the majority-of-three proposal. `runs/README.md` states the footer line and that
+  "whether a reader would have agreed" names the reader.
+
+**Where the evidence is.** The first project is a repository of its own — by the user's decision,
+nothing from it is brought in: near-term it is there for reference, and as the harness matures it
+becomes noise. The register's rows therefore say what was found in the KIT's own words.
+
+The three tiers are the whole port. Not ported: that project's own rule text and mirror path,
+the majority-of-three (a row, not code), and every change to the loop's design (rows 10–17).
+
+### Port from the first adopter, tier 2 · two prompt changes, provisional; two rules a person set
+
+- **The Reviewer says what each finding breaks** (row 7): `target N`, `slice`, `dependent` or `none`, per
+  reason; `runner/review-verdict` parses the maps and a bare string still reads. A few reviews of
+  evidence, all the right way — provisional.
+- **Triage may not describe the implementation to the Tester** (row 8): the leak check sees names,
+  and a fact is not a name. A couple of clean guidances of evidence — provisional.
+- **Two rules, set by the user from reading verdicts** (row 9). *An ambiguous contract is fixed, not
+  interpreted* goes on triage's `architect` line, because blind samples of one rejection divided on
+  exactly that policy. *Types are followed as the language defines them*, with its corollary about
+  construction order, goes into the rule source for every writing role and into triage's own prompt —
+  every reader of one contract, this analyst included, had called a vector's order "unstated". It was
+  tested before it came here: the sentence alone did nothing, the corollary did. General on purpose;
+  the vector was the instance, not the rule.
+
+Tier 3 — the contract review as a step, and the documents — follows.
+
+### Port from the first adopter, tier 1 · three plain bugs and two evidenced behaviour changes
+
+The kit's harness was copied, untouched, into a throwaway project — a small static
+website, in a repository of its own (nothing about it was written here until now, by the user's
+rule). The copy's diff against the harness as copied is the mechanical record of what
+the project had to change. This commit ports the part with the strongest evidence, with
+the tests written there.
+
+- **Three plain bugs** (rows 5, 6, and `bb.edn`): a retried role dispatched into a worktree whose file
+  gate 0 had repaired somewhere else; a provider-refused dispatch published as "synthetic"; and
+  `rules-check` hardcoding this repository's sandbox mirror, which made the untouched copy fail its own
+  gates on the first command. The mirrors are now data, `resources/rule-mirrors.edn`, and `bb rules-sync`
+  with no arguments syncs every one.
+- **Two behaviour changes with counts behind them** (rows 3, 4): `write_file` repairs and lints on write
+  — rounds lost to lint before it, none after — and a Tester deliverable
+  that says when to stop, confounded with the sync fix and marked so.
+
+**Not ported, on purpose:** that project's own rule text (its layers, its one seam, its page-set
+guarantee) and its mirror path. Those are what an adopter writes into the placeholders; what they
+taught about the placeholders themselves is tier 3.
+
+Tiers 2 and 3 — the two prompt changes, the two rules the user set, the contract review as a step,
+and the documents — follow in their own commits.
+
+## 2026-09-17
+
+### Milestone 3 · The verdict, a rejection routed, and a merge a person types
+
+The loop now reads the Reviewer's verdict, routes a rejection the way it routes a red
+gate, and stops for a merge it never performs. `bb run-loop merge` performs it.
+
+**The Reviewer ends with a block, and a missing block is not a failed dispatch.**
+`runner/deliverables` asks for a trailing fenced JSON `{"verdict": "approve" | "reject",
+"reasons": [...]}` and says what `reject` is for — a broken target, slice or dependent —
+because a rejection costs a paid round and a Reviewer that rejects on taste spends the
+cap. `runner/review-verdict` parses it into `:runner/meta :verdict` as `{:verdict
+:approve|:reject :reasons [...]}`; `AgentResult` stays closed. The key is present on
+every Reviewer result and nil when there was no block, a block that does not parse, or
+a verdict that is neither word. Upstream fails the dispatch in that case, which throws
+away findings that were paid for; here the dispatch is `:done` and the LOOP stops, with
+`:no-verdict`, for a person.
+
+**`next-action` reads the verdict, and nowhere else does.** `approve` is the only way to
+`:awaiting-merge`. `reject` under the cap is a third triage trigger, `:rejection`; at the
+cap it is the same `:capped` stop a red gate gets, with nothing asked. Triage is shown
+the verdict's reasons, the findings in full, and the Reviewer's NOTES — register row 1
+said the note would matter once rejection routing existed, and a rejection whose real
+finding is "the targets do not say" is the architect's only if triage can see it. A
+`coder` route retries with `[:triage :reviewer]` feedback, guidance first. An
+`architect` or `human` route is a new stop kind, `:rejected`, and the model's failure to
+answer falls back to a person: `propose-routing` reads a gate's output and a rejection
+has none.
+
+**Four things the plan did not say, found while building.**
+
+- *The plan's wiring was a dependency cycle.* It had `runner/outcome` call
+  `triage/parse-verdict`; `triage` requires `driver`, which requires `runner`. The parser
+  moved to `harness.agent/last-json-block` — the one namespace both sides already sit
+  above — and `triage/parse-verdict` delegates to it.
+- *A Tester routed on a rejection gets the guidance and nothing of the review.* The plan
+  said "tester only via `leaks`, else `:human`". `leaks` refuses ANY `:reviewer`-sourced
+  feedback, because the Reviewer read the diff — so sending the findings would have
+  escalated every Tester route without exception, and the route would have been
+  decoration. `triage/feedback-for` now takes the trigger: on a rejection the Coder gets
+  the findings and the Tester gets triage's guidance alone, which `shield` then checks
+  like any other. The prompt tells the model that its guidance is all the Tester will
+  be sent.
+- *The old `reviewed?` would have routed one rejection for ever.* It looked at the gate
+  runs and the Reviewer's dispatches only, so after a routed Coder retry the last of
+  those was still the rejection: triage again, another paid round, until the cap.
+  `current-review` looks at every dispatch, so a role sent back makes the review before
+  it history and the next action is `check`. Table-tested, and the mutant that restores
+  the old filter is killed.
+- *The stop has said "read the Reviewer's findings above" since milestone 1, and the
+  loop never printed them* — only the dispatch's one-line summary and its notes. Nobody
+  needed them at a stop that could only `record`; a person deciding a merge does.
+  `dispatch!` now prints the Reviewer's verdict, its reasons and its findings.
+
+**The merge is `driver/merge!`, and the refusals are a pure function.**
+`merge-refusal` over the state and the decision: already merged · no decision · the
+loop's last `:stopped` event is not `:awaiting-merge`, or anything but a mutation check
+(or this command's own unfinished attempt) followed it · the gate run is not current.
+A hand-driven run reaches a merge by typing `run`, which costs nothing over a finished
+review and keeps the verdict logic in one place. Then, in order: the gate worktree's
+diff is taken again and compared with the `.diff` the Reviewer was shown — not in the
+plan, and the reason is that `gated-current?` reads events and an edit by hand in the
+gate worktree leaves none; one commit of the gate worktree on `<task>-reviewer`,
+`<task-id> — run <id>`; a `:merge-commit` event carrying the decision, recorded BEFORE
+the merge like every other decision here; `git merge --no-ff --no-edit` in the base
+checkout; `:merged`; `record!` (status `:merged`, from the event, whatever the last stop
+said); `teardown!`, which keeps the branches. A merge git refuses is aborted, recorded
+as `:merge-failed` with git's output, and tears nothing down; run again, it reuses the
+commit it already made. Denying a merge is not a command. `run` typed after a merge is a
+`:merged` stop rather than a review of worktrees that are gone.
+
+**What upstream does differently, for the backport.** Its human gate is `approve? [y/n]`
+on stdin inside `run-task!`; it commits before the review because its diff is
+`main...HEAD`; its one worktree means there is no question of WHICH bytes merge; a
+`reject` escalates to a person unrouted; and its teardown deletes the branch.
+`PROVENANCE.md` has the two new divergence entries.
+
+**Tests.** `orchestrate_test.clj`, in upstream's shape against a scratch repository
+with real worktrees, real assembly and real gates: the happy path merged onto the
+scratch repo's `main` as one commit under a two-parent merge commit, recorded `:merged`
+and torn down with the branches kept · a merge nobody decides awaits, branch and worktree
+in place · a rejection routed to the Coder, retried with the findings, reviewed again and
+approved · routed to the Tester with the guidance alone · with leaky guidance, stopped ·
+routed to the architect, stopped, and refused by `merge` · no verdict, then a fresh
+review by `check` · a gate worktree edited after the review, refused · a run that moved
+on after the stop, refused until `run` reviews it again · a merge git refuses, aborted
+and re-run · the review printed above the stop. `next-action`'s table gains approve,
+reject under and at the cap, no verdict, a role sent back, a failed Reviewer and merged;
+`driver_test.clj` has `merge-refusal` and `awaiting-merge?` as tables;
+`api_runner_test.clj` the verdict's parsing; `triage_test.clj` the rejection prompt, its
+fallback and who gets the findings. `bb gates`: 341 tests, 1,691 assertions, green, and
+`bb example` exits 0. Twenty-four exact-match mutants over the new code — every refusal
+removed, `--no-ff` dropped, the abort dropped, the old `reviewed?` restored, the
+findings sent to the Tester, the first block instead of the last — were run against the
+four test namespaces with a local mutation script: 24 of 24 killed. Comment-only edits for
+the citation sweep were made in other files while it ran.
+
+**Run a4**, after this entry's code was committed: the clamp
+task a third time, unchanged, through the merge. Green in one round; the
+Reviewer ended with `{"verdict":"approve","reasons":[]}` and left its `NaN` note again
+rather than rejecting on something the targets do not decide, which is the deliverable's
+definition of `reject` holding on its first live use. `merge`, behind a decision file the
+user approved before it ran, made one commit of the gate worktree (the three
+predicted files) and one `--no-ff` merge commit on a throwaway branch;
+the record says `:merged` and validates; ten events in the state and the same ten in the
+log; the sandbox's own gates on the merged tree ran 19 tests against the untouched
+tree's 16. The scratch worktree and the branch were removed once the record was taken.
+Everything the spec predicted held. Not exercised live: a rejection, a missing verdict, a
+refused or failed merge — tests and mutants only. **Readiness criterion 6 is closed for
+the aligned loop on a4**, and the documents of the day said so; a4
+reached no triage, which a2 and a3 had already taken live.
+
+**What the backport to thub will need** — the next piece of work, and not this branch's.
+Thub's `run-task!` holds its routing inside its steps and its state in memory, so the
+first thing to carry back is the SHAPE, not a feature: a run directory with `state.edn`
+and the append-only log it already has, a pure `next-action` over that state, a
+re-entrant `run`, every stop an event with a reason and a route, and the retry cap
+counted as rounds (`:triage` events) so a hand retry and the loop spend one cap. On that
+shape: triage on three triggers through one seam, with a fallback that reads file
+ownership instead of `triage.clj`'s hardcoded gate keys, and the Tester leak check
+(`driver/leaks`, `triage/shield`) — which needs the Tester kept from the implementation,
+so either the three-worktree layout with assembly as a filter or an honest statement that
+thub's single worktree cannot give it; the Reviewer's verdict with no-block as a stop
+rather than a failed dispatch, a rejection routed rather than escalated, and the
+findings kept from the Tester; the merge as a command behind a decision file instead of
+`console-human-gate`'s y/n on stdin, with the commit at merge time, the
+changed-since-review refusal, the abort on a failed merge, and a decision about whether
+teardown keeps the branch. Thub's callers read `:verdict`, `:session-id`, `:capped?`,
+`:provider` and `:tokens` off the top of an open `AgentResult`; closing it behind
+`:runner/meta` touches every runner and the loop. Its runners are CLIs with session
+resume, and the kit's is HTTP with none, so the backport must decide per role whether to
+keep the CLI behind the same `AgentRunner` seam (the verdict parser and the capped-and-
+wrote-nothing rule port either way) or move to the profile and the HTTP runner, which
+brings provenance, `:pricing` and the `:orchestrator` role with it. Smaller pieces that
+port as they are: `gates/failure` and the `GateEntry` schema, `run-gate` catching a
+missing binary, `:property-targets` on every packet, `Feedback` with `:triage` and
+`:architect`, `for-retry`, the pause on notes, the `:calls` and `:targets` checks,
+dependents in `:files/context`, gate 0's hunks in the record, the nREPL log kept beside
+the worktree and the process watched, the report and its drift gate, and the two rule
+changes (`:precedence`, and `:shapes-are-the-contract` validating once). Thub keeps its
+own vocabulary ("corpus") and its own project rules; and its `orchestrate_test.clj`,
+whose `deps-for` shape this branch's tests were modelled on, will need the run-directory
+fixture in return. `harness-seed/PROVENANCE.md` is the list of divergences with reasons,
+and is the document to work from.
+
+**The citation sweep.** The seed's `src/`, `dev/` and `test/` no longer name a register
+row, a D-run, a bake-off, a stage or a numbered manual run — each such comment, and one
+test name (`a-call-signature-for-a-value-is-a-violation`), reworded to keep the lesson
+and drop the pointer. `PROVENANCE.md` states the greps and what each prints.
+
+### Milestone 2 · Model triage on red gates and notes, dispatched on
+
+The loop now asks a model who owns a red gate or a note, and acts on the answer.
+Proved live by run `a2`: the Coder left a note, triage routed
+`continue` for the reason a person would have given, and the run went green in one
+round — the triage call a small part of what a dispatch costs.
+
+**The Orchestrator is the profile's fourth role.** `shapes/Profile` requires it,
+`bb profile` prints it, and `harness.profile/verifiers` deliberately does not list
+it: triage writes no code and judges no diff, so §05's family rule has nothing to say
+about it. `claude.edn` runs it on the Coder's family — Fable 5.1, effort high — by the
+decision of 2026-09-16, written into the profile comment, the schema's docstring,
+`portability.md`'s six-row role table and `NOTES.md` register row 2, which is what
+watches it: a `coder` route over a Tester that had the contract right is the failure
+the shared family would produce, and every verdict is recorded with whether the
+reader agreed. `agy-ide.edn` gets Gemini at high, unmeasured, with the flash-at-high
+caveat its own Reviewer comment records and the reason it does not apply to one
+completion with no tools.
+
+**`harness.triage` is thub's `triage_model.clj` reshaped, not ported.** Upstream shells
+out to a CLI and scrapes its JSON, fires on a red gate only, and falls back to a
+classifier that hardcodes gate keys. Here it is one `agent/converse!` on the
+`:orchestrator` role with `:tools #{}` — the same runner, adapter and provenance as the
+other three roles, so the call is a report step with a model, a cost and a token count
+like any dispatch — on two triggers, `:red-gate` and `:note` (a rejected review joins
+them in milestone 3), and it falls back to `driver/propose-routing`, which reads the
+spec's file ownership rather than a gate key. The prompt frame is upstream's: the
+routes, "route to whichever diverges from the slice", the files as written capped at
+8,000 characters. Added to it: the property targets as the contract's behaviour, the
+dependents, a `continue` route on a note, the rule that only the role that left a note
+may be routed on it, and a paragraph telling the model that Tester-bound guidance may
+name only the contract — cheaper than escalating a leak after the fact.
+
+**The routing is dispatched on from the first run, and the safeties are structural.**
+An `architect` or `human` route stops the loop with the verdict on the `:stopped`
+event. A `coder` or `tester` route goes through `driver/retry-with!` — `retry!` split so
+the decision can arrive as data — and leaves the same one `:triage` event a typed retry
+does, with `:by :model`, so `rounds` counts routed and typed retries against the same
+cap without either telling the other. A `continue` goes through `continue-with!` with
+the model's reason as the decision `continue` by hand would have required. Guidance
+bound for the Tester, together with the gate output it travels with, goes through
+`driver/leaks` in `triage/shield`; any leak turns the route into `:human` with the leaks
+listed and a new stop kind, `:tester-leak`, whose next steps are the reworded or
+`--allow-leak` retry a person types. Any failure of the call — an API error, no JSON
+block, a route the trigger does not offer — is the fallback with `:triage/fallback`
+naming why.
+
+**Two things the plan did not say, found while building.** First, `next-action`
+needed one more clause: **a last event of `:stopped` is the same stop again.** Without
+it, `run` typed twice over an untouched red gate would buy a second triage verdict,
+which costs money and is not deterministic; with it, the loop is idempotent on re-run
+and any command a person types clears it, because each one leaves an event. Second,
+the leak policy applies to the WHOLE feedback a Tester retry would carry, not to the
+guidance alone as the plan wrote it: the gate's own output travels with the guidance,
+a typed `retry tester` is refused on both, and a routed retry that checked less than a
+typed one would be a hole in the shield rather than a shield.
+
+**What a2 exercised and what it did not.** Live: the `:note` trigger, the `continue`
+route, the `:continued` event with the model's reason as the decision, the triage step
+in the report and in `:run/cost`, the prompt and answer kept whole in the run directory,
+and the record validating with a triage step in it. Not live: a red gate, and so the
+`coder`/`tester` routes, guidance-first feedback, the leak policy, the `architect` stop
+and the fallback. Those are `orchestrate_test.clj` (a routed retry going green, the
+architect and human stops, a note continued, sent back and escalated, the shielded
+Tester, the cap asking nothing, the measured call as a step) and `triage_test.clj`
+(the verdict and prompt against a stub server, every fallback, the note routes, the
+leak policy). 320 tests, 1,531 assertions. a3, the plan's task worded to conflict with
+a dependent, is the live test of the red-gate route and was not run: the plan reserves
+it for a run that triggers nothing, and a2 triggered triage.
+
+**a3, run after all**, at the user's request, so the red-gate route is on
+record. The dependent-conflict contract produced three verdicts: `architect` on the
+Coder's note, `continue` on a Tester note that described its own test, and `architect`
+on the red gate against the driver's `coder` proposal — the reader agreed with all
+three, and the third is the first live case of the verdict a rule cannot reach. The
+person's `continue` past the first stop is in the record as its own event, which is
+also the first live exercise of the re-entrancy the milestone added: the loop resumed
+from the stop, did not stop there twice, and did not ask about the same note twice.
+Still not taken live: a `coder` or `tester` route, and so the guidance-first retry and
+the leak policy.
+
+One thing not resolved: while committing the run, one `bb gates` invocation exited 1
+in its test step with the output discarded, and `bb test` alone plus two further
+full `bb gates` runs, output kept, were green. Which test failed is not known. The
+suite has two wall-clock assertions in `agent_test.clj` (a 1,200ms and a 4,000ms
+bound on the generation-record fetches) that a busy machine could trip, and nothing
+in this milestone touched them; that is a guess, not a finding, and it is written
+here so the next transient failure is caught with its output rather than without.
+
+**Documents.** `portability.md` gains the six-row role table (Role · Constraint ·
+Family · Model · Dispatched? · Notes) with the Architect and DevOps as the seat's dated
+selections, and the fourth row in the two-seat table; `skeletons/03-method-and-tooling.md`'s
+§1 table gains the Dispatched? column and §5 asks who routes; `harness-seed/README.md`'s
+pieces table gains `harness.triage` and its triage paragraph says what is dispatched
+on; `PROVENANCE.md` gains the row and the divergence; `method.md` §10's closing
+paragraph says the seed carries the seam and which two safeties the prompt alone does
+not give.
+
+## 2026-09-16
+
+### Milestone 1 · The loop, with every stop handed to a person
+
+`bb run-loop run <run-dir>` drives one task to its next stop. Proved live by run
+`a1`: green in one round, `:awaiting-merge`, and the
+record validates against `shapes/TaskRun` — which no record in this repository's
+history ever had.
+
+**The driver moved to `src/` first, mechanically**, in its own commit, so the
+behaviour changes after it read as behaviour changes: `dev/run_loop.clj` became
+`src/harness/driver.clj`. `bb run-loop` is still the command a person types, and
+`:run-loop/error` is still the ex-data key.
+
+**The loop is two functions.** `orchestrate/next-action` is pure over the run's
+state and says what should happen next; `run-task!` executes that, one step at a
+time, until the answer is `:stop`. Nothing about which step comes next is buried
+inside a step, which is why the control flow is table-tested rather than discovered
+by provisioning worktrees and calling models. Upstream's version holds the routing
+inside the steps that perform it, and can only be tested by performing them.
+
+**Every stop is a person's, and `run` is re-entrant.** A failed dispatch, a dead
+nREPL, a dispatch that left notes with nothing decided, assembly refusing a file,
+green gates over an empty diff, a red gate, the retry cap, and the Reviewer having
+reported. Each records a `:stopped` event with its reason and route, prints what to
+do next, and leaves the run exactly where it is. A person amends, retries or
+continues with the commands, and runs `run` again — which is what makes the loop's
+routing and a person's the same mechanism rather than two.
+
+**What came back from thub, and what each cost to be without:**
+
+- **The REPL probe**, in `driver/dispatch!` rather than in the loop, so a `retry`
+  typed by hand is covered by it too. `gates/failure` gets its first caller after
+  sitting in the seed unused since the extraction.
+- **`harness.log`**, the append-only event log beside `state.edn`. `state.edn` is
+  rewritten on every command, so it is the wrong thing to trust about what
+  happened; `record` refuses when the two disagree. That is the drift gate this
+  repository already applies to `AGENTS.md` and to a published report, applied to a run.
+- **The record asserted against `TaskRun`** — a `RunStatus` taken from the loop's
+  own outcome, `:run/cost`, `:run/started-at`. The schema had been there with no
+  caller since 2026-09-10, and every record written before this failed it.
+  `bb report-check` now
+  validates every record as well as every published table, and `step!` asserts
+  `RunStep`.
+- **The nREPL's own output**, kept rather than discarded. It goes BESIDE the
+  worktree, not inside it — the plan said inside, and the first test of it showed
+  why that is wrong: a failed launch removes the worktree before rethrowing, which
+  deletes the log at exactly the moment it is the only thing that can say what went
+  wrong. `wait-for-port` watches the process too, so a dead nREPL fails at once and
+  names its log instead of waiting out a sixty-second timeout.
+- **The empty-diff guard**, and **capped-and-wrote-nothing as a failed dispatch**
+  for the Coder and the Tester. Both are wrong in one direction alone: a capped
+  dispatch that DID write files is work the gates should judge, and one that wrote
+  nothing is a missing deliverable that assembly refuses a step later with nothing
+  to say why.
+
+**The retry cap moved from per role to per task**, counted as rounds recorded in
+the state rather than iterations of a function. A per-role cap of 3 dispatches one
+task six times before anything escalates, which is not a cap anyone chose; counting
+`:triage` events means a hand `retry` and the loop spend the same cap without
+either telling the other. And **a failed dispatch now stops `start`'s sequence**,
+which is the rule `continue` already enforced at a pause, applied where `start`
+would otherwise walk into an assembly that refuses a file nobody wrote.
+
+**Documents.** `harness-seed/README.md`'s "Deliberately left out" loses the loop
+and triage and keeps parallel dispatch and the per-gate timeout; its pieces table
+gains `orchestrate`, `driver` and `log`. `PROVENANCE.md` gains rows for the two
+ported namespaces, five divergence entries, a corrected path to the upstream
+checkout, and a corrected count — upstream builds the gate-result shape by hand in
+two test files, not three (`grep -rl ':gates/report' test/` at `5df04ad`).
+`method.md` §12 says the loop is in the seed and that the order which put it there
+is the order §12 recommends. Every file touched lost its `NOTES.md row N` and run-id
+citations and kept the lesson.
+
+**What a1 did not exercise:** a retry, a red gate, the cap, a dead REPL, an empty
+diff. Those are in `orchestrate_test.clj` against a scratch git repo with real
+worktrees, real assembly and real gates — only the dispatch is faked, because it is
+the only step that costs money. 295 tests, 1371 assertions.
+
+### Entry 1 · The harness re-aligns to the loop it was extracted from
+
+**What this branch is for.** The kit's harness gets thub's §8 loop shape back —
+one function that chains probe → dispatch → gates → triage → retry-to-a-cap →
+review → merge gate — while keeping every piece the kit grew that thub does not
+have. Then the result is back-ported to thub. That last step is not in this
+branch's scope.
+
+**Why now, and why it was right to wait.** The kit was extracted from
+`thub-harness` on 2026-09-10 and deliberately left the loop behind:
+`harness-seed/README.md` listed *the orchestration loop* and *triage* under
+"Deliberately left out", and `method.md` §12 says not to build a harness
+speculatively — *"run the loop by hand for the first several tasks … and
+automate the orchestration only once you've felt where the manual version
+actually hurts."* Twenty-five runs by hand is that
+condition met, and they are also what makes the rebuild cheap: the manual driver
+is the loop's steps, already written, already exercised.
+
+**What the move lost, which is what this branch puts back.** A comparison of the
+two harnesses on 2026-09-16 found seven things the kit has no version of:
+
+- **The REPL probe.** The rule source tells an agent never to edit blind when
+  the REPL is gone. Nothing checked, so a dead nREPL would have surfaced as a
+  mysterious gate failure several paid attempts later.
+- **The record asserted against its schema.** `harness.shapes/TaskRun` has been
+  in the seed since the extraction and nothing ever validated a record against
+  it. Every record committed before this fails it —
+  `:run/status` outside `RunStatus`, `:run/cost` and `:run/started-at` missing.
+  A schema nothing calls is a comment.
+- **The human merge gate.** Four merges were done by hand in the earlier
+  runs and one of them was wrong — it merged the bytes a role wrote rather
+  than the bytes the gates passed.
+- **The append-only log.** `state.edn` is rewritten in place on every command,
+  so a run's history is only as good as its last write.
+- **The Reviewer's verdict.** The Reviewer returns prose; nothing parses an
+  approve or a reject out of it, so nothing can route on one.
+- **The empty-diff guard.** Green gates over no change at all is a pass that
+  means nothing, and the loop had no reason to notice.
+- **Capped-and-wrote-nothing as a failure.** A dispatch that exhausted its
+  iteration budget having written no file reported `:done`.
+
+**The settled design** (decided in discussion on 2026-09-16; not re-opened
+during the work):
+
+- **The loop.** `harness.orchestrate/run-task!` composes the driver's existing
+  steps behind thub's seams — runners, triage-fn, human-gate-fn, repl-probe,
+  `provision!`/`teardown!`. The manual commands stay, because they are how a
+  person continues from any stop; `merge` joins them.
+- **Kept from the kit**, all of it: three worktrees and assembly-as-a-filter;
+  the HTTP runner with no session resume; the `:calls` and `:targets` gates;
+  gate 0's hunks in the record; the `Feedback` shapes; the Tester leak check;
+  the pause on notes; the report and its drift gate; `propose-routing` as
+  triage's fallback.
+- **Taken from thub**: the REPL probe before each dispatch; the record asserted
+  against `TaskRun`; an append-only event log beside `state.edn`; an nREPL
+  process watch and log while waiting for the port; the Reviewer's verdict
+  block; the empty-diff guard; capped-and-wrote-nothing as a failed dispatch;
+  and a **retry cap of 3 per task** — rounds, not per role, so a hand `retry`
+  and the loop count the same thing.
+- **Triage is one model call** on three triggers (a red gate, a note at the
+  pause, a rejected review), returning `{route reason guidance}` over
+  `coder | tester | architect | human`, plus `continue` for an observation note.
+  It is **dispatched on from day one**, with escalation as the safety and
+  `propose-routing` as the fallback on any model failure; guidance bound for the
+  Tester passes the leak check or escalates. It runs as the profile's
+  `:orchestrator` role — Fable 5.1, effort high — which shares the Coder's
+  family. That is accepted by decision, written into the profile, and watched.
+- **Every stop is a person's.** Architect route, human route, cap reached, dead
+  REPL, failed dispatch, empty diff, no verdict, and the merge gate. The loop
+  records the stop with its reason and prints what to do next; nothing merges by
+  itself. `merge` runs from the gate worktree, behind a decision file, and makes
+  one commit at merge time.
+- **Four dispatched roles** in the profile. The Architect and DevOps stay
+  seat-side, as dated selections in `portability.md`.
+
+**What it reverses.** `harness-seed/README.md`'s "Deliberately left out" loses
+its first two entries: the orchestration loop and triage are in. The cut reasons
+were real and are answered rather than ignored — the client-specific leakage
+that made the loop unpleasant upstream (session resume, an undeclared retry key,
+per-runner cost semantics) does not arise here, because the seed's runner does
+not resume sessions and `AgentResult` is closed with a `:runner/meta` hatch; and
+triage hardcoding one project's routing opinion is answered by making the
+routing a model call with the mechanical proposal as its fallback. §12's
+recommendation is not reversed at all — it says to build the loop *after* the
+manual version has hurt, which is the order this followed.
+
+**How it runs.** One plan, three milestones, each ending in a live trivial run
+against `sandbox/` and a written record: the loop with every stop handed to a
+person; then model triage on red gates and notes; then the verdict, rejection
+routing, merge and teardown.
+
+### Step 0 · The branch and its documents
+
+A new line of work from the tip of the earlier one. The run tables, the records, `NOTES.md` and
+`DEVLOG.md` start clean; the earlier records are dropped rather than
+carried, so no table here is published without the record beside it.
+`bb report-check` prints `reports in sync: 0`, which is the empty case of the
+gate rather than an exemption from it. The profiles keep their dated selections
+and their `:params`, `:pricing` and pins, and lose the bake-off narrative, which
+now reads as one line. Documents outside the
+seed that cited a run id or a section of the run tables now state the
+lesson instead; the seed's own docstrings are swept per file as each milestone
+touches them.

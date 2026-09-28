@@ -1,0 +1,173 @@
+{:paths ["src" "resources"]
+ :deps {metosin/malli {:mvn/version "0.19.1"}}
+ :tasks
+ {:requires ([babashka.fs :as fs]
+             [clojure.string :as str])
+  :init (do (defn test-nses []
+              (->> (fs/glob "test" "**/*_test.clj")
+                   (map (fn [p]
+                          (-> (str (fs/relativize "test" p))
+                              (str/replace (re-pattern "\\.clj$") "")
+                              (str/replace "/" ".")
+                              (str/replace "_" "-")
+                              symbol)))
+                   sort))
+            (defn run-test-nses! [nses]
+              (require '[clojure.test])
+              (apply require nses)
+              (let [{:keys [fail error]}
+                    (apply (resolve 'clojure.test/run-tests) nses)]
+                (when (pos? (+ fail error))
+                  (System/exit 1)))))
+
+  dev {:doc "Start a bb nREPL server for REPL-first development"
+       :task (babashka.nrepl.server/start-server! {:host "localhost" :port 1667})}
+
+  doctor {:doc "Report the Clojure toolchain: tool, version, status, what it does (--edn for a pins map)"
+          :requires ([harness.setup.doctor :as doctor])
+          :task (apply doctor/-main *command-line-args*)}
+
+  init {:doc "bb init <name> [dir] [--seat <name>] [--dry-run]: create the workspace a project is built in - the application from the pinned template, the plan repository (its rules, profile and loop defaults), work/, workspace.edn. Default dir: the folder this clone is in; default seat claude. Never overwrites"
+        :requires ([harness.setup.init :as init])
+        :task (apply init/-main *command-line-args*)}
+
+  test {:doc "Run the test suites"
+        ;; dev/ too: dev/example.clj has its own test through `bb example`.
+        :extra-paths ["test" "dev"]
+        :task (run-test-nses! (test-nses))}
+
+  fmt {:doc "Format with cljfmt"
+       :task (shell "cljfmt fix src test dev")}
+
+  ;; Gate 0 for work done beside the loop. NOT part of `gates` — gate 0 runs
+  ;; before the gate sequence, not inside it.
+  repair {:doc "Gate 0: delimiter repair over the Clojure files you have changed"
+          :requires ([harness.gates.repair :as repair])
+          :task (apply repair/-main *command-line-args*)}
+
+  ;; Gate 4, the architecture-boundary check, run AGAINST a project: from its directory,
+  ;; `bb --config <kit>/harness/bb.edn boundary`. Its bb.edn carries nothing of the KIT.
+  boundary {:doc "Gate 4: a project's layers.edn against its src/ - bb boundary [dir]"
+            :requires ([harness.gates.boundary :as boundary])
+            :task (apply boundary/-main *command-line-args*)}
+
+  ;; NEVER part of `gates`: it starts JVMs and takes minutes. What an adopter runs after
+  ;; `bb doctor`, and what the KIT runs before it publishes a known-good set.
+  health {:doc "The health check: the selfcheck project's gates and red breakers, then an application generated from the pinned template - gates, breakers, serve. [--selfcheck-only] [--keep]"
+          :requires ([harness.setup.health :as health])
+          :task (apply health/-main *command-line-args*)}
+
+  health-sync {:doc "Render health/records/*.edn into the README's health block; --check only compares (the gate)"
+               :requires ([harness.setup.health :as health])
+               :task (apply health/sync-main *command-line-args*)}
+
+  fmt-check {:doc "Check formatting (no changes)"
+             :task (shell "cljfmt check src test dev")}
+
+  lint {:doc "Lint with clj-kondo"
+        :task (shell "clj-kondo --lint src test dev")}
+
+  rules-sync {:doc "Regenerate every rule mirror - resources/rule-mirrors.edn, ../rule-mirrors.edn and the workspace's, where they exist - or the paths given, from resources/agent-rules.edn. [--workspace <dir>] for a KIT kept outside its workspace (or KIT_WORKSPACE)"
+              :requires ([harness.rules :as rules])
+              :task (apply rules/-main *command-line-args*)}
+
+  ;; The mirrors are DATA, not arguments typed here (`rules/mirror-paths` says from where). An unchecked
+  ;; generated mirror is correct only by luck.
+  rules-check {:doc "Fail when a generated rule mirror (resources/rule-mirrors.edn, ../rule-mirrors.edn, the workspace) has drifted from the source. [--workspace <dir>] for a KIT kept outside its workspace (or KIT_WORKSPACE)"
+               :requires ([harness.rules :as rules])
+               :task (apply rules/-main "--check" *command-line-args*)}
+
+  rules-prompt {:doc "Render the rules for one audience as a system-prompt block: --audience <name> [--out FILE] [--<key> <value>]..."
+                :requires ([harness.rules :as rules])
+                :task (apply rules/prompt-main *command-line-args*)}
+
+  ;; Mirrors gates/default-gate-seq, minus :deps — the seed has no layers
+  ;; to enforce. Written out rather than driven off the data, so a gate
+  ;; failure here looks like a gate failure and not a harness failure.
+  report {:doc "Render a run record (EDN on stdin) as a timing and cost report"
+          :requires ([harness.money.report :as report])
+          :task (apply report/-main *command-line-args*)}
+
+  reprice {:doc "bb reprice <run.edn> [--profile <profile.edn>]: fill the cost of every dispatch step the record left unpriced, from the endpoint's generation records; rewrites the record"
+           :requires ([harness.money.reprice :as reprice])
+           :task (apply reprice/-main *command-line-args*)}
+
+  balance {:doc "bb balance <profile.edn> [records...]: OpenRouter credit remaining (its API has it) and Anthropic spend over the records given (its API has no balance) — printed before and after every `run-loop run`"
+           :requires ([harness.money.balance :as balance])
+           :task (apply balance/-main *command-line-args*)}
+
+  ;; The second drift gate: a document that publishes rendered reports is held to the
+  ;; records they render from, the way AGENTS.md is held to the rule source. The KIT
+  ;; itself publishes none (its evidence
+  ;; is the health records, checked by health-sync) - the mechanism is for a project's
+  ;; records: with no arguments, the workspace's `:workspace/run-tables` and
+  ;; `:workspace/records` (so `gates` in a workspace's clone runs it, and outside one it
+  ;; has nothing to check and says so); or the two as arguments.
+  report-check {:doc "Fail when a published report has drifted from its run record: bb report-check [<markdown> <records-dir>] - the workspace's two by default ([--workspace <dir>] or KIT_WORKSPACE for a KIT kept outside it)"
+                :requires ([harness.money.report :as report])
+                :task (apply report/check-main *command-line-args*)}
+
+  ;; The gate on a filled plan, before Foundation: what `start` runs once per workspace before its
+  ;; first dispatch. Cheap and mechanical; `plan-review` is the reading, and not a gate.
+  plan-check {:doc "bb plan-check [<plan-dir>] [--workspace <dir>]: what a filled plan still carries - marks, the template's instructions, the overlay's placeholders - and whether its given parts are intact (the KIT's rules, layers.edn, the gate keys). Exit 1 with the list. The workspace's plan by default"
+              :requires ([harness.setup.plan :as plan])
+              :task (apply plan/-main *command-line-args*)}
+
+  plan-review {:doc "bb plan-review [<plan-dir>] [--profile <profile.edn>] [--workspace <dir>]: method.md §02's plan-review pass, run - the six Phase A documents read cold by the profile's :spec-reviewer with §02's checklist, one call; findings printed with the cost and written to <plan>/reviews/plan-review.edn. Not a gate"
+               :requires ([harness.setup.plan-review :as plan-review])
+               :task (apply plan-review/-main *command-line-args*)}
+
+  ;; A stage's Blueprint, read whole before the human signs it off: method.md §07 step 2's question
+  ;; (is it over-engineered?) and §06's rules for shapes and targets, to the profile's
+  ;; :blueprint-reviewer. The spec review still reads every packet cut from it. Not a gate.
+  blueprint-review {:doc "bb blueprint-review <blueprint.md> [--profile <profile.edn>] [--workspace <dir>]: a stage's Blueprint and its stage document read cold by the profile's :blueprint-reviewer against method.md §07 step 2 and §06's rules, one call; findings printed with the cost and written to <plan>/reviews/<stage>/blueprint-review.edn. Not a gate"
+                    :requires ([harness.setup.blueprint-review :as blueprint-review])
+                    :task (apply blueprint-review/-main *command-line-args*)}
+
+  ;; The models a route can reach, from OpenRouter's public listing - the lookup every brief did
+  ;; by hand. No key is sent; nothing is spent.
+  models {:doc "bb models <query> [--endpoints]: the models a word or a slug names in OpenRouter's listing, newest first - family, date, context, prices per million, whether reasoning is taken, whether a route is written (resources/routes.edn); --endpoints lists the providers serving the newest"
+          :requires ([harness.models.catalogue :as catalogue])
+          :task (apply catalogue/-main *command-line-args*)}
+
+  ;; Candidates for a role, read against the same artifact, compared by a judge that reads them
+  ;; blind - one pass each, the person's marks decide what is real. The table is held to the
+  ;; records by `bake-off-check`, which `gates` runs in a workspace's clone.
+  bake-off {:doc "bb bake-off run <plan>/bake-offs/<id>/bake-off.edn | table <dir> | check: a three-line spec (:role, :candidates as \"<model> <effort>\", :judge) expanded through the catalogue and routes.edn, every case run with every candidate, a judge that reads the answers blind and maps consensus, one TABLE.md; marks.edn is the person's real/not per row"
+            :requires ([harness.models.bake-off :as bake-off])
+            :task (apply bake-off/-main *command-line-args*)}
+  bake-off-check {:doc "Fail when a bake-off's TABLE.md has drifted from its records and marks (the workspace's plan; nothing to check outside one)"
+                  :requires ([harness.models.bake-off :as bake-off])
+                  :task (apply bake-off/check-main *command-line-args*)}
+
+  profile {:doc "Check a profile: shape, verifier independence, seat, key variables ([--seat NAME] [--file F] [--probe] [--workspace <dir>])"
+           :requires ([harness.models.profile :as profile])
+           :task (apply profile/-main *command-line-args*)}
+
+  sigs {:doc "Check a task spec's :deps-sigs against its :files/context (EDN on stdin)"
+        :requires ([harness.contract.sigs :as sigs])
+        :task (apply sigs/-main *command-line-args*)}
+
+  ;; Where a spec.edn comes from: the Blueprint's packet, its named shapes inlined from §1.
+  spec-from-blueprint {:doc "bb spec-from-blueprint <blueprint.md> <task-id> [<out.edn>]: the task's packet out of a Blueprint written to the template, every shape it names inlined from §1, validated and written as the spec.edn a run starts from; without <out.edn> the spec goes to stdout (pipe into bb sigs) and the report to stderr"
+                       :requires ([harness.contract.blueprint :as blueprint])
+                       :task (apply blueprint/-main *command-line-args*)}
+
+  ;; The doctor decides on the GATES tier here: the KIT's own gates need no JVM, and a
+  ;; machine without one must still be able to run them (`bb doctor` alone judges the loop tier).
+  gates {:doc "Quality gates, cheap first: doctor -> format -> lint -> rules -> health block -> reports and bake-offs (a workspace's) -> test"
+         :task (do (shell "bb" "doctor" "--tier" "gates") (run 'fmt-check) (run 'lint)
+                   (run 'rules-check)
+                   (shell "bb" "health-sync" "--check")
+                   (shell "bb" "report-check")
+                   (shell "bb" "bake-off-check")
+                   (run 'test))}
+
+  run-loop {:doc "Drive one task: run <run-dir>, or a single step — <start|check|retry|amend|mutation|continue|record|merge|teardown> <run-dir> ..."
+            :requires ([harness.loop.orchestrate])
+            :task (apply harness.loop.orchestrate/-main *command-line-args*)}
+
+  example {:doc "End-to-end tour: packet -> runner -> gate 0 -> gates. No model calls."
+           :extra-paths ["dev"]
+           :requires ([example])
+           :task (example/-main)}}}

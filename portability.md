@@ -4,8 +4,11 @@ Can this kit be driven from an interactive harness other than Claude Code — th
 IDE, OpenCode 2, Pi — and with models other than Anthropic's, including local ones served by
 LM Studio, MTPLX or oMLX?
 
-Yes. The seat work is done; see `git log`. What remains is the dispatch side, which is
-**designed and not built**, and most of this document is that design.
+Yes. The seat work is done, and so - since the runs of 2026-09-16/17 - is the dispatch side:
+`harness.models.runner/api-runner` dispatches each role to the model its profile names, and every
+recorded run went through it (the closing section, *What the runner needed*, says what was built).
+Most of this document is the DESIGN that preceded it, kept because the reasoning is what a reader
+choosing a seat or a runner needs; where the design and the code differ, the code is right.
 
 > **Client facts here were verified on 2026-09-11** against `claude` 2.1.268, `agy-ide`
 > 1.107.0, `opencode` 1.16.2, `opencode2` 0.0.0-beta-19425 and `pi` 0.85.1 — read off the
@@ -37,12 +40,13 @@ You do not open a second interactive client to review your own work; the Reviewe
 dispatch with a packet. A project has one seat and one harness, and the harness varies the
 *model* per role.
 
-**The dispatch harness is not set up for anything.** The only `AgentRunner` implementation is
-`ManualRunner`, which pprints a packet and blocks on `read-line`. `harness-seed/README.md` cut
-headless runners deliberately — *"model- and CLI-coupled; they would be stale within months"* —
-and `PROVENANCE.md` confirms `coder.clj` / `tester.clj` / `reviewer.clj`, including *"a 226-line
-tool-call loop"*, were not extracted. There is an empty seam and a conformance check
-(`runner-check/check-runner`) waiting for a first implementation.
+**The dispatch harness is `harness.models.runner/api-runner`.** The harness this one was
+extracted from had headless runners coupled to a model and a CLI each - `PROVENANCE.md` says
+`coder.clj` / `tester.clj` / `reviewer.clj`, including *"a 226-line tool-call loop"*, were not
+extracted, because they would have been stale within months. What was built instead is coupled to
+neither: HTTP to a model endpoint, with the tool loop the harness's own. `ManualRunner`, which
+prints a packet and waits for a person, is still there, and `runner-check/check-runner` is the
+conformance check any further runner has to pass.
 
 ## 3 · What each candidate seat offers
 
@@ -89,7 +93,7 @@ files from a source rather than hand-writing them.
 
 ### The `CLAUDE.md` stub, and its one hazard
 
-Claude Code reads only `CLAUDE.md`, so the seed ships one that imports `AGENTS.md`. Pi is the
+Claude Code reads only `CLAUDE.md`, so the harness ships one that imports `AGENTS.md`. Pi is the
 case that makes the shape matter: with **both** files present it loads both and concatenates,
 and it does not resolve `@` imports. So the stub must read sensibly as literal text rather than
 rely on the import alone. A symlink is the alternative — simpler, but Pi then loads the same
@@ -134,12 +138,12 @@ through the prompt rendering. §09 — *"Gates and rules are one system, not two
 
 ---
 
-# The dispatch side — designed, not built
+# The dispatch side — the design, as it was written before the code
 
-Nothing below exists in code. There is no HTTP anywhere in `harness-seed/src`, no provisioning
-namespace, no profile file, and no `AgentRunner` beyond `ManualRunner`. §12 argues against
-building the loop speculatively; this is the design to build *when* it is wanted, not a
-description of something that runs.
+When this was written nothing below existed in code. It does now: `harness.loop.provision`,
+`harness.models.profile` with `resources/profiles/`, `harness.models.runner/api-runner`, and the
+loop in `harness.loop.orchestrate`. The design is kept because it is the reasoning; the sections
+below headed *Built* say what each part became, and the code is right where they differ.
 
 ## API-backed, not client-backed
 
@@ -200,8 +204,8 @@ until it passes, deriving from behaviour instead of the contract. Correctness ha
 efficiency.
 
 What prevents it is §07 Step 3's isolated workspaces: Coder and Tester run **concurrently** and
-*"do not share each other's output."* `:no-gates` is belt-and-braces over that. Until
-provisioning exists, nothing structural keeps the Tester independent.
+*"do not share each other's output."* `:no-gates` is belt-and-braces over that. Provisioning
+is what keeps the Tester independent structurally.
 
 The shape, decided:
 
@@ -225,13 +229,14 @@ Cost: three worktrees and two JVMs per task in flight. §07 starts the WIP limit
 
 ### What the end-to-end runs found
 
-The first five runs against `sandbox/` went through `ManualRunner` with the roles
-played by hand; thirteen dispatched runs have followed. **[`RUNS.md`](RUNS.md) is the
-record**; this section keeps only what the manual five changed about the design above.
+The loop was run against the selfcheck subject many times while the KIT was developed — the
+first runs with the roles played by hand, the rest dispatched to real models. Their records
+are not in this repository. This section keeps only what the hand-played runs changed about
+the design above.
 
 - **The Tester cannot satisfy `:repl-first` on a greenfield task** — its
   worktree correctly holds no implementation, so it cannot `require` the
-  namespace under test. `harness.stub` writes the Blueprint slice into that
+  namespace under test. `harness.contract.stub` writes the Blueprint slice into that
   worktree as loadable source: shapes as real `def`s, every signature a body
   that throws.
 - **Assembly needs an input for architecture.** A new namespace needs a
@@ -249,8 +254,8 @@ record**; this section keeps only what the manual five changed about the design 
   way. §03 step 2: the REPL starts *ready to work*.
 - **A declared thing with no consumer is invisible to every tool.** True of
   `:shapes`, then `:deps-sigs`, then §05's independence rule. Each is now
-  something code can fail on — `harness.stub`, `harness.sigs`,
-  `harness.profile`.
+  something code can fail on — `harness.contract.stub`, `harness.contract.sigs`,
+  `harness.models.profile`.
 - **A stub that throws `ex-info` does not stop a test passing against
   nothing.** `(is (thrown? Exception ...))` is satisfied by the stub itself.
   It throws an `AssertionError` now, which `thrown? Exception` cannot catch.
@@ -268,9 +273,9 @@ that *rewrites* an existing namespace, the previous implementation is sitting
 there to be read. The packet-level exclusion holds; the filesystem-level one
 does not.
 
-**Closed.** `harness.stub` writes the contract OVER the implementation in the
-Tester's worktree, so there is nothing stale to read — exercised for real in run
-5. Deleting the implementation instead is the obvious move and is wrong: the
+**Closed.** `harness.contract.stub` writes the contract OVER the implementation in the
+Tester's worktree, so there is nothing stale to read — exercised for real in an early
+run. Deleting the implementation instead is the obvious move and is wrong: the
 Tester could not then load the namespace at all, which is the problem this
 started from. The cheaper option — **logging reads outside `:files/context`** —
 is still worth having once the runner owns `read_file`, as evidence rather than
@@ -330,7 +335,7 @@ parameters:
          :reviewer {:family :anthropic :model "claude-fable-5-1" :shape :anthropic
                     :endpoint "https://api.anthropic.com"
                     :key-env "ANTHROPIC_API_KEY"
-                    :params {:output_config {:effort "low"} :max_tokens 16000}
+                    :params {:output_config {:effort "high"} :max_tokens 32000}
                     ;; optional: list prices for an endpoint that reports no cost,
                     ;; USD per million tokens, with where and when they were read
                     :pricing {:per-mtok {:in 10 :out 50 :cache-write-5m 12.5
@@ -348,23 +353,67 @@ OpenAI shape, and MTPLX and oMLX serve both shapes locally, so two adapters reac
 `:params` is request parameters; `:serving` is how a *local* model is served. Different things,
 different keys.
 
-**Built** — `harness.profile`, `resources/profiles/`, `bb profile`, and since
-D3 its consumer too: `harness.runner/api-runner` dispatches each role to the
-model its profile names. Every dispatched run, D3 to D15, has gone through it; see
-[`RUNS.md`](RUNS.md) part 2.
+**Built** — `harness.models.profile`, `resources/profiles/`, `bb profile`, and its
+consumer too: `harness.models.runner/api-runner` dispatches each role to the model its
+profile names. Every dispatched run has gone through it.
 
-**Two worked examples ship, one per seat**, and they are near mirror images:
+**Two worked examples ship, one per seat**, and they are near mirror images. Where each seat
+stands, as the doctor says beside each of the five (all five stay, decided 2026-09-24):
+`claude` is the seat every build on the KIT has run from and the one the health check's profile
+names; `agy-ide` has its example, checked by `bb profile`, and no build yet; `opencode`,
+`opencode2` and `pi` have no example, so `bb init --seat` refuses them by name until one exists.
+Proved one seat at a time, portability being the design:
 
 | | seat `claude` | seat `agy-ide` |
 |---|---|---|
-| coder | `anthropic` · `claude-fable-5-1` (effort low) · direct · `:anthropic` | `google` · `gemini-3.8-flash` · OpenRouter · `:openai` |
-| tester | `openai` · `gpt-5.6-sol` · OpenRouter · `:openai` | `openai` · `gpt-5.6-sol` · OpenRouter · `:openai` |
-| reviewer | `google` · `gemini-3.8-flash` · OpenRouter · `:openai` | `anthropic` · `claude-fable-5-1` (effort low) · direct · `:anthropic` |
+| coder | `anthropic` · `anthropic/claude-fable-5.1` (effort low; cache asked for) · OpenRouter pinned `anthropic` · `:openai` | `google` · `gemini-3.8-flash` · OpenRouter · `:openai` |
+| tester | `google` · `gemini-3.8-flash` (effort medium) · OpenRouter · `:openai` | `openai` · `gpt-5.6-sol` · OpenRouter · `:openai` |
+| reviewer | `openai` · `gpt-5.6-sol` (effort high) · OpenRouter · `:openai` | `anthropic` · `claude-fable-5-1` (effort medium, from 2026-09-18) · direct · `:anthropic` |
+| spec-reviewer | `openai` · `gpt-5.6-sol` (effort high) · OpenRouter · `:openai` | `anthropic` · `claude-fable-5-1` (effort low) · direct · `:anthropic` |
+| orchestrator | `anthropic` · `anthropic/claude-fable-5.1` (effort low, from 2026-09-18; high before) · OpenRouter pinned `anthropic` · `:openai` | `google` · `gemini-3.8-flash` (effort high) · OpenRouter · `:openai` |
 
-Anthropic writes and Google reviews, or the reverse. Between them both `:shape`
-adapters have a worked example, which is why there are two rather than one —
+*(The `claude` seat's Tester and Reviewer swapped on 2026-09-16, after bake-offs measured
+both seats' candidates. Those bake-offs' records are not in this repository; what the selections rest on is in
+the profiles' own comments, in words. The
+Orchestrator row was added the same day, when the loop began routing red gates and notes
+through a model call; its selection is a decision, not a measurement, and the profile
+comment says which. The `claude` seat's two Anthropic roles go through OpenRouter since
+2026-09-25 in the shipped file - decided 2026-09-18 and applied by hand in every build before
+that: one key and one balance, the cost reported rather than computed, one credit stop, the
+generation record; the profile's header says why.)*
+
+Anthropic writes, and two other families verify. Between them both `:shape`
+adapters have a worked example, which is why there are two rather than one -
+the `:anthropic` shape's is `agy-ide`'s Reviewer and spec reviewer, direct to Anthropic
+with `:pricing`, now that every role of the `claude` example is on the `:openai` shape -
 and a single committed profile reads as *your* configuration, which is exactly
 how the first version was misread.
+
+**The whole role table for the `claude` seat**, in the shape method §05 asks for — the
+family as the binding contract, the model as a dated selection underneath it. Four rows
+are the profile's and the harness dispatches them; two are the seat's, where the human
+works, and no packet reaches them:
+
+| Role | Constraint | Family | Model (as of 2026-09-16; the route as of 2026-09-25) | Dispatched? | Notes |
+|---|---|---|---|---|---|
+| **Coder** | — (family A) | Anthropic | `anthropic/claude-fable-5.1` over OpenRouter pinned to `anthropic`, effort low, the cache asked for | yes, every task | The seat's family, by convention: one story between the human and the code. |
+| **Tester** | **≠ A** | Google | `gemini-3.8-flash`, effort medium | yes, every task | Chosen by its tests, not its price; the cheapest model in the hardest seat lost a run. |
+| **Reviewer** | **≠ A** | OpenAI | `gpt-5.6-sol`, effort high | yes, on green | Third family; only Coder-divergence is required, a third adds blind-spot diversity. |
+| **Spec reviewer** | **≠ A** | OpenAI | `gpt-5.6-sol`, effort high | yes, once per spec, before `start` | Reads the Architect's contract cold — every place a target can be read two ways, every input no target mentions — and the Architect is the seat, family A. Added 2026-09-18; same model as the Reviewer because that is the configuration measured. |
+| **Blueprint reviewer** | none — family A, accepted by decision | Anthropic | `anthropic/claude-opus-5.5` over OpenRouter pinned to `anthropic`, effort high | yes, once per Blueprint, before sign-off | Reads the stage document and the Blueprint whole against §07 step 2 and §06's rules (`bb blueprint-review`). The rule's reasoning reaches it as it reaches the spec reviewer; the exception is from a measurement — on one build this family, reading Blueprints cold, alone found each round's load-bearing defect — written in the profile's comment and watched in `NOTES.md`. Added 2026-09-25. |
+| **Orchestrator** | none | software; Anthropic for triage | `anthropic/claude-fable-5.1` over OpenRouter pinned to `anthropic`, effort low (high until 2026-09-18: saved verdicts re-asked at low gave the same routes for a little less) — triage calls only | yes, on a red gate or a note | Dispatch is `harness.loop.orchestrate`; the model enters at triage and shares the Coder's family by decision — it verifies nothing, so §05 does not reach it. Watched in `NOTES.md`. |
+| **Architect** | none | Anthropic — the seat | the session's model, chosen per session | no — seat-side | Writes the spec and amends it at a stop; does not verify Coder output. |
+| **DevOps** | none | Anthropic — the seat | the session's model, chosen per session | no — seat-side | Config, docs, release prep; the interactive-programmer role in `harness/agents/`. |
+
+The independence rule is `harness.models.profile/verifiers`, and it names exactly the three
+rows marked **≠ A** — the Spec reviewer's author is the Architect, who is the seat, whose
+family is A by the convention above. The Orchestrator is in the profile because the harness reaches
+it over HTTP like the other four; it is not a verifier, and `bb profile` does not
+check its family against the Coder's; nor the Blueprint reviewer's, by the decision above. The same
+roles by the act each performs — every review, gate and dispatch in a build — is
+[`harness/roster.md`](harness/roster.md). A model in this table is replaced by a measurement:
+`bb bake-off` in the harness reads the same artifact with each candidate once, a judge maps where
+they agree, and the person marks what is real; `bb models` is the catalogue the candidates come from.
 
 **The Coder's family follows the seat, by convention and not by rule.** You are
 already being helped by that family interactively, so letting it write the code
@@ -404,17 +453,16 @@ and the violation reports the variable's name, never its value.
 
 ## What the runner needed — all of it built
 
-Written up here before any of it existed; every line is now `harness.adapter`,
-`harness.provenance`, `harness.tools`, `harness.agent` and
-`harness.runner/api-runner`. Kept because the reasoning is what a reader
-adapting this needs, and because what the runs then taught is in
-[`RUNS.md`](RUNS.md) rather than here.
+Written up here before any of it existed; every line is now `harness.models.adapter`,
+`harness.models.provenance`, `harness.models.tools`, `harness.models.agent` and
+`harness.models.runner/api-runner`. Kept because the reasoning is what a reader
+adapting this needs, and because what the runs then taught is in the code rather than here.
 
 - **A tool loop.** Upstream's was *"a 226-line tool-call loop"*, deliberately not extracted.
   `read_file`, `write_file` (path-checked), `nrepl_eval` shelling `clj-nrepl-eval`. Per §10
   lesson 8, a tool-call failure returns to the model as data and never crashes the process.
-  D3 found the docstring claiming this was *not* a shell to be false: a REPL is
-  arbitrary code execution, and the containment is the worktree.
+  The first dispatched run found the docstring claiming this was *not* a shell to be
+  false: a REPL is arbitrary code execution, and the containment is the worktree.
 - **Two request adapters**, `:openai` and `:anthropic`.
 - **The system prompt from `bb rules-prompt --audience <role>`** — that task's only consumer.
 - **Derive `:files` from git**, not from the model's report. `runner-check`'s `:files-exist`
@@ -422,8 +470,9 @@ adapting this needs, and because what the runs then taught is in
 - **Do not resume sessions.** §10: a resumed retry costs several times a fresh one.
 - **Everything provider-specific into `:runner/meta`**, which is why `AgentResult` is closed.
 
-## Out of scope
+## What this design left out, and what became of it
 
-The orchestration loop, triage and the run log were cut deliberately in
-`harness-seed/README.md`, and §12 argues against building any of them speculatively. Nothing
-above requires them.
+The orchestration loop, triage and the run log were out of scope when this was written: §12
+argues against building any of them speculatively. They were built afterwards, once the loop had
+been run by hand often enough to show where it hurt - `harness.loop.orchestrate`,
+`harness.loop.triage`, `harness.loop.log` - and `harness/README.md` says what is still left out.

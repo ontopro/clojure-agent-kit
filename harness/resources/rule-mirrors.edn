@@ -1,0 +1,9 @@
+;; The generated rule mirrors the HARNESS itself ships, relative to this directory: its own
+;; AGENTS.md and the selfcheck project's, the first subject of `bb health`. `bb rules-sync` with no
+;; arguments regenerates every one; `bb rules-check` fails when any has drifted.
+;;
+;; A project's mirror - the application's AGENTS.md - is NOT listed here: `bb init` records it in the
+;; workspace's `workspace.edn` (:workspace/rule-mirrors), which both tasks read when a workspace is
+;; found, so that a clone upgraded with `git pull` carries no project's file list. A repository that
+;; wraps this one may still list its own mirrors in `../rule-mirrors.edn`.
+["AGENTS.md" "health/selfcheck/AGENTS.md"]

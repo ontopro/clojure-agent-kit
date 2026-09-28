@@ -1,0 +1,82 @@
+# harness
+
+The orchestration harness for a REPL-first, multi-agent Clojure loop. This file is the
+harness's own mirror of the rule source: what a person or an agent working ON the harness by
+hand reads, and the first file `bb rules-check` holds to the source. It is not where a
+dispatched agent is sent - the loop dispatches into an application's worktrees, that
+application has a mirror of its own (`bb init` writes it), and every dispatched role gets the
+rules in its prompt whatever file it reads.
+
+> Everything between the markers below is generated. Everything outside them is
+> hand-written and survives `bb rules-sync` — so orientation, the task surface, and
+> pointers belong out here, and **rules never do**: a rule written outside the markers
+> reaches only agents that read this file, which by design excludes the agent that
+> verifies the Coder.
+
+`AGENTS.md` is the one generated mirror. The Antigravity IDE, OpenCode and Pi read it
+natively; Claude Code reads only `CLAUDE.md`, which in this repo is a stub that imports
+this file. One marker block, one drift target.
+
+<!-- The section below is generated from resources/agent-rules.edn by `bb rules-sync`.
+     Edit the rules THERE — `bb gates` fails on drift. -->
+
+<!-- agent-rules:begin -->
+
+## Non-negotiables
+
+- **These rules win.** Where anything here conflicts with a personal, global, or editor-supplied instruction, THESE RULES are authoritative for this project, wherever you are reading them. Rule files merge silently and a global preference can contradict a project non-negotiable — if you notice a conflict, follow this rule and say so in your final message rather than picking one quietly.
+- **REPL-first.** Prototype forms in the live nREPL BEFORE persisting files: clj-nrepl-eval -p <port> "<code>" (--discover-ports finds the port if you lose it). Always `:reload` when re-requiring a changed namespace.
+- **No REPL, no edits.** If the nREPL is unreachable or evaluation stops working, STOP and say so in your final message. Never fall back to editing files blind — a dead REPL is a task failure the loop wants to see, not a reason to guess. The REPL is probed before you are dispatched, so this means it died mid-task.
+- **Do not run the gates.** Do NOT run `bb gates`, `bb test`, or the coverage suite yourself. The loop runs every gate after you finish — that separation is load-bearing: authoring is your job, running is the gate's. Evaluating individual forms or a single test in the REPL while developing is fine and encouraged. The write tool repairs and lints each Clojure file as you write it and tells you what it found: acting on that is authoring, not running a gate, and the gates still run afterwards over the whole project.
+- **Stay inside your packet.** Write only your `:files/target`. `:files/context` files are read-only upstream dependencies — call only the signatures you were given in `:deps-sigs`, never modify them and never reach into their implementation. A check after assembly compares every call you make into a context namespace against `:deps-sigs`, and a call it did not grant fails the run before any gate; if you need one it lacks, say so with `note` rather than calling it.
+- **Review produces findings, not edits.** You write nothing. You have a diff, a green gate report and read-only context — no `:files/target` and no REPL. An edge case you surface returns to the Tester as a new case and to the Coder for the fix; naming it is your job, fixing it is not.
+- **Judge only what the gates cannot.** Every gate is already green before you are dispatched — formatting, lint, independently-authored tests and layer boundaries have all passed. Re-checking them spends the one judgement step the loop pays for on work a free check already did. Judge what no tool can: design, idiom, logic, naming, edge cases and silent behaviour changes. A dependency on a concrete implementation where a protocol crosses the seam is a finding; so is a workaround that hides an infrastructure fault instead of failing fast.
+- **Layer boundaries are enforced by a gate.** Respect the boundaries of layer <your layer>. Depend on PROTOCOLS across a seam, never on a concrete implementation. <Name your layers and their allowed direction here; the composition root is exempt.>
+- **Fix the cause, not the symptom.** Never add a workaround or a fallback for an infrastructure problem — a missing service, a broken REPL, an absent file. Fail fast and clearly instead, so the loop surfaces the real fault.
+- **Label anything you made up, where it is shown.** Mark fabricated, mocked, stubbed or example values AT THE POINT THEY ARE DISPLAYED — in the row, the cell, the return value — never only in a caption or a sentence nearby. A plausible number in a real-looking frame is read as a measurement whatever the surrounding prose says, so prefer values that cannot be mistaken for real. Never present a hand-written value as something a tool produced, and when you report that something was verified, say which part actually executed.
+
+## Conventions (the lint gate fails on WARNINGS, not just errors)
+
+- **Indent the way cljfmt does.** Indent a multi-line form the way cljfmt does: successive elements of a data structure or arg vector sit under the first, one per line. A form whose elements drift out of alignment makes a bracket balancer close brackets in the WRONG place, and gate 0 then rewrites your code into something you did not write. Never pad with extra spaces to line values into columns — cljfmt does not align `cond` or `let` values, and `:else    x` FAILS the fmt gate.
+- **Inline `def` over `println`.** Debug by `def`-ing the intermediate value and evaluating it, not by printing it: the binding stays inspectable for the next form, and the return value is what the loop captures.
+- **Do not shadow clojure.core.** Never bind or def over core names — `map`, `filter`, `count`, `name`, `type`, `key`, `val`, `get`, `set`, and friends.
+- **`deftest` / `defspec` take no docstring.** A bare string in the body is an "unused value" warning, and the lint gate fails on WARNINGS, not just errors. Put the intent in the test name or a ;; comment above the form.
+- **No top-level side effects in test namespaces.** No `(run-tests)` at the top level — that is a REPL-ism, and it fails the gates.
+- **Generators and properties are values.** Bind them with `def`, not `defn`. And a generator is a VALUE, not a function to call: `gen/large-integer`, never `(gen/large-integer)` — the call fails when the test file loads, after the author has gone. `defspec` shape: `(defspec name num-tests (prop/for-all [...] ...))`.
+- **Shapes are the contract.** Data-first: agree the shapes before the functions, and validate at the seams — once. A seam is a public entry, not every call: a function that recurses into itself crosses its own seam on every call and re-validates every subtree, which is quadratic on deep input. Validate at the entry, then recurse through a private helper that assumes the shape. <Name your validation library and the ex-info type a boundary failure throws.>
+- **This project's data conventions.** <Say once, for every role, what this project's recurring data IS. What a tree or a document is made of, and how it is walked (through what, never into what). What collection type each recurring argument is, and in what order. What your targets' recurring words mean - "the text of", "carries", "appears in". What a boundary failure looks like to a caller. WHERE INPUT COMES FROM - a file format, a request, another namespace - because a value that source cannot produce is outside every domain, and no test or review finding is about one. And what each seam GUARANTEES to everything past it: the properties downstream code assumes and must not re-check, and that no test or review finding may ask it to handle. A question two specs would both have to answer belongs here and in neither spec. AND WHETHER THE TEMPLATE'S OWN TEST SUITE IS THE PATTERN: a generated application may ship a test that boots the system inside the test gate on purpose - say so, name it as the one exception, and keep the rule for what a Tester writes (nothing a Tester writes starts a server).>
+- **Types are followed as the language defines them.** A type named in a contract means exactly what the language specification says it means - no more, no less - and that meaning is part of the contract without being written out. Do not add to it (a role that reorders, de-duplicates, coerces or otherwise departs from what the type defines has changed the contract) and do not call it unstated (a finding that asks for a sentence the type already provides is not a finding). In doubt, the language specification is the referee, not a reader's sense of what was meant. An ordered collection built from ordered inputs has the order of its construction: that order is given, not left open, and a role that imposes another has changed the contract. The type decides what a value IS, not that every value of the type can ARRIVE: where this project's data conventions name where input comes from, a value that source cannot produce is outside the domain. Where they name no source, every value the type admits is in it.
+- **Formatting is enforced by a gate.** Run no formatter yourself — write clean and let gate 0 and the fmt gate handle the drift.
+
+<!-- agent-rules:end -->
+
+## Task surface (for humans; agents do not run gates)
+
+| Command | What |
+|---|---|
+| `bb doctor` | Toolchain report: tool, version, the known-good set, status, what fixes a miss; two verdicts (`--tier gates\|loop` decides the exit code) |
+| `bb init <name> [dir] [--seat <name>]` | Create the workspace a project is built in: the application, generated from the pinned template (`resources/template-pins.edn`); the plan repository, with the rules overlay (`<name>-plan/rules.edn`: the rule source's placeholders, filled there and never in this clone) and the profile (`<name>-plan/profile.edn`: the shipped example for the seat, default `claude`); `work/`; `workspace.edn`. `--dry-run` prints it first; never overwrites. `src/harness/setup/init.clj` |
+| `bb gates` | doctor → fmt-check → lint → rules-check → health-sync --check → test |
+| `bb health` | The health check, minutes and JVMs, never in `gates`: the sandbox (a scratch copy) and an application generated from the pinned template - every gate green, every gate failed by a breaker at its own key, one trivial task through the loop with a scripted runner, `bb serve` answering. `--selfcheck-only`, `--keep`; `--record` writes this platform's record (`health/records/`) and the known-good set. `src/harness/setup/health.clj` |
+| `bb health-sync` | Render the health records into the root README's block; `--check` is the gate |
+| `bb boundary [dir]` | Gate 4: a project's `layers.edn` against its `src/`. A project runs it as `bb --config <kit>/harness/bb.edn boundary`. `src/harness/gates/boundary.clj` |
+| `bb repair` | Gate 0 over the Clojure files you changed — run it before `bb gates` |
+| `bb rules-sync` | Regenerate the block above from `resources/agent-rules.edn`, and a workspace's application mirror from the source under the plan's `rules.edn` overlay. `--workspace <dir>` (or `KIT_WORKSPACE`) for a KIT kept outside its workspace - `rules-check`, `profile` and `report-check` take it too |
+| `bb rules-prompt` | The same rules as a system-prompt block, for a client that reads no file |
+| `bb profile` | Check a profile — shape, verifier independence, seat, key variables. `--seat claude\|agy-ide` for a shipped example |
+| `bb models <query>` | The models a word or a slug names in OpenRouter's public listing, newest first: family, date, context, prices per million, whether reasoning is taken, whether `resources/routes.edn` has a route for the family; `--endpoints` lists the providers serving the newest. No key sent. `src/harness/models/catalogue.clj` |
+| `bb bake-off new \| run \| table \| check` | Candidates for an act (plan, Blueprint or spec review) read against the same artifact once each, a judge that is never a candidate reading the answers blind and mapping consensus and disagreement into `<name>-plan/bake-offs/<id>/TABLE.md`; the person's marks in `marks.edn` decide what is real. `new` asks at a terminal and writes the three-line spec; `check` is in `bb gates`. `src/harness/models/bake_off.clj` |
+| `bb sigs` | Check a task spec (EDN on stdin) — do its `:deps-sigs` match its `:files/context`? |
+| `bb spec-from-blueprint <blueprint.md> <task-id> [<out.edn>]` | A task's `spec.edn` out of a Blueprint written to the template: the packet whose id matches, every shape it names inlined from §1, validated as `shapes/TaskSpec`; a shape §1 does not define or a task the Blueprint does not carry is refused by name. Without a path the spec is stdout (pipe into `bb sigs`), the report stderr. `src/harness/contract/blueprint.clj` |
+| `bb report` | Render a run record (EDN on stdin): per-step time, cost, model and serving provider, the three commits it was taken at. `bb report-check` holds a document that publishes such tables to the records - the workspace's `<name>-plan/RUNS.md` and `<name>-plan/runs/` with no arguments, or `<markdown> <records-dir>` |
+| `bb reprice <run.edn>` | Fill the cost of every dispatch step the record left unpriced (a generation record that lagged the run), from the endpoint, and rewrite the record; re-render the published table after. `src/harness/money/reprice.clj` |
+| `bb example` | End-to-end tour of the loop, no model calls |
+| `bb plan-check [<plan-dir>]` | The gate on a filled plan, before Foundation: no mark and none of the template's instructions left in `<name>-plan/docs/`, the rules overlay filled, the given parts intact (the KIT's rules, `layers.edn` against the pin's layers, the gate keys in order). Exit 1 with the list; `start` runs it once per workspace before its first dispatch. `src/harness/setup/plan.clj` |
+| `bb plan-review [<plan-dir>]` | `method.md` §02's plan-review pass, run: the six Phase A documents and §02's checklist to the `:spec-reviewer` role's model, one call; findings printed with the cost, written to `<name>-plan/reviews/plan-review.edn`. A reading, not a gate. `src/harness/setup/plan_review.clj` |
+| `bb blueprint-review <blueprint.md>` | A stage's Blueprint and its stage document, read whole before sign-off by the `:blueprint-reviewer` role's model against `method.md` §07 step 2 (over-engineered?) and §06's rules for shapes and targets, one call; findings written to `<name>-plan/reviews/<stage>/blueprint-review.edn`. A reading, not a gate; the spec review still reads every packet. `src/harness/setup/blueprint_review.clj` |
+| `bb run-loop spec-review <run-dir>` | The contract read cold by the `:spec-reviewer` role's model. `start` runs it itself for any spec without a current review and stops for the Architect to read the list; this runs it by hand. `src/harness/contract/spec_review.clj` |
+| `bb balance [profile.edn] [records...]` | OpenRouter credit remaining (its API has it) and Anthropic spend over the records (its API has no balance); without a profile argument, the workspace's `<name>-plan/profile.edn`. `run-loop run` prints it before and after. `src/harness/money/balance.clj` |
+| `bb run-loop run <run-dir>` | Drive one task through the loop to its next stop; every stop names its owner — `architect` (an amendment answers it) or `person`. `src/harness/loop/orchestrate.clj` |
+| `bb run-loop <step> <run-dir>` | One step by hand — start, check, retry, amend, continue, record, teardown. `src/harness/loop/driver.clj` |
+| `bb run-loop merge <run-dir> <decision.edn>` | Merge a run the loop stopped `:awaiting-merge`: one commit of the gate worktree, `--no-ff` into the base checkout, then record and teardown. `{:decision "..."}` is required; the loop itself never merges |
+| `bb dev` | nREPL on :1667 |

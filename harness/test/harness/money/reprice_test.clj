@@ -1,0 +1,115 @@
+(ns harness.money.reprice-test
+  (:require
+   [babashka.fs :as fs]
+   [cheshire.core :as json]
+   [clojure.string :as str]
+   [clojure.test :refer [deftest is testing]]
+   [harness.contract.shapes :as shapes]
+   [harness.models.provenance :as provenance]
+   [harness.money.reprice :as reprice]
+   [org.httpkit.server :as srv]))
+
+(defn- with-stub
+  "A stub generation endpoint: `records` is {id generation-map}; an unknown id
+  is a 404, as OpenRouter answers one that has not been written yet."
+  [records f]
+  (let [seen (atom [])
+        stop (srv/run-server
+              (fn [req]
+                (let [id (second (re-find #"id=([^&]+)" (str (:query-string req))))]
+                  (swap! seen conj {:id id :auth (get-in req [:headers "authorization"])})
+                  (if-let [g (get records id)]
+                    {:status 200 :headers {"Content-Type" "application/json"}
+                     :body (json/generate-string {:data (assoc g :id id)})}
+                    {:status 404 :body "{}"})))
+              {:port 0 :legacy-return-value? false})
+        port (srv/server-port stop)]
+    (try [(f (str "http://127.0.0.1:" port "/api/v1")) @seen]
+         (finally (srv/server-stop! stop)))))
+
+(def fast {:attempts 1 :interval-ms 1 :timeout-ms 2000})
+
+(defn- record [endpoint]
+  {:run/id "w7" :task/id "t" :run/attempts 1 :run/status :merged :run/started-at (java.util.Date.)
+   :run/cost 0.2
+   :run/roles {:coder {:model "m" :family :anthropic :endpoint endpoint :key-env "REPRICE_TEST_KEY"}
+               :tester {:model "t" :family :google :endpoint endpoint :key-env "REPRICE_TEST_KEY"}}
+   :run/steps [{:step/name :provision :step/kind :provision :step/status :done :step/ms 10 :step/source :measured}
+               {:step/name :coder :step/kind :dispatch :step/status :done :step/ms 500 :step/source :measured
+                :step/model "m" :step/provider "Anthropic" :step/cost nil :step/cost-source :reported
+                :step/tokens 100 :step/generation-ids ["gen-a" "gen-b"]}
+               {:step/name :tester :step/kind :dispatch :step/status :done :step/ms 400 :step/source :measured
+                :step/model "t" :step/provider "Google" :step/cost 0.2 :step/cost-source :reported
+                :step/tokens 50 :step/generation-ids ["gen-c"]}]})
+
+(deftest an-unpriced-step-is-priced-from-every-one-of-its-generation-records
+  (let [[{:keys [record changed lines]} seen]
+        (with-stub {"gen-a" {:total_cost 0.25} "gen-b" {:total_cost 0.125} "gen-c" {:total_cost 99}}
+          #(reprice/reprice (record %) {:fetch-opts fast :getenv {"REPRICE_TEST_KEY" "sk-test"}}))
+        coder (nth (:run/steps record) 1)]
+    (is (= 1 changed))
+    (is (= 0.375 (:step/cost coder)) "the sum over both ids")
+    (is (= :repriced (:step/cost-source coder)) "the endpoint's word, fetched later - not a list price")
+    (is (= 0.575 (:run/cost record)) "and the run's cost is the steps' sum again")
+    (is (= 0.2 (:step/cost (nth (:run/steps record) 2))) "a priced step is not touched")
+    (is (= ["gen-a" "gen-b"] (map :id seen)) "only the unpriced step's ids were fetched")
+    (is (every? #(= "Bearer sk-test" (:auth %)) seen) "with the key the role's variable names")
+    (is (shapes/valid-run? record) (pr-str (shapes/explain-run record)))
+    (is (= 1 (count lines)))
+    (is (str/includes? (first lines) "coder: 2 generation records fetched, cost $0.375000 (was —)"))))
+
+(deftest a-step-with-one-record-missing-is-left-exactly-as-it-was
+  (let [[{:keys [record changed lines]} _]
+        (with-stub {"gen-a" {:total_cost 0.25}}
+          #(reprice/reprice (record %) {:fetch-opts fast :getenv {}}))]
+    (is (zero? changed))
+    (is (nil? (:step/cost (nth (:run/steps record) 1))) "a partial sum is not a cost")
+    (is (= 0.2 (:run/cost record)) "the run's cost stays")
+    (is (str/includes? (first lines) "1 of 2 generation records answered; gen-b did not - left unpriced"))))
+
+(deftest a-record-that-kept-no-endpoint-takes-one-from-a-profile
+  (let [bare (fn [ep] (update (record ep) :run/roles (fn [rs] (into {} (for [[k v] rs] [k (dissoc v :endpoint :key-env)])))))]
+    (let [[{:keys [changed lines]} _] (with-stub {} #(reprice/reprice (bare %) {:fetch-opts fast}))]
+      (is (zero? changed))
+      (is (str/includes? (first lines) "no endpoint on the record's :run/roles for coder - pass --profile")))
+    (let [[{:keys [changed]} _]
+          (with-stub {"gen-a" {:total_cost 0.1} "gen-b" {:total_cost 0.1}}
+            #(reprice/reprice (bare %) {:fetch-opts fast :getenv {}
+                                        :profile {:roles {:coder {:endpoint % :key-env "X"}}}}))]
+      (is (= 1 changed)))))
+
+(deftest an-endpoint-with-no-generation-record-is-said-not-fetched
+  (let [{:keys [changed lines]} (reprice/reprice (record "https://api.anthropic.com") {:fetch-opts fast :getenv {}})]
+    (is (zero? changed))
+    (is (str/includes? (first lines) "has no generation record to fetch"))))
+
+(deftest nothing-to-reprice-when-no-unpriced-step-carries-an-id
+  (let [r (update (record "http://x/api/v1") :run/steps (fn [ss] (mapv #(dissoc % :step/generation-ids) ss)))]
+    (is (empty? (reprice/unpriced r)) "a record from before the ids were kept")
+    (is (empty? (reprice/unpriced (assoc-in (record "http://x/api/v1") [:run/steps 1 :step/cost] 0.3))))))
+
+(deftest role-key-reads-the-role-off-a-retry-or-triage-step-name
+  (is (= :coder (reprice/role-key :coder)))
+  (is (= :coder (reprice/role-key :coder-r2)))
+  (is (= :orchestrator (reprice/role-key :triage)))
+  (is (= :orchestrator (reprice/role-key :triage-r1)))
+  (is (= :reviewer (reprice/role-key :reviewer-r3))))
+
+(deftest main-rewrites-the-file-and-says-so
+  (let [dir (str (fs/create-temp-dir))
+        path (str (fs/path dir "w7.edn"))
+        [out _] (with-stub {"gen-a" {:total_cost 0.25} "gen-b" {:total_cost 0.125}}
+                  (fn [ep]
+                    (spit path (pr-str (record ep)))
+                    (with-redefs [provenance/defaults fast]
+                      (with-out-str (reprice/-main path)))))
+        after (read-string (slurp path))]
+    (is (str/includes? out "1 step repriced"))
+    (is (str/includes? out "fails `bb report-check` until it is re-rendered"))
+    (is (= 0.375 (:step/cost (nth (:run/steps after) 1))))
+    (is (= 0.575 (:run/cost after)))
+    (testing "run again: nothing left to do, and the file is not touched"
+      (let [before (slurp path)
+            out (with-out-str (reprice/-main path))]
+        (is (str/includes? out "nothing to reprice"))
+        (is (= before (slurp path)))))))

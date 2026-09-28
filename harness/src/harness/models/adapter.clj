@@ -1,0 +1,289 @@
+;; seed — see PROVENANCE.md; this is a fork of thub-harness, not a mirror.
+;; Not extracted: written for the seed.
+(ns harness.models.adapter
+  "One request shape per model family, and one parsed shape out.
+
+  WHY TWO AND NOT ONE. OpenRouter normalises frontier models to the OpenAI
+  chat-completions shape, and MTPLX and oMLX serve that shape locally, so one
+  adapter reaches most of what a profile is likely to name. The second exists
+  because going DIRECT to Anthropic is a legitimate thing a project does — its
+  own credits, no reseller margin — and that endpoint differs in three ways
+  OpenRouter's normalisation hides: the system prompt is a top-level parameter
+  rather than a message, an `anthropic-version` header is required, and tool
+  calls come back as content blocks rather than a `tool_calls` array.
+
+  WHY MULTIMETHODS. `:shape` is profile data, so a third shape should be a new
+  method in a new file rather than an edit to a `case` here. The dispatch value
+  is the shape keyword and nothing else — not the family, not the endpoint,
+  because `google/gemini-3.8-flash` reached through OpenRouter speaks OpenAI and
+  the same model reached directly would not.
+
+  THIS NAMESPACE IS NOT STACK-SPECIFIC. It builds and reads JSON; a reader on
+  another stack keeps it and rewrites `harness.gates.repair`, `harness.contract.stub` and
+  `harness.contract.sigs`."
+  (:require
+   [clojure.string :as str]))
+
+;; ---------------------------------------------------------------------------
+;; requests
+;; ---------------------------------------------------------------------------
+
+(defmulti request
+  "The HTTP request map for one completion.
+
+  `role` is a profile's role map — `:model`, `:endpoint`, `:params`, `:key-env`.
+  `system` is the rendered rule block, `messages` the conversation so far, and
+  `tools` the tool declarations in that shape's own vocabulary.
+
+  Returns `{:url _ :headers _ :body _}` as DATA, not a performed request: a
+  test can assert the body without a server, and the caller owns the retry,
+  timeout and error policy."
+  (fn [role _system _messages _tools] (:shape role)))
+
+(defn- api-key
+  "The key a role names, or a throw naming the variable.
+
+  Reads `:key-env`; never takes a key as an argument and never puts one in an
+  ex-info, because ex-infos get logged."
+  [{:keys [key-env]}]
+  (when key-env
+    (or (not-empty (System/getenv key-env))
+        (throw (ex-info "the profile names an unset key variable"
+                        {:harness/error :key-env-unset :key-env key-env})))))
+
+(defmethod request :openai
+  [{:keys [model endpoint params] :as role} system messages tools]
+  {:url (str (str/replace endpoint #"/+$" "") "/chat/completions")
+   :headers (cond-> {"Content-Type" "application/json"}
+              (:key-env role) (assoc "Authorization" (str "Bearer " (api-key role))))
+   ;; The system prompt is just another message here. That is the whole
+   ;; difference from :anthropic below, and it is why one shape cannot serve.
+   :body (cond-> (merge {:model model
+                         :messages (into [{:role "system" :content system}] messages)}
+                        params)
+           (seq tools) (assoc :tools tools))})
+
+(def anthropic-version
+  "Pinned, because the header is required and an unpinned API is a silent
+  behaviour change on someone else's schedule."
+  "2023-06-01")
+
+(defmethod request :anthropic
+  [{:keys [model endpoint params] :as role} system messages tools]
+  {:url (str (str/replace endpoint #"/+$" "") "/v1/messages")
+   :headers (cond-> {"Content-Type" "application/json"
+                     "anthropic-version" anthropic-version}
+              (:key-env role) (assoc "x-api-key" (api-key role)))
+   ;; `system` is a TOP-LEVEL parameter, not a message with role "system".
+   ;; Sending it as a message is accepted and ignored, which is the worst
+   ;; possible failure: the rules silently do not reach the model.
+   :body (cond-> (merge {:model model
+                         :system system
+                         :messages messages
+                         :max_tokens (or (:max_tokens params) 4096)
+                         ;; AUTOMATIC PROMPT CACHING (2026-09-14). A tool loop
+                         ;; re-sends the whole conversation every completion:
+                         ;; one Coder sent ~40-50k input tokens over ten
+                         ;; turns for a conversation that ended at 12k. With
+                         ;; this top-level field the API caches what it has
+                         ;; seen and re-reads it at the cache-read rate; the
+                         ;; usage reports the split and the profile's :pricing
+                         ;; prices it. A profile :params entry overrides it.
+                         :cache_control {:type "ephemeral"}}
+                        (dissoc params :max_tokens))
+           (seq tools) (assoc :tools tools))})
+
+;; ---------------------------------------------------------------------------
+;; responses
+;; ---------------------------------------------------------------------------
+
+(defmulti parse
+  "A decoded response body as `{:text _ :tool-calls _ :stop _ :usage _ :id _}`.
+
+  `:tool-calls` are normalised to `{:id _ :name _ :args _}` whatever the wire
+  shape was, so `harness.models.tools` never learns which family it is serving."
+  (fn [shape _body] shape))
+
+(defmethod parse :openai
+  [_ body]
+  (let [msg (get-in body [:choices 0 :message])
+        usage (:usage body)]
+    {:text (:content msg)
+     :tool-calls (vec (for [c (:tool_calls msg)]
+                        {:id (:id c)
+                         :name (get-in c [:function :name])
+                         :args (get-in c [:function :arguments])}))
+     :stop (if (seq (:tool_calls msg)) :tool-use :end)
+     ;; CACHED TOKENS, WHEN THE ENDPOINT REPORTS THEM. OpenRouter puts them under
+     ;; `prompt_tokens_details` (`cached_tokens`, `cache_write_tokens`), and its
+     ;; `prompt_tokens` INCLUDES both. `:in` here means what it means on the
+     ;; :anthropic shape - prompt tokens billed at the full input rate - so the two
+     ;; are taken out of it; otherwise a report's cache share would mean one thing
+     ;; per shape. An Anthropic model was once served through this shape with
+     ;; nothing asking for caching: the record showed 21k input tokens and no cache
+     ;; line, which was true - and would have looked exactly the same had caching
+     ;; been working, because nothing here read the fields that say so.
+     ;;
+     ;; ASKING FOR THE CACHE IS THE PROFILE'S JOB ON THIS SHAPE. `request :anthropic`
+     ;; sends `cache_control` itself; this shape merges the role's `:params` into
+     ;; the body as they are, so an Anthropic model behind an OpenAI-shaped endpoint
+     ;; caches only if its profile says `:cache_control {:type "ephemeral"}`.
+     :usage (let [d (:prompt_tokens_details usage)
+                  rd (:cached_tokens d)
+                  wr (:cache_write_tokens d)]
+              (cond-> {:in (:prompt_tokens usage) :out (:completion_tokens usage)}
+                (or (some-> rd pos?) (some-> wr pos?))
+                (-> (update :in #(- (or % 0) (or rd 0) (or wr 0)))
+                    (assoc :cache-read (or rd 0) :cache-write (or wr 0)))))
+     :id (:id body)
+     :raw body}))
+
+(defmethod parse :anthropic
+  [_ body]
+  (let [blocks (:content body)
+        usage (:usage body)]
+    {:text (->> blocks (filter #(= "text" (:type %))) (map :text) (str/join))
+     ;; Tool calls are CONTENT BLOCKS here, interleaved with text, rather than
+     ;; a separate array. `:input` is already decoded JSON; the OpenAI shape
+     ;; hands back a string, so both are passed through untouched and
+     ;; harness.models.tools decodes what it is given.
+     :tool-calls (vec (for [b blocks :when (= "tool_use" (:type b))]
+                        {:id (:id b) :name (:name b) :args (:input b)}))
+     :stop (if (= "tool_use" (:stop_reason body)) :tool-use :end)
+     ;; Four counts, not two: :in is the UNCACHED input, and the cache reads
+     ;; and writes are billed at their own rates. Absent stays nil, not 0.
+     :usage (cond-> {:in (:input_tokens usage) :out (:output_tokens usage)
+                     :cache-write (:cache_creation_input_tokens usage)
+                     :cache-read (:cache_read_input_tokens usage)}
+              (:cache_creation usage)
+              (assoc :cache-write-5m (get-in usage [:cache_creation :ephemeral_5m_input_tokens])
+                     :cache-write-1h (get-in usage [:cache_creation :ephemeral_1h_input_tokens])))
+     :id (:id body)
+     :raw body}))
+
+(defn first-line
+  "`s` cut to its first line and before its first URL, trimmed. What a record
+  keeps of a provider's error text when the text itself is the hazard."
+  [s]
+  (-> (str s)
+      (str/split #"\R" 2)
+      first
+      (str/split #"https?://" 2)
+      first
+      str/trim))
+
+(defn error
+  "An API error as data, or nil when `status` is a success.
+
+  Returned rather than thrown: a 429 or a 529 is a normal event in a loop that
+  retries, and the caller decides. The message is kept because it is the only
+  useful part of a failed dispatch and it goes in the run log."
+  [status body]
+  ;; A 2xx CAN BE A FAILURE. OpenRouter streams keep-alive whitespace before it
+  ;; knows the outcome, so an upstream 429 arrives as HTTP 200 with the real
+  ;; code inside `error`. Checking the status alone read that as a completion
+  ;; with no text, no tokens and no model — found switching the Tester to
+  ;; gpt-5.6-sol on flex, whose first dispatch was rate-limited and reported
+  ;; itself :done.
+  (cond
+    (or (not (<= 200 status 299)) (:error body))
+    (let [status (let [code (get-in body [:error :code])]
+                   (if (and (<= 200 status 299) (int? code)) code status))
+          ;; `(str nil)` is "", not nil, so an `or` over it silently picks the
+          ;; empty string and the run log records an error with no message.
+          message (or (get-in body [:error :message])
+                      (when-let [e (:error body)] (str e))
+                      "no message")]
+      ;; A 402 IS ITS OWN KIND: credit, not the model. No retry can fix it, so
+      ;; the loop stops on it by name rather than as one more failed dispatch.
+      ;; And its message is CLIPPED HERE, before anything records it: the
+      ;; provider's text carried a dashboard URL with the key's id in it, and
+      ;; the run log, `state.edn` and the console had all kept it whole by the
+      ;; time anyone read it. The status and the first line, with no URL, is
+      ;; what a record needs from a refusal for money.
+      (if (= 402 status)
+        {:harness/error :credit :status 402 :message (first-line message)}
+        {:harness/error :api-error :status status :message message}))
+
+    ;; AND A 200 CAN BE A REFUSAL OR A TRUNCATION. Anthropic reports both as a
+    ;; normal response with a `stop_reason`, and `parse` would have read either
+    ;; as a finished, empty answer. Claude Fable 5.1 can decline with
+    ;; `refusal`; its thinking counts against `max_tokens`. Both are failed
+    ;; dispatches that triage must see. The profile configures no fallback
+    ;; model, so nothing else answers in their place.
+    (= "refusal" (:stop_reason body))
+    {:harness/error :api-error
+     :status status
+     :stop-reason "refusal"
+     :message (let [{:keys [category explanation]} (:stop_details body)]
+                (str "the model refused"
+                     (when category (str " (" category ")"))
+                     (when explanation (str ": " explanation))))}
+
+    (= "max_tokens" (:stop_reason body))
+    {:harness/error :api-error
+     :status status
+     :stop-reason "max_tokens"
+     :message (str "the response hit max_tokens before it finished; raise :max_tokens "
+                   "in the role's :params (thinking counts against it)")}))
+
+(defn transient?
+  "Whether an `error` is the kind a second request may not get: a rate limit
+  (429), an overloaded or unavailable host (500, 502, 503, 529) or no
+  connection at all (status 0). A refusal, a truncation, a 400 with no
+  credit or a 401 are not — sending them again spends money on the same
+  answer."
+  [error]
+  ;; The status alone decides: a refusal or a truncation arrives as a 200 and
+  ;; a 200 is never transient, so no second guard is needed.
+  (boolean (and error (contains? #{0 429 500 502 503 529} (:status error)))))
+
+;; ---------------------------------------------------------------------------
+;; continuing a conversation
+;; ---------------------------------------------------------------------------
+
+(defmulti assistant-message
+  "The assistant turn to append before tool results go back.
+
+  Shape-specific, and that is why it lives here rather than in the loop. The
+  OpenAI shape wants the `tool_calls` array echoed back on an assistant
+  message; the Anthropic shape wants the original `content` blocks. Send the
+  wrong one and the model is answering a conversation it did not have."
+  (fn [shape _parsed] shape))
+
+(defmethod assistant-message :openai
+  [_ parsed]
+  {:role "assistant"
+   :content (:text parsed)
+   :tool_calls (vec (for [c (:tool-calls parsed)]
+                      {:id (:id c)
+                       :type "function"
+                       :function {:name (:name c) :arguments (:args c)}}))})
+
+(defmethod assistant-message :anthropic
+  [_ parsed]
+  ;; The raw content blocks, verbatim. Reconstructing them from the parsed
+  ;; shape would drop anything this namespace does not model — a thinking
+  ;; block, say — and the API rejects a tool_use whose siblings went missing.
+  {:role "assistant" :content (get-in parsed [:raw :content])})
+
+(defmulti tool-results-message
+  "The turn carrying tool results back to the model.
+
+  `results` are `{:id _ :content _}`. One message per result in the OpenAI
+  shape and one message holding all of them in the Anthropic shape, which is
+  why this returns a VECTOR of messages either way."
+  (fn [shape _results] shape))
+
+(defmethod tool-results-message :openai
+  [_ results]
+  (mapv (fn [{:keys [id content]}]
+          {:role "tool" :tool_call_id id :content content})
+        results))
+
+(defmethod tool-results-message :anthropic
+  [_ results]
+  [{:role "user"
+    :content (mapv (fn [{:keys [id content]}]
+                     {:type "tool_result" :tool_use_id id :content content})
+                   results)}])

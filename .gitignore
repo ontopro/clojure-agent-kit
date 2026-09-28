@@ -7,4 +7,7 @@ target/
 .DS_Store
 
 # Working material from runs — see .local/README.md. Never committed.
-/.local/
+# UNANCHORED, so a .local/ at any depth is ignored and not only the one at the root. It was
+# `/.local/` until 2026-09-16, and a tool writing to `harness/.local/` while that
+# directory was the working directory left an untracked file the root rule did not cover.
+.local/

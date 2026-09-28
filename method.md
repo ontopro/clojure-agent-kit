@@ -1,8 +1,8 @@
-# Clojure Agent Kit
+# Clojure Agent Kit (aka "KIT")
 
 *An opinionated, reusable build method — not a domain, not a specific project.*
 
-A gate-driven way to build a Clojure application with a small team of independent AI agents — a contract-first Blueprint, an isolated dispatch loop, a living decision log, and quality gates ordered cheap-to-expensive. Scaffolded on stock [**Clojure Stack Lite**](https://github.com/abogoyavlensky/clojure-stack-lite) (HTMX, AlpineJS, TailwindCSS, SQLite/PostgreSQL), with [**XTDB v2**](https://xtdb.com) as a SQL-compatible alternative datastore.
+A gate-driven way to build a Clojure application with a small team of independent AI agents — a contract-first Blueprint, an isolated dispatch loop, a living decision log, and quality gates ordered cheap-to-expensive. Scaffolded on the KIT's pinned fork of [**Clojure Stack Lite**](https://github.com/ontopro/clojure-stack-lite) (HTMX, AlpineJS, TailwindCSS, SQLite/PostgreSQL; upstream is [abogoyavlensky's](https://github.com/abogoyavlensky/clojure-stack-lite), MIT), with [**XTDB v2**](https://xtdb.com) as a SQL-compatible alternative datastore.
 
 ```
      ┌───────── each stage re-plans the ones after it ─────────┐
@@ -34,7 +34,7 @@ A gate-driven way to build a Clojure application with a small team of independen
 12. [Should you build a harness?](#12--should-you-build-a-harness)
 13. [Quick start](#13--quick-start)
 
-Fillable document stubs for a new project live in [`skeletons/`](skeletons/).
+Fillable document stubs for a new project live in [`plan-template/`](plan-template/).
 
 ---
 
@@ -94,7 +94,7 @@ The failure this prevents: a RESOLVED decision made in month one, on no evidence
 - **Post-MVP** — deferred, each with the reason it can wait.
 - **Non-goals** — what this product is never going to be, so nobody re-litigates it in stage 3.
 
-All three live together in the requirements document (§10 of the skeleton), because they are one product decision rather than three engineering ones — and because a deferral and an exclusion look identical six months later unless you wrote down which you meant.
+All three live together in the requirements document (§10 of the template), because they are one product decision rather than three engineering ones — and because a deferral and an exclusion look identical six months later unless you wrote down which you meant.
 
 ### De-risking is a separate activity, and it never stops
 
@@ -125,6 +125,7 @@ Six or seven documents, each with a **different change cadence** — that separa
 
 | Document | Content | Cadence |
 |---|---|---|
+| `source.md` | What the plan derives from: the brief, the material handed over, what was read from it - numbered, so a requirement cites its evidence | A record — appended to, never revised |
 | `00-overview.md` | Mission, governing decisions, the document map, the stage map | Updated at stage boundaries |
 | `01-requirements.md` | Users, use cases, functional + non-functional requirements, constraints, assumptions, non-goals, **MVP / post-MVP scope**, success criteria | Slow-moving, but not frozen — the scope split shifts as stages teach you; revise via review |
 | `02-architecture.md` | Layers, storage, versioning, cross-cutting concerns; provisional parts marked, decisions referenced **by ID** | Evolves; churn lives in the log, not here |
@@ -132,6 +133,13 @@ Six or seven documents, each with a **different change cadence** — that separa
 | `03-method-and-tooling.md` | This method, instantiated: your roles, model picks, gates, scaffold, harness | Stable once ready; runs under every stage |
 | `04-decision-log.md` | **Every** decision, with status and owner (§08) | **Living** — the mechanism by which everything else evolves |
 | `stages/stage-N-*.md` | One document per stage: goal, scope, task list, exit criteria (§04) | Created **just-in-time**, when the stage begins |
+
+Beside `docs/`, a `reviews/` folder holds a review's raw material — each reader's output from the
+review pass below, the raw reads of a Blueprint, any comparison of readers. It is about the reading,
+not the plan, and it stays out of the governing documents: the overview keeps the findings and their
+resolutions, nothing else. Two of the documents, `02-architecture.md` and `03-method-and-tooling.md`,
+come half-written — in three parts, *given* (what adopting the KIT fixed, stated as references),
+*chosen* (decided once in Foundation) and *theirs* (the domain) — and only the last two are filled.
 
 Two things are worth stating explicitly at the top of `00-overview.md`, because leaving them implicit is what produces the contradictions the review pass below catches: the handful of **governing decisions** that everything else assumes (methodology, primary stack, macro-architecture), and the **working agreements** — above all, that decision IDs are permanent and that no code merges outside the workflow.
 
@@ -141,7 +149,7 @@ Requirements (`FR-n`/`NFR-n`), architecture decisions (`D-n`), schema decisions 
 
 ### The plan-review pass — the cheapest gate in the whole method
 
-Before Foundation starts, review the plan **as an artifact, adversarially, looking for gaps** — ideally with a different model or a different person from whoever wrote it. Record each finding with an ID and its resolution, and keep that table in the overview. This costs an afternoon and catches things that would otherwise surface as a rewrite three stages in.
+Before Foundation starts, review the plan **as an artifact, adversarially, looking for gaps** — ideally with a different model or a different person from whoever wrote it. Record each finding with an ID and its resolution, and keep that table in the overview. This costs an afternoon and catches things that would otherwise surface as a rewrite three stages in. The KIT runs it: `bb plan-review` in its `harness/` sends the six documents and the checklist below to the profile's `:spec-reviewer` - a model of another family than the seat's - and writes the findings to `reviews/`. It is a reading, not a gate. The gate is `bb plan-check`: no mark and none of the template's instructions left in the documents, the rules overlay filled, the given parts intact; `start` runs it once per workspace before its first dispatch.
 
 The findings that recur, worth checking for by name:
 
@@ -178,34 +186,61 @@ Foundation is where this method is most often over-built, because it is the part
 
 The failure to avoid: treating Foundation as a phase to *complete*, and building a full orchestration harness before a single feature has tested any of it. Foundation is ready when stage 1 can dispatch through it — not before, and not after.
 
-### Step 1 — Scaffold deterministically. Do not let an LLM invent structure.
+### Step 1 — The toolchain, then the workspace: `bb doctor`, `bb init`
 
-Project structure is a solved problem. Generate it from a template, commit it untouched, then adapt it — and reserve the agents for judgment work. Don't fork or hand-modify the template itself; that turns every future project back into a from-scratch decision instead of a known, diffable starting point.
+Project structure is a solved problem, and so is the toolchain around it. The KIT brings both:
+a PINNED commit of its own application template - a fork of Clojure Stack Lite, named in
+[`harness/resources/template-pins.edn`](harness/resources/template-pins.edn) as a full commit
+and a tag, so *this KIT with that template* is a pair that can be certified - and a doctor that
+checks the machine before anything is generated. Nothing is copied by hand and nothing is
+installed for you.
 
 ```bash
-# via deps-new
-clojure -Ttools install-latest :lib io.github.seancorfield/deps-new :as new
-clojure -Tnew create :template io.github.abogoyavlensky/clojure-stack-lite :name myproject
-
-# or via neil
-brew install babashka/brew/neil
-neil new io.github.abogoyavlensky/clojure-stack-lite myproject
+git clone https://github.com/ontopro/clojure-agent-kit     # into the folder the project will live in
+cd clojure-agent-kit
+bb doctor        # every tool, its version, what fixes a miss; two verdicts - run it, follow it, run it again
+bb health        # once: the KIT, on this machine, with the template it pins - minutes, starts JVMs
+bb init xyx      # the workspace: xyx-app (generated, two commits), xyx-plan (the documents, the rules overlay, the profile, run defaults, runs/), work/
+cd ../xyx-app && bb serve                                   # http://localhost:8000
 ```
 
-| Option | Values | Default | Picks |
-|---|---|---|---|
-| `:db` | `:sqlite` · `:postgres` | `:sqlite` | File-based for a solo build; Postgres once more than one person or environment touches the data |
-| `:auth` | `false` · `true` | `false` | Login/registration/password-reset flow, generated for you |
-| `:deploy` | `:kamal` · `:none` | `:kamal` | Zero-downtime Docker deploys via GitHub Actions; skip if you're not shipping yet |
-| `:daisyui` | `false` · `true` | `false` | A component library on top of Tailwind, if you want fewer hand-styled elements |
+The three installs the doctor cannot do for you - JDK 21, the Clojure CLI, Babashka - are the
+first lines of the [root README](README.md). JDK 21 is the one exact constraint (XTDB, an optional
+store, documents a minimum of 21 and its early v2 releases failed at class-load on newer JDKs);
+every other version is a floor, and the doctor shows the machine's versions beside the KIT's dated
+known-good set, calling newer *newer than tested* rather than wrong.
 
-What the stock scaffold already gives you, worth naming because each one removes a decision this method would otherwise ask you to make: **Integrant + Reitit + Ring/Jetty + Hiccup** with **HTMX 2 / Alpine 3 / Tailwind 4** for a server-rendered app that's REPL-first out of the box; **Malli** already in the dependency set, which is exactly what the Blueprint's data-shapes-first step (§06) wants to be written in; **clj-kondo, cljfmt, eftest + cloverage** already present, which are gates 1–3 of §09; and a Babashka `bb.edn` task file already set up to compose them.
+`bb init` generates the application from the pin (deps-new as a plain dependency; no tool to
+install first), commits it UNTOUCHED - everything you add is diffable against that commit for
+ever - then commits the KIT's hand as a second commit: `AGENTS.md` from the rule source, the
+`CLAUDE.md` stub that imports it, and `layers.edn` for the boundary gate. Beside the application it
+creates the plan repository: `docs/` from [`plan-template/`](plan-template/), the rules overlay
+`rules.edn` (the rule source's placeholders, filled there and never in the clone), the profile
+`profile.edn` (the shipped example for your seat, `--seat <name>`, default `claude`; the models per
+role, edited there), the run defaults in `loop.edn`, and `runs/` with `RUNS.md`, where the loop's
+`record` copies every run's record and its tables are published. Then `work/` for run directories
+and worktrees, and `workspace.edn` naming which folder is which. A workspace is three sibling
+repositories in a plain folder: the KIT, the application, the plan - three lifecycles, none
+rewritten to change another; everything a project decides or produces is in the plan, and the
+KIT's clone is upgraded with `git pull` and written into by nobody. The plan is filled before any
+of this dispatches (§02), and `bb plan-check` in the KIT's `harness/` is the gate on it: `start`
+runs it once per workspace before its first dispatch. The template's options (`:db`, `:auth`,
+`:deploy`, `:daisyui`) are the pin's defaults today; a second template, or none for an
+application you bring yourself, is an entry in the pins file and a repository put where
+`workspace.edn` points, not a different path through the harness - though only the pinned pair is
+certified, and the health check says on which platforms.
 
-Then, immediately: `git init`, and make the first commit the untouched scaffold. Everything you add is diffable against it forever.
+What the template gives you, worth naming because each one removes a decision this method would
+otherwise ask you to make: **Integrant + Reitit + Ring/Jetty + Hiccup** with **HTMX 2 / Alpine 3 /
+Tailwind 4** for a server-rendered app that's REPL-first out of the box; **Malli** already in the
+dependency set, which is exactly what the Blueprint's data-shapes-first step (§06) wants to be
+written in; **clj-kondo, cljfmt, eftest + cloverage** already present, which are gates 1–3 of
+§09; a headless `:nrepl` alias that writes its port to `.nrepl-port`; `bb serve`; and a dated
+`.mise.toml` of the versions it was last run with.
 
 ### Step 1a — XTDB v2 as an alternative datastore
 
-The stock scaffold's data layer is **next.jdbc + HoneySQL + Ragtime migrations** against SQLite or Postgres. XTDB v2 is a legitimate third option in that same slot, not a different architecture: it's open source, immutable and **bitemporal by default**, and it exposes a **Postgres wire-compatible endpoint** — *"XTDB provides a Postgres wire-compatible endpoint that enables developers to re-use many existing tools and drivers that have been built for connecting to real Postgres servers."*
+The template's data layer is **next.jdbc + HoneySQL + Ragtime migrations** against SQLite or Postgres. XTDB v2 is a legitimate third option in that same slot, not a different architecture: it's open source, immutable and **bitemporal by default**, and it exposes a **Postgres wire-compatible endpoint** — *"XTDB provides a Postgres wire-compatible endpoint that enables developers to re-use many existing tools and drivers that have been built for connecting to real Postgres servers."*
 
 Reach for it when you want "what did this record look like on that date" queries for free, without hand-building audit tables or bespoke versioning logic. Two ways in, and you can start with the first and keep the second as the deployment story:
 
@@ -229,53 +264,89 @@ Five real deltas from the stock path, not hand-waved:
 - **Migrations mostly disappear.** Ragtime assumes traditional `ALTER TABLE` DDL against a fixed schema. XTDB is schema-flexible by design — treat `resources/migrations/` as optional, not mandatory, on this path.
 - **Writes need their own thin layer.** XTDB's DML has its own SQL extensions — a `RECORDS {…}` literal and an implicit `_id` primary key — that HoneySQL's standard helpers don't know. Reads look like ordinary SQL; expect to hand-write inserts and updates.
 - **Clients are stateless over pgwire**, which "precludes the use of interactive transactions" — you can't run a query in the middle of a multi-statement transaction. That constrains how connection pools and transaction-scoped code are written; check it against your access patterns before committing.
-- **Pin the JDK.** XTDB v2 is young and version-sensitive at the JVM level — a node that class-loads fine on one JDK can fail outright on a newer one. Pin the JDK version alongside the library version, and record both.
+- **The JDK is already held at 21** by the doctor, for this reason among others; record the XTDB version beside it.
 - **Results are keywordized** in the Clojure API (`_id` → `:xt/id`, `_valid_from` → `:xt/valid-from`), which is a small but constant translation at the seam.
 
 > **Regardless of which store you pick:** put it behind a small protocol from the first commit — an `AppStore` or whatever your own domain calls it. That's what makes "swap the datastore later" a real option instead of a rewrite, and it costs nothing to do on day one. It is also what lets a PROVISIONAL datastore decision (§08) have a *real* fallback rather than a hoped-for one.
 >
 > **And for any young dependency:** keep a short `docs/api-notes/<lib>.md` recording the API you actually smoke-tested at the pinned version. Models hallucinate confidently about new libraries; a file of verified behaviour handed to an agent as context beats training recall every time.
 
-### Step 2 — Make the REPL a first-class agent surface
+### Step 2 — The REPL is already an agent surface; keep it one per workspace
 
-Add a `dev/` path with a `user` namespace and `:nrepl` / `:test` aliases, so the REPL starts ready to work. Then install the bridge that lets *any* shell-capable agent reach it, not just the one with a fancy client — a CLI nREPL eval tool plus on-demand delimiter repair. Uniform REPL access across model families is what makes the independence rule in §05 affordable.
+The generated application's `:nrepl` alias starts headless and writes its port to `.nrepl-port`;
+the KIT's `clj-nrepl-eval` reaches it from any shell-capable agent, whatever model family - which
+is what makes the independence rule in §05 affordable - and `clj-paren-repair` is gate 0. Both
+are checked by `bb doctor` by RUNNING them, because being installed proved not to mean being
+runnable.
 
-Run **one nREPL per workspace**, not one shared server with multiple sessions. Sessions share a JVM, so two "isolated" agents can redefine the same var. And note that an eval bridge with persistent sessions keeps vars and namespaces alive between calls — cheap for the Coder's inner loop, and exactly why the per-workspace rule matters.
+Run **one nREPL per workspace**, not one shared server with multiple sessions. Sessions share a
+JVM, so two "isolated" agents can redefine the same var. And note that an eval bridge with
+persistent sessions keeps vars and namespaces alive between calls — cheap for the Coder's inner
+loop, and exactly why the per-workspace rule matters. The harness provisions one per worktree.
 
-> Concrete Clojure tooling for this step — the `:nrepl` alias, the **clojure-mcp-light** installs (`clj-nrepl-eval`, `clj-paren-repair`, and the zero-token repair hook), and the hook config — is in [`skeletons/03-method-and-tooling.md`](skeletons/03-method-and-tooling.md) §7.2–7.3, ready to fill in.
+> The hook config for write-time repair, per client, is in
+> [`plan-template/03-method-and-tooling.md`](plan-template/03-method-and-tooling.md) §7.3.
 
-### Step 3 — Wire the gates as one composed task
+### Step 3 — The gates are wired; you edit the sequence, not the wiring
 
-Cheapest first, short-circuiting on the first failure (§09):
+Cheapest first, short-circuiting on the first failure (§09). `bb init` writes the sequence for
+the generated application into the plan's `loop.edn` - three of the template's own tasks and the
+KIT's boundary gate, run against the application by the KIT's path:
 
 ```clojure
-;; bb.edn :tasks — the template supplies fmt-check / lint / test
-{fmt-check  {:task (shell "cljfmt" "check")}
- lint       {:task (shell "clj-kondo" "--parallel" "--lint" "src" "test")}
- test       {:task (clojure "-X:test")}
- deps-check {:task (clojure "-M:depend")}        ; architecture boundaries
- gates      {:doc  "Quality gates, cheap first: format -> lint -> test -> boundaries"
-             :task (do (run 'fmt-check) (run 'lint) (run 'test) (run 'deps-check))}}
+:gates [[:fmt "bb fmt-check"]
+        [:lint "bb lint"]
+        [:test "bb test"]
+        [:deps "bb --config <kit>/harness/bb.edn boundary"]]   ; gate 4, against layers.edn
 ```
 
-Add the boundary gate **now**, with a placeholder ruleset, before you know what your real layers are. Retrofitting a boundary check onto a codebase that has been violating boundaries for three stages is a different and much worse job.
+The boundary gate is live from the first commit, with the template's own require graph declared
+in the application's `layers.edn`: a namespace you add fails the gate until you declare it, which
+is the point. Retrofitting a boundary check onto a codebase that has been violating boundaries for
+three stages is a different and much worse job. The declaration is the Architect's, not a role's:
+put the edited `layers.edn` in the run directory's `arch/` and name it in the run's `loop.edn` as
+`:architecture {:from "arch" :files ["layers.edn"]}`, and assembly copies it into the gate worktree
+beside what the roles wrote, so the entry and its namespace meet gate 4 together (the health check's
+one task does exactly this).
 
-### Step 4 — Stand up a dispatch mechanism, however crude
+### Step 4 — The dispatch mechanism is the harness; run it by hand first
 
-A script, or a human copy-pasting packets. It does not need to be automated yet — see §12 before you build anything ambitious here.
+`bb run-loop` (in [`harness/`](harness/)) drives one task to its next stop and stops for a person
+at every branch it cannot decide. §12 still applies: run it on the trivial task below and feel
+where it hurts before you trust it with a stage.
 
 ### Step 5 — Run the whole loop once, end to end, on a deliberately trivial task
 
-This is the step people skip, and it is the only one that produces evidence rather than confidence. Pick something with no design content at all — a `clamp` function — and watch the full loop run: provision, dispatch, gates, triage, review, merge. Whether it succeeds or fails, it will tell you more about your machine than any design review.
+This is the step people skip, and it is the only one that produces evidence rather than
+confidence. `bb health` does it for you, with a scripted runner in every model's seat and
+everything else real - a `clamp` function through provisioning, two nREPLs, dispatch, assembly,
+gate 0, the gates and the review, to the merge stop, on its selfcheck project and on an application it just
+generated. Then run it yourself with your profile's models on the same kind of task: a live run
+tells you what your machine does with a model in the seat, which the scripted one cannot. Run it to
+`:awaiting-merge` and then **tear it down, not merge it**: `bb run-loop record` first, so the plan's
+`runs/` keeps the evidence, then `bb run-loop teardown`. The task is a rehearsal of the machine, and
+nothing of it belongs in the application: two projects merged theirs, and one of them later paid a
+whole run to fix a flaky property test the rehearsal had left behind. The health check does exactly
+this with its own trivial task.
 
 ### Readiness checklist — closed against live evidence, not a document
 
-1. **The toolchain reports green.** Every tool the loop needs is installed, reachable, and its version recorded — not assumed. [`harness-seed/`](harness-seed/)'s `bb doctor` does this and prints a version table worth pasting into the decision log; a missing small binary does not fail loudly, it quietly spends an agent's retry budget.
-2. Every method decision that governs the loop — who does what, how a failure gets routed, the retry cap — is written down and closed, not necessarily perfect.
-3. The scaffold *boots*: a live command starts the dev server and REPL from a clean checkout, no manual fixups.
-4. Every quality gate you intend to run is green on the **untouched scaffold**, before a single feature is added.
-5. The composed gate task exists and the task-dispatch mechanism exists.
-6. **You have run the whole loop end to end on one trivial task**, and watched it succeed or fail informatively.
+1. **The toolchain reports green.** `bb doctor`, both verdicts *yes*; the table pasted into the
+   decision log. A missing small binary does not fail loudly, it quietly spends an agent's retry
+   budget.
+2. Every method decision that governs the loop — who does what, how a failure gets routed, the
+   retry cap — is written down and closed, not necessarily perfect. **`bb plan-check` passes**:
+   no mark and no instruction of the template left in the plan, the rules overlay filled, the
+   given parts intact. `start` refuses the first dispatch until it does.
+3. **The health check passes on this machine**: `bb health` - the scaffold boots (`bb serve`
+   answers), every gate is green on the untouched scaffold and every gate fails when it should,
+   and the whole loop has run end to end on one trivial task, recorded - the record's copy in
+   the plan's `runs/`, its three commits held to the repositories - and torn down. Criteria 3–6
+   of the older list are this one command, and its record names the KIT commit and the template
+   commit it certified.
+4. **You have run the loop once with your own models**, on a task with no design content, and
+   watched it succeed or fail informatively — then recorded it and torn it down. Its record is in
+   the plan; the application is as `bb init` left it.
 
 Only then does Stage 1 dispatch. Foundation is now *ready* — not done; it never becomes done.
 
@@ -311,9 +382,11 @@ Give each validation spike its own ID (`R1`, `R2`, …) and name, in the decisio
 
 ### Exit criteria, and what happens when a gate fails
 
-Write exit criteria as things a person can *check*, not qualities they can admire: "search returns results and clicking a result opens detail"; "load release two, time-travel returns release one's state, diff lists added/removed/changed"; "the boundary gate passes"; "each protocol has one implementation and a documented fallback". Add one more that is easy to forget:
+Write exit criteria as things a person can *check*, not qualities they can admire: "search returns results and clicking a result opens detail"; "load release two, time-travel returns release one's state, diff lists added/removed/changed"; "the boundary gate passes"; "each protocol has one implementation and a documented fallback"; and **"the system boots"** - `bb serve` from a clean checkout answers on its port. No gate boots the system, rightly, and a third project reached its stage end with every gate green, five tasks merged and a component refusing its own config; the person who looked found it, free. Add two more that are easy to forget:
 
 > **The stage's decision-log updates are recorded** — spike outcomes noted against the decisions they gate, provisional entries confirmed or reversed.
+>
+> **Every behaviour the tests verify only as an HTTP contract gets an interaction check** — in a real browser, at the stage's end, outside the loop. A test that calls a handler as a function of a request map proves the fragment comes back with the right header; it cannot prove the page swapped it in, or that the form submitted at all. One project accepted its search swap unverified for a whole build and verified it the next with a ten-line script driving headless Chrome: load the page, type, submit, screenshot the result. Not a gate and not a test in the suite — it starts a server and a browser, which the Testers' rule keeps out — but recorded beside the screenshots, with the driver named. The plan template's `03-method-and-tooling.md` §7.7 says how.
 
 ### Flow, not timeboxes
 
@@ -336,7 +409,16 @@ Stage boundaries are **gates, not dates**. A gate can loop back: if a spike fail
 | **Coder** | REPL-first implementation, one task at a time | Full read/eval/write, in its own isolated workspace |
 | **Tester** | Authors tests from the Blueprint's contract, independently of the Coder | Eval for authoring only — never runs the full suite itself |
 | **Reviewer** | Judges already-green code: design, idiom, edge cases, silent behavior changes | Read-only — a diff and a gate report, nothing to write |
+| **Spec reviewer** | Reads a task's contract cold, before anyone works from it: every place a target can be read two ways, every input no target mentions. A different family from the Architect, for the reason below | Read-only — the spec, its context files and the rules; no code, no tools |
+| **Blueprint reviewer** | Reads a stage's Blueprint whole, before the human signs it off: is it over-engineered (§07 step 2), and do its shapes and targets follow §06's rules? The spec review then reads each packet cut from it. May share the seat's family by a written decision — the profile's comment has the measurement, the register watches it | Read-only — the stage document and the Blueprint; no code, no tools |
 | **DevOps** | Judgment-level config, docs, release prep | Whatever a given task needs, scoped narrowly |
+
+Which act in a build each role performs — the plan review, the Blueprint review, each spec review,
+each code review, triage — is the harness's [`roster.md`](harness/roster.md), with the model behind
+each as shipped. Which model fills a role is a measurement, not a preference: the harness's
+`bb bake-off` reads the same artifact with each candidate once and has a judge that is never a
+candidate map where they agree and disagree, and it holds every candidate to the independence rule
+as it holds a profile.
 
 ### A seventh role, off the loop
 
@@ -351,6 +433,19 @@ One rule inverts for this role: the loop's agents are told never to run the gate
 Any agent verifying another agent's output runs on a **different model family** — not merely a different model. Two models from the same vendor still share the same blind spots and can produce a false green together. The *client* matters too, not only the model: a client with hook support can run mechanical fixups the model itself never has to reason about, which is a property of the tool, not of the role.
 
 Record the **family assignment as the binding contract** and the specific model as a dated selection underneath it. Re-selecting when vendors ship new models is then a new log entry, not an edit to an old one.
+
+### What independence does not protect against
+
+The Tester's isolation guards against a test derived from the *implementation*. It does nothing
+about two roles deriving the same wrong thing from the *contract* — and an ambiguous sentence is
+read the same way more often than differently, because both models take the likeliest reading. The
+first project built on this kit merged a home page with a stray literal `div` on it: the Coder
+spliced a body vector where the target said it "appears unchanged", the Tester's test checked for
+exactly the run of elements a splice produces, the Reviewer approved, every gate was green. A
+person found it. **Disagreement between roles is the lucky case: it makes an ambiguity visible.
+Agreement hides it.** So the contract is reviewed before anyone works from it (§07, the spec
+review), by a model from a different family than the Architect who wrote it — for the same
+reason the Tester is — and a stage's exit includes somebody looking at the built thing.
 
 ### Do you actually need a dedicated Tester?
 
@@ -377,6 +472,91 @@ Produce the Blueprint in a fixed order: **shapes → interfaces → namespaces a
 
 The same shapes and interfaces the Coder implements against are what the Tester derives tests from, independently. That doubling is why the Blueprint needs unusual precision — it's read twice, by two agents who never compare notes.
 
+### Writing property targets
+
+Ten rules, each paid for once by a round or a stop in the first two projects built on this kit:
+
+1. **One promise per target.** A two-clause target is "accounted for" when one clause is tested.
+2. **State a target as something checkable** — an equality, a named error — not a description.
+   "The body appears in the tree, unchanged" shipped a wrong page green; *some child of the article
+   equals the whole body vector* could not be misread.
+3. **Give everything a test must find a marker attribute** (`data-hero`, `data-card`, …), not a
+   position or a count.
+4. **Write what a seam GUARANTEES where every role reads it** — in the rule source, not only in the
+   Blueprint. Three stops in a row had one cause: the loader established that slugs were distinct
+   and exactly one page was the home, and every downstream role received the pages as a bare
+   vector, read the shapes, found nothing forbidding the bad input, and was right to object.
+   **And the same goes for every question two specs would both have to answer**: what a tree is
+   here and how it is walked, what collection each recurring argument is, what "the text of" an
+   element means. The second project's first six spec reviews drew thirty-three findings, a third of
+   them that one question; answered once in the rule source, where every role and the spec review
+   read it, it was not asked again. The seed's rule source has a placeholder for exactly this
+   (`:data-conventions`), and its audience includes the Tester — a guarantee the Tester never sees is
+   an input the Tester will test.
+   **A seam is not only where data enters the system.** A value handed INTO a function crosses one
+   too, and what its caller guarantees about it has to be written just the same. Reviewers on two
+   projects, reading cold, each noticed that a tree passed into a view could itself carry that
+   view's marker attribute, which makes *exactly one element carries the marker* unsatisfiable. Once
+   it stayed a note; once it was a rejection. The answer was one sentence for every view: *a marker
+   belongs to one view, and a tree handed in carries none of it — callers guarantee it.*
+5. **The prediction written before dispatch is a contract review in disguise.** Writing down what
+   might go wrong found a gap for nothing that a Reviewer would have found for a round.
+6. **A target written at a stop is looser than one written at the desk.** A target added at a
+   rejection drew two of the next three rejections.
+7. **Check the contract against reality before dispatch**: the shapes against the real data, the
+   library against the target that names it. **And run the PROJECT's gates — not only the
+   harness's — before every commit a worktree will be cut from.** Fixtures once went in after the
+   harness's gates alone; the project's lint covers `test/`, refused one of them, and said so only
+   at the run's own gates, which cost the run. When a task brings new fixtures, rehearse the gates
+   against a plausible output first: it is free.
+8. **A rewrite keeps exactly what the targets say and nothing else.** If something is a hook — for a
+   test, for a stylesheet — it goes in a target, or the next rewrite drops it. Shown from the other
+   side too: one project's stylesheet, copied unchanged onto a second build of the same contract,
+   styled everything keyed on a marker the targets promised, and of the two class names no target
+   mentioned one happened to exist and one did not.
+9. **Emphasis is a promise.** "Anywhere in a hiccup tree, *however deeply nested*" was written to mean
+   *nested too*; two Reviewers, each reading cold, rejected ordinary recursion against it, because a
+   recursive walk does have a depth it fails at. The fix was to delete three words. When two
+   independent readers agree against the author, that is evidence about the sentence, not about the
+   readers — and the author is the last person to see it: the proposals on the table were a depth
+   bound and a new rule, until a person asked why the phrase was there at all.
+10. **A finding is dismissed by asking whether ordinary input can reach it, not whether the happy path
+   does.** "The library never produces a heading with no text" was true of headings that have text;
+   an image-only heading is ordinary Markdown and has none. That finding was read and left twice, in
+   two projects, and the second time a Reviewer rejected on it. What it needed was one sentence at
+   the seam — the loader refuses such a page — and the function past the seam told it may assume.
+   The question is not the Architect's alone. A Reviewer once rejected on a value that was valid by
+   its type and impossible to write in the project's only input format; triage routed the Coder, a
+   round was paid, and the Architect was never asked. So the Reviewer and triage are given it too,
+   narrowly: **the type decides what a value is; where the project says its input comes from decides
+   whether it can occur** — and only a source the rule source NAMES puts a value out of reach, never
+   a role's sense that an input is unlikely, which is the mistake this rule began with. Say where
+   input comes from in `:data-conventions`.
+11. **Decide who owns presentation, before and after a merge.** A project that tells its roles
+    *classes and wrappers are presentation — never in a target, never asserted by a test, never
+    grounds for a rejection* keeps every review off styling, and it worked: not one finding about a
+    class in a whole project. Its other face: once a view is merged, restyling it changes no target,
+    so a loop run would pay a Coder, a Tester and a Reviewer to verify nothing, and the only real
+    check is a person looking. Say in the project's conventions who may make a presentation-only
+    change to a merged view and what stands in for the loop — the gates green, screenshots at the
+    widths that matter, the change recorded as what it is. And say where the ASK for presentation
+    lives, because a target cannot carry it: with classes kept out of every target and every test,
+    nothing in a Coder's packet says *style it*, and one project's first four merged views arrived
+    with no classes at all. The ask is one sentence in `:data-conventions` naming the design tokens
+    the views draw on — read by every role, so the Reviewer knows the classes are expected and not
+    review material — or a packet instruction labelled as a working instruction, never as contract.
+    The sentence, once written, was enough: the next stage's views were styled without a hand change.
+
+And one rule that is not about writing but about reading, set by a person after every model in the
+loop got it wrong on the same sentence: **types are followed as the language defines them.** A type
+named in a contract means exactly what the language specification says, for every type, and that
+meaning is part of the contract without being written out. (The instance that taught it: a vector is
+ordered, a set is unique and unordered. The instance is not the rule.) A role
+that departs from it (a Coder that sorts a vector the contract built in walk order) has changed the
+contract; a reader who calls it "unstated" has invented an ambiguity. In doubt, the specification
+is the referee. The corollary, which is what made the rule take when it was tested: *an ordered
+collection built from ordered inputs has the order of its construction.*
+
 **A task packet's minimal shape:**
 
 ```clojure
@@ -384,11 +564,14 @@ The same shapes and interfaces the Coder implements against are what the Tester 
  :task/title    "Service ops: lookup, children/descendants, search"
  :task/role     :coder                    ; :coder | :tester | :reviewer
  :blueprint/slice
-   {:shapes     [Concept Release]                    ; Malli shapes, this namespace
-    :interfaces [(lookup [store cs code opts])       ; signatures to implement
+   {:shapes     [[Concept [:map [:id :string]       ; a shape this task DEFINES: the schema
+                          [:label :string]]]        ;   inline, exactly as the roles receive it
+                 Release]                           ; a shape only NAMED: arrives as :files/context
+    :interfaces [(lookup [store cs code opts])       ; functions to implement, with their argv
                  (children [store iri])
-                 (descendants [store iri opts])]
-    :deps-sigs  [(query [store q opts])]}            ; upstream sigs it may CALL — never their source
+                 (descendants [store iri opts])
+                 (default-opts)]                     ; a VAR to define: the one-element form
+    :deps-sigs  [(app.store/query [store q opts])]}  ; upstream sigs it may CALL, qualified — never their source
  :files/target  ["src/app/service.clj"]     ; what this role may write
  :files/context ["src/app/store.clj"        ; read-only
                  "src/app/model.clj"]
@@ -398,9 +581,18 @@ The same shapes and interfaces the Coder implements against are what the Tester 
  :gates         {:retry-cap 3}}
 ```
 
-> This block is `harness-seed/src/harness/shapes.clj`'s `example-packet`, and `bb test` in that directory validates it against the schema. If the two ever disagree, the code is right.
+> This block is `harness/src/harness/contract/shapes.clj`'s `example-packet`, and `bb test` in that directory validates it against the schema. If the two ever disagree, the code is right.
+>
+> **The roles receive exactly what the packet holds, and nothing else.** A shape written as a
+> name reaches every role as a bare symbol: the spec review reports it undefined, the Tester's
+> stub has nothing to emit, the Coder guesses. Write a shape this task defines INLINE, as
+> `[Name schema]` or `(def Name schema)`, and name only the shapes that arrive as context. The
+> same goes for a convention true of one Blueprint and not of the project - it has no place in
+> the rule source and no place in the packet but the targets, so it goes into every target that
+> uses it, in full. One project learned both on its first spec review, and paid for the second on
+> a rejection in its fifth run.
 
-The trick worth keeping is `:deps-sigs`: upstream namespaces are handed over as *call signatures only*, never as implementation source. That keeps a task's context small and makes it mechanically impossible for it to reach into an upstream implementation detail it was never given.
+The trick worth keeping is `:deps-sigs`: upstream namespaces are handed over as *call signatures only*, never as implementation source. Every entry is qualified, `ns/f`: the `calls` gate grants by qualified name, so an unqualified `(f [args])` grants nothing and the first call into that namespace is a red gate; `bb sigs`, the extraction and `start` refuse one by name. That keeps a task's context small and makes it mechanically impossible for it to reach into an upstream implementation detail it was never given.
 
 ### Per-role deltas from the same base packet
 
@@ -442,7 +634,7 @@ So: personal taste that travels between projects goes in the global file. **Anyt
 
 What must never happen is a **rule** written outside the markers. It survives every sync, so nothing complains — and it reaches only the clients that read that file, which by the independence rule above excludes your verifier. Silent, and precisely the failure this arrangement exists to prevent.
 
-> A working implementation — the rule source, both renderings, the marker-block sync and the drift gate — is in [`harness-seed/`](harness-seed/); `harness-seed/AGENTS.md` is its own output, and `bb rules-prompt` emits the other rendering.
+> A working implementation — the rule source, both renderings, the marker-block sync and the drift gate — is in [`harness/`](harness/); `harness/AGENTS.md` is its own output, and `bb rules-prompt` emits the other rendering.
 
 ---
 
@@ -460,15 +652,66 @@ The dependency-ordered task list is a queue and the loop is a Kanban board, so t
 
 ### Step 1 · Environment (Human + DevOps) — once, in Foundation
 
-Covered in §03. **Exit:** the REPL starts and the test alias runs from a clean checkout.
+Covered in §03. **Exit:** `bb doctor` says yes twice and `bb health` passes - the machine is certified for this KIT with this template.
 
 ### Step 2 · Strategic planning (Orchestrator + Architect) — once per stage
 
-The Orchestrator hands the stage document to the Architect, who produces the Blueprint in the §06 order. The Orchestrator reviews it first: **if it is over-engineered, it goes back to the Architect to simplify before any code is written.** Then the human signs off.
+The Orchestrator hands the stage document to the Architect, who produces the Blueprint in the §06 order. The Orchestrator reviews it first: **if it is over-engineered, it goes back to the Architect to simplify before any code is written.** Then the human signs off. The KIT runs that read as `bb blueprint-review <blueprint.md>` in its `harness/`: the stage document and the Blueprint, with this step's question and §06's rules for shapes and targets, to the profile's `:blueprint-reviewer` - one call, no tools - and the findings to the plan's `reviews/<stage>/`, for the Architect to resolve in the stage document before the sign-off. A reading, not a gate; the spec review (step 2½) still reads every packet cut from the Blueprint before it dispatches.
 
 **🚦 Human gate #1.** This is the cheapest point in the entire method to catch a wrong direction.
 
 **Exit:** an approved, dependency-ordered Blueprint with explicit data shapes.
+
+**Where a packet comes from.** A task's `spec.edn` is the Blueprint's packet for it, key for key:
+the template's §4 shows the shape and `harness.contract.shapes/TaskSpec` is the schema - the part of
+the packet the Architect writes, with `:files/impl` and `:files/test` where a role's packet has its
+`:files/target`. One implementation file per task: a slice is one namespace's shapes and
+signatures, and a packet naming two is refused at extraction and at `start`, before any review is
+paid for - split it. What the driver adds at `start` - the role, the target, the worktree and the port
+it provisions - is never in the Blueprint. In the seed, `bb spec-from-blueprint <blueprint.md>
+<task-id> [<out.edn>]` pulls it out: the fenced packet whose `:task/id` matches, every shape it
+names under `:shapes` replaced by §1's definition of it (verbatim, in §1's order), validated, and
+written to the run directory; a shape §1 does not define and a task id the Blueprint does not carry
+are refused by name, and without an output path it pipes into `bb sigs`. Every build had made that
+copy by hand, each a little differently, while the template's own packet drifted from the schema -
+so the extraction is a command, and a test reads the template's packet as a spec.
+
+### Step 2½ · The spec review (Architect, at the desk) — per task
+
+Before a task is dispatched, its spec is read cold by one model with no tools — the Reviewer's
+family, not the Architect's — and asked one question: *every place a target can be read two ways,
+and every input the shapes allow that no target mentions.* The Architect reads the list and, per
+finding, fixes the contract or leaves it. Then `start`.
+
+It does not block anything, no dispatched role sees its output, and it decides nothing. What it
+gives is a list and a number: the finding count is the readiness signal, and a spec that draws ten
+is not ready. **It is one sample of a reading that varies, and a zero is not a pass**: the same
+thirteen targets drew no findings, then three, then one, every one of them real and none found by
+the reading before. A high count means *not ready*; a low one means only that this reading found
+little. Tried retrospectively on fifteen dispatched specs, it named every ambiguity that had
+cost a round — including the one every role and every gate had passed — for about a tenth of a
+round's price. It also once invented a gap, every sample, until the type rule (§06) went into its
+prompt; the Architect still reads the list. **What it buys is not only fewer rounds.** In the second
+project a Reviewer rejected a green loader on two targets, both real defects — and both targets
+existed only because the spec review had asked the questions they answer. The spec review and the
+code review are not redundant: the second can only reject against what the first got written down.
+**What it costs**: about a quarter of that project's spend, a list that is mostly real and mostly
+harmless, and a cap (two reviews THAT FOUND SOMETHING, then a person) that stops a third round of ever-finer findings and
+also makes a REAL second-round finding expensive to act on — which is the pressure under which rule 10
+above was broken. In the seed the LOOP does it: `start` reviews a spec that has
+no review beside it, prints the list and stops `:spec-reviewed` — unless the list is empty, which has no
+reader, and then it carries straight on; the next `start` proceeds; an edited spec is a different spec and
+is reviewed again, except that a change to `:files/context` alone is not an edit to the contract. `bb run-loop spec-review <run-dir>` runs it by hand.
+
+**Every stop has an owner, and the loop says which.** A stop whose answer is an amendment to the
+contract — the spec review's list, and any stop triage routed `architect` — is the **Architect's**: the
+seat session handles it itself, reads, amends with `amend` (before and after are recorded) or leaves it,
+and carries on. Everything else is the **person's**: the cap, a missing verdict, a merge, a `human`
+route, a `tooling` route (the machine is at fault, not the run - a merged file no role owns, the build,
+the harness; fixed outside the run), a dead REPL, a refused provider, and a spec that has drawn findings twice and is amended again
+(`:spec-review-limit`; `:spec-review/max` in `loop.edn`). That line is what lets a run be automated —
+a session working through a stage stops for a person only at the person's stops — and the person
+reviews every amendment afterwards, in a batch, from the records, rather than one at a time.
 
 ### Step 3 · Dispatch & REPL-driven implementation (Coder ∥ Tester)
 
@@ -611,7 +854,7 @@ Run the gates in the **already-warm REPL** where you can, rather than paying a c
 
 ### Learned live, not designed on paper
 
-Twelve things that only showed up from running the loop repeatedly against real work — each one cost a real run to learn.
+Thirteen things that only showed up from running the loop repeatedly against real work — each one cost a real run to learn.
 
 1. **Profile by call frequency, not per-call cost — then fix the constraint, and only the constraint.** The role that fires on *every* task, however cheap-sounding, is usually the loop's real clock. Measure it: cycle time per task falls out of the run log's timestamps for free, once you are recording them (items 5 and 9). In the source project the Tester was **over 80% of wall time on every completed run**; attacking that one role took total wall from **18:04 to 2:06** across five runs. Optimising anywhere else would have moved nothing, and the arithmetic says so before you start.
 2. **State conventions as rules; don't wait for retries to teach them.** A less-than-frontier model learns a written rule instantly and a scolding slowly. Three rounds of gate feedback failed to break a habit that one up-front line in the system prompt broke immediately. Each retry round is a full paid attempt. Rules that load-bearing deserve somewhere better than a prompt string — put them in a rule source (§06).
@@ -626,9 +869,10 @@ Twelve things that only showed up from running the loop repeatedly against real 
 
 11. **Synthetic data in a real frame is indistinguishable from a measurement.** Label it where it is *displayed* — on the row, on the number, on the total — never only in a caption. This one was learned the expensive way: an example report carrying plausible timings, costs and provider names, under prose that said three times the values were not real, was read as a record of three model calls that had never happened. The caption was accurate and the table still lied. Mark the numbers, because the numbers are what get read alone.
 
+13. **Report time and money from timestamps and per-step measurements, never from a running counter — and separate waiting from working.** A wall time accumulated across invocations once printed below the sum of its own steps. The seed's report derives total, waiting-on-a-person and active time from events' absolute stamps, groups cost by provider, role and model, and puts the provider's own balance at start and end beside the summed costs; an estimate of how long something took, repeated after the fact, is not a measurement.
 12. **A rule the agent has already read is not fixed by writing it again.** When an instruction is ignored rather than unknown, a second copy changes nothing — the question is whether anything fires at the moment of action. Gates cannot help here: they run on artifacts, and a process that reached a clean artifact by the wrong route leaves them nothing to see. That is review's job, and it is why the Reviewer reads the diff rather than the result. Before adding a rule, check whether the one you want already exists somewhere the agent had open.
 
-**Triage is worth a model call.** A deterministic heuristic has to assume something — usually that the tests are right and the implementation is wrong. A model that reads the failing gate output against the contract *and* both agents' files can tell the difference between a faithful implementation and a test whose generator violates the contract's own preconditions. Put it behind the deterministic path as a seam, so it can **degrade, never block**.
+**Triage is worth a model call.** A deterministic heuristic has to assume something — usually that the tests are right and the implementation is wrong. A model that reads the failing gate output against the contract *and* both agents' files can tell the difference between a faithful implementation and a test whose generator violates the contract's own preconditions. Put it behind the deterministic path as a seam, so it can **degrade, never block**. The seed carries this as `harness.loop.triage`: one call with no tools, on a red gate and on a note, routed on from the first run with the mechanical proposal as its fallback — and with two safeties the prompt alone does not give you: a route to the Architect or a human *stops* the loop rather than dispatching, and guidance bound for the Tester is held to the same leak check as a typed retry.
 
 ---
 
@@ -660,11 +904,13 @@ This document gives you the method, a decision-log discipline, and a task-packet
 
 **Recommendation: don't build it speculatively.** Run the loop by hand for the first several tasks — copy the Blueprint slice into each agent's prompt yourself, run the gates yourself — and automate the orchestration only once you've felt where the manual version actually hurts. Automating a process you haven't run yet tends to automate the wrong things.
 
-When you do get there, [`harness-seed/`](harness-seed/) is a working starting point rather than a blank page — a few thousand lines extracted from a harness that ran this loop across dozens of real dispatches, and since extended by running it again. It carries §06's task packet as real schemas, the gate runner, gate 0, workspace provisioning, the `AgentRunner` seam, and a toolchain doctor.
+When you do get there, [`harness/`](harness/) is a working starting point rather than a blank page — a few thousand lines extracted from a harness that ran this loop across dozens of real dispatches, and since extended by running it again. It carries §06's task packet as real schemas, the gate runner, gate 0, workspace provisioning, the `AgentRunner` seam, a toolchain doctor, and the loop itself.
 
-**What is in it, what is deliberately left out, and the order to add the rest back are its own README's business** — [`harness-seed/README.md`](harness-seed/README.md). Repeating the inventory here is how the two drifted apart once already: this section said "the first headless runner" was still to come for a week after the seed had one.
+**The loop is in it now, and the order that put it there is the one this section recommends.** The seed shipped without it deliberately, and the manual version — the same steps as commands, with a person routing every failure — ran every recorded task in this repository's history before any of it was automated. What those runs made obvious is what got built: the loop routes what it can — a red gate, a note, a review that rejected — and hands every branch it cannot decide back to a person with the run left exactly where it stopped. It never merges. A Reviewer's approval stops it, and the merge is a command a person types with the reason written down first; §07's second human gate is a file, not a prompt the loop blocks on. The commands are still there, because they are how that person carries on. Do not read a finished loop in someone else's repository as permission to start with one in yours.
 
-`bb doctor && bb gates && bb example` runs green with no model calls, no network, and no checkout but its own. It is meant to be **copied and edited, not depended on**.
+**What is in it, what is deliberately left out, and the order to add the rest back are its own README's business** — [`harness/README.md`](harness/README.md). Repeating the inventory here is how the two drifted apart once already: this section said "the first headless runner" was still to come for a week after the seed had one.
+
+`bb doctor && bb gates && bb example` runs green with no model calls and no network, and `bb health` certifies it against a generated application. It is **adopted, not copied**: a workspace holds a clone of the KIT beside the application it builds, upgraded with `git pull`, and nothing of the project is written into it.
 
 Two things to get right early because they're cheap now and expensive later: **auto-approving an agent's edits is only safe because it runs in an isolated workspace** — never the main checkout; and the **run log is the only artifact that survives a run**, so record task, attempts, status, cost, provider, and the failing gate's actual output.
 
@@ -682,16 +928,17 @@ Two things to get right early because they're cheap now and expensive later: **a
 - [ ] Confirm no decision is ownerless
 
 **Phase B — Foundation** *(build the minimum machine, then prove it)*
-- [ ] Generate the scaffold — `neil new io.github.abogoyavlensky/clojure-stack-lite <name> :db <sqlite|postgres> :auth <true|false>`
-- [ ] `git init` immediately; commit the untouched scaffold as its own commit
+- [ ] Install JDK 21, the Clojure CLI and Babashka; `bb doctor` until both verdicts say yes
+- [ ] `bb health` once - the KIT, this machine, the pinned template, certified together
+- [ ] `bb init <name>` - the application generated and committed untouched, the plan, the workspace
 - [ ] Choosing XTDB v2 instead? Pin the library *and* the JDK, decide whether migrations are needed, write the thin SQL write layer, and check the stateless-transaction constraint against your access patterns
 - [ ] Put the datastore behind a protocol before writing the first feature
-- [ ] Install the REPL bridge; one REPL per workspace
-- [ ] Wire the cheap-to-expensive gate order; make lint fail on warnings; add the boundary gate with a placeholder ruleset
+- [ ] One REPL per workspace - the harness provisions them; never share one
+- [ ] Read the gate sequence `bb init` wrote into the plan's `loop.edn`; the boundary gate is live from the first commit, so declare every namespace you add in `layers.edn`
 - [ ] Decide, honestly, whether this project's stakes justify a dedicated Tester
 - [ ] Decide your retry cap, and what "escalate" does with partial output
 - [ ] Name your two human gates; resist adding a third
-- [ ] Pin your tool versions (`.mise.toml`) and confirm `bb doctor` verifies them
+- [ ] The application's `.mise.toml` is a dated known-good set; `bb doctor` reads it as floors, the JDK's major as the one pin
 - [ ] Run the loop by hand, end to end, on one trivial task — before automating any of it
 
 **Phase C — Stages** *(pull, don't schedule)*

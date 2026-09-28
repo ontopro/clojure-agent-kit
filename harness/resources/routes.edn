@@ -1,0 +1,43 @@
+;; HOW A FAMILY IS REACHED - what the two shipped profiles already say, as one table, so that a
+;; model named by its slug alone ("x-ai/grok-4.7", or "grok" resolved through `bb models`) can be
+;; turned into a full role block: the endpoint, the key's variable, the tool-call shape, the
+;; provider pin that keeps one host answering, the effort parameter and its levels, and the
+;; :max_tokens a family needs. `harness.models.catalogue/route` reads it; a family that is not
+;; here is refused by name, because a route nobody wrote is a request nobody checked.
+;;
+;; The family is the slug's prefix on OpenRouter (`anthropic/…`, `openai/…`, `google/…`, `x-ai/…`).
+;; `:anthropic-direct` is the same family reached at its own API with its own shape - the route
+;; agy-ide.edn's reviewers take - and is chosen by name, never by prefix.
+;;
+;; EFFORT LEVELS ARE NOT IN THE LISTING. OpenRouter says whether a model takes a reasoning
+;; parameter, not which values; the levels here are what each family's API documents and what
+;; the profiles have run. Newer levels are added here when a run has used one.
+;;
+;; NO KEYS, EVER: :key-env NAMES an environment variable.
+
+{:anthropic {:endpoint "https://openrouter.ai/api/v1"
+             :key-env "OPENROUTER_API_KEY"
+             :shape :openai
+             :provider "anthropic"
+             :effort {:param :reasoning_effort :levels ["low" "medium" "high"]}
+             :max_tokens 16000}
+ :openai {:endpoint "https://openrouter.ai/api/v1"
+          :key-env "OPENROUTER_API_KEY"
+          :shape :openai
+          :provider "openai"
+          :effort {:param :reasoning_effort :levels ["low" "medium" "high"]}}
+ :google {:endpoint "https://openrouter.ai/api/v1"
+          :key-env "OPENROUTER_API_KEY"
+          :shape :openai
+          :provider "google-vertex"
+          :effort {:param :reasoning_effort :levels ["low" "medium" "high"]}}
+ :x-ai {:endpoint "https://openrouter.ai/api/v1"
+        :key-env "OPENROUTER_API_KEY"
+        :shape :openai
+        :provider "xai"
+        :effort {:param :reasoning_effort :levels ["low" "medium" "high"]}}
+ :anthropic-direct {:endpoint "https://api.anthropic.com"
+                    :key-env "ANTHROPIC_API_KEY"
+                    :shape :anthropic
+                    :effort {:param :output_config :levels ["low" "medium" "high"]}
+                    :max_tokens 16000}}

@@ -1,0 +1,49 @@
+;; THE TEMPLATE THE KIT BRINGS WITH IT, as data. `bb init` generates an application from the
+;; entry named by :default; the health-check report prints the same entry, so "these two were run
+;; together" names exact commits on both sides.
+;;
+;; AN ENTRY IN DATA, NOT A CONSTANT IN CODE. The KIT ships one template. A second one - or an
+;; adopter who brings their own application and wants none - must not need a code change: the
+;; harness never looks inside a framework (it needs a git repository, gate commands and an nREPL
+;; command in loop.edn, and Clojure source). Supported is not the same as possible: only the pair
+;; the health check ran is certified.
+;;
+;; :git/sha is the PIN and is what resolves; :git/tag is a label for people. Bump both together,
+;; and re-run the health check before committing the bump.
+;;
+;; DEVELOPING THE TEMPLATE: set KIT_TEMPLATE_LOCAL to a local clone's path and generation reads
+;; that working tree instead of the pinned commit. Never for a published health-check record.
+{:default :clojure-stack-lite
+ :templates
+ {:clojure-stack-lite
+  {:template io.github.ontopro/clojure-stack-lite
+   :git/url "https://github.com/ontopro/clojure-stack-lite.git"
+   :git/sha "a2c0eaa567b01eefdf7dcde74a0960e72968a850"
+   :git/tag "kit-v1"
+   :as-of "2026-09-21"
+   ;; upstream is abogoyavlensky/clojure-stack-lite (MIT); `git diff master..kit` in the fork is
+   ;; everything the KIT changed. (`kit` there is a BRANCH; `kit-v1` a version of the template,
+   ;; not of the KIT)
+   :deps-new {:git/tag "v0.8.0" :git/sha "2f96530"}
+   ;; WHAT A RUN AGAINST THIS TEMPLATE'S PROJECTS NEEDS TO BE TOLD, written by `bb init` into the
+   ;; plan's `loop.edn` defaults. Three gates are tasks of the GENERATED `bb.edn`; the fourth, the
+   ;; boundary gate, is the KIT's own, run against the project - `{{kit}}` becomes the KIT's
+   ;; absolute path at `bb init`, because a gate runs in a worktree under work/ and no relative
+   ;; path to the KIT holds from there. `:test` on the nREPL's classpath so a Tester can load
+   ;; test namespaces; the generated `deps.edn` says why `:dev` is left out.
+   :loop/defaults {:gates [[:fmt "bb fmt-check"] [:lint "bb lint"] [:test "bb test"]
+                           [:deps "bb --config {{kit}}/harness/bb.edn boundary"]]
+                   :nrepl/cmd ["clojure" "-Srepro" "-M:test:nrepl"]}
+   ;; THE GENERATED APPLICATION'S LAYERS, written to its layers.edn by `bb init` and enforced by
+   ;; the boundary gate above. Names are TAILS under the application's root namespace (`core` is
+   ;; `xyx.core` in an application named xyx). This is the template's own require graph at the
+   ;; pinned commit, declared rather than discovered: a namespace added later fails the gate until
+   ;; it is declared - in the APPLICATION's layers.edn, which is its owner's to edit. core and db
+   ;; stand alone (the system is wired by configuration, not by requires); views knows nothing;
+   ;; handlers render views; routes name handlers; server composes both. test/ is not checked.
+   :layers {core #{}
+            db #{}
+            views #{}
+            handlers #{views}
+            routes #{handlers}
+            server #{handlers routes}}}}}

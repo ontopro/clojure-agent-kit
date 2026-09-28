@@ -1,0 +1,180 @@
+;; A WORKED EXAMPLE shipped with the seed — not a configuration. Copy the one
+;; matching your seat (`--seat <name>`, default claude) to <name>-plan/profile.edn; edit it there.
+;;
+;; SEAT :agy-ide — the Antigravity IDE's CLI. Its sibling is claude.edn, and the
+;; pair is instructive: they are near mirror images. Here Google writes and
+;; Anthropic reviews; there Anthropic writes and Google reviews. Between them
+;; both tool-call adapters are exercised, which is why there are two rather
+;; than one.
+;;
+;; Model names are dated selections (decision log P0-3: "Specific models are
+;; dated selections"). The SHAPE is the part meant to outlive them. The Tester
+;; below was chosen by a bake-off during the KIT's development, whose records
+;; are not in this repository; no run has ever used this seat, so nothing else
+;; here is measured and the comments say so where it matters.
+;;
+;; Three things this file is careful about:
+;;
+;;   ONE SEAT. The interactive client is where the human sits. The dispatched
+;;   roles are reached over HTTP by the harness and are not anyone's editor —
+;;   so there is exactly one :seat, and it is a scalar so it cannot grow a
+;;   second. :seat names a tool `bb doctor` knows how to probe.
+;;
+;;   THE CODER'S FAMILY FOLLOWS THE SEAT, by convention and not by rule. The
+;;   seat here is a Google client, so the Coder is Gemini and Anthropic moves to
+;;   the verifying side — the exact reverse of claude.edn. It is not checked,
+;;   because OpenCode 2 and Pi are bring-your-own-model clients with no inherent
+;;   family: the relation is not expressible for half the seats this kit
+;;   supports.
+;;
+;;   VERIFIER ≠ CODER FAMILY. Method §05 and decision log P0-3, and this one IS
+;;   checked. The Tester and the Reviewer both verify the Coder, so neither may
+;;   share its family, nor each other's. `bb profile` is the only place that
+;;   rule has ever been anything but prose.
+;;
+;;   NO KEYS, EVER. :key-env NAMES an environment variable. This file is
+;;   committed; a field that could hold a secret would eventually be handed one.
+
+{:seat :agy-ide
+
+ :roles
+ {;; CODER — gemini-3.8-flash at medium effort, over OpenRouter.
+  ;;
+  ;; PINNED REQUEST-SIDE: without :allow_fallbacks false, the provider you
+  ;; logged yesterday is not the one you get today, and a different provider can
+  ;; mean a different chat template.
+  ;;
+  ;; MEDIUM, NOT HIGH, AND THAT IS MEASURED. The original sketch put
+  ;; :reasoning_effort "high" on every OpenRouter role, unexamined. On
+  ;; gemini-3.8-flash as Reviewer it produced minutes of thinking and an
+  ;; EMPTY final message; the identical dispatch at medium answered quickly,
+  ;; for less, with real findings. High reasoning on a flash tier spends
+  ;; the budget thinking and has nothing left to say with.
+  :coder {:family :google
+          :model "google/gemini-3.8-flash"
+          :shape :openai
+          :endpoint "https://openrouter.ai/api/v1"
+          :key-env "OPENROUTER_API_KEY"
+          :params {:reasoning_effort "medium"
+                   :provider {:only ["google-vertex"] :allow_fallbacks false}}}
+
+  ;; TESTER — gpt-5.6-sol at medium effort. Dated selection 2026-09-14.
+  ;;
+  ;; CHOOSE THE TESTER BY ITS TESTS, NOT ITS PRICE — see claude.edn. The same
+  ;; Tester as that profile: the result does not depend on the seat, and openai
+  ;; is neither Coder's family. The standard endpoint rather than flex, because
+  ;; flex was rate-limited upstream on most requests when this was switched;
+  ;; claude.edn has the reasoning, and why the "openai" pin is observed rather
+  ;; than guaranteed to mean standard.
+  :tester {:family :openai
+           :model "openai/gpt-5.6-sol"
+           :shape :openai
+           :endpoint "https://openrouter.ai/api/v1"
+           :key-env "OPENROUTER_API_KEY"
+           :params {:reasoning_effort "medium"
+                    :provider {:only ["openai"] :allow_fallbacks false}}}
+
+  ;; REVIEWER — Claude Fable 5.1 at high effort, direct to Anthropic, which is
+  ;; the :anthropic tool-call shape. Dated selection 2026-09-14; started at low,
+  ;; high from 2026-09-16, MEDIUM from 2026-09-18 by the user's decision. No :provider pin: that endpoint
+  ;; does no routing, so there is nothing to pin. No fallback model answers a
+  ;; refusal, and the cost is computed from :pricing because the endpoint
+  ;; reports none.
+  ;;
+  ;; WHY MEDIUM, NOT HIGH. Low is positioned for simple, fast, subagent-style
+  ;; work, and a review is not that: every gate has already passed when the
+  ;; Reviewer is dispatched, so what is left is design, logic, edge cases and
+  ;; silent behaviour changes. But high is overkill for it, in the user's
+  ;; judgement (2026-09-18): the one measurement of this model on an open
+  ;; reading task — the spec review, high against low on the same specs — found
+  ;; high spending twice the money to find nothing more. Medium is the middle
+  ;; this profile has not tried; the first agy-ide run tests it.
+  ;;
+  ;; :max_tokens ROSE WITH IT, 16,000 to 32,000, because thinking counts against
+  ;; that cap on this shape. A Reviewer's findings are short, so the risk is not
+  ;; a long answer but a budget spent thinking with nothing left to say it with
+  ;; — which this kit has seen once, on a flash tier at high as Reviewer (see
+  ;; claude.edn).
+  ;;
+  ;; NEITHER SETTING IS MEASURED HERE. No run has used this seat, and no
+  ;; Anthropic model has been dispatched as a Reviewer at all: the bake-off that
+  ;; would have tested one could not, because every case's code was written by
+  ;; an Anthropic Coder and §05 wants the verifier clear of the author's family.
+  ;; This is reasoning from the tier guidance, and the first agy-ide run is what
+  ;; would test it.
+  :reviewer {:family :anthropic
+             :model "claude-fable-5-1"
+             :shape :anthropic
+             :endpoint "https://api.anthropic.com"
+             :key-env "ANTHROPIC_API_KEY"
+             :params {:output_config {:effort "medium"}
+                      :max_tokens 32000}
+             ;; USD per million tokens: base input, output, 5-minute and 1-hour
+             ;; cache writes, cache reads (0.025x on Fable 5.1; 0.1x elsewhere).
+             :pricing {:per-mtok {:in 10 :out 50
+                                  :cache-write-5m 12.5 :cache-write-1h 20
+                                  :cache-read 0.25}
+                       :source "https://platform.claude.com/docs/en/about-claude/pricing"
+                       :as-of "2026-09-14"}}
+
+  ;; SPEC REVIEWER — the Reviewer's family, for the Reviewer's reason: not the
+  ;; seat's family (Google here), and the seat is where the Architect writes
+  ;; the spec this role reads cold before `start`. Dated selection 2026-09-18.
+  ;;
+  ;; LOW EFFORT, MEASURED. This model reviewed the same specs at both efforts on
+  ;; the claude seat: high cost $0.26 a call and hit its budget cap after twenty
+  ;; calls; low found the same four gaps on the spec compared for $0.14. An open
+  ;; "find everything" question at high effort spends the budget thinking and
+  ;; finds nothing more. What is not measured is this seat as a whole.
+  :spec-reviewer {:family :anthropic
+                  :model "claude-fable-5-1"
+                  :shape :anthropic
+                  :endpoint "https://api.anthropic.com"
+                  :key-env "ANTHROPIC_API_KEY"
+                  :params {:output_config {:effort "low"}
+                           :max_tokens 16000}
+                  :pricing {:per-mtok {:in 10 :out 50
+                                       :cache-write-5m 12.5 :cache-write-1h 20
+                                       :cache-read 0.25}
+                            :source "https://platform.claude.com/docs/en/about-claude/pricing"
+                            :as-of "2026-09-14"}}
+
+  ;; BLUEPRINT REVIEWER — Claude Opus 5.5 at high effort, over OpenRouter
+  ;; pinned to Anthropic's own serving: the same block as claude.edn's, for the
+  ;; same measured reason (its comment has it). Here it is NOT the seat's
+  ;; family — the seat is Google — so no exception is needed: this is the
+  ;; arrangement §05 would ask for anyway. One call per Blueprint, before
+  ;; sign-off, by `bb blueprint-review`; no tools, no cache, no :pricing.
+  ;;
+  ;; NOT MEASURED IN THIS SEAT. No run has used it; what was measured is the
+  ;; model reading Blueprints written by the other seat's family.
+  :blueprint-reviewer {:family :anthropic
+                       :model "anthropic/claude-opus-5.5"
+                       :shape :openai
+                       :endpoint "https://openrouter.ai/api/v1"
+                       :key-env "OPENROUTER_API_KEY"
+                       :params {:reasoning_effort "high"
+                                :max_tokens 16000
+                                :provider {:only ["anthropic"] :allow_fallbacks false}}}
+
+  ;; ORCHESTRATOR — gemini-3.8-flash at high effort, over OpenRouter. TRIAGE
+  ;; ONLY: one completion with no tools, on a red gate or a note, routing to
+  ;; coder | tester | architect | human with a reason and guidance. The
+  ;; seat's family, as in claude.edn, and for the same reason: triage is not
+  ;; a verifier, so §05 does not constrain it, and the family that sits with
+  ;; the human reads the contract the human wrote.
+  ;;
+  ;; NOT MEASURED. No run has used this seat. High rather than the medium
+  ;; this file measures elsewhere, because a triage call is one completion
+  ;; over a few thousand tokens with no tool loop — the empty-final-message
+  ;; failure this file records for high on a flash tier came from a
+  ;; 24-iteration Reviewer dispatch, which this is not. If the first agy-ide
+  ;; run shows an empty verdict, the fallback routes mechanically and the
+  ;; record says so; drop to medium then.
+  :orchestrator {:family :google
+                 :model "google/gemini-3.8-flash"
+                 :shape :openai
+                 :endpoint "https://openrouter.ai/api/v1"
+                 :key-env "OPENROUTER_API_KEY"
+                 :params {:reasoning_effort "high"
+                          :provider {:only ["google-vertex"] :allow_fallbacks false}}}}}

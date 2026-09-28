@@ -1,0 +1,21 @@
+;; A bake-off, as a person types it - three lines. `bb bake-off new` asks for them at a terminal;
+;; `bb bake-off run <plan>/bake-offs/<id>/bake-off.edn` expands them through the catalogue
+;; (`bb models`) and `routes.edn` into full role blocks (written beside as resolved.edn), runs
+;; every case with every candidate ONCE, has the judge read the answers blind and map where they
+;; agree and disagree, and renders TABLE.md. The person marks each row real or not in marks.edn;
+;; the per-dollar figures render from the marks, never from the judge.
+;;
+;;   :role        an act the roster lists: plan-reviewer, blueprint-reviewer, spec-reviewer
+;;                (the dispatched roles come with the loop runner)
+;;   :candidates  "<model slug or a word> <effort>" - "grok" resolves to the newest Grok; the
+;;                effort is the family's highest when left out
+;;   :judge       the same form; never a candidate, and another family when the field allows
+;;   :cases       optional - paths; by default everything on disk for the act under the plan
+;;
+;; Copy this to <plan>/bake-offs/<id>/bake-off.edn and edit it.
+
+{:role :blueprint-reviewer
+ :candidates ["anthropic/claude-opus-5.5 high"
+              "openai/gpt-5.6-sol high"
+              "x-ai/grok-4.7 medium"]
+ :judge "openai/gpt-6-astra high"}

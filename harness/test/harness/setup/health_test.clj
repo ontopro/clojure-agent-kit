@@ -1,0 +1,173 @@
+(ns harness.setup.health-test
+  (:require
+   [babashka.fs :as fs]
+   [babashka.process :as p]
+   [clojure.edn :as edn]
+   [clojure.string :as str]
+   [clojure.test :refer [deftest is testing]]
+   [harness.setup.health :as health]))
+
+(def kit-dir (str (fs/parent (fs/real-path "."))))
+
+(defn- fake-project
+  "A project whose four gates are shell commands that fail exactly when that
+  gate's breaker file is present - the mechanics of `check-red` without a JVM."
+  []
+  (let [dir (str (fs/create-temp-dir))
+        bs (health/breakers "xyx")
+        gate (fn [k] [k (str "test ! -e " (get-in bs [k :path]))])]
+    (fs/create-dirs (fs/path dir "src" "xyx"))
+    {:subject :fake :dir dir :root "xyx"
+     :gates [(gate :fmt) (gate :lint) (gate :test) (gate :deps)]}))
+
+(deftest the-breakers-take-a-root-and-each-fails-only-its-own-gate
+  (let [bs (health/breakers "my-app")]
+    (is (= #{:fmt :lint :test :deps} (set (keys bs))))
+    (testing "paths are under the root's folder, hyphens as underscores; the test breaker under test/"
+      (is (= "src/my_app/red_fmt.clj" (get-in bs [:fmt :path])))
+      (is (= "test/my_app/red_test.clj" (get-in bs [:test :path]))))
+    (testing "every breaker but fmt's is one form per line: a project's cljfmt config cannot reflow it"
+      (doseq [k [:lint :test :deps]
+              line (str/split-lines (get-in bs [k :content]))
+              :when (not (str/blank? line))]
+        (is (not (str/starts-with? line " ")) (str k ": " line))))
+    (is (str/includes? (get-in bs [:fmt :content]) "\n(inc x)") "the fmt breaker is the mis-indented one")
+    (is (str/includes? (get-in bs [:lint :content]) "unused"))
+    (is (str/includes? (get-in bs [:test :content]) "(= 1 2)"))))
+
+(deftest check-red-writes-each-breaker-sees-its-own-gate-fail-and-removes-it
+  (let [{:keys [dir] :as subject} (fake-project)]
+    (is (true? (:ok? (health/check-gates subject))) "green untouched")
+    (let [r (health/check-red subject)]
+      (is (true? (:ok? r)))
+      (is (str/includes? (:detail r) "each of 4 gates")))
+    (is (empty? (filter #(str/includes? (str %) "red_") (fs/glob dir "**"))) "no breaker left behind")))
+
+(deftest check-red-fails-when-a-gate-stays-green-or-fails-at-the-wrong-key
+  (let [{:keys [dir] :as subject} (fake-project)
+        bs (health/breakers "xyx")]
+    (testing "a gate that never fails is a finding: it proves nothing"
+      (let [r (health/check-red (assoc subject :gates [[:fmt "true"] [:lint (str "test ! -e " (get-in bs [:lint :path]))]]))]
+        (is (false? (:ok? r)))
+        (is (str/includes? (:detail r) ":fmt the gates stayed green"))
+        (is (str/includes? (:detail r) ":lint ok"))))
+    (testing "a breaker that trips an earlier gate is a finding too"
+      (let [r (health/check-red (assoc subject :gates [[:fmt "false"] [:lint "true"]]))]
+        (is (false? (:ok? r)))
+        (is (str/includes? (:detail r) ":lint failed at :fmt instead"))))
+    (testing "and the breaker is removed even then"
+      (is (empty? (filter #(str/includes? (str %) "red_") (fs/glob dir "**")))))))
+
+(deftest check-gates-reports-the-failed-gate-and-its-last-lines
+  (let [r (health/check-gates {:subject :fake :dir (str (fs/create-temp-dir)) :root "x"
+                               :gates [[:fmt "true"] [:lint "sh -c 'echo one; echo two; exit 3'"]]})]
+    (is (false? (:ok? r)))
+    (is (str/includes? (:detail r) "failed at :lint"))
+    (is (str/includes? (:detail r) "two"))))
+
+(deftest the-trivial-task-is-the-clamp-of-method-03-in-a-new-declared-layer
+  (let [{:keys [spec writes layer]} (health/trivial-task "my-app")]
+    (is (= ["src/my_app/health.clj"] (:files/impl spec)))
+    (is (= ["test/my_app/health_test.clj"] (:files/test spec)))
+    (is (= (set (:files/impl spec)) (set (keys (:coder writes)))) "the Coder writes exactly its target")
+    (is (= (set (:files/test spec)) (set (keys (:tester writes)))))
+    (is (= 'my-app.health layer) "declared through :architecture, since no role may write layers.edn")
+    (is (str/includes? (get (:coder writes) "src/my_app/health.clj") "(ns my-app.health)"))))
+
+(deftest the-loops-record-is-held-to-the-repositories-the-copy-and-the-plan
+  ;; The three hashes are the claim: a record that names commits nobody checked against the
+  ;; repositories is the memory it replaced, written down. The check reads HEAD itself.
+  (let [heads {:kit "aaa" :app "bbb" :plan "ccc"}
+        record {:run/status :awaiting-merge :run/kit-commit "aaa" :run/app-commit "bbb" :run/plan-commit "ccc"}
+        kept {:path "/w/hc-plan/runs/health.edn" :exists? true :same? true}
+        plan {:rules "hc-plan/rules.edn" :profile "hc-plan/profile.edn"}]
+    (testing "a record that says what it promises"
+      (is (= [] (health/loop-problems record heads kept plan))))
+    (testing "the selfcheck subject: no plan, no copy, and a nil plan commit is the truth"
+      (is (= [] (health/loop-problems (assoc record :run/plan-commit nil) (assoc heads :plan nil) nil nil))))
+    (testing "each way of breaking it is one sentence"
+      (is (= ["run.edn was not written"] (health/loop-problems nil heads kept plan)))
+      (is (= ["the record's status is :escalated, not :awaiting-merge"]
+             (health/loop-problems (assoc record :run/status :escalated) heads kept plan)))
+      (is (= ["run/app-commit is bbb, HEAD of the app is bb2"]
+             (health/loop-problems record (assoc heads :app "bb2") kept plan)))
+      (is (= ["run/plan-commit is nil, HEAD of the plan is ccc"]
+             (health/loop-problems (assoc record :run/plan-commit nil) heads kept plan)))
+      (is (= ["run/plan-commit is ccc but the workspace has no plan repository"]
+             (health/loop-problems record (assoc heads :plan nil) kept plan)))
+      (is (= ["no copy at /w/hc-plan/runs/health.edn, the plan's records folder"]
+             (health/loop-problems record heads (assoc kept :exists? false :same? false) plan)))
+      (is (= ["the copy at /w/hc-plan/runs/health.edn differs from run.edn"]
+             (health/loop-problems record heads (assoc kept :same? false) plan)))
+      (is (= ["the loop's rules overlay is not the plan's" "the loop's profile is not the plan's"]
+             (health/loop-problems record heads kept {:rules nil :profile nil}))
+          "a loop that read the clone's rules or profile would prove the wrong thing"))))
+
+(deftest the-selfcheck-subject-is-a-scratch-repository-not-the-checked-in-one
+  (let [{:keys [dir workspace gates]} (health/selfcheck-subject kit-dir)]
+    (is (not (str/starts-with? dir kit-dir)) "a copy elsewhere")
+    (is (fs/exists? (fs/path dir ".git")))
+    (is (fs/exists? (fs/path dir ".gitignore")) "the KIT's, so .nrepl-port is not a file a role wrote")
+    (is (= "" (str/trim (:out (p/shell {:dir dir :out :string :err :string} "git" "status" "--porcelain")))))
+    (is (fs/exists? (fs/path workspace "workspace.edn")))
+    (is (= [:fmt :lint :test :deps] (mapv first gates)))
+    (is (str/includes? (second (last gates)) (str kit-dir "/harness/bb.edn"))
+        "the boundary gate by the KIT's path: .. no longer leads to the harness")
+    (fs/delete-tree (fs/parent workspace))))
+
+;; ---------------------------------------------------------------------------
+;; the record and the README block
+;; ---------------------------------------------------------------------------
+
+(def ^:private checks
+  [{:check :gates :subject :selfcheck :ok? true :ms 3000 :detail "4 gates green"}
+   {:check :red :subject :selfcheck :ok? true :ms 5000 :detail "each of 4 gates fails"}
+   {:check :serve :subject :app :ok? true :ms 7600 :detail "GET http://localhost:8000/ -> 200; /var/folders/x/hc-app"}])
+
+(def ^:private pin
+  {:template 'io.github.ontopro/clojure-stack-lite :git/tag "kit-v1"
+   :git/sha "a2c0eaa567b01eefdf7dcde74a0960e72968a850" :git/url "https://example.invalid"})
+
+(deftest the-record-carries-what-certifies-and-nothing-of-the-host-or-the-scratch
+  (let [rec (health/record kit-dir checks pin
+                           [{:tool :bb :req :required :version "1.13.223"}
+                            {:tool :claude :req :optional :version "2.1.280"}])]
+    (is (re-matches #"\d{4}-\d{2}-\d{2}" (:health/as-of rec)))
+    (is (= (:key (health/platform)) (get-in rec [:platform :key])))
+    (is (re-matches #"[0-9a-f]{40}" (get-in rec [:kit :sha])))
+    (is (contains? (:kit rec) :dirty?) "a record from a dirty tree says so")
+    (is (= {:template 'io.github.ontopro/clojure-stack-lite :git/tag "kit-v1"
+            :git/sha "a2c0eaa567b01eefdf7dcde74a0960e72968a850"}
+           (:template rec))
+        "the pin, not its url")
+    (is (= {:bb "1.13.223"} (:tools rec)) "required tools only")
+    (is (= [{:subject :selfcheck :check :gates :ok? true :ms 3000}
+            {:subject :selfcheck :check :red :ok? true :ms 5000}
+            {:subject :app :check :serve :ok? true :ms 7600}]
+           (:checks rec))
+        "outcome and time; never the detail, which carries scratch paths")
+    (is (not (str/includes? (pr-str rec) "/var/folders")))
+    (is (true? (:ok? rec)))))
+
+(deftest the-readme-block-is-rendered-from-the-records
+  (let [rec {:health/as-of "2026-09-22" :platform {:key "macos-arm64" :label "macOS 26.5 arm64"}
+             :kit {:short "a001c95" :dirty? false} :template pin
+             :checks (mapv #(select-keys % [:subject :check :ok? :ms]) checks) :ok? true}]
+    (is (str/starts-with? (health/render {}) "No health record yet"))
+    (let [out (health/render {"macos-arm64" rec})]
+      (is (str/includes? out "| macOS 26.5 arm64 | 2026-09-22 | `a001c95` | `kit-v1` (`a2c0eaa`) | 3 of 3 ok: selfcheck gates, selfcheck red, app serve | 16s |"))
+      (is (str/includes? out "a platform not in the table has none")))
+    (is (str/includes? (health/render {"macos-arm64" (assoc-in rec [:kit :dirty?] true)}) "(uncommitted changes)"))
+    (is (str/includes? (health/render {"macos-arm64" (assoc-in rec [:checks 2 :ok?] false)}) "app serve FAILED"))))
+
+(deftest write-record-writes-the-platform-file-and-the-known-good-set
+  (let [dir (str (fs/create-temp-dir))
+        rec {:health/as-of "2026-09-22" :platform {:key "test-arm64" :label "Test arm64"}
+             :kit {:sha "x" :short "x" :dirty? false} :template pin :tools {:bb "1.13.223"} :checks [] :ok? true}]
+    (with-redefs [health/records-dir (str (fs/path dir "health"))
+                  health/known-good-path (str (fs/path dir "known-good.edn"))]
+      (health/write-record! rec)
+      (is (= rec (edn/read-string (slurp (str (fs/path dir "health" "test-arm64.edn"))))))
+      (is (= {:as-of "2026-09-22" :platform "Test arm64" :tools {:bb "1.13.223"}}
+             (edn/read-string (slurp (str (fs/path dir "known-good.edn")))))
+          "the doctor's known-good set is what the run saw"))))

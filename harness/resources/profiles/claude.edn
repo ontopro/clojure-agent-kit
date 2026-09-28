@@ -1,0 +1,266 @@
+;; A WORKED EXAMPLE shipped with the KIT — not a configuration. `bb init` copies the one
+;; matching your seat (`--seat <name>`, default claude) to <name>-plan/profile.edn; edit it there.
+;;
+;; SEAT :claude. Its sibling is agy-ide.edn, and the pair is instructive: they
+;; are near mirror images. Here Anthropic writes and Google and OpenAI verify,
+;; every role over OpenRouter on the :openai shape; there Google writes and
+;; Anthropic verifies, its Reviewer and spec reviewer direct to Anthropic on
+;; the :anthropic shape. The pair still covers both tool-call shapes, which is
+;; why there are two rather than one — and since this file's Anthropic roles
+;; go through OpenRouter (below, and why), the :anthropic shape's worked
+;; example is agy-ide.edn's reviewers, not anything here.
+;;
+;; Model names are dated selections (decision log P0-3: "Specific models are
+;; dated selections"). The SHAPE is the part meant to outlive them. The
+;; selections below were made by bake-offs during the KIT's development; their
+;; records are not in this repository, so what each rests on is said here in
+;; words and not in figures. `bb bake-off` is how to make your own.
+;; The ROUTE of the Anthropic roles is a dated decision too: 2026-09-18, from a
+;; paid probe (`NOTES.md` row 25), shipped here since 2026-09-25 (row 68).
+;;
+;; Three things this file is careful about:
+;;
+;;   ONE SEAT. The interactive client is where the human sits. The dispatched
+;;   roles are reached over HTTP by the harness and are not anyone's editor —
+;;   so there is exactly one :seat, and it is a scalar so it cannot grow a
+;;   second. :seat names a tool `bb doctor` knows how to probe, which is why it
+;;   is :claude rather than :claude-code — doctor probes binaries.
+;;
+;;   THE CODER'S FAMILY FOLLOWS THE SEAT, by convention and not by rule. You
+;;   are already being helped by that family interactively, so letting it write
+;;   the code too keeps one story; what must then differ is the VERIFIERS. It
+;;   is not checked, because OpenCode 2 and Pi are bring-your-own-model clients
+;;   with no inherent family — the relation is not expressible for half the
+;;   seats this kit supports.
+;;
+;;   VERIFIER ≠ CODER FAMILY. Method §05 and decision log P0-3, and this one IS
+;;   checked. The Tester and the Reviewer both verify the Coder, so neither may
+;;   share its family, nor each other's. `bb profile` is the only place that
+;;   rule has ever been anything but prose.
+;;
+;;   NO KEYS, EVER. :key-env NAMES an environment variable. This file is
+;;   committed; a field that could hold a secret would eventually be handed one.
+;;
+;; WHY EVERY ROLE IS ON OPENROUTER, the Anthropic ones included. Four things
+;; the money tooling can only do on that side:
+;;
+;;   ONE KEY AND ONE BALANCE. `bb balance`, and the two lines `run-loop run`
+;;   prints around the loop, read OpenRouter's key limit and account credit
+;;   from its API. Anthropic's API has no balance endpoint: a direct role's
+;;   money is only ever SPEND, summed from the records after the fact.
+;;
+;;   THE COST IS REPORTED, NOT COMPUTED. OpenRouter's generation record
+;;   carries what each completion cost, and the report prints it as the
+;;   endpoint's word. Direct, the cost is usage × the profile's :pricing,
+;;   marked ~ and only as fresh as the date the table was read. So NO
+;;   :pricing on either Anthropic role here: `bb reprice` fills any step the
+;;   record left unpriced from the generation records, and a price table
+;;   would rot for nothing.
+;;
+;;   THE CREDIT STOP. A 402 stops the loop by name (:credit, owner human)
+;;   with the endpoint and the key variable, not as one more failed dispatch.
+;;   With every role on one key, one 402 stops everything — which is what a
+;;   person wants — so check the balance against the plan's per-run floor
+;;   (§13) before each run; the first adopter was stopped once on EACH
+;;   provider's credit, mid-run, with nothing having warned.
+;;
+;;   THE GENERATION RECORD. A completion names no provider; OpenRouter's
+;;   record says who served it, at which service tier, with native token
+;;   counts and the host's own generation time — the provenance a direct
+;;   endpoint cannot give. Its price is a fixed ~9 s wait at the end of every
+;;   dispatch for the last completion's record (row 25).
+
+{:seat :claude
+
+ :roles
+ {;; CODER — Claude Fable 5.1 at low effort, over OpenRouter pinned to
+  ;; Anthropic's own serving. Effort dated 2026-09-14, the user's setting after
+  ;; a day on both low and medium; the route dated 2026-09-18 (header).
+  ;;
+  ;; THE MODEL NAME IS OPENROUTER'S SLUG, `anthropic/claude-fable-5.1` with a
+  ;; dot — not the API's `claude-fable-5-1`. The generation record resolves it
+  ;; to the model that answered, and the report shows that one.
+  ;;
+  ;; PINNED TO "anthropic", NOT "google-vertex". Both serve this model. Pinned
+  ;; to Vertex the prompt cache missed intermittently, each miss re-writing
+  ;; the whole prompt at the cache-write premium; pinned
+  ;; to Anthropic it never did, and cost no more than the direct route. With
+  ;; :allow_fallbacks false the provider you logged yesterday is the one you
+  ;; get today, and every report names the one that answered.
+  ;;
+  ;; CACHING IS ASKED FOR, HERE AND ON NO OTHER ROLE. On the :openai shape the
+  ;; adapter merges :params into the request as they are and sends no
+  ;; cache_control of its own — an Anthropic model behind this endpoint caches
+  ;; only if the profile says so, and a profile that forgets turns caching
+  ;; OFF silently, and the run costs more for it. The Coder's tool loop
+  ;; re-sends the whole conversation every completion, so it is the role
+  ;; the cache is for: most of its prompt tokens are cache reads, and a
+  ;; record's token lines show the share (`bb report`).
+  ;;
+  ;; :max_tokens SITS IN :params on this shape (the adapter merges them; on
+  ;; the :anthropic shape it is lifted out). Thinking counts against it, and
+  ;; the adapter's default of 4096 would cut a turn off mid-thought — 16000,
+  ;; the non-streaming ceiling the API guidance gives.
+  :coder {:family :anthropic
+          :model "anthropic/claude-fable-5.1"
+          :shape :openai
+          :endpoint "https://openrouter.ai/api/v1"
+          :key-env "OPENROUTER_API_KEY"
+          :params {:reasoning_effort "low"
+                   :max_tokens 16000
+                   :provider {:only ["anthropic"] :allow_fallbacks false}
+                   :cache_control {:type "ephemeral"}}}
+
+  ;; TESTER — gemini-3.8-flash at medium effort, over OpenRouter. Dated
+  ;; selection 2026-09-16, when the Tester and Reviewer swapped families so the
+  ;; best measured Reviewer could take that seat without sharing it.
+  ;;
+  ;; CHOOSE THE TESTER BY ITS TESTS, NOT ITS PRICE. The Tester writes MORE than
+  ;; the Coder, from the contract alone, under more lint conventions; the
+  ;; cheapest model in the hardest seat is how this kit lost a whole run. Medium
+  ;; rather than low for the same reason: the cheaper tier's tests stopped
+  ;; pinning the validate-once seam, which is a cent a dispatch for a Tester
+  ;; that has stopped testing a rule.
+  ;;
+  ;; THE PROVIDER PIN IS THE POINT. Without :allow_fallbacks false the provider
+  ;; you logged yesterday is not the one you get today, and a different provider
+  ;; can mean a different chat template. One slug drew two different hosts
+  ;; across three attempts of a single run, and "the model failed" was never a
+  ;; safe reading after that.
+  :tester {:family :google
+           :model "google/gemini-3.8-flash"
+           :shape :openai
+           :endpoint "https://openrouter.ai/api/v1"
+           :key-env "OPENROUTER_API_KEY"
+           :params {:reasoning_effort "medium"
+                    :provider {:only ["google-vertex"] :allow_fallbacks false}}}
+
+  ;; REVIEWER — gpt-5.6-sol at high effort, over OpenRouter's standard endpoint.
+  ;; Dated selection 2026-09-16.
+  ;;
+  ;; STANDARD, NOT FLEX. Flex was rate-limited upstream on most requests when
+  ;; this was measured, and a verifier that fails for capacity rather than for
+  ;; its findings is worth nothing. "openai" is also the provider's name, so the
+  ;; pin is observed rather than guaranteed to exclude the flex and fast
+  ;; endpoints; the report shows the service tier beside the provider, so a
+  ;; routing change would be visible.
+  ;;
+  ;; HIGH, THOUGH MEDIUM MEASURED THE SAME on the defects that were tested. It
+  ;; ships high by the user's decision, as insurance on defects unlike those:
+  ;; the Reviewer runs once per unit of work and is the cheapest seat in the
+  ;; loop.
+  ;;
+  ;; EFFORT IS A MEASURED SETTING, not a default — :reasoning_effort "high" on a
+  ;; flash tier once produced minutes of thinking and an EMPTY final message
+  ;; where the identical dispatch at medium answered quickly with real
+  ;; findings. A flash tier spends a high budget thinking and has nothing left
+  ;; to say with; this model showed no such shape at high.
+  :reviewer {:family :openai
+             :model "openai/gpt-5.6-sol"
+             :shape :openai
+             :endpoint "https://openrouter.ai/api/v1"
+             :key-env "OPENROUTER_API_KEY"
+             :params {:reasoning_effort "high"
+                      :provider {:only ["openai"] :allow_fallbacks false}}}
+
+  ;; SPEC REVIEWER — the same model as the Reviewer, over OpenRouter.
+  ;; Dated selection 2026-09-18. ONE CALL PER SPEC, BEFORE START, no tools:
+  ;; every place a target can be read two ways, every input the shapes allow
+  ;; that no target mentions. `start` runs it for any spec without a current
+  ;; review and stops for the Architect to read the list.
+  ;;
+  ;; NOT THE SEAT'S FAMILY, and `bb profile` checks it: the Architect who wrote
+  ;; the spec sits in the seat, and a reviewer of its family reads a sentence
+  ;; the way its author did. The spec's writer and its reviewer are different
+  ;; families for the same reason the Tester is not the Coder's.
+  ;;
+  ;; WHY THIS MODEL, AND HIGH: measured. Tried on specs that had already been
+  ;; dispatched it named every ambiguity that had cost a round; the
+  ;; Architect's own family at low effort matched it on the one spec compared,
+  ;; but is the seat's family. A cheaper choice here is possible and not yet
+  ;; measured.
+  :spec-reviewer {:family :openai
+                  :model "openai/gpt-5.6-sol"
+                  :shape :openai
+                  :endpoint "https://openrouter.ai/api/v1"
+                  :key-env "OPENROUTER_API_KEY"
+                  :params {:reasoning_effort "high"
+                           :provider {:only ["openai"] :allow_fallbacks false}}}
+
+  ;; BLUEPRINT REVIEWER — Claude Opus 5.5 at high effort, over OpenRouter
+  ;; pinned to Anthropic's own serving. Dated selection 2026-09-25. ONE CALL
+  ;; PER BLUEPRINT, BEFORE SIGN-OFF, no tools: `bb blueprint-review` sends the
+  ;; stage document and the Blueprint with the method's two questions — is it
+  ;; over-engineered (§07 step 2), and do its shapes and targets follow §06's
+  ;; rules — and writes the findings beside the stage's other reviews. The spec
+  ;; review still reads every packet cut from it, one at a time, before dispatch;
+  ;; this reads the whole, for what a packet cannot show.
+  ;;
+  ;; THE SEAT'S FAMILY, AND THAT IS ACCEPTED — the second such exception, with
+  ;; the Orchestrator, and unlike that one §05's reasoning DOES reach it: a
+  ;; Blueprint is the seat's, as a spec is, and the spec reviewer is held to
+  ;; another family for exactly that. It was measured instead of assumed. On
+  ;; one build three families read the plan and both Blueprints cold, and this
+  ;; model — the seat's own family — was the one that found the load-bearing
+  ;; defect of each Blueprint round alone, twice: the route library's conflict
+  ;; semantics, which would have cost a run each; and it did so at more real
+  ;; findings per dollar than the reader of record. What the rule feared, a
+  ;; reader that reads a sentence the way its author did, did not show on
+  ;; Blueprints. `bb profile` does not check this role's family; `NOTES.md`'s
+  ;; register watches it, and what would reverse the decision is a Blueprint
+  ;; defect this reader read past that another family caught.
+  ;;
+  ;; HIGH, CHOSEN: the reads that measured it ran at high; the model's default
+  ;; is medium and the two have not been compared here. No :cache_control: one
+  ;; completion, read once. No :pricing: the endpoint reports the cost.
+  :blueprint-reviewer {:family :anthropic
+                       :model "anthropic/claude-opus-5.5"
+                       :shape :openai
+                       :endpoint "https://openrouter.ai/api/v1"
+                       :key-env "OPENROUTER_API_KEY"
+                       :params {:reasoning_effort "high"
+                                :max_tokens 16000
+                                :provider {:only ["anthropic"] :allow_fallbacks false}}}
+
+  ;; ORCHESTRATOR — Claude Fable 5.1 at low effort, over OpenRouter pinned to
+  ;; Anthropic's own serving, as the Coder is and for the header's reasons.
+  ;; Dated selection 2026-09-16; the route 2026-09-18. TRIAGE ONLY: one
+  ;; completion with no tools, on a red gate or a note, answering who owns it —
+  ;; coder, tester, architect or human — with a reason and guidance for the
+  ;; retried role. Dispatch itself is software (harness.loop.orchestrate); this
+  ;; is the one judgement inside the loop that a mechanical proposal cannot make.
+  ;;
+  ;; IT SHARES THE CODER'S FAMILY, AND THAT IS ACCEPTED. §05's rule is for
+  ;; verifiers: the Tester and the Reviewer exist to disagree with the Coder.
+  ;; Triage neither writes code nor judges a diff; it reads a failure against
+  ;; the contract and both roles' files. The decision (2026-09-16) is that
+  ;; the family that reads a Clojure contract best should route, and the
+  ;; safety is that an `architect` or `human` route stops the loop for a
+  ;; person — a wrong route costs one paid attempt, not a merge. What is
+  ;; watched: a triage that sides with the Coder's reading of the contract
+  ;; over the Tester's where the Tester was right. `NOTES.md`'s register has
+  ;; the row.
+  ;;
+  ;; NO :cache_control HERE, ON PURPOSE. A cache write costs a premium over
+  ;; the input rate, and triage is one completion with no tools: the prompt
+  ;; is read once and never again, so asking for the cache buys nothing and
+  ;; pays the premium: cached triage cost more than uncached on the prompts
+  ;; replayed. The same block as the Coder's otherwise, one pin for both
+  ;; roles; Vertex would do here (caching is irrelevant to it, and the routes
+  ;; it gave were the same) if latency ever matters.
+  ;;
+  ;; LOW, MEASURED — high until 2026-09-18, "because this is judgement work".
+  ;; The judgement did not differ: the first adopter's triage prompts, re-asked
+  ;; at low, blind, gave the same route on all but one uncontested call, the
+  ;; same split on the contested one, and on the one disagreement the better
+  ;; route under the rule that an ambiguous contract is the Architect's. The
+  ;; saving is small: triage's cost is its prompt, and effort changes only what
+  ;; the model writes, which here is one JSON block. :max_tokens as the Coder's.
+  :orchestrator {:family :anthropic
+                 :model "anthropic/claude-fable-5.1"
+                 :shape :openai
+                 :endpoint "https://openrouter.ai/api/v1"
+                 :key-env "OPENROUTER_API_KEY"
+                 :params {:reasoning_effort "low"
+                          :max_tokens 16000
+                          :provider {:only ["anthropic"] :allow_fallbacks false}}}}}

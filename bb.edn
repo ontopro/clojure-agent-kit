@@ -1,0 +1,40 @@
+;; The KIT's front door. An adopter's first commands are run HERE, at the root of the clone:
+;;
+;;   bb doctor     is this machine ready? what is missing, and what is it for?
+;;   bb init xyx   create the workspace a project is built in, its application generated from
+;;                 the pinned template (`--dry-run` shows it first)
+;;   bb health     is the KIT healthy here, with the template it pins? minutes, starts JVMs
+;;   bb gates      the KIT's own quality gates
+;;
+;; Every task delegates to `harness/`, which is where the harness and its own `bb.edn`
+;; live; nothing is implemented twice. A relative path typed at the root would be read from
+;; inside `harness/` and mean a different file, so a task offered here either takes no path
+;; or - `init` - makes it absolute before delegating. The rest of the harness's tasks
+;; (`bb run-loop`, `bb balance`, `bb report` …) are run from `harness/`, as its README says.
+{:tasks
+ {:init (defn harness [& args]
+          (apply shell {:dir "harness"} "bb" args))
+
+  doctor {:doc "Is this machine ready? The toolchain: tool, version, status, what it is for (--edn for a pins map)"
+          :task (apply harness "doctor" *command-line-args*)}
+
+  init {:doc "bb init <name> [dir] [--seat <name>] [--dry-run]: create the workspace a project is built in. Default dir: the folder this clone is in; default seat claude. Never overwrites"
+        :requires ([babashka.fs :as fs]
+                   [clojure.string :as str])
+        ;; `--seat <name>` is the one flag with a value; it travels as the pair it is.
+        :task (let [[flags [project dir]]
+                    (loop [[a & more] *command-line-args* flags [] positional []]
+                      (cond (nil? a) [flags positional]
+                            (= a "--seat") (recur (rest more) (into flags [a (first more)]) positional)
+                            (str/starts-with? a "--") (recur more (conj flags a) positional)
+                            :else (recur more flags (conj positional a))))]
+                (apply harness "init"
+                       (concat (when project [project])
+                               (when dir [(str (fs/absolutize dir))])
+                               flags)))}
+
+  health {:doc "The health check: the selfcheck project and an application generated from the pinned template - gates, breakers, one loop run, serve. Minutes; starts JVMs. [--selfcheck-only] [--keep]"
+          :task (apply harness "health" *command-line-args*)}
+
+  gates {:doc "The KIT's own quality gates, cheap first: doctor -> format -> lint -> rules -> reports -> test"
+         :task (harness "gates")}}}

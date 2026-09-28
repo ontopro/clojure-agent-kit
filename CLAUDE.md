@@ -5,7 +5,7 @@ kit is (`README.md`), not the method it teaches (`method.md`), not its current
 limitations (`NOTES.md`) — those are linked where you need them.
 
 A reusable build method for developing Clojure software with a small team of AI agents:
-`method.md` (the method), `skeletons/` (fillable plan documents), `harness-seed/` (runnable
+`method.md` (the method), `plan-template/` (the plan template), `harness/` (runnable
 code). Public, MIT, at `github.com/ontopro/clojure-agent-kit`.
 
 ## You are working ON this repo, not through its loop
@@ -13,8 +13,8 @@ code). Public, MIT, at `github.com/ontopro/clojure-agent-kit`.
 That distinction is load-bearing here, because this repo contains a worked example of
 agent rules and those rules are not yours.
 
-**`harness-seed/AGENTS.md` is a product artifact, not instructions for you.** It is
-generated from `harness-seed/resources/agent-rules.edn` and shipped as the demonstration of
+**`harness/AGENTS.md` is a product artifact, not instructions for you.** It is
+generated from `harness/resources/agent-rules.edn` and shipped as the demonstration of
 the rule-source pattern. It addresses an agent dispatched with a task packet, inside a loop,
 under a harness that runs the gates for it. **None of that is running when you work here.**
 Three of its rules invert:
@@ -25,19 +25,19 @@ Three of its rules invert:
 | *Stay inside your packet* | write only `:files/target` | There is no packet |
 | *No REPL, no edits* | a dispatched nREPL died mid-task | There is no dispatched nREPL |
 
-`harness-seed/CLAUDE.md` is a hand-written stub that imports `AGENTS.md` for Claude Code's
+`harness/CLAUDE.md` is a hand-written stub that imports `AGENTS.md` for Claude Code's
 benefit. It is also a product artifact, and also not addressed to you.
 
-`harness-seed/agents/interactive-programmer.md` is the role you are actually playing.
+`harness/agents/interactive-programmer.md` is the role you are actually playing.
 
 ## Working rules
 
-- **Run `bb repair && bb gates` in `harness-seed/` before committing.** `repair` is gate 0
-  over the Clojure files you changed; `gates` is doctor → format → lint → rules → reports → test. Fast,
+- **Run `bb repair && bb gates` in `harness/` before committing.** `repair` is gate 0
+  over the Clojure files you changed; `gates` is doctor → format → lint → rules → health block → test. Fast,
   and the only thing checking this repo — there is no CI.
-- **A finding is not finished until a document carries it.** A run goes in
-  `RUNS.md`; anything still open goes in `NOTES.md`'s register; what changed and
-  why goes in `DEVLOG.md`. Write it up in
+- **A finding is not finished until a document carries it.** Anything still open goes in
+  `NOTES.md`'s register; what changed and why goes in `DEVLOG.md`; a health run that
+  certifies a machine goes in `harness/health/records/` by `bb health --record`. Write it up in
   the commit that closes it, not later. This rule started as *a RUN is not
   finished* — and within the hour two findings that were not runs went into a
   commit message and nowhere else, which is the exact failure it was added to
@@ -49,34 +49,43 @@ benefit. It is also a product artifact, and also not addressed to you.
   repository has carried was a true example holding up an over-general sentence: a
   re-render command that worked on the run it named and threw on two others, a byte count
   read off `du` block size, a docstring saying the REPL tool was not a shell while a model
-  ran `sh` through it. `bb report-check` enforces this for the one claim backed by
-  committed data. Everywhere else it is a habit, and the cheap version is to state the
+  ran `sh` through it. `bb health-sync --check` enforces this for the one claim backed by
+  committed data, the README's health block. Everywhere else it is a habit, and the cheap version is to state the
   check before the claim and notice when you cannot.
-- **Never hand-edit `harness-seed/AGENTS.md`'s marker block.** It is generated. Edit
+- **Never hand-edit `harness/AGENTS.md`'s marker block.** It is generated. Edit
   `resources/agent-rules.edn` and run `bb rules-sync`; `bb gates` fails on drift. Same for
   any rule text — the source is the only place a rule may be written.
-- **The run records and the driver are committed; each run's working files are not.** `RUNS.md`
-  publishes every run's report table and every cost and token figure in them, and
-  `runs/` is what they re-render from (`bb report-check` says how many; no count is
-  typed here to rot). A published number nobody can re-derive is an unverifiable
-  claim, which is the one thing this repo is most against. The driver is
-  `harness-seed/dev/run_loop.clj` (`bb run-loop`), committed once D7–D9 had run on one
-  script. A run's own directory — `spec.edn`, `loop.edn`, `state.edn`, triage and mutation
-  files, packets, full transcripts — stays in the gitignored `.local/runs/`: it is per-run, and its
-  evidence moves into `runs/<id>.edn` when the run is recorded (the record carries each
-  run's final files, each red gate's output, and each dispatch's transcript with every
-  string capped at 500 characters). `.local/README.md` says what is there and that
-  deleting it is safe. Keep both halves on the right side of that line.
+- **The KIT publishes no run records of its own; a project's are the project's.** The runs
+  made while the KIT was developed, and the projects built to try it, are not in this
+  repository, and no document here cites one by name or path: a lesson is written in the
+  KIT's own words ("the first project built with the KIT"). The mechanism stays: the driver's `record` writes `run.edn`, `bb
+  report` renders it, and `bb report-check` holds a document that publishes such tables to its
+  records - for a project, `<name>-plan/runs/` and `<name>-plan/RUNS.md`, which `workspace.edn`
+  names and `record` copies into, so the check runs with no arguments from the workspace's
+  clone (`bb gates` there runs it; here, in no workspace, it has nothing to check). A run's
+  own directory — `spec.edn`, `loop.edn`, `state.edn`, packets, full transcripts — is
+  per-run and stays in the gitignored `.local/runs/` (or a workspace's `work/runs/`).
+  The KIT's own committed evidence is `harness/health/records/`, rendered into the README
+  and drift-gated. A published number nobody can re-derive is an unverifiable claim, which
+  is the one thing this repo is most against.
 - **`LICENSE` must stay the canonical MIT text and nothing else.** Third-party notices live
   in `NOTICE`. Appending them to `LICENSE` made GitHub classify the repo "Other" and cost
   the licence badge (commit `fb5e3b0`).
-- **The seed is bb-only on purpose** — no `deps.edn`, no `.mise.toml`. It needs no JVM, so a
-  JDK pin it does not have would fail `bb doctor` on an unrelated machine.
+- **The harness's own gates are JVM-free on purpose** — `harness/` has no `deps.edn` and no
+  `.mise.toml`, and `bb gates` runs the doctor on the gates tier only. A JDK is needed for
+  `bb init`, `bb health` and a loop, never for checking this repository; a pin the harness does
+  not have would fail `bb doctor` on an unrelated machine. `bb health` is never in `bb gates`.
 - **`PROVENANCE.md` divergences are fixes, not drift.** This is a fork of a private harness,
   not a mirror; "sync with upstream" is not a supported operation.
-- Vocabulary: this repo says **rule source**, never "corpus".
+- Vocabulary: this repo says **rule source**, never "corpus". And it says **the KIT** — short for
+  *the Clojure Agent Kit*, a name and not an acronym — for itself. Lowercase `kit` is left to the
+  three machine-facing things the root `README.md` lists: a workspace's `clojure-agent-kit/` folder, the `kit`
+  branch of the template fork, and that fork's `kit-vN` tags, which version THE TEMPLATE and not
+  the KIT. Older prose that says "the kit" is not swept: `DEVLOG.md` is history, `NOTES.md` is
+  summarised before it reaches `main`, and the adopter-facing documents change when they are next
+  rewritten.
 
 ## Before changing anything
 
 `NOTES.md` — known limitations and what is deliberately deferred.
-`harness-seed/PROVENANCE.md` — what came from where, and why each divergence exists.
+`harness/PROVENANCE.md` — what came from where, and why each divergence exists.
