@@ -2,14 +2,14 @@
 ;; actually run together through the KIT's gates, `bb init`, the loop and the generated
 ;; application's gates. `bb doctor` shows it beside what is installed; newer is 'newer than
 ;; tested', information and never a fault. Versions are floors except the JDK's major.
-{:as-of "2026-09-25",
+{:as-of "2026-09-28",
  :platform "macOS 26.5.2 arm64",
  :tools
  {:bb "1.13.224",
   :clj-kondo "2026.08.04",
   :clj-nrepl-eval "d341c23",
   :clj-paren-repair "d341c23",
-  :cljfmt "0.16.5",
+  :cljfmt "0.16.6",
   :clojure "1.12.6.1673",
   :git "2.55.0",
   :java "21.0.12.1"}}

@@ -1,9 +1,9 @@
 ;; Written by `bb health --record`; rendered into the README by `bb health-sync`. Do not edit.
-{:health/as-of "2026-09-25",
+{:health/as-of "2026-09-28",
  :platform {:key "macos-arm64", :label "macOS 26.5.2 arm64"},
  :kit
- {:sha "94b321dc324e8a92a9495e4709575c15ed8315de",
-  :short "94b321d",
+ {:sha "3a49a184cbe2cced6cd21d28f9834b6b4645cabf",
+  :short "3a49a18",
   :dirty? false},
  :template
  {:template io.github.ontopro/clojure-stack-lite,
@@ -14,16 +14,16 @@
   :clj-kondo "2026.08.04",
   :clj-nrepl-eval "d341c23",
   :clj-paren-repair "d341c23",
-  :cljfmt "0.16.5",
+  :cljfmt "0.16.6",
   :clojure "1.12.6.1673",
   :git "2.55.0",
   :java "21.0.12.1"},
  :checks
- [{:subject :selfcheck, :check :gates, :ok? true, :ms 3192}
-  {:subject :selfcheck, :check :red, :ok? true, :ms 5273}
-  {:subject :selfcheck, :check :loop, :ok? true, :ms 9164}
-  {:subject :app, :check :gates, :ok? true, :ms 7643}
-  {:subject :app, :check :red, :ok? true, :ms 14478}
-  {:subject :app, :check :loop, :ok? true, :ms 14055}
-  {:subject :app, :check :serve, :ok? true, :ms 8572}],
+ [{:subject :selfcheck, :check :gates, :ok? true, :ms 3066}
+  {:subject :selfcheck, :check :red, :ok? true, :ms 4848}
+  {:subject :selfcheck, :check :loop, :ok? true, :ms 9176}
+  {:subject :app, :check :gates, :ok? true, :ms 7409}
+  {:subject :app, :check :red, :ok? true, :ms 13668}
+  {:subject :app, :check :loop, :ok? true, :ms 13119}
+  {:subject :app, :check :serve, :ok? true, :ms 7536}],
  :ok? true}
