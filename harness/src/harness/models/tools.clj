@@ -1,11 +1,19 @@
 ;; seed — see PROVENANCE.md; this is a fork of thub-harness, not a mirror.
 ;; Not extracted: written for the seed.
 (ns harness.models.tools
-  "The three things a dispatched agent may do in its workspace.
+  "The four things a dispatched agent may do in its workspace.
 
-  READ, WRITE, EVAL. `write_file` REFUSES a path the packet did not claim, so
-  `provision/scope-violations` is the second line and not the only one, and an
-  agent is told at its FIRST write rather than after spending the whole task.
+  READ, WRITE, EDIT, EVAL. `write_file` and `edit_file` REFUSE a path the packet
+  did not claim, so `provision/scope-violations` is the second line and not the
+  only one, and an agent is told at its FIRST write rather than after spending
+  the whole task.
+
+  EDIT EXISTS BECAUSE REWRITING WAS THE ONLY WAY TO CHANGE A FILE. With
+  `write_file` alone, fixing one lint warning the after-write report named
+  meant sending the whole namespace again, and the transcripts of the earlier
+  builds show roles doing exactly that, often. It is also the incentive behind
+  a Coder asked to change one expression rewriting the namespace around it:
+  when the one tool is *replace the file*, that is what a model reaches for.
 
   `nrepl_eval` IS A SHELL, AND SAYING OTHERWISE WOULD BE A LIE. An earlier
   version of this docstring claimed it was not a shell and not a search. The
@@ -156,6 +164,79 @@
                        (when (re-find #"\.clj[scx]?$" path)
                          (after-write dir path content)))))))
 
+(defn- occurrences
+  "How many times `needle` occurs in `s`, non-overlapping. Nil when the needle
+  is empty: an empty match is everywhere, which is neither once nor never."
+  [s needle]
+  (when (seq needle)
+    (loop [from 0 n 0]
+      (if-let [i (str/index-of s needle from)]
+        (recur (+ i (count needle)) (inc n))
+        n))))
+
+(def small-file
+  "Below this many characters a file whose `old_text` did not match comes back
+  whole in the refusal, so the model sees what gate 0 made of it without
+  another turn. Above it, the model is told to `read_file` it. Well under
+  `max-output`, since the refusal is charged as input on every later turn."
+  8000)
+
+(defn- edit-file
+  "Replace `old_text`, which must occur exactly once in the file, by `new_text`.
+
+  ONCE, OR NOTHING CHANGES. Zero matches and several matches both write
+  nothing and say why: a replacement that lands on the wrong of two matches is
+  a defect the author cannot see, and the gates find it a round later.
+
+  ZERO MATCHES IS USUALLY GATE 0'S DOING. The file on disk is not the file
+  the model sent: `after-write` repaired delimiters, reindented it and added
+  a trailing newline, and the model's `old_text` is what it remembers
+  writing. So the refusal carries the file as it is now when it is small
+  enough, and the model can edit against that in its next turn.
+
+  The same refusals as `write_file`, plus one: the file must exist, because
+  an edit is a change to something and the tool for the first version is
+  `write_file`. The same after-write, because the file is a Clojure file
+  that just changed, whatever the tool."
+  [{:keys [dir targets]} {:keys [path old_text new_text]}]
+  (let [file (str (fs/path dir path))]
+    (cond
+      (str/blank? path) (err "path is required")
+      (nil? old_text) (err "old_text is required")
+      (empty? old_text) (err "old_text is empty — there is nothing to match")
+      (nil? new_text) (err "new_text is required")
+      (not (within? dir path)) (err (str path " is outside the workspace"))
+      (not (contains? (set targets) path))
+      (err (str path " is not in this task's :files/target — you may edit only "
+                (str/join ", " targets)))
+      (not (fs/exists? file))
+      (err (str path " does not exist — edit_file changes a file that is there; "
+                "write_file it first"))
+      :else
+      (let [content (slurp file)
+            n (occurrences content old_text)]
+        (cond
+          (zero? n)
+          (err (str "old_text was not found in " path "; nothing was changed. The file "
+                    "on disk may differ from what you sent: a Clojure file is repaired and "
+                    "reformatted as it is written. "
+                    (if (<= (count content) small-file)
+                      (str "Here it is as it is now — match against THIS:\n---\n" content "---")
+                      "read_file it and match against what comes back.")))
+
+          (> n 1)
+          (err (str "old_text occurs " n " times in " path "; nothing was changed. Include "
+                    "enough surrounding text to make it occur once."))
+
+          :else
+          (let [i (str/index-of content old_text)
+                edited (str (subs content 0 i) new_text (subs content (+ i (count old_text))))]
+            (spit file edited)
+            (ok (str "edited " path " (" (count old_text) " characters replaced by "
+                     (count new_text) ")"
+                     (when (re-find #"\.clj[scx]?$" path)
+                       (after-write dir path edited))))))))))
+
 (def clojure-error-prefixes
   "How `clojure.main/ex-str` begins every error it reports, one phase at a time:
   reading source, macroexpanding (a spec failure or an unexpected error),
@@ -272,6 +353,30 @@
                                     :description "The complete new contents of the file."}}
              :required ["path" "content"]}
     :fn #'write-file}
+
+   "edit_file"
+   {:description (str "Change part of a file you have already written: old_text, "
+                      "which must occur EXACTLY ONCE in the file, is replaced by "
+                      "new_text. Use this to change a written file — a lint warning, "
+                      "a bracket, one form — instead of sending the whole file "
+                      "again with write_file; it costs a fraction of the tokens. "
+                      "REFUSED unless the path is one of your packet's "
+                      ":files/target, and when the file does not exist yet "
+                      "(write_file creates it). Zero or several matches change "
+                      "nothing, and the result says so and shows the file as it is "
+                      "now, since a Clojure file is repaired and reformatted as it is "
+                      "written. After an edit the file is repaired and linted as on a "
+                      "write, and the result tells you what to fix — read it.")
+    :schema {:type "object"
+             :properties {:path {:type "string"
+                                 :description "Path relative to the workspace root."}
+                          :old_text {:type "string"
+                                     :description (str "The exact text to replace, as it is in the "
+                                                       "file now; it must occur once.")}
+                          :new_text {:type "string"
+                                     :description "What replaces it. Empty deletes it."}}
+             :required ["path" "old_text" "new_text"]}
+    :fn #'edit-file}
 
    "note"
    {:description (str "Report something about the CONTRACT that the next role or "

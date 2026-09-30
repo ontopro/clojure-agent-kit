@@ -232,9 +232,9 @@
   (let [all (tools/for-role :coder)
         o (tools/declarations :openai all)
         a (tools/declarations :anthropic all)]
-    (is (= ["note" "nrepl_eval" "read_file" "write_file"]
+    (is (= ["edit_file" "note" "nrepl_eval" "read_file" "write_file"]
            (mapv #(get-in % [:function :name]) o)))
-    (is (= ["note" "nrepl_eval" "read_file" "write_file"] (mapv :name a)))
+    (is (= ["edit_file" "note" "nrepl_eval" "read_file" "write_file"] (mapv :name a)))
     (testing "openai nests under :function, anthropic does not"
       (is (every? #(= "function" (:type %)) o))
       (is (every? :input_schema a))
@@ -256,7 +256,7 @@
   ;; broken.
   (is (= #{"read_file" "note"} (tools/for-role :reviewer))
       "it may still leave a note — structured findings are the point of the role")
-  (is (= #{"read_file" "write_file" "nrepl_eval" "note"} (tools/for-role :coder)))
+  (is (= #{"read_file" "write_file" "edit_file" "nrepl_eval" "note"} (tools/for-role :coder)))
   (is (= ["note" "read_file"]
          (mapv :name (tools/declarations :anthropic (tools/for-role :reviewer))))))
 
@@ -302,6 +302,82 @@
                         {:id "c1" :name "write_file" :args {:path "notes.md" :content "(unbalanced [\n"}})]
     (is (= "(unbalanced [\n" (slurp (str (fs/path dir "notes.md")))))
     (is (= "wrote notes.md (14 characters)" (:content r)))))
+
+;; ---------------------------------------------------------------------------
+;; edit_file: once, or nothing changes
+;; ---------------------------------------------------------------------------
+
+(defn- edit! [dir path old-text new-text]
+  (call dir "edit_file" {:path path :old_text old-text :new_text new-text}))
+
+(defn- on-disk [dir path] (slurp (str (fs/path dir path))))
+
+(deftest edit-file-refuses-what-write-file-refuses-and-a-file-that-is-not-there
+  (let [dir (workspace)]
+    (doseq [[args why]
+            [[{:path "src/app/store.clj" :old_text "a" :new_text "b"} "a path outside :files/target"]
+             [{:path "../x.clj" :old_text "a" :new_text "b"} "a path outside the workspace"]
+             [{:path "src/app/service.clj" :new_text "b"} "no old_text"]
+             [{:path "src/app/service.clj" :old_text "" :new_text "b"} "an empty old_text"]
+             [{:path "src/app/service.clj" :old_text "a"} "no new_text"]]]
+      (let [r (call dir "edit_file" args)]
+        (is (true? (:error? r)) why)
+        (is (str/starts-with? (:content r) "ERROR: ") why)))
+    (is (= "(ns app.store)\n" (on-disk dir "src/app/store.clj")) "the refused edit did not happen")
+    (testing "the file must exist: the first version is write_file's"
+      (let [r (edit! dir "src/app/service.clj" "a" "b")]
+        (is (true? (:error? r)))
+        (is (str/includes? (:content r) "does not exist"))
+        (is (str/includes? (:content r) "write_file it first"))))))
+
+(deftest edit-file-replaces-a-unique-match-and-reports-like-a-write
+  (let [dir (workspace)
+        _ (write! dir "(ns app.service)\n\n(defn f [x]\n  (let [unused 1]\n    x))\n")
+        r (edit! dir "src/app/service.clj" "(let [unused 1]\n    x)" "x")]
+    (is (false? (:error? r)))
+    (is (= "(ns app.service)\n\n(defn f [x]\n  x)\n" (on-disk dir "src/app/service.clj"))
+        "replaced, then repaired as a write is")
+    (is (str/starts-with? (:content r) "edited src/app/service.clj (22 characters replaced by 1)"))
+    (is (str/includes? (:content r) "lint: clean.") "the after-write report follows an edit too")
+    (testing "an empty new_text deletes"
+      (edit! dir "src/app/service.clj" "\n\n(defn f [x]\n  x)" "")
+      (is (= "(ns app.service)\n" (on-disk dir "src/app/service.clj"))))))
+
+(deftest edit-file-with-no-match-changes-nothing-and-shows-the-file-as-it-is-now
+  ;; Gate 0 has reformatted the file since the model saw it, so what the model
+  ;; remembers writing is not what is on disk. The refusal carries the file.
+  (let [dir (workspace)
+        _ (write! dir "(ns app.service)\n(def cases [1 2 3)\n")
+        before (on-disk dir "src/app/service.clj")
+        r (edit! dir "src/app/service.clj" "[1 2 3)" "[1 2 3 4]")]
+    (is (true? (:error? r)))
+    (is (str/includes? (:content r) "was not found"))
+    (is (str/includes? (:content r) "nothing was changed"))
+    (is (str/includes? (:content r) before) "the current file, to match against")
+    (is (= before (on-disk dir "src/app/service.clj")))
+    (testing "a big file is not echoed: the model is told to read it"
+      (let [big (str "(ns app.service)\n" (apply str (repeat 1000 "(def x 1)\n")))]
+        (is (> (count big) tools/small-file))
+        (spit (str (fs/path dir "src/app/service.clj")) big)
+        (let [r (edit! dir "src/app/service.clj" "nope" "x")]
+          (is (str/includes? (:content r) "read_file it"))
+          (is (not (str/includes? (:content r) "(def x 1)"))))))))
+
+(deftest edit-file-with-several-matches-changes-nothing-and-says-how-many
+  (let [dir (workspace)
+        _ (write! dir "(ns app.service)\n(def a 1)\n(def b 1)\n")
+        before (on-disk dir "src/app/service.clj")
+        r (edit! dir "src/app/service.clj" " 1)" " 2)")]
+    (is (true? (:error? r)))
+    (is (str/includes? (:content r) "occurs 2 times"))
+    (is (str/includes? (:content r) "nothing was changed"))
+    (is (= before (on-disk dir "src/app/service.clj")))))
+
+(deftest a-writing-role-is-told-to-edit-rather-than-rewrite
+  (is (str/includes? (get-in (first (filter #(= "edit_file" (:name %))
+                                            (tools/declarations :anthropic (tools/for-role :coder))))
+                             [:description])
+                     "EXACTLY ONCE")))
 
 (deftest lint-warnings-is-data-and-nil-when-it-cannot-run
   (let [dir (workspace)]

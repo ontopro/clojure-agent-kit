@@ -281,6 +281,14 @@
          "Your workspace is " (:repl/worktree packet)
          " and every path below is relative to it.\n\n"
          (get deliverables role) "\n\n"
+         ;; ONE SENTENCE ON HOW TO CHANGE A FILE, for the roles that write. With
+         ;; write_file alone a fix to one lint warning was a whole rewrite, and
+         ;; the tool's description alone did not stop it: a model reaches for
+         ;; the tool the deliverable names.
+         (when (contains? (tools/for-role role) "edit_file")
+           (str "Once a file is written, change it with edit_file — the exact text "
+                "to replace and its replacement — rather than sending the whole file "
+                "again.\n\n"))
          "Your task packet:\n\n"
          (with-out-str (pp/pprint packet))
          "\nWhen you are done, reply with a short summary: what you evaluated, "

@@ -25,6 +25,34 @@ either; an entry's date is its reference.
 
 ---
 
+## 2026-09-30
+
+### A dispatched role can edit a file it wrote
+
+Row 10, the half of it that was an incentive rather than a design. A dispatched role had one way
+to change a file: `write_file`, the whole file again. The transcripts of the builds that tried the
+KIT were read for what that cost: a role calling `write_file` twice or more on its one target was
+common, not rare - each time a complete rewrite paid in output tokens, usually to fix a lint
+warning or a bracket the after-write report had just named. The same tool is the incentive
+behind the row's opening case, a Coder asked to change one expression rewriting the namespace
+around it: when *replace the file* is the only tool, that is what a model reaches for.
+
+`edit_file` (`harness.models.tools`): a path, an old text and a new text. The old text must occur
+exactly once; zero matches and several matches both change nothing and say why. Zero matches is
+usually gate 0's doing - the file on disk was repaired and reformatted as it was written, and the
+model's old text is what it remembers sending - so that refusal carries the file as it is now when
+it is small, and says `read_file` when it is not. The same refusals as `write_file` (outside the
+workspace, not in `:files/target`) and one more: the file must exist, since the first version is
+`write_file`'s. The same after-write follows an edit: repair, lint, report. The Reviewer is not
+offered it, as before. One sentence in the packet prompt, for the roles that write, says to change
+a written file by editing it rather than resending it; the tool's description alone was not
+trusted to change a habit the deliverable's own wording (*write the complete namespace*) feeds.
+
+What this does not do: say *this file is right except for X*. That is the MODIFY deliverable
+row 10 still waits for, and the check that goes with it - the forms a packet did not name left
+byte-identical - is the next entry. The measurement is the real project's transcripts: calls of
+`write_file` per role transcript, counted the same way as before. 519 tests.
+
 ## 2026-09-28
 
 ### The documents prepared for `main`: what the KIT ships says only what it can show

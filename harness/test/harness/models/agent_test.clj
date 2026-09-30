@@ -6,6 +6,7 @@
    [clojure.test :refer [deftest is testing]]
    [harness.models.adapter :as adapter]
    [harness.models.agent :as agent]
+   [harness.models.tools :as tools]
    [org.httpkit.server :as srv]))
 
 (defn- with-stub
@@ -112,7 +113,7 @@
 (deftest the-tools-are-declared-on-every-request
   (let [[_ reqs] (with-stub [(text-reply "hi")]
                    #(agent/converse! (role %) "R" "go" {:dir "."}))]
-    (is (= 4 (count (get-in (first reqs) [:body :tools]))))))
+    (is (= (count (tools/for-role :coder)) (count (get-in (first reqs) [:body :tools]))))))
 
 ;; ---------------------------------------------------------------------------
 ;; the cap

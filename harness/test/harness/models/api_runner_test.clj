@@ -264,6 +264,17 @@
   (let [out (runner/packet-prompt (assoc (packet ".") :task/role :coder))]
     (is (not (str/includes? out "ATTEMPT")))))
 
+(deftest a-writing-role-is-told-to-edit-a-written-file-not-resend-it
+  ;; The tool's description alone did not stop whole-file rewrites over one
+  ;; lint warning; the sentence sits beside the deliverable that names write_file.
+  (doseq [role [:coder :tester]]
+    (is (str/includes? (runner/packet-prompt (assoc (packet ".") :task/role role))
+                       "change it with edit_file")
+        (name role)))
+  (is (not (str/includes? (runner/packet-prompt (assoc (packet ".") :task/role :reviewer))
+                          "edit_file"))
+      "the Reviewer has no such tool and is not told about one"))
+
 (deftest a-dead-endpoint-is-a-failed-result-not-a-throw
   (let [r (runner/run-agent (runner/api-runner (profile "http://127.0.0.1:1")
                                                {:timeout-ms 300})

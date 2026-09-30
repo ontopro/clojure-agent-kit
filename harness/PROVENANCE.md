@@ -162,6 +162,8 @@ diverged, and each divergence has a reason:
   or a cost synthetic; a refusal has neither and is not made up.
 - **`write_file` repairs and lints Clojure on write** (`tools/after-write`), and the rule source says
   so. Upstream lints only at the gate, after the author has gone; each warning cost a round.
+- **`edit_file` exists** (a text that occurs exactly once, replaced; the same refusals and the same
+  after-write). Upstream's roles could only replace a whole file, and did, to fix one warning.
 - **The rule mirrors are data** (`resources/rule-mirrors.edn`), not paths in `bb.edn`'s task body —
   the seed's own only; the repository around a copy lists its own in `../rule-mirrors.edn`.
 - **`report-check` passes when nothing is published**, and fails when only half is.

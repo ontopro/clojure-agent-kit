@@ -179,8 +179,8 @@ Owning the tool loop turns permissions from a policy language into a function-ca
 | Role | Tools exposed | Enforced by absence? |
 |---|---|---|
 | Reviewer | `read_file` | **Yes.** `packet/reviewer-packet` does `(dissoc :repl/port)`, so there is no eval tool at all — read-only is structural |
-| Coder | `read_file`, `write_file` (path-checked against `:files/target`), `nrepl_eval` | **Partly.** `(spit …)` from the REPL goes past the path check |
-| Tester | `read_file`, `write_file`, `nrepl_eval` | **No** — and the tool list is the wrong place to look |
+| Coder | `read_file`, `write_file` and `edit_file` (path-checked against `:files/target`), `nrepl_eval` | **Partly.** `(spit …)` from the REPL goes past the path check |
+| Tester | `read_file`, `write_file`, `edit_file`, `nrepl_eval` | **No** — and the tool list is the wrong place to look |
 
 **Once you hand an agent a REPL, you have handed it the JVM.** Any rule permitting eval cannot
 mechanically forbid a subset of eval, and `:no-gates` is exactly such a rule — it allows
@@ -459,7 +459,7 @@ Written up here before any of it existed; every line is now `harness.models.adap
 adapting this needs, and because what the runs then taught is in the code rather than here.
 
 - **A tool loop.** Upstream's was *"a 226-line tool-call loop"*, deliberately not extracted.
-  `read_file`, `write_file` (path-checked), `nrepl_eval` shelling `clj-nrepl-eval`. Per §10
+  `read_file`, `write_file` and `edit_file` (path-checked), `nrepl_eval` shelling `clj-nrepl-eval`. Per §10
   lesson 8, a tool-call failure returns to the model as data and never crashes the process.
   The first dispatched run found the docstring claiming this was *not* a shell to be
   false: a REPL is arbitrary code execution, and the containment is the worktree.
