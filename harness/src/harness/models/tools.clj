@@ -44,6 +44,7 @@
    [babashka.process :as p]
    [cheshire.core :as json]
    [clojure.string :as str]
+   [harness.gates.forms :as forms]
    [harness.gates.repair :as repair]
    [harness.setup.doctor :as doctor]))
 
@@ -126,14 +127,24 @@
   ADVISORY, AND IT SAYS SO. One file linted in a role's worktree is not the
   whole project linted in the gate's, and the Tester's copy of the
   implementation is a stub. Anything that goes wrong in here is swallowed:
-  the file is written either way, and the real gates are the floor."
-  [dir path content]
+  the file is written either way, and the real gates are the floor.
+
+  FORMS, when the file existed before (`before` is its previous content):
+  one line saying what changed at the level of top-level forms - lost,
+  gained, changed by name. A rewrite over one lint warning that drops a
+  helper is told so here, not by a Reviewer a round later. Silent when either
+  version does not parse (`harness.gates.forms`)."
+  [dir path content before]
   (let [file (str (fs/path dir path))
         repaired? (try (repair/repair! dir [path])
                        (not= content (slurp file))
                        (catch Exception _ false))
-        warnings (lint-warnings dir path)]
-    (str (when repaired?
+        warnings (lint-warnings dir path)
+        forms-line (when before
+                     (try (forms/summary before (slurp file))
+                          (catch Exception _ nil)))]
+    (str (when forms-line (str "\n" forms-line "."))
+         (when repaired?
            (str "\nREPAIRED ON WRITE: delimiters and/or formatting were fixed mechanically, "
                 "so the file on disk now differs from what you sent. read_file it before you "
                 "edit it again."))
@@ -158,11 +169,13 @@
     (not (contains? (set targets) path))
     (err (str path " is not in this task's :files/target — you may write only "
               (str/join ", " targets)))
-    :else (do (fs/create-dirs (fs/parent (fs/path dir path)))
-              (spit (str (fs/path dir path)) content)
-              (ok (str "wrote " path " (" (count content) " characters)"
-                       (when (re-find #"\.clj[scx]?$" path)
-                         (after-write dir path content)))))))
+    :else (let [file (str (fs/path dir path))
+                before (when (fs/exists? file) (slurp file))]
+            (fs/create-dirs (fs/parent (fs/path dir path)))
+            (spit file content)
+            (ok (str "wrote " path " (" (count content) " characters)"
+                     (when (re-find #"\.clj[scx]?$" path)
+                       (after-write dir path content before)))))))
 
 (defn- occurrences
   "How many times `needle` occurs in `s`, non-overlapping. Nil when the needle
@@ -235,7 +248,7 @@
             (ok (str "edited " path " (" (count old_text) " characters replaced by "
                      (count new_text) ")"
                      (when (re-find #"\.clj[scx]?$" path)
-                       (after-write dir path edited))))))))))
+                       (after-write dir path edited content))))))))))
 
 (def clojure-error-prefixes
   "How `clojure.main/ex-str` begins every error it reports, one phase at a time:
@@ -366,7 +379,8 @@
                       "nothing, and the result says so and shows the file as it is "
                       "now, since a Clojure file is repaired and reformatted as it is "
                       "written. After an edit the file is repaired and linted as on a "
-                      "write, and the result tells you what to fix — read it.")
+                      "write, and the result says which top-level forms were lost, "
+                      "gained or changed and what to fix — read it.")
     :schema {:type "object"
              :properties {:path {:type "string"
                                  :description "Path relative to the workspace root."}

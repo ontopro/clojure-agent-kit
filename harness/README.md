@@ -63,6 +63,7 @@ the model as shipped — is [`roster.md`](roster.md).
 | `harness.contract.shapes` | Malli schemas: packet, result, gate result, run record | A result contract that isn't enforced isn't a contract. `AgentResult` is **closed**. |
 | `harness.contract.packet` | Cuts a role-specific packet from a task spec | The Tester's context excludes the Coder's impl — **mechanically**, not by asking a Blueprint author to remember. |
 | `harness.gates.run` + `harness.gates.repair` | Ordered, short-circuiting gate runner; gate 0 | Cheap before expensive; a failing gate returns *what it said*, not just which one; a broken gate config fails the gate, not the run. |
+| `harness.gates.forms` | A Clojure file's top-level forms as a table (kind, name, lines, hash) and the difference between two tables | A change to an existing file reports what it did at the level of forms - lost, gained, changed by name - while the author is still there; the same table is the check a MODIFY packet will need. Silent when a file does not parse. |
 | `harness.models.runner` + `harness.models.runner-check` | The `AgentRunner` seam, a `ManualRunner`, and a conformance check | Ship the mechanics first with a human at the invocation point. Then check every runner you add against the same contract. |
 | `harness.rules` | One rule source, rendered into prompts *and* into `AGENTS.md`, with a gate on drift | Prompt rules beat retry feedback. A rule written in two places rots; a rule written only in a file never reaches a model family that doesn't read files. |
 | `harness.loop.provision` | Three worktrees per task, each with its own nREPL; assembly as a filter | Isolation asserted is isolation absent. Only a role's declared `:files/target` crosses into the gate workspace, and anything else is refused by name. |
@@ -316,11 +317,12 @@ of a project is written into it - which is why the list below is short.
   log is read by key months later.
 - Wire the architecture-boundary gate (§09's gate 4) with a placeholder ruleset
   before you know your real layers. Retrofitting it later is a much worse job.
-- **Three namespaces are stack-specific and the rest are not.** `harness.gates.repair`
-  runs your language's mechanical fixups, `harness.contract.stub` emits its source, and
-  `harness.contract.sigs` reads it. Add your stack's repairs to the first **and nowhere
-  else** — that is what keeps `harness.gates.run` dependency-light and gives a reader
-  on another stack exactly three files to rewrite.
+- **Four namespaces are stack-specific and the rest are not.** `harness.gates.repair`
+  runs your language's mechanical fixups, `harness.contract.stub` emits its source,
+  `harness.contract.sigs` reads its definitions and `harness.gates.forms` its top-level
+  forms. Add your stack's repairs to the first **and nowhere else** — that is what keeps
+  `harness.gates.run` dependency-light and gives a reader on another stack exactly four
+  files to rewrite.
 - Add a headless runner by implementing one method, then run it through
   `check-runner`. For testing one, the technique that works is a generated
   executable stub script that records its argv — make the executable name an

@@ -373,6 +373,27 @@
     (is (str/includes? (:content r) "nothing was changed"))
     (is (= before (on-disk dir "src/app/service.clj")))))
 
+(deftest a-change-to-an-existing-clojure-file-reports-its-forms
+  ;; A rewrite over one lint warning that drops a helper is told so while the
+  ;; author is still there, not by a Reviewer a round later.
+  (let [dir (workspace)
+        first-write (write! dir "(ns app.service)\n\n(defn helper [x] x)\n\n(defn f [x] (helper x))\n")]
+    (is (not (str/includes? (:content first-write) "forms "))
+        "a file that did not exist has nothing to compare with")
+    (testing "write_file over an existing file"
+      (let [r (write! dir "(ns app.service)\n\n(defn f [x] x)\n")]
+        (is (str/includes? (:content r) "forms 3 -> 2, lost: helper; changed: f."))))
+    (testing "edit_file"
+      (let [r (edit! dir "src/app/service.clj" "(defn f [x] x)" "(defn f [x] x)\n\n(defn g [] 1)")]
+        (is (str/includes? (:content r) "forms 2 -> 3, gained: g."))))
+    (testing "an edit that only reformats changes no form"
+      (let [r (edit! dir "src/app/service.clj" "(defn f [x] x)" "(defn f\n  [x]\n  x)")]
+        (is (str/includes? (:content r) "forms 3 -> 3, no form changed."))))
+    (testing "the table is of the file gate 0 left, so a stray bracket is repaired first"
+      (let [r (write! dir "(ns app.service)\n(defn f [x] (x)))\n")]
+        (is (str/includes? (:content r) "REPAIRED ON WRITE"))
+        (is (str/includes? (:content r) "forms 3 -> 2, lost: g; changed: f."))))))
+
 (deftest a-writing-role-is-told-to-edit-rather-than-rewrite
   (is (str/includes? (get-in (first (filter #(= "edit_file" (:name %))
                                             (tools/declarations :anthropic (tools/for-role :coder))))

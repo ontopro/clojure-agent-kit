@@ -37,9 +37,10 @@
   `map->R`, `(def f (fn [x y]))`, `defmulti`, macros. Shelling out to a tool
   the loop already depends on beats sixty lines of parser with its own bugs.
 
-  THIS IS A STACK-SPECIFIC NAMESPACE, the third of three. It reads Clojure
-  source; `harness.gates.repair` repairs it and `harness.contract.stub` emits it. A reader on
-  another stack rewrites those three files and nothing else."
+  THIS IS A STACK-SPECIFIC NAMESPACE, the third of four. It reads Clojure
+  source; `harness.gates.repair` repairs it, `harness.contract.stub` emits it and
+  `harness.gates.forms` reads its top-level forms. A reader on another stack rewrites those
+  four files and nothing else."
   (:require
    [babashka.fs :as fs]
    [babashka.process :as p]

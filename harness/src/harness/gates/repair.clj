@@ -9,10 +9,11 @@
   own parens would not need a gate 0. A well-placed gate 0 makes gate 1
   nearly a no-op; design for that compounding effect.
 
-  THIS IS A STACK-SPECIFIC NAMESPACE, the first of three — harness.contract.stub
-  emits Clojure and harness.contract.sigs reads it. Everything Clojure-flavoured about
-  THE GATES lives here and nowhere else, so harness.gates.run depends on nothing
-  but a shell. Add your language's mechanical repairs here.
+  THIS IS A STACK-SPECIFIC NAMESPACE, the first of four — harness.contract.stub
+  emits Clojure, harness.contract.sigs reads its definitions and harness.gates.forms
+  its top-level forms. Everything Clojure-flavoured about THE GATES lives here and
+  nowhere else, so harness.gates.run depends on nothing but a shell. Add your
+  language's mechanical repairs here.
 
   Both repairs below were learned live rather than designed: delimiter
   errors burned real retries, and the missing trailing newline was caught

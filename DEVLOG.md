@@ -27,6 +27,26 @@ either; an entry's date is its reference.
 
 ## 2026-09-30
 
+### A change to an existing file says what it did to the forms
+
+Row 10's enforcement half, built before the deliverable it will enforce. `harness.gates.forms`
+is the fourth stack-specific namespace beside `repair`, `stub` and `sigs`: a Clojure file's
+top-level forms as a table - kind, name, line range, a hash - and the difference between two
+tables, as lost, gained and changed names. Edamame reads, which Babashka ships and
+`clj-paren-repair` already parses with: reader conditionals as `:clj` with splices flattened,
+tagged literals it has no reader for, syntax-quote, `#_` discards dropped. A `defmethod` is named
+with its dispatch value so two methods are two rows. The hash is of the form, not the bytes, so
+what gate 0 reindents is not a change. Nil and silent when a file does not parse, the rule
+`sigs` follows: gate 0 has already named the bracket.
+
+The first use is one line in the after-write report, for `edit_file` and for `write_file` over
+a file that existed: *forms 3 -> 2, lost: helper; changed: f.* The row's opening case - one
+expression asked for, helpers renamed and a stylesheet's hooks dropped, every target holding -
+would have been three names in that line, in front of the Coder that did it. What it is not yet:
+the check that a MODIFY packet's unnamed forms are untouched, which waits on a packet that can
+name them. Tests: a plain file, a `.cljc` with a conditional, a splice, a discard and a bare
+value, an unparsable file, the delta, and that reformatting is not a change. 526 tests.
+
 ### A dispatched role can edit a file it wrote
 
 Row 10, the half of it that was an incentive rather than a design. A dispatched role had one way

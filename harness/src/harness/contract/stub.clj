@@ -29,9 +29,10 @@
   Tester could not then load the namespace at all, which is the problem this
   started from.
 
-  THIS IS A STACK-SPECIFIC NAMESPACE, the second of three. It emits Clojure;
-  `harness.gates.repair` repairs it and `harness.contract.sigs` reads it. A reader on another
-  stack rewrites those three files and nothing else."
+  THIS IS A STACK-SPECIFIC NAMESPACE, the second of four. It emits Clojure;
+  `harness.gates.repair` repairs it, `harness.contract.sigs` reads its definitions and
+  `harness.gates.forms` its top-level forms. A reader on another stack rewrites those
+  four files and nothing else."
   (:require
    [babashka.fs :as fs]
    [clojure.pprint :as pp]

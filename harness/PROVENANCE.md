@@ -22,6 +22,7 @@ the history under that name is left as written.*
 | `src/harness/models/runner_check.clj` | — | written for the seed |
 | `src/harness/loop/driver.clj` | — | written for the seed, from the drivers of three early runs |
 | `src/harness/contract/blueprint.clj` | — | written for the seed |
+| `src/harness/gates/forms.clj` | — | written for the seed |
 | `src/harness/loop/orchestrate.clj` | `src/thub/harness/orchestrate.clj` | `5df04ad` (2026-09-05) — reshaped, see below |
 | `src/harness/loop/log.clj` | `src/thub/harness/log.clj` | `5df04ad` (2026-09-05) |
 | `src/harness/loop/triage.clj` | `src/thub/harness/triage_model.clj` | `5df04ad` (2026-09-05) — reshaped, see below |
