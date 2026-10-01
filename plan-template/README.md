@@ -1,8 +1,8 @@
 # The plan template
 
 The documents a project's plan is made of, blank. `bb init <name>` copies them, this file
-included, into `<name>-plan/docs/` and commits them as that repository's first commit, the way it
-generates `<name>-app/` from the KIT's application template. Companion to
+included, into `<name>-plan/docs/` (or the folder `--plan` names) and commits them as that
+repository's first commit, the way it generates `<name>-app/` from the KIT's application template. Companion to
 [`../method.md`](../method.md), the method these documents implement.
 
 ```

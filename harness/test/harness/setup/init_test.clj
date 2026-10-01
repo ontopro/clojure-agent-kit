@@ -284,4 +284,38 @@
   (is (= {:positional ["xyx" "/w"] :seat "agy-ide" :dry-run? true}
          (init/parse-args ["xyx" "--seat" "agy-ide" "/w" "--dry-run"]))
       "--seat takes the next argument, wherever it sits")
-  (is (= {:positional ["xyx"]} (init/parse-args ["xyx"]))))
+  (is (= {:positional ["xyx"]} (init/parse-args ["xyx"])))
+  (is (= {:positional ["mnj"] :app "mnj-site" :plan "mnj-plan-docs"}
+         (init/parse-args ["mnj" "--app" "mnj-site" "--plan" "mnj-plan-docs"]))
+      "--app and --plan take the next argument too"))
+
+(deftest the-repositories-folders-can-be-named-and-the-name-stays-the-namespace
+  ;; A real project calls its repositories what it calls them; the experiments never
+  ;; needed to. The name is still the application's namespace, and everything after
+  ;; init reads the folders from workspace.edn.
+  (let [lay (init/layout (request {:kit-dir "/w/clojure-agent-kit" :name "mnj"
+                                   :app "mnj-breastconnect-site" :plan "mnj-breastconnect-plan"
+                                   :rule-mirrors ["mnj-breastconnect-site/AGENTS.md"]
+                                   :plan-template ["00-overview.md"]}))
+        content (fn [path] (:content (first (filter #(= path (:path %)) (:entries lay)))))]
+    (is (= {:workspace/kit "clojure-agent-kit"
+            :workspace/app "mnj-breastconnect-site" :workspace/plan "mnj-breastconnect-plan"
+            :workspace/work "work" :workspace/rule-mirrors ["mnj-breastconnect-site/AGENTS.md"]
+            :workspace/rules-overlay "mnj-breastconnect-plan/rules.edn"
+            :workspace/records "mnj-breastconnect-plan/runs"
+            :workspace/run-tables "mnj-breastconnect-plan/RUNS.md"}
+           (:workspace lay)))
+    (is (= ["mnj-breastconnect-plan"] (:repos lay)))
+    (is (contains? (paths lay) "mnj-breastconnect-plan/docs/00-overview.md"))
+    (is (not-any? #(str/includes? % "mnj-app") (paths lay)) "no default suffix survives")
+    (is (str/includes? (content "CLAUDE.md") "`mnj-breastconnect-site/`")
+        "the orientation names the folders as chosen")
+    (is (str/includes? (content "README.md") "# mnj - a workspace") "and the project by its name")
+    (testing "a folder name is held to the name's pattern, and the two must differ"
+      (let [clean {:kit? true :existing [] :other-repos [] :workspaces-below [] :seats ["claude"] :doctor/ok? true}
+            why (fn [m] (str/join "\n" (init/refusals (request m) (init/layout (request m)) clean)))]
+        (is (= [] (init/refusals (request {:name "mnj" :app "a-site" :plan "a-plan"})
+                                 (init/layout (request {:name "mnj" :app "a-site" :plan "a-plan"})) clean)))
+        (is (str/includes? (why {:name "mnj" :app "My Site"}) "a folder name cannot be used"))
+        (is (str/includes? (why {:name "mnj" :plan "../plan"}) "a folder name cannot be used"))
+        (is (str/includes? (why {:name "mnj" :app "same" :plan "same"}) "the same folder"))))))

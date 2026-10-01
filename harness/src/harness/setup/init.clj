@@ -243,16 +243,24 @@
   (`default-seat` when nil). `:rule-mirrors` and `:loop/defaults` come from
   whatever generates the application.
 
+  `:app` and `:plan` name the two repositories' folders; nil means
+  `<name>-app` and `<name>-plan`. THE FOLDER IS NOT THE NAME: the name is the
+  application's root namespace and stays short; the folders are what a real
+  project calls its repositories, and the experiments never needed to call
+  them anything. Everything downstream reads the folders from `workspace.edn`,
+  so the choice is made here once and nothing else knows the suffixes.
+
   Returns `:workspace/dir`, `:default?`, the `:workspace` map as written, and
   `:entries` in creation order - each `{:path rel :what text}` plus one of
   `:dir? true`, `:content string`, `:copy-from abs`, or `:app? true` (the
   application's folder: created only by an `:app-fn`). `:repos` are the folders
   that become repositories."
-  [{:keys [kit-dir dir plan-template rule-mirrors seat] project :name defaults :loop/defaults}]
+  [{:keys [kit-dir dir plan-template rule-mirrors seat] project :name defaults :loop/defaults
+    app-folder :app plan-folder :plan}]
   (let [ws-dir (str (fs/normalize (or dir (fs/parent kit-dir))))
         seat (or seat default-seat)
-        app (str project "-app")
-        plan (str project "-plan")
+        app (or app-folder (str project "-app"))
+        plan (or plan-folder (str project "-plan"))
         ws {:workspace/kit (kit-ref ws-dir kit-dir)
             :workspace/app app
             :workspace/plan plan
@@ -317,11 +325,21 @@
   a KIT cloned into a folder of unrelated repositories would have a project
   scattered among them. An explicit `dir` is not second-guessed - except one
   inside the KIT's clone, where nothing of a project is ever written."
-  [{project :name :keys [kit-dir seat]} {:keys [default?] ws-dir :workspace/dir} facts]
+  [{project :name :keys [kit-dir seat]} {:keys [default?] ws-dir :workspace/dir {:workspace/keys [app plan]} :workspace} facts]
   (cond-> []
     (not (and project (re-matches name-pattern project)))
     (conj (str "the name " (pr-str project) " cannot be used: lowercase letters, digits and single "
                "hyphens, starting with a letter (it becomes folder names and a namespace)"))
+
+    ;; A chosen folder is held to the same pattern as the name it replaces: a path, a
+    ;; space or a capital in `workspace.edn` reaches every task that reads it.
+    (not (and app plan (re-matches name-pattern app) (re-matches name-pattern plan)))
+    (conj (str "a folder name cannot be used (--app " (pr-str app) ", --plan " (pr-str plan)
+               "): lowercase letters, digits and single hyphens, starting with a letter"))
+
+    (and app (= app plan))
+    (conj (str "--app and --plan name the same folder " (pr-str app) ": the application and the "
+               "plan are two repositories"))
 
     (not (:kit? facts))
     (conj "this is not a clone of the KIT (no plan-template/ beside harness/): run `bb init` at the root of one")
@@ -451,25 +469,31 @@
          "\n  " (count (filter #(str/includes? (:path %) "/docs/") entries))
          " plan documents under " (some #(when (:dir? %) (:path %)) entries) "/docs/\n")))
 
+(def ^:private valued-flags
+  "The flags that take the next argument as their value, each to its key."
+  {"--seat" :seat "--app" :app "--plan" :plan})
+
 (defn parse-args
-  "`bb init`'s arguments as a map: `:positional` (name, dir), `:seat` (the
-  value after `--seat`), `:dry-run?`. `--seat` is the one flag that takes a
-  value, so it is parsed here and not by looking for a leading `--`."
+  "`bb init`'s arguments as a map: `:positional` (name, dir), `:seat`, `:app`
+  and `:plan` (the value after each flag), `:dry-run?`. The valued flags are
+  parsed here and not by looking for a leading `--`."
   [args]
   (loop [[a & more] args, m {:positional []}]
     (cond
       (nil? a) m
-      (= a "--seat") (recur (rest more) (assoc m :seat (first more)))
+      (valued-flags a) (recur (rest more) (assoc m (valued-flags a) (first more)))
       (= a "--dry-run") (recur more (assoc m :dry-run? true))
       :else (recur more (update m :positional conj a)))))
 
 (defn -main
-  "bb init <name> [dir] [--seat <name>] [--dry-run]
+  "bb init <name> [dir] [--seat <name>] [--app <folder>] [--plan <folder>] [--dry-run]
 
   With no `dir` the workspace is the folder the KIT's clone is in. Run from
   `harness/`, a relative `dir` is relative to `harness/`; the KIT's
   root `bb.edn` makes it absolute first, so there it means what was typed.
   `--seat` picks which shipped profile the plan gets (default `claude`).
+  `--app` and `--plan` name the two repositories' folders (default `<name>-app`
+  and `<name>-plan`); the name stays the application's namespace.
   `--dry-run` prints what would be created, and any refusal, and writes nothing.
 
   THE TWO PARTS MEET HERE AND NOWHERE ELSE: the pin's `:loop/defaults`, the
@@ -477,20 +501,24 @@
   no template. `KIT_TEMPLATE_LOCAL`, a local clone of the template, replaces the
   pinned commit for someone developing it."
   [& args]
-  (let [{:keys [positional seat dry-run?]} (parse-args args)
+  (let [{:keys [positional seat dry-run?] app-folder :app plan-folder :plan} (parse-args args)
         [project dir] positional
         kit-dir (str (fs/parent (fs/normalize (fs/absolutize "."))))]
     (when-not project
-      (println "usage: bb init <name> [dir] [--seat <name>] [--dry-run]")
+      (println "usage: bb init <name> [dir] [--seat <name>] [--app <folder>] [--plan <folder>] [--dry-run]")
       (System/exit 1))
     (let [pin (template/pin (template/load-pins))
           local-root (some-> (System/getenv "KIT_TEMPLATE_LOCAL") not-empty fs/absolutize fs/normalize str)
+          app-folder (or app-folder (str project "-app"))
           req {:name project
                :kit-dir kit-dir
                :dir (some-> dir fs/absolutize fs/normalize str)
                :seat seat
+               :app app-folder
+               :plan plan-folder
                :plan-template (plan-template-files kit-dir)
-               :rule-mirrors [(str project "-app/AGENTS.md")]
+               ;; THE MIRROR FOLLOWS THE FOLDER, not the name: it is a path in workspace.edn.
+               :rule-mirrors [(str app-folder "/AGENTS.md")]
                :loop/defaults (:loop/defaults pin)}
           lay (layout req)
           no (refusals req lay (survey req lay #(doctor/ok? (doctor/report) :loop)))]

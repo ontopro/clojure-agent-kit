@@ -252,7 +252,8 @@ of a project is written into it - which is why the list below is short.
   the pinned template's); Clojure source; and a `layers.edn` if the boundary gate is in the
   sequence. Two of three projects built with it were bare-`deps.edn` projects and the loop ran.
   Supported is narrower than possible: the health check certifies the pinned pair only.
-- **The application's rule mirror** is `<name>-app/AGENTS.md`, listed in `workspace.edn` under
+- **The application's rule mirror** is the application folder's `AGENTS.md` (`<name>-app/` unless
+  `bb init --app` named the folder), listed in `workspace.edn` under
   `:workspace/rule-mirrors`, and `bb rules-sync` / `bb rules-check` here read it from there. Fill
   the rule source's placeholders, and add rules of your own, in `<name>-plan/rules.edn` - the overlay
   `bb init` wrote and `workspace.edn` names; the clone's source is never edited. `start` prints the

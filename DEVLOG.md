@@ -25,6 +25,27 @@ either; an entry's date is its reference.
 
 ---
 
+## 2026-10-01
+
+### A project names its repositories; `bb init` takes the names
+
+Row 79, the first finding of the first real project, before its first line of code. `bb init
+<name>` made `<name>-app/` and `<name>-plan/`, the name being also the application's root
+namespace. The project keeps its source material, its site and its plan as three repositories
+under one folder, named as a set; the namespace stays short. There was no way to say so, and
+renaming the folders after `init` would have been the silent workaround the plan rules out.
+
+`--app <folder>` and `--plan <folder>`, defaults unchanged. The folders were already data -
+`workspace.edn` names them and every later command reads them from there - so `init` is the one
+place that knew the suffixes, and the rule mirror now follows the folder it is in. A folder is
+held to the name's pattern (a path or a space in `workspace.edn` would reach every task) and the
+two must differ. `init_test` covers the layout, the orientation files naming the chosen folders,
+and the three refusals.
+
+In the same commit, carried since the scrub: `method.md` §10 lesson 1 loses the three figures
+measured on the source project (a share of wall time, two durations, a run count) and keeps the
+point in words, the one place in `method.md` a figure from outside this repository remained.
+
 ## 2026-09-30
 
 ### A change to an existing file says what it did to the forms
