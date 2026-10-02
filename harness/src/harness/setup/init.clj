@@ -535,7 +535,9 @@
               {ws-dir :workspace/dir {:workspace/keys [app]} :workspace}
               ;; A folder that cannot be written, a git with no identity, a generation that
               ;; failed: a sentence, not a stack trace - and the truth about what is left behind.
-              (try (create! lay {:app-fn (app/app-fn pin {:app-name project :local-root local-root})})
+              (try (create! lay {:app-fn (app/app-fn pin {:app-name project
+                                                          :plan-folder (get-in lay [:workspace :workspace/plan])
+                                                          :local-root local-root})})
                    (catch Exception e
                      (println (str "bb init: stopped - " (.getSimpleName (class e)) ": " (ex-message e)
                                    "\nWhat was written before that is still in " (:workspace/dir lay)

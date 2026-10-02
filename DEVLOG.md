@@ -25,6 +25,22 @@ either; an entry's date is its reference.
 
 ---
 
+## 2026-10-02
+
+### The `AGENTS.md` sentence names the plan folder the workspace has
+
+Row 79's residue, the first real project's first finding after `bb init`. The application's
+`AGENTS.md` has a hand-written part above the markers - a reader's orientation, which `bb
+rules-sync` never touches - and its sentence on the rules overlay was built from the project's
+name: `../<name>-plan/rules.edn`. With the plan folder named by `--plan`, that path pointed at
+nothing, while `workspace.edn` had the right one and every rendering read it. The project left
+the sentence alone, since the text was the KIT's, and wrote the finding down.
+
+`app/agents-md` takes the plan folder; `app-fn` hands it on from `init`, whose layout already
+knew it. The default stays the name's, so a workspace made without `--plan` is unchanged. A
+workspace made before this edits the one sentence by hand, once; the markers' block is not
+involved. Tests: the sentence with a chosen folder, with the default, and through `app-fn`.
+
 ## 2026-10-01
 
 ### A project names its repositories; `bb init` takes the names

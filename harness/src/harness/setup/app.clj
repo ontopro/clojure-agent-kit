@@ -26,18 +26,24 @@
 (defn agents-md
   "The hand-written frame of the application's `AGENTS.md`, its marker block
   empty - `rules/sync!` fills it, and `bb rules-check` in the KIT guards it from
-  then on (`workspace.edn`, `:workspace/rule-mirrors`)."
-  [project]
-  (str "# " project "\n\n"
-       "The application. If you are reading this headlessly, you were dispatched here with a task packet.\n\n"
-       "> The block below is generated from the KIT's rule source (`harness/resources/agent-rules.edn`\n"
-       "> in the KIT's clone, never edited by this project) merged with this project's rules overlay\n"
-       "> (`../" project "-plan/rules.edn`: the placeholders filled, project rules added; `../workspace.edn`\n"
-       "> names both) by `bb rules-sync`, run in the KIT's `harness/`. Everything outside the markers is\n"
-       "> hand-written and survives a sync.\n"
-       "> **Rules never go outside the markers** - one written out there reaches only agents that read\n"
-       "> this file, which by design excludes the agent verifying the Coder.\n\n"
-       rules/begin-marker "\n" rules/end-marker "\n"))
+  then on (`workspace.edn`, `:workspace/rule-mirrors`).
+
+  `plan-folder` is the plan repository's folder as the workspace names it, not
+  derived from the name: the first real project named its folders with
+  `bb init --plan`, and this sentence - a reader's, outside the markers, so no
+  sync ever corrects it - still pointed at a `<name>-plan/` that did not exist."
+  ([project] (agents-md project (str project "-plan")))
+  ([project plan-folder]
+   (str "# " project "\n\n"
+        "The application. If you are reading this headlessly, you were dispatched here with a task packet.\n\n"
+        "> The block below is generated from the KIT's rule source (`harness/resources/agent-rules.edn`\n"
+        "> in the KIT's clone, never edited by this project) merged with this project's rules overlay\n"
+        "> (`../" plan-folder "/rules.edn`: the placeholders filled, project rules added; `../workspace.edn`\n"
+        "> names both) by `bb rules-sync`, run in the KIT's `harness/`. Everything outside the markers is\n"
+        "> hand-written and survives a sync.\n"
+        "> **Rules never go outside the markers** - one written out there reaches only agents that read\n"
+        "> this file, which by design excludes the agent verifying the Coder.\n\n"
+        rules/begin-marker "\n" rules/end-marker "\n")))
 
 (defn layers-edn
   "The application's `layers.edn`: the pin's `:layers` - tails under the root
@@ -91,11 +97,13 @@
 (defn app-fn
   "The function `init/create!` calls with the application's folder.
 
-  `p` is a `template/pin`. Opts: `:app-name`; `:local-root` (a local clone of
-  the template instead of the pinned commit - `KIT_TEMPLATE_LOCAL`);
-  `:git-env`, extra environment for git; `:run`, `(fn [dir env argv]) ->
-  {:exit _ :out _}`, which a test replaces so that no JVM starts."
-  [p {:keys [app-name local-root git-env run] :or {run run-process}}]
+  `p` is a `template/pin`. Opts: `:app-name`; `:plan-folder` (the plan
+  repository's folder, for `agents-md`'s sentence; `<name>-plan` when nil);
+  `:local-root` (a local clone of the template instead of the pinned commit -
+  `KIT_TEMPLATE_LOCAL`); `:git-env`, extra environment for git; `:run`,
+  `(fn [dir env argv]) -> {:exit _ :out _}`, which a test replaces so that no
+  JVM starts."
+  [p {:keys [app-name plan-folder local-root git-env run] :or {run run-process}}]
   (fn [app-dir]
     (let [git (fn [& args] (run-or-throw run app-dir git-env (into ["git"] args)))
           from (label p local-root)]
@@ -111,7 +119,7 @@
         (when (fs/exists? (fs/path app-dir f))
           (throw (ex-info (str "the template generated its own " f "; the KIT will not overwrite it")
                           {:app/error :exists :path (str (fs/path app-dir f))}))))
-      (spit (str (fs/path app-dir "AGENTS.md")) (agents-md app-name))
+      (spit (str (fs/path app-dir "AGENTS.md")) (agents-md app-name (or plan-folder (str app-name "-plan"))))
       (rules/sync! (str (fs/path app-dir "AGENTS.md")))
       (spit (str (fs/path app-dir "CLAUDE.md")) claude-md)
       (spit (str (fs/path app-dir boundary/file-name)) (layers-edn app-name (:layers p)))

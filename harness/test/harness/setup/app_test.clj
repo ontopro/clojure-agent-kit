@@ -56,13 +56,29 @@
       (is (= "" (git-out app-dir "status" "--porcelain"))))
     (testing "the mirror is current against the rule source, and CLAUDE.md imports it"
       (is (false? (:changed? (rules/sync! (str (fs/path app-dir "AGENTS.md")) :check? true))))
-      (is (str/starts-with? (slurp (str (fs/path app-dir "CLAUDE.md"))) "@AGENTS.md")))
+      (is (str/starts-with? (slurp (str (fs/path app-dir "CLAUDE.md"))) "@AGENTS.md"))
+      (is (str/includes? (slurp (str (fs/path app-dir "AGENTS.md"))) "`../xyx-plan/rules.edn`")
+          "with no folder given, the sentence names the default plan folder"))
     (testing "layers.edn is the pin's tails under the application's name, and the gate reads it"
       (let [ruleset (edn/read-string (slurp (str (fs/path app-dir "layers.edn"))))]
         (is (= (into {} (map (fn [[k v]] [(symbol (str "xyx." k)) (set (map #(symbol (str "xyx." %)) v))]))
                      (:layers pin))
                ruleset))
         (is (every? #(str/starts-with? (str %) "xyx.") (keys ruleset)))))))
+
+(deftest the-agents-md-sentence-names-the-plan-folder-the-workspace-has
+  ;; Outside the markers, so no sync corrects it: a project that named its plan
+  ;; folder with `bb init --plan` read about a `<name>-plan/` that was not there.
+  (is (str/includes? (app/agents-md "mnj" "mnj-breastconnect-plan") "`../mnj-breastconnect-plan/rules.edn`"))
+  (is (not (str/includes? (app/agents-md "mnj" "mnj-breastconnect-plan") "mnj-plan")))
+  (is (str/includes? (app/agents-md "xyx") "`../xyx-plan/rules.edn`") "the default is the name's")
+  (let [ws (str (fs/real-path (fs/create-temp-dir)))
+        app-dir (str (fs/path ws "the-site"))]
+    ((app/app-fn pin {:app-name "xyx" :plan-folder "the-plan" :git-env git-env
+                      :run (generator (atom []) {"deps.edn" "{}"})})
+     app-dir)
+    (is (str/includes? (slurp (str (fs/path app-dir "AGENTS.md"))) "`../the-plan/rules.edn`")
+        "app-fn hands the folder on")))
 
 (deftest a-local-clone-replaces-the-pin-and-the-commit-says-so
   (let [app-dir (str (fs/path (fs/real-path (fs/create-temp-dir)) "xyx-app"))
