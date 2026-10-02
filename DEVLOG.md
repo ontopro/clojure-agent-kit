@@ -27,6 +27,28 @@ either; an entry's date is its reference.
 
 ## 2026-10-02
 
+### The rounds a dispatched role may take are the project's to set
+
+Row 82, the fourth finding of the first real project's first day, and the one that stopped a
+task. A dispatched role works in rounds - one completion, one tool result, again - and the
+harness stopped a role after 24 of them, a number the seed carried with no reason recorded.
+The runner's docstring said its options reach `converse!`; the loop built the runner with none;
+so nothing in a plan, a profile or a `loop.edn` reached the cap. The method calls the retry cap
+a project's own policy, and this was a second cap beside it, fixed in the clone. A Tester on a
+contract of fifty targets finished on its 24th round, then ended at the limit on its two
+retries - once having written nothing, a failed dispatch - and the retry cap counted each, so
+the task stopped `capped` one assertion short of green. The project counted the rounds by
+hand from the generation ids and kept the table in its stage document.
+
+`:max-rounds`, optional, per role, in the profile's role block; `bb profile` checks it through
+the schema; the API runner passes it to `converse!`, and the default applies where the profile
+says nothing - the default's comment now says it is the harness's and not a policy. The record
+keeps each dispatch's rounds (`:step/rounds`, from the runner's iteration count) and the limit
+the role ran under (`:run/roles`), and the report prints a *Dispatch rounds* line - `tester 24
+of 24, AT THE LIMIT` - only when a step recorded its rounds, so every published report
+re-renders unchanged. The shipped example sets no number and says why; the plan template's §13
+table has the row beside the retry cap. The number itself is the project's to measure.
+
 ### A reading keeps what a late cost is fetched by
 
 Row 81. The three reading acts - the plan review, the Blueprint review, the spec review - are

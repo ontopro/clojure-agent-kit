@@ -228,6 +228,13 @@
    [:key-env {:optional true} [:string {:min 1}]]
    [:params {:optional true} [:map-of :keyword :any]]
    [:serving {:optional true} [:map-of :keyword :any]]
+   ;; How many rounds - completions, each answering the last tool result - one
+   ;; dispatch of this role may take before the harness stops it. A PROJECT'S
+   ;; POLICY, like the retry cap, and per role: a Tester writing a test per
+   ;; target takes more rounds than a Coder writing one namespace. Absent, the
+   ;; harness's own default applies (`harness.models.agent/defaults`), which the
+   ;; first real project could not change from anywhere in its plan.
+   [:max-rounds {:optional true} pos-int?]
    ;; List prices, for an endpoint that reports usage and no cost (Anthropic
    ;; direct). A cost computed from these is marked as computed wherever it is
    ;; shown. :source and :as-of are REQUIRED with the rates: a price with no
@@ -384,6 +391,9 @@
    ;; written when the record was taken can be fetched by `bb reprice`
    ;; later. Only when known: a record written before this key is unchanged.
    [:step/generation-ids {:optional true} [:vector :string]]
+   ;; The rounds the dispatch took - its completions - so a report says how
+   ;; close to the role's limit it came. Only when known: an older record is unchanged.
+   [:step/rounds {:optional true} pos-int?]
    ;; Total native tokens. A single number because this is a report column;
    ;; the prompt/completion split belongs in :runner/meta, which is where
    ;; :tokens already lived upstream (see PROVENANCE.md) before it was one of
@@ -429,7 +439,8 @@
    ;; The endpoint and the NAME of the key variable per role, so `bb reprice`
    ;; can fetch a generation record from the record alone. Never a key.
    [:run/roles {:optional true} [:map-of :keyword [:map [:model {:optional true} :any] [:family {:optional true} :any] [:effort {:optional true} :any]
-                                                   [:endpoint {:optional true} :any] [:key-env {:optional true} :any]]]]
+                                                   [:endpoint {:optional true} :any] [:key-env {:optional true} :any]
+                                                   [:max-rounds {:optional true} :any]]]]
    ;; The KIT, the application and the plan at `record`, as `git rev-parse HEAD` gave
    ;; them; nil where there is no such repository. Optional: records before them have none.
    [:run/kit-commit {:optional true} [:maybe :string]]

@@ -30,6 +30,14 @@
 ;; the profile this repository ships
 ;; ---------------------------------------------------------------------------
 
+(deftest a-role-may-set-its-rounds-limit-and-it-must-be-a-positive-integer
+  ;; The rounds a dispatch may take are the project's policy, per role, in the
+  ;; profile; the first real project could set them from nowhere.
+  (let [claude (get (profile/examples) "claude")]
+    (is (shapes/valid-profile? (assoc-in claude [:roles :tester :max-rounds] 40)))
+    (is (not (shapes/valid-profile? (assoc-in claude [:roles :tester :max-rounds] 0))))
+    (is (not (shapes/valid-profile? (assoc-in claude [:roles :tester :max-rounds] "40"))))))
+
 (deftest every-shipped-example-is-a-valid-profile
   ;; resources/profiles/ holds worked examples, like resources/agent-rules.edn
   ;; and shapes/example-packet. An example nobody validates is an example that

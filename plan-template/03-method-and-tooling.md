@@ -279,7 +279,8 @@ justifies the extra call, or the reason it isn't justified here>.
 
 | What | Where | Default | This project | Why |
 |---|---|---|---|---|
-| Retry cap, rounds per role per task | `:gates {:retry-cap n}` in a task spec (`packet/default-gates`) | 3 | <n> | <…> |
+| Retry cap, attempts per role per task | `:gates {:retry-cap n}` in a task spec (`packet/default-gates`) | 3 | <n> | <…> |
+| Rounds per dispatch - completions before the harness stops a role | `:max-rounds n` in the role's block in `profile.edn` | the harness's 24 | <Coder n / Tester n> | <…; the Tester writes a test per target and takes more> |
 | Spec reviews that found something before a person reads them | `:spec-review/max` in `loop.edn` | 2 | <n> | <…> |
 | Money cap for a stage, and the floor a run must not start below | held by the person; `bb balance` before and after every run | — | <$cap / $floor> | <…> |
 

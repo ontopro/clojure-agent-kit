@@ -27,6 +27,10 @@
    [harness.models.tools :as tools]))
 
 (def defaults
+  ;; :max-iterations IS THE HARNESS'S DEFAULT, NOT A PROJECT'S POLICY. Twenty-four
+  ;; was the seed's number, with no reason recorded. A project sets its own per
+  ;; role as `:max-rounds` in its profile (`shapes/RoleProfile`), and the runner
+  ;; passes it here; this applies where the profile says nothing.
   {:max-iterations 24 :timeout-ms 180000
    ;; A transient error (adapter/transient?) is sent again up to :attempts
    ;; times in all, waiting Retry-After when the host says, else

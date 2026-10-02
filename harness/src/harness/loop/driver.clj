@@ -339,12 +339,14 @@
   "`{role {:model :family :effort}}` from a profile: the settings a run's
   figures were produced under. Effort is wherever the shape puts it."
   [profile]
-  (into {} (for [[r {:keys [model family params endpoint key-env]}] (:roles profile)]
+  (into {} (for [[r {:keys [model family params endpoint key-env max-rounds]}] (:roles profile)]
              [r (cond-> {:model model :family family
                          :effort (or (get-in params [:output_config :effort]) (:reasoning_effort params))}
                   ;; where a later `bb reprice` fetches from; the variable's NAME, never a key
                   endpoint (assoc :endpoint endpoint)
-                  key-env (assoc :key-env key-env))])))
+                  key-env (assoc :key-env key-env)
+                  ;; the rounds limit the dispatches ran under, so the report can say how close each came
+                  max-rounds (assoc :max-rounds max-rounds))])))
 
 (defn run-record
   "The run record `bb report` reads, from the state the commands built.

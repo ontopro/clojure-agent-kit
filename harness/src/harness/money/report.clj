@@ -76,7 +76,10 @@
       ;; The handle a later `bb reprice` fetches by. The runner always had
       ;; them and the record never did: one step in twelve runs of one build
       ;; arrived unpriced, and nothing on disk could name its completions.
-      (seq (:generation-ids meta*)) (assoc :step/generation-ids (vec (:generation-ids meta*))))))
+      (seq (:generation-ids meta*)) (assoc :step/generation-ids (vec (:generation-ids meta*)))
+      ;; How many rounds it took. The record held one generation id per round
+      ;; and the report never counted them; a project did, by hand.
+      (:iterations meta*) (assoc :step/rounds (:iterations meta*)))))
 
 (defn synthetic
   "A step whose numbers were made up — an example, a mock, a sketch.
@@ -310,6 +313,25 @@
                       (if c (str (fmt-cost c) "  ") "")
                       (truncate (str/replace (str decision) #"\s+" " ") 110)))))))
 
+(defn dispatch-round-lines
+  "The rounds each dispatch took, against the role's limit where the record
+  knows it (`:run/roles`' `:max-rounds`), or nil when no step recorded its
+  rounds - so a record written before `:step/rounds` renders as it did.
+
+  A dispatch that ends ON its limit is marked: it was stopped, not finished,
+  and the first real project told the two apart only by reading `capped?` off
+  the console."
+  [{:keys [run/steps run/roles]}]
+  (let [ds (filter :step/rounds steps)]
+    (when (seq ds)
+      [(str "  Dispatch rounds: "
+            (str/join " · "
+                      (for [{:keys [step/name step/rounds]} ds
+                            :let [role (keyword (first (str/split (clojure.core/name name) #"-r\d+$")))
+                                  limit (get-in roles [role :max-rounds])]]
+                        (str (clojure.core/name name) " " rounds
+                             (when limit (str " of " limit (when (>= rounds limit) ", AT THE LIMIT")))))))])))
+
 (defn role-lines
   "Model, family and effort per role, as the run ran them."
   [{:keys [run/roles]}]
@@ -335,7 +357,10 @@
   [run]
   (str/join "\n" (concat ["" "  ── performance ──"]
                          (time-lines run) [""] (money-lines run) [""] (token-lines run) [""]
-                         (round-lines run) [""] (role-lines run) [""] (commit-lines run))))
+                         (round-lines run)
+                         ;; only when a step recorded its rounds: older reports re-render unchanged
+                         (when-let [ls (dispatch-round-lines run)] (cons "" ls))
+                         [""] (role-lines run) [""] (commit-lines run))))
 
 (defn render
   "The run report as a string. `run` is a harness.contract.shapes/TaskRun with

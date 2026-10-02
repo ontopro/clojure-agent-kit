@@ -424,6 +424,22 @@
                                                  :arguments (json/generate-string {:path path})}}]}}]
    :usage {:prompt_tokens 10 :completion_tokens 4}})
 
+(deftest the-rounds-limit-is-the-profiles-when-a-role-sets-one
+  ;; The loop builds the runner with no options, so nothing in a project reached the
+  ;; cap: a Tester ended on the harness's 24 three times on one contract. The number
+  ;; is the role block's `:max-rounds`; absent, the default applies as before.
+  (let [dir (git-repo)
+        run (fn [max-rounds]
+              (stub (vec (repeat 10 (read-call "src/app/store.clj")))
+                    #(runner/run-agent (runner/api-runner (cond-> (profile %)
+                                                            max-rounds (assoc-in [:roles :coder :max-rounds] max-rounds)))
+                                       :coder (packet dir))))]
+    (let [r (run 2)]
+      (is (= 2 (get-in r [:runner/meta :iterations])) "stopped at the role's limit")
+      (is (true? (get-in r [:runner/meta :capped?]))))
+    (let [r (run 4)]
+      (is (= 4 (get-in r [:runner/meta :iterations]))))))
+
 (deftest a-capped-coder-or-tester-that-wrote-nothing-is-a-failed-dispatch
   ;; A capped dispatch that DID write files still passes as :done — the gates
   ;; decide whether the output was any good, and discarding salvageable work is

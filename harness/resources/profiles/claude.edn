@@ -69,6 +69,14 @@
 ;;   counts and the host's own generation time — the provenance a direct
 ;;   endpoint cannot give. Its price is a fixed ~9 s wait at the end of every
 ;;   dispatch for the last completion's record (row 25).
+;;
+;; THE ROUNDS A DISPATCH MAY TAKE are this project's to set, per role, as
+;; `:max-rounds n` in a role block below (none is set here: the harness's
+;; default applies, 24). A round is one completion answering the last tool
+;; result; the Tester, writing a test per target against a stub it cannot
+;; run, takes more than the Coder. The first real project's Tester ended on
+;; the default three times on a contract of fifty targets. The report's
+;; "Dispatch rounds" line says how close each dispatch came.
 
 {:seat :claude
 

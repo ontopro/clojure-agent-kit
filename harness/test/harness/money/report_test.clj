@@ -63,6 +63,34 @@
       (is (= 1 (:cost-known t)))
       (is (= 2 (:step-count t))))))
 
+(deftest a-dispatch-records-its-rounds-and-the-report-says-how-close-to-the-limit
+  ;; The record held one generation id per round and the report never counted
+  ;; them; the first real project counted by hand, and read "at the limit" off
+  ;; the console's capped? alone.
+  (let [s (report/dispatch-step :tester {:status :done :files [] :stdout nil :cost 0.1
+                                         :runner/meta {:model "m" :iterations 24}} 1)]
+    (is (= 24 (:step/rounds s)))
+    (is (shapes/valid-step? s))
+    (is (not (contains? (report/dispatch-step :tester {:status :done :runner/meta {:model "m"}} 1) :step/rounds))
+        "none known, no key"))
+  (let [step (fn [nm rounds] {:step/name nm :step/kind :dispatch :step/status :done :step/ms 1
+                              :step/source :measured :step/cost 0.1 :step/rounds rounds})
+        run {:run/steps [(step :coder 16) (step :tester 24) (step :tester-r2 24)]
+             :run/roles {:coder {:model "m" :max-rounds 30} :tester {:model "t" :max-rounds 24}}}
+        [line] (report/dispatch-round-lines run)]
+    (is (= "  Dispatch rounds: coder 16 of 30 · tester 24 of 24, AT THE LIMIT · tester-r2 24 of 24, AT THE LIMIT" line)
+        "a retry reads its role's limit too")
+    (is (= ["  Dispatch rounds: coder 16 · tester 24 · tester-r2 24"]
+           (report/dispatch-round-lines (dissoc run :run/roles)))
+        "no limit on the record, no claim about one"))
+  (testing "a record from before :step/rounds renders as it did"
+    (let [old {:run/id "d9" :task/id "t-09" :run/status :awaiting-merge :run/attempts 1 :run/cost 0.5
+               :run/started-at (java.util.Date.)
+               :run/steps [{:step/name :coder :step/kind :dispatch :step/status :done :step/ms 1200
+                            :step/model "m" :step/provider "p" :step/cost 0.5 :step/source :measured}]}]
+      (is (nil? (report/dispatch-round-lines old)))
+      (is (not (str/includes? (report/render old) "Dispatch rounds"))))))
+
 (deftest a-repriced-step-with-no-provider-counts-in-the-openrouter-sum
   ;; Three steps priced later by `bb reprice`, each without a provider, summed to
   ;; $0.000000 beside the key's $0.17: `some->` over a nil provider dropped them.

@@ -435,7 +435,12 @@
                     {:dir (:repl/worktree packet)
                      :targets (vec (:files/target packet))
                      :port (:repl/port packet)}
-                    (assoc opts :tools (tools/for-role role)))
+                    ;; THE ROUNDS LIMIT IS THE ROLE'S, when the profile sets one. The loop
+                    ;; builds this runner with no options, so until the profile carried the
+                    ;; number nothing in a project reached `converse!`'s cap: a Tester on a
+                    ;; contract of fifty targets ended on the harness's default three times.
+                    (cond-> (assoc opts :tools (tools/for-role role))
+                      (:max-rounds cfg) (assoc :max-iterations (:max-rounds cfg))))
                    cfg
                    before))
         {:status :failed :files [] :cost nil
