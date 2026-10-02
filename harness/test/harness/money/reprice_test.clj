@@ -2,6 +2,7 @@
   (:require
    [babashka.fs :as fs]
    [cheshire.core :as json]
+   [clojure.edn :as edn]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [harness.contract.shapes :as shapes]
@@ -117,6 +118,46 @@
   (let [r (update (record "http://x/api/v1") :run/steps (fn [ss] (mapv #(dissoc % :step/generation-ids) ss)))]
     (is (empty? (reprice/unpriced r)) "a record from before the ids were kept")
     (is (empty? (reprice/unpriced (assoc-in (record "http://x/api/v1") [:run/steps 1 :step/cost] 0.3))))))
+
+(deftest a-readings-record-is-priced-by-its-own-ids-with-nothing-but-the-file
+  ;; The plan review, the Blueprint review and the spec review each wrote :cost nil on
+  ;; the first real project and kept no id; the figure came off the account balance.
+  (let [reading (fn [ep] {:findings [] :count 0 :model "m" :cost nil :at "t2"
+                          :generation-ids ["gen-r2"] :endpoint ep :key-env "REPRICE_TEST_KEY"
+                          :reviews [{:count 3 :cost nil :model "m" :at "t1" :generation-ids ["gen-r1"] :endpoint ep :key-env "REPRICE_TEST_KEY"}
+                                    {:count 0 :cost nil :model "m" :at "t2" :generation-ids ["gen-r2"] :endpoint ep :key-env "REPRICE_TEST_KEY"}]})
+        [{:keys [record changed lines]} seen]
+        (with-stub {"gen-r1" {:total_cost 0.19} "gen-r2" {:total_cost 0.21}}
+          #(reprice/reprice-review (reading %) {:fetch-opts fast :getenv {"REPRICE_TEST_KEY" "sk-test"}}))]
+    (is (= 3 changed) "the reading and both entries of its history")
+    (is (= 0.21 (:cost record)))
+    (is (= :repriced (:cost-source record)))
+    (is (= [0.19 0.21] (mapv :cost (:reviews record))))
+    (is (every? #(= "Bearer sk-test" (:auth %)) seen))
+    (is (= 3 (count lines)))
+    (is (str/includes? (first lines) "the reading: cost $0.210000 (was —)")))
+  (testing "a reading with a cost, or without ids, is left alone and says so"
+    (is (= {:reading {:cost 0.1} :changed? false} (reprice/reprice-reading {:cost 0.1} {:getenv {}})))
+    (is (str/includes? (:line (reprice/reprice-reading {:cost nil :endpoint "http://x/api/v1"} {:getenv {}}))
+                       "no generation id")))
+  (testing "one id still missing leaves the reading unpriced"
+    (let [[{:keys [reading changed?]} _]
+          (with-stub {} #(reprice/reprice-reading {:cost nil :generation-ids ["gen-z"] :endpoint % :key-env "K"}
+                                                  {:fetch-opts fast :getenv {}}))]
+      (is (false? changed?))
+      (is (nil? (:cost reading))))))
+
+(deftest main-takes-a-review-file-as-well-as-a-run-record
+  (let [dir (str (fs/create-temp-dir))
+        path (str (fs/path dir "plan-review.edn"))
+        [out _] (with-stub {"gen-p" {:total_cost 0.22}}
+                  (fn [ep]
+                    (spit path (pr-str {:findings [{:finding "f"}] :count 1 :model "m" :cost nil :at "t"
+                                        :generation-ids ["gen-p"] :endpoint ep :key-env "REPRICE_TEST_KEY"}))
+                    (with-redefs [provenance/defaults fast]
+                      (with-out-str (try (reprice/-main path) (catch Exception _ nil))))))]
+    (is (str/includes? out "1 reading priced"))
+    (is (= 0.22 (:cost (edn/read-string (slurp path)))) "the file is rewritten with the cost")))
 
 (deftest role-key-reads-the-role-off-a-retry-or-triage-step-name
   (is (= :coder (reprice/role-key :coder)))

@@ -173,13 +173,12 @@
                         "the Blueprint review's model call failed")
                       {:blueprint-review/error :call-failed
                        :error (select-keys (:error r) [:harness/error :status])})))
-    {:findings (plan-review/parse-findings (:text r))
-     :documents (vec (remove nil? [(when stage-text stage-name) bp-name]))
-     :model (some :model (reverse (:steps r)))
-     :cost (let [cs (keep :cost (:steps r))] (when (seq cs) (reduce + cs)))
-     :ms (- (System/currentTimeMillis) t0)
-     :input input
-     :text (:text r)}))
+    (merge {:findings (plan-review/parse-findings (:text r))
+            :documents (vec (remove nil? [(when stage-text stage-name) bp-name]))
+            :ms (- (System/currentTimeMillis) t0)
+            :input input
+            :text (:text r)}
+           (agent/call-record r role))))
 
 (defn review!
   "Read the Blueprint at `blueprint-path` and the stage document it names, send
@@ -195,14 +194,16 @@
         _ (when-not role
             (throw (ex-info (str "the profile " profile-path " has no :blueprint-reviewer role")
                             {:blueprint-review/error :no-blueprint-reviewer :profile (str profile-path)})))
-        {:keys [findings documents model cost]} (read! role blueprint-path method-path)
+        {:keys [findings documents model cost] :as read} (read! role blueprint-path method-path)
         out-file (fs/path plan-dir "reviews" (stage-key blueprint-path) "blueprint-review.edn")
-        out {:findings findings
-             :count (count findings)
-             :documents documents
-             :model model
-             :cost cost
-             :at (str (java.time.Instant/now))}]
+        out (merge {:findings findings
+                    :count (count findings)
+                    :documents documents
+                    :model model
+                    :cost cost
+                    :at (str (java.time.Instant/now))}
+                   ;; what `bb reprice` fetches a late cost by; the variable's NAME, never a key
+                   (select-keys read [:generation-ids :endpoint :key-env]))]
     (if (nil? findings)
       (do (println "blueprint review: the answer had no findings block; nothing written — run it again")
           {:no-block? true})

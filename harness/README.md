@@ -312,7 +312,9 @@ of a project is written into it - which is why the list below is short.
   workspace's clone runs it, so a record nobody published, or a table whose record is gone, fails
   there. `record` fetches, once and without waiting, the cost, provider and tokens of every step
   whose generation record had not been written when its dispatch ended; `bb reprice <run.edn>`
-  fills what was still missing then, and the table is re-rendered after. The KIT publishes none of its own - its evidence
+  fills what was still missing then, and the table is re-rendered after. A reading's record -
+  `plan-review.edn`, `blueprint-review.edn`, `spec-review.edn` - keeps its ids the same way, and
+  `bb reprice <review.edn>` fills its cost and its history's. The KIT publishes none of its own - its evidence
   is `health/records/`.
 - Put your project's commands in `gates/default-gate-seq`. **The gate keys are a
   public contract** — whatever routes a failure dispatches on them, and the run

@@ -136,13 +136,12 @@
                         "the plan review's model call failed")
                       {:plan-review/error :call-failed
                        :error (select-keys (:error r) [:harness/error :status])})))
-    {:findings (parse-findings (:text r))
-     :documents (vec (for [[nm text] docs :when text] nm))
-     :model (some :model (reverse (:steps r)))
-     :cost (let [cs (keep :cost (:steps r))] (when (seq cs) (reduce + cs)))
-     :ms (- (System/currentTimeMillis) t0)
-     :input input
-     :text (:text r)}))
+    (merge {:findings (parse-findings (:text r))
+            :documents (vec (for [[nm text] docs :when text] nm))
+            :ms (- (System/currentTimeMillis) t0)
+            :input input
+            :text (:text r)}
+           (agent/call-record r role))))
 
 (defn review!
   "Read the documents under `plan-dir`, send them with the checklist to the
@@ -158,14 +157,16 @@
         _ (when-not role
             (throw (ex-info (str "the profile " profile-path " has no :spec-reviewer role")
                             {:plan-review/error :no-spec-reviewer :profile (str profile-path)})))
-        {:keys [findings documents model cost]} (read! role plan-dir method-path)
+        {:keys [findings documents model cost] :as read} (read! role plan-dir method-path)
         out-file (fs/path plan-dir "reviews" "plan-review.edn")
-        out {:findings findings
-             :count (count findings)
-             :documents documents
-             :model model
-             :cost cost
-             :at (str (java.time.Instant/now))}]
+        out (merge {:findings findings
+                    :count (count findings)
+                    :documents documents
+                    :model model
+                    :cost cost
+                    :at (str (java.time.Instant/now))}
+                   ;; what `bb reprice` fetches a late cost by; the variable's NAME, never a key
+                   (select-keys read [:generation-ids :endpoint :key-env]))]
     (if (nil? findings)
       (do (println "plan review: the answer had no findings block; nothing written — run it again")
           {:no-block? true})

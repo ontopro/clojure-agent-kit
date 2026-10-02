@@ -29,9 +29,17 @@
   a run is recorded its last completion is minutes old, so most records are
   whole when written and the command is for the ones that are not.
 
+  A READING'S RECORD TOO. The plan review, the Blueprint review and the spec
+  review are one completion each and keep their completion ids, the endpoint
+  and the key's variable (`agent/call-record`), so `bb reprice <review.edn>`
+  fills a reading's `:cost` and each entry of its `:reviews` history the same
+  way; the first real project had all three at `:cost nil` and nothing to
+  fetch by. `record` does the same for the run's `:spec-review` event.
+
   A record from before the ids were kept has nothing to fetch by, and says so."
   (:require
    [clojure.edn :as edn]
+   [clojure.pprint :as pp]
    [clojure.string :as str]
    [harness.models.profile :as profile]
    [harness.models.provenance :as provenance]
@@ -63,6 +71,14 @@
   (filter #(and (= :dispatch (:step/kind %)) (nil? (:step/cost %)) (seq (:step/generation-ids %)))
           (:run/steps record)))
 
+(defn- fetch-all
+  "Every id's generation record through `fetch`: `{:gens [...] :missing [ids]
+  :fetched n}`, an id with no `:total_cost` counting as missing."
+  [ids fetch]
+  (let [got (map (fn [id] [id (fetch id)]) ids)
+        missing (vec (keep (fn [[id g]] (when (nil? (:total_cost g)) id)) got))]
+    {:gens (map second got) :missing missing :fetched (- (count ids) (count missing))}))
+
 (defn reprice-step
   "`step` with its cost filled from `fetch` (a fn of an id returning a
   generation record or nil), or unchanged. Returns `{:step _ :fetched n
@@ -75,15 +91,12 @@
   when every record carries them. A value the dispatch did record is never
   replaced by a later fetch."
   [step fetch]
-  (let [ids (:step/generation-ids step)
-        got (map (fn [id] [id (fetch id)]) ids)
-        gens (map second got)
-        missing (vec (keep (fn [[id g]] (when (nil? (:total_cost g)) id)) got))
+  (let [{:keys [gens missing fetched]} (fetch-all (:step/generation-ids step) fetch)
         providers (distinct (keep :provider_name gens))
         tokens (when (every? :native_tokens_prompt gens)
                  (reduce + 0 (map #(+ (:native_tokens_prompt %) (or (:native_tokens_completion %) 0)) gens)))]
     (if (seq missing)
-      {:step step :fetched (- (count ids) (count missing)) :missing missing}
+      {:step step :fetched fetched :missing missing}
       {:step (cond-> (assoc step
                             :step/cost (reduce + 0 (map :total_cost gens))
                             :step/cost-source :repriced)
@@ -91,8 +104,51 @@
                (assoc :step/provider (str/join " / " providers))
                (and (nil? (:step/tokens step)) tokens)
                (assoc :step/tokens tokens))
-       :fetched (count ids)
+       :fetched fetched
        :missing []})))
+
+(defn- lagged
+  "The line for ids that did not answer."
+  [fetched ids missing]
+  (str fetched " of " (count ids) " generation records answered; " (str/join ", " missing)
+       " did not - left unpriced"))
+
+(defn reprice-reading
+  "A reading's record - or one entry of its `:reviews` history, or the run's
+  `:spec-review` event: `:cost`, `:generation-ids`, `:endpoint`, `:key-env` -
+  with its cost filled when it was nil and every id answered, marked
+  `:cost-source :repriced`; else exactly as it was. Returns
+  `{:reading m :changed? bool :line str-or-nil}`; the line says why nothing
+  changed, and is nil when there was nothing to do."
+  [{:keys [cost generation-ids endpoint key-env] :as m} {:keys [fetch-opts getenv] :or {getenv #(System/getenv %)}}]
+  (cond
+    (some? cost) {:reading m :changed? false}
+    (empty? generation-ids) {:reading m :changed? false
+                             :line "no generation id on the reading (written before the ids were kept)"}
+    (nil? (provenance/generation-endpoint endpoint))
+    {:reading m :changed? false :line (str endpoint " has no generation record to fetch")}
+    :else
+    (let [key (some-> key-env getenv)
+          {:keys [gens missing fetched]} (fetch-all generation-ids #(provenance/fetch! endpoint % key fetch-opts))]
+      (if (seq missing)
+        {:reading m :changed? false :line (lagged fetched generation-ids missing)}
+        (let [c (reduce + 0 (map :total_cost gens))]
+          {:reading (assoc m :cost c :cost-source :repriced) :changed? true
+           :line (str "cost " (format "$%.6f" (double c)) " (was —)")})))))
+
+(defn reprice-review
+  "A reading's whole record: its own cost and every entry of its `:reviews`
+  history. Returns `{:record _ :changed n :lines [...]}` as `reprice` does."
+  [m opts]
+  (let [top (reprice-reading m opts)
+        history (map-indexed (fn [i r] [i (reprice-reading r opts)]) (:reviews m))
+        changed (count (filter :changed? (cons top (map second history))))]
+    {:record (cond-> (:reading top)
+               (seq history) (assoc :reviews (mapv (comp :reading second) history)))
+     :changed changed
+     :lines (vec (concat (when-let [l (:line top)] [(str "  the reading: " l)])
+                         (for [[i {:keys [line]}] history :when line]
+                           (str "  reading " (inc i) " of the history: " line))))}))
 
 (defn reprice
   "`record` with every unpriced dispatch step repriced that could be. Returns
@@ -123,9 +179,7 @@
                               (reprice-step s #(provenance/fetch! endpoint % key fetch-opts))]
                           (if (seq missing)
                             {:step s :changed? false
-                             :line (str "  " nm ": " fetched " of " (count (:step/generation-ids s))
-                                        " generation records answered; " (str/join ", " missing)
-                                        " did not - left unpriced")}
+                             :line (str "  " nm ": " (lagged fetched (:step/generation-ids s) missing))}
                             {:step step :changed? true
                              :line (str "  " nm ": " fetched " generation record" (when (not= 1 fetched) "s")
                                         " fetched, cost " (format "$%.6f" (double (:step/cost step)))
@@ -137,21 +191,40 @@
      :changed changed
      :lines (vec (keep :line results))}))
 
+(defn- reprice-reading-file!
+  "`bb reprice` on a reading's record (`plan-review.edn`, `blueprint-review.edn`,
+  `spec-review.edn`): the file rewritten as the readings write it, pretty-printed."
+  [path m]
+  (let [{:keys [record changed lines]} (reprice-review m {})]
+    (doseq [l lines] (println l))
+    (if (pos? changed)
+      (do (spit path (with-out-str (pp/pprint record)))
+          (println (str "reprice: " changed " reading" (when (not= 1 changed) "s") " priced; " path " rewritten")))
+      (println "reprice: nothing changed"))))
+
 (defn -main
-  "bb reprice <run.edn> [--profile <profile.edn>]"
+  "bb reprice <run.edn | review.edn> [--profile <profile.edn>]"
   [& args]
   (let [[path] (remove #(str/starts-with? % "--") args)
         prof (some->> args (drop-while #(not= "--profile" %)) second profile/read-profile)]
     (when-not path
-      (println "usage: bb reprice <run.edn> [--profile <profile.edn>]")
+      (println "usage: bb reprice <run.edn | review.edn> [--profile <profile.edn>]")
       (System/exit 2))
-    (let [record (edn/read-string {:default tagged-literal} (slurp path))]
-      (when-not (:run/id record)
-        (println (str "reprice: " path " has no :run/id - it is not a run record"))
+    (let [record (edn/read-string {:default tagged-literal} (slurp path))
+          reading? (and (nil? (:run/id record))
+                        (or (contains? record :generation-ids) (contains? record :reviews)))]
+      (when-not (or (:run/id record) reading?)
+        (println (str "reprice: " path " has no :run/id and no reading's ids - it is neither a run record nor a review"))
         (System/exit 1))
-      (if (empty? (unpriced record))
+      (cond
+        ;; A reading's record: one call, its ids beside its cost.
+        reading? (reprice-reading-file! path record)
+
+        (empty? (unpriced record))
         (println (str "reprice: nothing to reprice in " path " - every dispatch step has a cost, "
                       "or the unpriced ones carry no generation id (a record from before the ids were kept)"))
+
+        :else
         (let [{:keys [record changed lines]} (reprice record {:profile prof})]
           (doseq [l lines] (println l))
           (if (pos? changed)

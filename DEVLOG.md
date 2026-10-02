@@ -27,6 +27,25 @@ either; an entry's date is its reference.
 
 ## 2026-10-02
 
+### A reading keeps what a late cost is fetched by
+
+Row 81. The three reading acts - the plan review, the Blueprint review, the spec review - are
+one completion each through the same `converse!` the dispatches use, and on the day the
+generation records lagged, each wrote `:cost nil` with nothing beside it: no id, no endpoint.
+The dispatches had kept their ids since the fifth build for exactly this; the readings had
+been written before that and never caught up. The person took the three figures off the
+account balance, and said so in the plan's spend sheet.
+
+`agent/call-record` is what a reading records about its call - the model as served, the cost,
+the completion ids, the endpoint and the NAME of the key's variable - and the three readings
+write it, their `:reviews` history keeping it per entry, the spec review's event in the run
+carrying it too. `bb reprice` takes a reading's file as well as a run record and fills the
+reading's cost and its history's; `record` does the same for the run's `:spec-review` event
+with the one-request fetch the previous entry describes. Tests: a reading repriced through
+its history by its own ids, a reading with a cost or without ids left alone and told why, a
+missing record leaving it unpriced, the command on a review file, and the three readings'
+records carrying the handles.
+
 ### The record after a late cost: priced at `record`, whole when repriced, summed whatever the provider
 
 Row 80. The first real project's first run was recorded with `cost=null` on every dispatch:

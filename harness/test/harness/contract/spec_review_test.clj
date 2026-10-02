@@ -103,6 +103,8 @@
       (let [e (sr/recorded (:run-dir ctx))]
         (is (= :spec-review (:event/kind e)))
         (is (= 2 (:findings e)))
+        (is (= ["gen-1"] (:generation-ids e)) "the handles for a late cost travel into the record")
+        (is (string? (:endpoint e)))
         (is (str/includes? (report/render {:run/id "r" :task/id "t-1" :run/attempts 1 :run/status :done
                                            :run/cost nil :run/started-at (java.util.Date.)
                                            :run/steps [] :run/events [e]})

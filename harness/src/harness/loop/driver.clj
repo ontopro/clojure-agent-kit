@@ -1414,14 +1414,26 @@
           ;; dispatch's wait - and `bb reprice` by hand filled them minutes later. At
           ;; `record` those minutes have passed: one request per id, no waiting, and a
           ;; step whose record is still not there stays unpriced for the command.
+          once {:attempts 1 :interval-ms 0 :timeout-ms 5000}
           out (if (empty? (reprice/unpriced out))
                 out
-                (let [{:keys [record lines changed]}
-                      (reprice/reprice out {:fetch-opts {:attempts 1 :interval-ms 0 :timeout-ms 5000}})]
+                (let [{:keys [record lines changed]} (reprice/reprice out {:fetch-opts once})]
                   (when (pos? changed)
                     (println (str "  priced at record (" changed " step" (when (not= 1 changed) "s") "):"))
                     (doseq [l lines] (println (str "  " l))))
                   record))
+          ;; THE DESK STEP'S COST TOO: the spec review's event carries its ids since the
+          ;; readings kept them, and its cost lagged the same way.
+          out (update out :run/events
+                      (fn [events]
+                        (mapv (fn [e]
+                                (if (and (= :spec-review (:event/kind e))
+                                         (or (nil? (:cost e)) (some (comp nil? :cost) (:reviews e))))
+                                  (let [{:keys [record changed]} (reprice/reprice-review e {:fetch-opts once})]
+                                    (when (pos? changed) (println "  spec review priced at record"))
+                                    record)
+                                  e))
+                              events)))
           ;; THE COPY IS THE RECORD'S HOME. Two builds copied run.edn into the plan by
           ;; hand, by the convention this now keeps; the run directory is scratch.
           kept (when-let [dir (:records/dir cfg)]

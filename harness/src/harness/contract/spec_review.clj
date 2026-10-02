@@ -154,13 +154,12 @@
                         "the spec review's model call failed")
                       {:run-loop/error :spec-review-failed
                        :error (select-keys (:error r) [:harness/error :status])})))
-    {:findings (parse-findings (:text r))
-     :spec-hash (spec-identity spec)
-     :model (some :model (reverse (:steps r)))
-     :cost (let [cs (keep :cost (:steps r))] (when (seq cs) (reduce + cs)))
-     :ms (- (System/currentTimeMillis) t0)
-     :input input
-     :text (:text r)}))
+    (merge {:findings (parse-findings (:text r))
+            :spec-hash (spec-identity spec)
+            :ms (- (System/currentTimeMillis) t0)
+            :input input
+            :text (:text r)}
+           (agent/call-record r role))))
 
 (defn spec-review!
   "Read spec.edn, ask the `:spec-reviewer` role, write `spec-review.edn` beside it,
@@ -173,15 +172,17 @@
   (let [role (get-in (profile/read-profile (:profile config)) [:roles :spec-reviewer])
         _ (when-not role
             (throw (ex-info "the profile has no :spec-reviewer role" {:run-loop/error :no-spec-reviewer :profile (:profile config)})))
-        {:keys [findings spec-hash model cost]} (read! role run-dir config)
-        out {:findings findings
-             :count (count findings)
-             ;; the review is OF this spec: an edited spec.edn is reviewed again
-             :spec-hash spec-hash
-             :no-block? (nil? findings)
-             :model model
-             :cost cost
-             :at (str (java.time.Instant/now))}]
+        {:keys [findings spec-hash model cost] :as read} (read! role run-dir config)
+        out (merge {:findings findings
+                    :count (count findings)
+                    ;; the review is OF this spec: an edited spec.edn is reviewed again
+                    :spec-hash spec-hash
+                    :no-block? (nil? findings)
+                    :model model
+                    :cost cost
+                    :at (str (java.time.Instant/now))}
+                   ;; what `bb reprice` fetches a late cost by; the variable's NAME, never a key
+                   (select-keys read [:generation-ids :endpoint :key-env]))]
     ;; NO BLOCK, NO FILE: a count of zero from an answer that gave none would be recorded by
     ;; `start` as a clean review.
     (if (nil? findings)
@@ -230,7 +231,10 @@
   [run-dir]
   (let [f (fs/path run-dir "spec-review.edn")]
     (when (fs/exists? f)
-      (let [{:keys [count cost model at reviews]} (edn/read-string (slurp (str f)))]
-        (cond-> {:event/kind :spec-review :findings count :cost cost :model model :at at}
-          ;; only when the file has one, so a review written before the history replays unchanged
-          (seq reviews) (assoc :reviews (mapv #(select-keys % [:count :cost :model :at]) reviews)))))))
+      (let [{:keys [count cost model at reviews] :as m} (edn/read-string (slurp (str f)))
+            ;; the handles for a late cost, only when the file has them, so an older review
+            ;; replays unchanged; `record` fetches by them, and `bb reprice` after
+            handles #(select-keys % [:generation-ids :endpoint :key-env :cost-source])]
+        (cond-> (merge {:event/kind :spec-review :findings count :cost cost :model model :at at}
+                       (handles m))
+          (seq reviews) (assoc :reviews (mapv #(merge (select-keys % [:count :cost :model :at]) (handles %)) reviews)))))))

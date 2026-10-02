@@ -84,6 +84,10 @@
     (is (= (vec (butlast pr/documents)) (:documents written)) "the documents that were there")
     (is (= "m-served" (:model written)))
     (is (= 1 (count (:reviews written))))
+    (testing "the call's ids, endpoint and key variable are kept, so a late cost can be fetched by `bb reprice`"
+      (is (= ["gen-1"] (:generation-ids written)))
+      (is (string? (:endpoint written)))
+      (is (= ["gen-1"] (:generation-ids (first (:reviews written))))))
     (is (str/includes? out "plan review: 2 findings"))
     (is (str/includes? out "[contradiction] 01-requirements.md §4; 02-architecture.md §12 — the store disagrees"))
     (is (str/includes? out "00-overview.md §5's table"))

@@ -127,6 +127,26 @@
            :steps steps
            :ms-provenance-wait (- (System/currentTimeMillis) t))))
 
+(defn call-record
+  "What a reading - one completion, no tools - records about its call, from
+  `converse!`'s result and the role block that made it: the model as served,
+  the cost (nil when no generation record had arrived), the completion ids,
+  and the endpoint and the NAME of the key's variable, so `bb reprice` can
+  fetch the cost later with nothing but the file.
+
+  THE READINGS KEPT NONE OF THIS BEYOND THE COST, and on the first real project
+  every generation record lagged past the wait: the plan review, the Blueprint
+  review and the spec review each wrote `:cost nil`, with no id to fetch by,
+  and the person took the figure off the account balance instead. A dispatch
+  step had kept its ids for that purpose since the fifth build; a reading is
+  the same call with a different reader."
+  [{:keys [steps]} role]
+  {:model (some :model (reverse steps))
+   :cost (let [cs (keep :cost steps)] (when (seq cs) (reduce + cs)))
+   :generation-ids (vec (keep :generation-id steps))
+   :endpoint (:endpoint role)
+   :key-env (:key-env role)})
+
 (defn converse!
   "Run `role` to a conclusion, letting it call tools in `ctx`.
 
