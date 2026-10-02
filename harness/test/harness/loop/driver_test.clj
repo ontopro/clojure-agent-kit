@@ -96,7 +96,12 @@
                                                                  :pricing {:per-mtok {:in 10} :source "s" :as-of "d"}}})]
       (is (= :list-price (:cost-source e)))
       (is (= {:in 1 :out 2} (:usage e)))
-      (is (= "d" (get-in e [:pricing :as-of]))))))
+      (is (= "d" (get-in e [:pricing :as-of])))))
+  (testing "the usage is kept when the cost is not there yet: it is the completion's, not the cost's"
+    (let [e (loop/dispatch-event :coder :coder {} {:status :done :cost nil
+                                                   :runner/meta {:model "m" :usage {:in 5 :out 7}}})]
+      (is (= {:in 5 :out 7} (:usage e)))
+      (is (not (contains? e :cost-source))))))
 
 (deftest the-record-keeps-a-capped-transcript-and-the-run-directory-the-whole-one
   ;; Tool results run to 20,000 chars and write_file args hold whole files; the record keeps enough to see what happened, in order.

@@ -27,6 +27,27 @@ either; an entry's date is its reference.
 
 ## 2026-10-02
 
+### The record after a late cost: priced at `record`, whole when repriced, summed whatever the provider
+
+Row 80. The first real project's first run was recorded with `cost=null` on every dispatch:
+the generation records had lagged past the dispatch's twenty-second wait, as the provenance
+namespace's docstring allows for, and `bb reprice` by hand put the three costs in minutes
+later. The report then contradicted itself three times over - *by provider unknown* over steps
+whose records named the host, *no dispatch carries usage* beside a filled tokens column, and a
+sum of $0.000000 over OpenRouter steps beside a total of fourteen cents. Each had its own
+cause, and the project found all three in one reading.
+
+Four changes. `record!` prices its own unpriced steps before writing, one request per id with
+no waiting: by then the last completion is minutes old, so most records are whole when
+written, and the command remains for the ones that are not. `reprice-step` fills the provider
+and the tokens from the generation records where the step has none, the providers joined when
+one step's completions were served by two hosts, and never over a value the dispatch did record.
+`dispatch-event` keeps the completion's `:usage` whether or not a cost came with it; it had
+travelled only beside a `:cost-source`. And the OpenRouter sum takes every priced step not
+served by Anthropic's API, provider known or not - a `some->` over a nil provider had dropped
+the repriced ones. Tests for each; `bb reprice` on a record written before this fills what the
+old one lacked.
+
 ### The `AGENTS.md` sentence names the plan folder the workspace has
 
 Row 79's residue, the first real project's first finding after `bb init`. The application's

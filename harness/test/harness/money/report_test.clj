@@ -63,6 +63,20 @@
       (is (= 1 (:cost-known t)))
       (is (= 2 (:step-count t))))))
 
+(deftest a-repriced-step-with-no-provider-counts-in-the-openrouter-sum
+  ;; Three steps priced later by `bb reprice`, each without a provider, summed to
+  ;; $0.000000 beside the key's $0.17: `some->` over a nil provider dropped them.
+  (let [step (fn [nm cost provider] {:step/name nm :step/kind :dispatch :step/status :done :step/ms 1
+                                     :step/source :measured :step/cost cost :step/provider provider
+                                     :step/cost-source :repriced})
+        run {:run/steps [(step :coder 0.10 nil) (step :tester 0.05 nil) (step :reviewer 0.02 "Anthropic API")]
+             :run/events [{:event/kind :balance :when :start :openrouter {:remaining 80.60}}
+                          {:event/kind :balance :when :record :openrouter {:remaining 80.43}}]}
+        out (str/join "\n" (report/money-lines run))]
+    (is (str/includes? out "against $0.150000 summed from this run's OpenRouter steps")
+        "the two steps nobody named a host for, not the one Anthropic's API served")
+    (is (str/includes? out "Anthropic API spend $0.020000"))))
+
 (deftest render-is-honest-about-what-it-does-not-know
   (let [run {:run/id "r-1" :task/id "t-07" :run/attempts 1 :run/status :done
              :run/cost nil :run/started-at (java.util.Date.)

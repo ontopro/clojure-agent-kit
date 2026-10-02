@@ -247,7 +247,12 @@
         balances (filter #(= :balance (:event/kind %)) events)
         bal (fn [when] (:openrouter (first (filter #(= when (:when %)) balances))))
         b0 (bal :start) b1 (bal :record)
-        openrouter-cost (reduce + 0 (map :step/cost (filter #(some-> (:step/provider %) (not= "Anthropic API")) priced)))
+        ;; EVERY PRICED STEP NOT SERVED BY ANTHROPIC'S API, the provider known or
+        ;; not: a step priced later by `bb reprice` had cost and no provider, and
+        ;; `some->` over nil dropped it, so a run of three repriced steps printed
+        ;; "$0.000000 summed from this run's OpenRouter steps" beside its total.
+        ;; A direct Anthropic step always has its provider, from the endpoint.
+        openrouter-cost (reduce + 0 (map :step/cost (remove #(= "Anthropic API" (:step/provider %)) priced)))
         anthropic-cost (reduce + 0 (map :step/cost (filter #(= "Anthropic API" (:step/provider %)) priced)))
         money (fn [x] (if x (format "$%.2f" (double x)) "—"))]
     (into [(format "  Money: %s over %d priced step%s%s."

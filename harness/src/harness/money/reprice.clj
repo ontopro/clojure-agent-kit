@@ -17,9 +17,17 @@
   presented as a step's cost is the understatement the footer exists to
   prevent. A repriced step is marked `:cost-source :repriced` - the
   endpoint's word, fetched later, not a list price - and `:run/cost` is the
-  steps' sum again. The record is rewritten in place; a document that
-  publishes its table then fails `bb report-check` until the person
-  re-renders it, which is the drift gate doing its job.
+  steps' sum again. THE PROVIDER AND THE TOKENS COME WITH IT: a step whose
+  record lagged has neither, and the generation record names who served it
+  and what it billed; the first real project's report said \"by provider
+  unknown\" over three repriced steps whose records had the names. The
+  record is rewritten in place; a document that publishes its table then
+  fails `bb report-check` until the person re-renders it, which is the drift
+  gate doing its job.
+
+  `record` RUNS IT FIRST, with one request per id and no waiting: by the time
+  a run is recorded its last completion is minutes old, so most records are
+  whole when written and the command is for the ones that are not.
 
   A record from before the ids were kept has nothing to fetch by, and says so."
   (:require
@@ -59,16 +67,30 @@
   "`step` with its cost filled from `fetch` (a fn of an id returning a
   generation record or nil), or unchanged. Returns `{:step _ :fetched n
   :missing [ids]}`: `:missing` names every id that did not answer, and a step
-  with any missing is left exactly as it was."
+  with any missing is left exactly as it was.
+
+  The provider and the tokens are filled too, ONLY where the step has none:
+  the providers the records name, joined when a step's completions were
+  served by more than one; the native prompt and completion counts summed,
+  when every record carries them. A value the dispatch did record is never
+  replaced by a later fetch."
   [step fetch]
   (let [ids (:step/generation-ids step)
         got (map (fn [id] [id (fetch id)]) ids)
-        missing (vec (keep (fn [[id g]] (when (nil? (:total_cost g)) id)) got))]
+        gens (map second got)
+        missing (vec (keep (fn [[id g]] (when (nil? (:total_cost g)) id)) got))
+        providers (distinct (keep :provider_name gens))
+        tokens (when (every? :native_tokens_prompt gens)
+                 (reduce + 0 (map #(+ (:native_tokens_prompt %) (or (:native_tokens_completion %) 0)) gens)))]
     (if (seq missing)
       {:step step :fetched (- (count ids) (count missing)) :missing missing}
-      {:step (assoc step
-                    :step/cost (reduce + 0 (map (comp :total_cost second) got))
-                    :step/cost-source :repriced)
+      {:step (cond-> (assoc step
+                            :step/cost (reduce + 0 (map :total_cost gens))
+                            :step/cost-source :repriced)
+               (and (nil? (:step/provider step)) (seq providers))
+               (assoc :step/provider (str/join " / " providers))
+               (and (nil? (:step/tokens step)) tokens)
+               (assoc :step/tokens tokens))
        :fetched (count ids)
        :missing []})))
 

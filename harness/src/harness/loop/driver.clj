@@ -96,6 +96,7 @@
    [harness.models.runner :as runner]
    [harness.money.balance :as balance]
    [harness.money.report :as report]
+   [harness.money.reprice :as reprice]
    [harness.rules :as rules]
    [harness.setup.plan :as plan]
    [harness.setup.workspace :as workspace]))
@@ -271,9 +272,13 @@
       (= :reviewer role) (assoc :verdict (:verdict m))
       (:cost-partial m) (assoc :cost-partial (:cost-partial m))
       (:transcript m) (assoc :transcript (cap-transcript (:transcript m)))
-      ;; A list-price cost is re-derivable only if the counts and the rates
-      ;; travel with it.
-      (:cost-source m) (assoc :cost-source (:cost-source m) :usage (:usage m))
+      ;; THE USAGE IS THE COMPLETION'S, NOT THE COST'S. It travelled only beside a
+      ;; cost-source, so a dispatch whose generation record lagged - cost nil,
+      ;; source nil - lost its token counts too, and the report said no dispatch
+      ;; carried usage over a table whose tokens column was filled.
+      (:usage m) (assoc :usage (:usage m))
+      ;; A list-price cost is re-derivable only if the rates travel with it.
+      (:cost-source m) (assoc :cost-source (:cost-source m))
       (:pricing m) (assoc :pricing (:pricing m))
       ;; The error as text for a document, and its KIND for the loop: a credit
       ;; refusal is a stop of its own, and `next-action` reads events.
@@ -1404,6 +1409,19 @@
                                  :commits {:kit (head-commit (:kit/root cfg))
                                            :app (head-commit (:repo/root cfg))
                                            :plan (head-commit (:plan/root cfg))}))
+          ;; THE LATE COSTS, FETCHED NOW. Every dispatch of the first real project's runs
+          ;; was recorded at cost nil - the generation records had lagged past the
+          ;; dispatch's wait - and `bb reprice` by hand filled them minutes later. At
+          ;; `record` those minutes have passed: one request per id, no waiting, and a
+          ;; step whose record is still not there stays unpriced for the command.
+          out (if (empty? (reprice/unpriced out))
+                out
+                (let [{:keys [record lines changed]}
+                      (reprice/reprice out {:fetch-opts {:attempts 1 :interval-ms 0 :timeout-ms 5000}})]
+                  (when (pos? changed)
+                    (println (str "  priced at record (" changed " step" (when (not= 1 changed) "s") "):"))
+                    (doseq [l lines] (println (str "  " l))))
+                  record))
           ;; THE COPY IS THE RECORD'S HOME. Two builds copied run.edn into the plan by
           ;; hand, by the convention this now keeps; the run directory is scratch.
           kept (when-let [dir (:records/dir cfg)]

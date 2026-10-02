@@ -58,6 +58,36 @@
     (is (= 1 (count lines)))
     (is (str/includes? (first lines) "coder: 2 generation records fetched, cost $0.375000 (was —)"))))
 
+(deftest a-repriced-step-gets-its-provider-and-tokens-where-it-had-none
+  ;; A dispatch whose record lagged has no provider and no tokens either; the
+  ;; generation record names who served it and what it billed. A value the
+  ;; dispatch did record is never replaced.
+  (let [bare (fn [ep] (-> (record ep)
+                          (assoc-in [:run/steps 1 :step/provider] nil)
+                          (assoc-in [:run/steps 1 :step/tokens] nil)))
+        [{:keys [record]} _]
+        (with-stub {"gen-a" {:total_cost 0.25 :provider_name "Anthropic" :native_tokens_prompt 1000 :native_tokens_completion 200}
+                    "gen-b" {:total_cost 0.125 :provider_name "Google Vertex" :native_tokens_prompt 500 :native_tokens_completion 50}}
+          #(reprice/reprice (bare %) {:fetch-opts fast :getenv {}}))
+        coder (nth (:run/steps record) 1)]
+    (is (= "Anthropic / Google Vertex" (:step/provider coder)) "both hosts, since the completions were split")
+    (is (= 1750 (:step/tokens coder)) "the native counts, summed")
+    (is (shapes/valid-run? record) (pr-str (shapes/explain-run record))))
+  (testing "a step that recorded a provider keeps it"
+    (let [[{:keys [record]} _]
+          (with-stub {"gen-a" {:total_cost 0.1 :provider_name "Other" :native_tokens_prompt 1}
+                      "gen-b" {:total_cost 0.1 :provider_name "Other" :native_tokens_prompt 1}}
+            #(reprice/reprice (record %) {:fetch-opts fast :getenv {}}))]
+      (is (= "Anthropic" (:step/provider (nth (:run/steps record) 1))))
+      (is (= 100 (:step/tokens (nth (:run/steps record) 1))))))
+  (testing "no native counts on one record, no tokens filled"
+    (let [bare (fn [ep] (assoc-in (record ep) [:run/steps 1 :step/tokens] nil))
+          [{:keys [record]} _]
+          (with-stub {"gen-a" {:total_cost 0.1 :native_tokens_prompt 1} "gen-b" {:total_cost 0.1}}
+            #(reprice/reprice (bare %) {:fetch-opts fast :getenv {}}))]
+      (is (nil? (:step/tokens (nth (:run/steps record) 1))))
+      (is (= 0.2 (:step/cost (nth (:run/steps record) 1))) "the cost is still filled"))))
+
 (deftest a-step-with-one-record-missing-is-left-exactly-as-it-was
   (let [[{:keys [record changed lines]} _]
         (with-stub {"gen-a" {:total_cost 0.25}}
