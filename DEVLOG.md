@@ -27,6 +27,20 @@ either; an entry's date is its reference.
 
 ## 2026-10-03
 
+### A reset removes the event log with the state
+
+Row 84, found at the end of the same trial run. `teardown` of a run that dispatched nothing
+removes `state.edn` and resets, so `start` can run again - that was the fix for a failed
+provision leaving `start` refused. It left `events.log`, which `harness.loop.log` only ever
+appends to; the second start appended its events after the first start's, and `record` at the
+end refused the run: 23 events in the state, 24 in the log, the extra one the first start's
+balance event. The drift gate did exactly its job on a drift the KIT itself had made, and the
+project moved the first line aside by hand to record the run.
+
+The reset removes the log with the state, and the message says both. Nothing is lost: a start
+that dispatched nothing wrote a start event, a balance and a provisioning failure the stop had
+already printed. The test on the reset asserts the log is gone.
+
 ### A run's branches are named by the run, so two runs of one task can exist
 
 Row 83. The loop's identity is `loop.edn`'s `:run/id` - one run directory each, unique by

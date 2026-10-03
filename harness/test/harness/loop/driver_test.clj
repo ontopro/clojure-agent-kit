@@ -636,6 +636,8 @@
             (is (= [:coder :tester] torn))
             (is (= ["t-coder" "t-tester" "t-reviewer"] deleted) "named by the run id \"t\", not the task's")
             (is (not (fs/exists? (fs/path (:run-dir ctx) "state.edn"))))
+            (is (not (fs/exists? (fs/path (:run-dir ctx) "events.log")))
+                "the log too: left behind, the next start appended to it and record refused the drift")
             (testing "so start is no longer refused"
               (is (nil? (:thrown (let [ctx2 (assoc ctx :state (atom nil))]
                                    {:thrown (try (with-redefs-fn {#'harness.loop.provision/provision! (fn [_] (throw (ex-info "stop here" {})))}

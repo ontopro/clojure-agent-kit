@@ -1507,8 +1507,14 @@
        (not (dispatched? state))
        (do (delete-branches!)
            (fs/delete-if-exists (state-file ctx))
+           ;; THE LOG GOES WITH THE STATE. It stayed, and the next `start` appended to
+           ;; it, so `record` refused the finished run: 23 events in the state, 24 in
+           ;; the log - the first start's balance event. The drift gate was right; the
+           ;; reset was half done. A start that dispatched nothing left nothing in the
+           ;; log that the stop did not already print.
+           (fs/delete-if-exists (log-file ctx))
            (reset! (:state ctx) nil)
-           (println "  nothing was dispatched: state.edn removed, so `start` can run again"))
+           (println "  nothing was dispatched: state.edn and events.log removed, so `start` can run again"))
 
        (not (fs/exists? (run-file ctx "run.edn")))
        (println "  branches kept: this run is not recorded - `record` it, and `teardown` then deletes them")
