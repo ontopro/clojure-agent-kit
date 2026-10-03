@@ -81,6 +81,23 @@
             #(reprice/reprice (record %) {:fetch-opts fast :getenv {}}))]
       (is (= "Anthropic" (:step/provider (nth (:run/steps record) 1))))
       (is (= 100 (:step/tokens (nth (:run/steps record) 1))))))
+  (testing "a step priced by the old command - a cost, no provider, no tokens - is a target, and its cost is left as it was"
+    (let [old (fn [ep] (-> (record ep)
+                           (assoc-in [:run/steps 1 :step/cost] 0.3)
+                           (assoc-in [:run/steps 1 :step/provider] nil)
+                           (assoc-in [:run/steps 1 :step/tokens] nil)))]
+      (is (= [:coder] (map :step/name (reprice/unpriced (old "http://x/api/v1")))))
+      (let [[{:keys [record changed lines]} _]
+            (with-stub {"gen-a" {:total_cost 0.25 :provider_name "Anthropic" :native_tokens_prompt 10}
+                        "gen-b" {:total_cost 0.125 :provider_name "Anthropic" :native_tokens_prompt 10}}
+              #(reprice/reprice (old %) {:fetch-opts fast :getenv {}}))
+            coder (nth (:run/steps record) 1)]
+        (is (= 1 changed))
+        (is (= 0.3 (:step/cost coder)) "the cost it had, not the fetched sum")
+        (is (= :reported (:step/cost-source coder)))
+        (is (= "Anthropic" (:step/provider coder)))
+        (is (= 20 (:step/tokens coder)))
+        (is (str/includes? (first lines) "provider Anthropic, 20 tokens (was —)")))))
   (testing "no native counts on one record, no tokens filled"
     (let [bare (fn [ep] (assoc-in (record ep) [:run/steps 1 :step/tokens] nil))
           [{:keys [record]} _]
@@ -117,7 +134,8 @@
 (deftest nothing-to-reprice-when-no-unpriced-step-carries-an-id
   (let [r (update (record "http://x/api/v1") :run/steps (fn [ss] (mapv #(dissoc % :step/generation-ids) ss)))]
     (is (empty? (reprice/unpriced r)) "a record from before the ids were kept")
-    (is (empty? (reprice/unpriced (assoc-in (record "http://x/api/v1") [:run/steps 1 :step/cost] 0.3))))))
+    (is (empty? (reprice/unpriced (assoc-in (record "http://x/api/v1") [:run/steps 1 :step/cost] 0.3)))
+        "priced, with its provider and tokens: nothing to do")))
 
 (deftest a-readings-record-is-priced-by-its-own-ids-with-nothing-but-the-file
   ;; The plan review, the Blueprint review and the spec review each wrote :cost nil on

@@ -66,9 +66,15 @@
           [from-record from-profile])))
 
 (defn unpriced
-  "The dispatch steps `reprice` would touch: no cost, at least one id."
+  "The dispatch steps `reprice` would touch: at least one id, and no cost - or
+  no provider, or no tokens. A step priced by the command before it filled
+  those two has a cost and nothing else, and the first real project's tables
+  said \"by provider unknown\" over them after a reprice that answered
+  \"nothing to reprice\"."
   [record]
-  (filter #(and (= :dispatch (:step/kind %)) (nil? (:step/cost %)) (seq (:step/generation-ids %)))
+  (filter #(and (= :dispatch (:step/kind %))
+                (seq (:step/generation-ids %))
+                (or (nil? (:step/cost %)) (nil? (:step/provider %)) (nil? (:step/tokens %))))
           (:run/steps record)))
 
 (defn- fetch-all
@@ -97,15 +103,26 @@
                  (reduce + 0 (map #(+ (:native_tokens_prompt %) (or (:native_tokens_completion %) 0)) gens)))]
     (if (seq missing)
       {:step step :fetched fetched :missing missing}
-      {:step (cond-> (assoc step
-                            :step/cost (reduce + 0 (map :total_cost gens))
-                            :step/cost-source :repriced)
+      {:step (cond-> step
+               ;; the cost only where there was none: a reported or list-price cost stays its own
+               (nil? (:step/cost step))
+               (assoc :step/cost (reduce + 0 (map :total_cost gens)) :step/cost-source :repriced)
                (and (nil? (:step/provider step)) (seq providers))
                (assoc :step/provider (str/join " / " providers))
                (and (nil? (:step/tokens step)) tokens)
                (assoc :step/tokens tokens))
        :fetched fetched
        :missing []})))
+
+(defn- filled
+  "What a reprice put on `step` that `before` lacked, as words for the line."
+  [before step]
+  (str/join ", " (remove nil? [(when (and (nil? (:step/cost before)) (:step/cost step))
+                                 (str "cost " (format "$%.6f" (double (:step/cost step)))))
+                               (when (and (nil? (:step/provider before)) (:step/provider step))
+                                 (str "provider " (:step/provider step)))
+                               (when (and (nil? (:step/tokens before)) (:step/tokens step))
+                                 (str (:step/tokens step) " tokens"))])))
 
 (defn- lagged
   "The line for ids that did not answer."
@@ -180,10 +197,14 @@
                           (if (seq missing)
                             {:step s :changed? false
                              :line (str "  " nm ": " (lagged fetched (:step/generation-ids s) missing))}
-                            {:step step :changed? true
-                             :line (str "  " nm ": " fetched " generation record" (when (not= 1 fetched) "s")
-                                        " fetched, cost " (format "$%.6f" (double (:step/cost step)))
-                                        " (was —)")}))))))
+                            (let [words (filled s step)]
+                              (if (str/blank? words)
+                                {:step s :changed? false
+                                 :line (str "  " nm ": " fetched " generation record" (when (not= 1 fetched) "s")
+                                            " fetched, and they name no provider and no native counts - nothing to fill")}
+                                {:step step :changed? true
+                                 :line (str "  " nm ": " fetched " generation record" (when (not= 1 fetched) "s")
+                                            " fetched, " words " (was —)")}))))))))
         steps (mapv :step results)
         changed (count (filter :changed? results))]
     {:record (cond-> (assoc record :run/steps steps)
@@ -221,8 +242,8 @@
         reading? (reprice-reading-file! path record)
 
         (empty? (unpriced record))
-        (println (str "reprice: nothing to reprice in " path " - every dispatch step has a cost, "
-                      "or the unpriced ones carry no generation id (a record from before the ids were kept)"))
+        (println (str "reprice: nothing to reprice in " path " - every dispatch step has its cost, provider "
+                      "and tokens, or the ones without carry no generation id (a record from before the ids were kept)"))
 
         :else
         (let [{:keys [record changed lines]} (reprice record {:profile prof})]

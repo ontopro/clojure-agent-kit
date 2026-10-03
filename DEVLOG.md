@@ -25,6 +25,23 @@ either; an entry's date is its reference.
 
 ---
 
+## 2026-10-03
+
+### `bb reprice` fills a priced step's provider and tokens too
+
+Row 80's residue, and a sentence of this log's own that was wrong. The entry below said
+`bb reprice` on an older record "fills what the old one lacked"; the command selected steps
+with no cost, so a step priced by the old command - a cost, no provider, no tokens - was never
+looked at, and the project's two published tables kept *by provider unknown* after a reprice
+that answered "nothing to reprice". The claim came from the test fixture, not from the command
+run on a record of that shape - the failure `CLAUDE.md` names, in the KIT session's own
+message to the project.
+
+`reprice/unpriced` takes a dispatch step with ids and no cost, or no provider, or no tokens;
+`reprice-step` fills only what is missing and leaves a cost the step has as its own source;
+the line says what was filled. Test: the old shape is a target, its cost untouched, its
+provider and tokens filled.
+
 ## 2026-10-02
 
 ### The rounds a dispatched role may take are the project's to set
