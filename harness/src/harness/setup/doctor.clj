@@ -123,6 +123,17 @@
                  extension"
     :install (mcp-light-install "clj-paren-repair-claude-hook" nil)}
 
+   ;; THE BROWSER THE STAGE-END CHECKS DRIVE. Optional and in no tier: the gates and the
+   ;; loop never open a browser; the template's `bb browser-check` and `bb health`'s browser
+   ;; check do, through Etaoin. Firefox has no row - it is an application, not a command on
+   ;; the PATH - and `--version` here proves little anyway: on macOS the permission to use
+   ;; Firefox belongs to the terminal application, and a shell under a daemon gets a silent
+   ;; refusal that only a real start shows. `bb health` starts one.
+   {:tool :geckodriver :via :flag :cmd ["geckodriver" "--version"] :req :optional
+    :does "WebDriver for Firefox - the stage-end checks in a real browser (Etaoin, headless)"
+    :needed-for "The generated application's `bb browser-check`, and the browser check of `bb health`; with Firefox installed"
+    :install "https://github.com/mozilla/geckodriver/releases (brew install geckodriver); Firefox from mozilla.org"}
+
    {:tool :bbin :via :flag :cmd ["bbin" "--version"] :req :recommended
     :does "Installs single-file Babashka tools"
     :needed-for "Installing the three tools above"

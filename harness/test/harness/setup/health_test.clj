@@ -160,6 +160,56 @@
     (is (str/includes? (health/render {"macos-arm64" (assoc-in rec [:kit :dirty?] true)}) "(uncommitted changes)"))
     (is (str/includes? (health/render {"macos-arm64" (assoc-in rec [:checks 2 :ok?] false)}) "app serve FAILED"))))
 
+(deftest the-browser-check-performs-and-is-skipped-where-it-cannot
+  ;; `geckodriver --version` passes on a machine where no browser can start; the
+  ;; permission on macOS is the terminal application's, and a shell under a daemon
+  ;; gets a silent refusal. Only a real start shows it, so health starts one.
+  (let [subject {:subject :app :dir (str (fs/create-temp-dir))}]
+    (testing "skipped, and said so, where geckodriver or Firefox is absent"
+      (let [r (health/check-browser subject {:available? (constantly false)})]
+        (is (true? (:ok? r)) "a run without a browser is still healthy")
+        (is (true? (:skipped? r)))
+        (is (str/includes? (:detail r) "skipped"))))
+    (testing "ok when the template's task exits 0 and wrote the screenshot"
+      (let [seen (atom nil)
+            r (health/check-browser subject {:available? (constantly true)
+                                             :run (fn [dir env argv]
+                                                    (reset! seen {:dir dir :argv argv})
+                                                    (let [f (fs/path (get env "BROWSER_OUT") "1440" "home.png")]
+                                                      (fs/create-dirs (fs/parent f))
+                                                      (spit (str f) "png")
+                                                      {:exit 0 :out "/   1440x900 scrollWidth 1440\n1 page(s) at 1440 wide; 0 overflow\nstopped\n" :err ""}))})]
+        (is (true? (:ok? r)))
+        (is (not (:skipped? r)))
+        (is (= ["bb" "browser-check" "--only" "screenshots" "/"] (:argv @seen)) "the template's task, screenshots only, the home page")
+        (is (= (:dir subject) (:dir @seen)))
+        (is (str/includes? (:detail r) "scrollWidth 1440") "the measure line travels into the detail")))
+    (testing "failed when the task exits non-zero, or exits 0 with no screenshot"
+      (let [r (health/check-browser subject {:available? (constantly true)
+                                             :run (fn [_ _ _] {:exit 1 :out "" :err "Firefox did not start: timeout"})})]
+        (is (false? (:ok? r)))
+        (is (str/includes? (:detail r) "Firefox did not start"))
+        (is (str/includes? (:detail r) "grant it the permission")))
+      (let [r (health/check-browser subject {:available? (constantly true)
+                                             :run (fn [_ _ _] {:exit 0 :out "" :err ""})})]
+        (is (false? (:ok? r)))
+        (is (str/includes? (:detail r) "no screenshot written"))))
+    (testing "the availability test: geckodriver and a Firefox where the driver looks"
+      (is (health/browser-available? #{"geckodriver" "firefox"} (constantly false)))
+      (is (health/browser-available? #{"geckodriver"} #{"/Applications/Firefox.app/Contents/MacOS/firefox"}))
+      (is (not (health/browser-available? #{"firefox"} (constantly true))) "no geckodriver, no check")
+      (is (not (health/browser-available? #{"geckodriver"} (constantly false))) "no Firefox, no check"))))
+
+(deftest a-skipped-check-is-in-the-record-and-the-readme-row-says-so
+  (let [skipped {:subject :app :check :browser :ok? true :ms 0 :skipped? true :detail "skipped: no geckodriver"}
+        rec (health/record kit-dir (conj checks skipped) pin [])]
+    (is (= {:subject :app :check :browser :ok? true :ms 0 :skipped? true} (last (:checks rec)))
+        "the skip travels into the record; a passed check has no such key")
+    (is (true? (:ok? rec)) "a skipped check does not make the run unhealthy")
+    (let [out (health/render {"x" (assoc rec :platform {:key "x" :label "X"} :kit {:short "abc1234" :dirty? false})})]
+      (is (str/includes? out "3 of 4 ok, 1 skipped: selfcheck gates, selfcheck red, app serve, app browser SKIPPED")
+          "never counted as passed"))))
+
 (deftest write-record-writes-the-platform-file-and-the-known-good-set
   (let [dir (str (fs/create-temp-dir))
         rec {:health/as-of "2026-09-22" :platform {:key "test-arm64" :label "Test arm64"}

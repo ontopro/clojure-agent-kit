@@ -415,6 +415,72 @@
                 :else (str "GET " url " -> 200, then stopped; port free"))))))
 
 ;; ---------------------------------------------------------------------------
+;; browser
+;; ---------------------------------------------------------------------------
+
+(def browser-timeout-ms 240000)
+
+(defn browser-available?
+  "Whether the template's browser check can run here: geckodriver on the PATH
+  and a Firefox where the template's driver looks. A probe that PERFORMS comes
+  next; this only decides whether to try. `which` and `exists?` are
+  parameters so a test can say either way."
+  ([] (browser-available? #(fs/which %) #(fs/exists? %)))
+  ([which exists?]
+   (boolean (and (which "geckodriver")
+                 (or (which "firefox")
+                     (some exists? ["/Applications/Firefox.app/Contents/MacOS/firefox"
+                                    "/usr/bin/firefox" "/usr/local/bin/firefox" "/snap/bin/firefox"]))))))
+
+(defn check-browser
+  "The template's `bb browser-check --only screenshots /` in the application: it
+  serves, opens the page in a headless Firefox through geckodriver, screenshots
+  it as tall as it is, measures it, and stops the server. Ok when the task exits
+  0 and the screenshot exists.
+
+  A PROBE THAT PERFORMS. `geckodriver --version` passes on a machine where no
+  browser can start: on macOS the permission to use Firefox belongs to the
+  terminal application, and a shell under a daemon gets a silent refusal that
+  only a real start shows - Firefox up, no content process, geckodriver giving
+  up after 60 s. The first real project lost an hour to it after a green
+  doctor. Starting one here, once, is what the version check cannot be.
+
+  SKIPPED, AND SAID SO, where geckodriver or Firefox is absent: the KIT guides
+  and does not install, and a health run must stay possible on a machine with
+  no browser. The record carries the skip; the README's row prints it; `ok?`
+  stays true so the run is healthy, and nobody reads a browser check that did
+  not run as one that passed. `run` is `(fn [dir env argv] -> {:exit :out})`,
+  for a test."
+  ([subject] (check-browser subject {}))
+  ([{:keys [dir] :as subject} {:keys [available? run]
+                               :or {available? browser-available?
+                                    run (fn [dir env argv]
+                                          (apply p/shell {:dir dir :out :string :err :string :continue true
+                                                          :extra-env env :timeout browser-timeout-ms}
+                                                 argv))}}]
+   (if-not (available?)
+     (assoc (result :browser subject true 0
+                    "skipped: no geckodriver on the PATH, or no Firefox - the template's browser checks need both (`bb doctor` has the row)")
+            :skipped? true)
+     (let [out-dir (str (fs/create-temp-dir {:prefix "kit-health-browser"}))
+           shot (fs/path out-dir "1440" "home.png")
+           [{:keys [exit out err]} ms]
+           (timed #(try (run dir {"BROWSER_OUT" out-dir} ["bb" "browser-check" "--only" "screenshots" "/"])
+                        (catch Exception e {:exit -1 :out "" :err (ex-message e)})))
+           ok? (and (= 0 exit) (fs/exists? shot) (pos? (fs/size shot)))
+           tail (str/join "\n" (take-last 6 (str/split-lines (str out err))))]
+       (fs/delete-tree out-dir)
+       (result :browser subject ok? ms
+               (if ok?
+                 (str "served, Firefox opened /, a screenshot as tall as the page and its measure; stopped"
+                      (let [line (last (filter #(str/includes? % "scrollWidth") (str/split-lines (str out))))]
+                        (when line (str "\n" (str/trim line)))))
+                 (str "bb browser-check exited " exit (when-not (fs/exists? shot) ", no screenshot written")
+                      (when (str/includes? (str out err) "did not start")
+                        "; Firefox did not start - on macOS, run once from a terminal and grant it the permission")
+                      "\n" tail)))))))
+
+;; ---------------------------------------------------------------------------
 ;; the generated application
 ;; ---------------------------------------------------------------------------
 
@@ -479,7 +545,8 @@
      :tools (into (sorted-map)
                   (keep (fn [{:keys [tool req version]}] (when (= :required req) [tool version])))
                   doctor-results)
-     :checks (mapv #(select-keys % [:subject :check :ok? :ms]) checks)
+     ;; a skipped check says so in the record, so a row never reads it as passed
+     :checks (mapv #(select-keys % [:subject :check :ok? :ms :skipped?]) checks)
      :ok? (every? :ok? checks)}))
 
 (defn write-record!
@@ -515,11 +582,14 @@
     (str "| Platform | Run on | KIT commit | Template | Checks | Time |\n|---|---|---|---|---|---|\n"
          (str/join "\n"
                    (for [[_ {:keys [health/as-of platform kit template checks]}] records
-                         :let [ok (count (filter :ok? checks))]]
+                         :let [skipped (count (filter :skipped? checks))
+                               ok (- (count (filter :ok? checks)) skipped)]]
                      (str "| " (:label platform) " | " as-of " | `" (:short kit) "`" (when (:dirty? kit) " (uncommitted changes)")
                           " | `" (:git/tag template) "` (`" (subs (:git/sha template) 0 7) "`)"
-                          " | " ok " of " (count checks) " ok: "
-                          (str/join ", " (map #(str (name (:subject %)) " " (name (:check %)) (when-not (:ok? %) " FAILED")) checks))
+                          " | " ok " of " (count checks) " ok" (when (pos? skipped) (str ", " skipped " skipped")) ": "
+                          (str/join ", " (map #(str (name (:subject %)) " " (name (:check %))
+                                                    (cond (:skipped? %) " SKIPPED" (not (:ok? %)) " FAILED"))
+                                              checks))
                           " | " (format "%.0fs" (/ (reduce + (map :ms checks)) 1000.0)) " |")))
          "\n\nOne record per platform actually run, the latest run on it; a platform not in the table has"
          " none. `bb health --record` on such a machine writes one - commit it, and `bb health-sync`.")))
@@ -565,7 +635,8 @@
                        :gates (check-gates subject)
                        :red (check-red subject)
                        :loop (check-loop subject)
-                       :serve (check-serve subject))]]
+                       :serve (check-serve subject)
+                       :browser (check-browser subject))]]
          (do (show r) r))))
 
 (defn -main
@@ -597,7 +668,7 @@
                 (let [{:keys [workspace app pin local-root ms]} (generate-app! kit)]
                   (say (format "  generated in %.1fs: %s%s" (/ ms 1000.0) app
                                (if local-root (str " - from LOCAL CLONE " local-root ", not the pin") "")))
-                  (let [rs (run-subject! (app-subject kit workspace app app-name pin) [:gates :red :loop :serve])]
+                  (let [rs (run-subject! (app-subject kit workspace app app-name pin) [:gates :red :loop :serve :browser])]
                     (if (flags "--keep")
                       (say "\n  kept: " workspace)
                       (fs/delete-tree (fs/parent workspace)))

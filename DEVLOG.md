@@ -27,6 +27,38 @@ either; an entry's date is its reference.
 
 ## 2026-10-03
 
+### The browser driver ships with the template, and `bb health` starts a Firefox
+
+Row 88, from the first real project's remark rather than a fault: it built the stage-end
+browser driver the method asked for and shipped nothing of, and paid for three things the next
+project would have paid for again. The template's `kit-v2` carries the generic half: under
+`tools/browser/`, the driver (Etaoin under Babashka, a headless Firefox through geckodriver, no
+Node), screenshots as tall as the page with the `scrollWidth`/`innerWidth` measure, an
+axe-core scan fetched once and never committed, and `bb browser-check`, which serves, runs
+them on the paths named and stops; beside it `tools/server.clj`, the serve-check-stop a
+stage-end script stands on, whose stop goes through the process tree, then the JVM by its
+command, then whatever still listens on the port - `bb serve`'s JVM is a grandchild, and a
+tree kill was seen to miss it twice. The three hazards are in the README beside the scripts:
+the permission on macOS is the terminal application's, a shell under a daemon is refused
+silently and `geckodriver --version` cannot tell; a WebDriver screenshot is of the viewport;
+a key action left by one check changes the next. What stays the project's is its interaction
+checks and its keyboard walk, scripts of its own on the same driver.
+
+Tried before it was committed: a workspace generated from the local template with `bb init`,
+`bb browser-check / ` on its application, twice in a row - served in six to eight seconds, one
+screenshot, two axe findings on the template's own home page, stopped, the port free. The
+first version left the server behind once; the stop is what it is now because of that.
+
+In the KIT: `bb health` gains an eighth check, `app browser`, which runs the template's task
+with screenshots only on `/` - a probe that performs, where the doctor's version check passed
+the day the project lost an hour to a browser that could not start. Where geckodriver or
+Firefox is absent the check is skipped, the record carries `:skipped? true`, and the README's
+row says "7 of 8 ok, 1 skipped" rather than counting a check that did not run as passed. `bb
+doctor` has geckodriver as an optional row in no tier. The plan template's §14 names this
+driver as the worked example and §17 carries the hazards and the accessibility scan; `method.md`
+§04's paragraph says the template ships it. The pin to `kit-v2` and the health record retaken
+on it follow the fork's push, which is the person's.
+
 ### The plan's README says the repository is the build's side
 
 Row 87, written, from a remark the first real project kept rather than a fault. The person,

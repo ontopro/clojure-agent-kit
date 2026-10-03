@@ -68,7 +68,7 @@ bb doctor     # from the root of the clone: every tool, its version, and for any
               # verdicts say yes: "The KIT's gates can run here" and "A loop can run here"
 bb health     # then, once: is this KIT healthy here, with the template it pins? Minutes, starts JVMs:
               # the selfcheck project and a freshly generated application, gates green, gates failed on purpose,
-              # one task through the loop, the application served
+              # one task through the loop, the application served, a Firefox opening it (skipped, and said, with no geckodriver)
 bb init xyx   # then: the workspace for a project - see harness/README.md
 bb gates      # the KIT's own gates: doctor -> format -> lint -> rules -> reports -> test
 
@@ -88,7 +88,9 @@ runs the gates until one fails, and checks the runner against the contract.
 Rendered by `bb health-sync` from `harness/health/records/`, one record per platform, each
 written by `bb health --record` after a run in which every check passed: the selfcheck project and an
 application generated from the pinned template, gates green, every gate failed on purpose, one
-task through the loop, the application served. `bb gates` fails if this block and the records
+task through the loop, the application served, a headless Firefox opening it through the template's
+`bb browser-check` where geckodriver and Firefox are installed (skipped, and the row says so, where
+they are not). `bb gates` fails if this block and the records
 disagree. The date is the claim; nothing here says it still holds today.
 
 <!-- health:begin -->

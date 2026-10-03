@@ -302,9 +302,14 @@ justifies the extra call, or the reason it isn't justified here>.
   }
   ```
 
-- **The stage-end driver (§17):** <`puppeteer-core` against the Chrome already on the machine —
-  one `npm install`, no browser download — with a script per check under `tools/browser/`; or
-  yours>. Its install is a hand step, recorded in the stage document that first needs it.
+- **The stage-end driver (§17):** <Etaoin under Babashka, driving a headless Firefox through
+  geckodriver - what the template ships under `tools/browser/` with `bb browser-check`: the
+  driver, screenshots with measurements, an axe-core scan, and the serve-check-stop skeleton in
+  `tools/server.clj`; the project's interaction checks are scripts of its own beside them; or
+  yours>. geckodriver and Firefox are hand steps, recorded in the stage document that first
+  needs them; `bb doctor` has the row, and `bb health` starts a Firefox once because
+  `geckodriver --version` passes on a machine where none can start (the permission on macOS is
+  the terminal application's; a shell under a daemon is refused silently).
 
 ## 15. Pins and verified notes
 
@@ -343,13 +348,23 @@ justifies the extra call, or the reason it isn't justified here>.
 - **Screenshots** at the widths that matter (`<1440 and 390>`), from a real viewport: a
   headless browser driven by a script, not a window whose floor is wider than the narrow width.
   Kept under `<screenshots/stage-N/>` with a measurement file (`scrollWidth` against
-  `innerWidth` at each width says whether anything overflows).
+  `innerWidth` at each width says whether anything overflows). The template's
+  `bb browser-check --width 1440 --width 390 <paths>` does this; a WebDriver screenshot is of
+  the viewport, so the window is made as tall as the page first.
 - **An interaction check per contract-only behaviour**: `<the search swap: load /, type a query,
   submit, confirm the results region changed and the URL did not>`. Its script, its output and a
-  screenshot of the result, kept beside the screenshots.
-- **Serving for the check**: the template's `bb serve` starts a CSS watcher as a child; a script
-  that serves, checks and then kills the JVM leaves the watcher behind unless it kills the
-  process group. Do that until the template's serve stops cleanly.
+  screenshot of the result, kept beside the screenshots. A key action left by one check has been
+  seen to change the focus behaviour of the next, even after `release-actions`: run each
+  interaction check in a browser of its own.
+- **An accessibility scan** of the stage's pages, by rule (axe-core, which the template's
+  `accessibility.bb` fetches once and never commits), and a keyboard walk of what matters
+  <`the header, a menu, the search`> by hand or by script: the scan finds what a rule can find,
+  not what a person finds by using the page. Its report kept beside the screenshots.
+- **Serving for the check**: the template's `bb serve` runs the JVM as a grandchild, and a tree
+  kill has been seen to miss it - a server from one check answered the next. `tools/server.clj`'s
+  `with-server` serves, waits for `/health`, runs the checks, stops, and kills the JVM by its
+  command when the port stays held; stand a stage-end script on it rather than on `bb serve`
+  and a kill.
 
 ## 18. Readiness — the record
 
