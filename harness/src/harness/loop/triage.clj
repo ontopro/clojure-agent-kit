@@ -403,6 +403,11 @@
                                     :service-tier (some :service-tier (reverse steps))
                                     :tokens (when (seq steps) (reduce + 0 (keep :tokens steps)))
                                     :completions (count steps)
+                                    ;; THE IDS, as a dispatch keeps them: a triage call whose
+                                    ;; generation record lagged was recorded at cost nil with
+                                    ;; nothing to fetch by, and the first real project's spend
+                                    ;; sheet reconciled every triage call off the balance.
+                                    :generation-ids (vec (keep :generation-id steps))
                                     :retries (or retries 0)
                                     :cost-source (cond (empty? costs) nil
                                                        (some #(= :list-price (:cost-source %)) steps) :list-price

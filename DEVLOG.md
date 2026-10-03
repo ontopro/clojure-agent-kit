@@ -27,6 +27,16 @@ either; an entry's date is its reference.
 
 ## 2026-10-03
 
+### A triage call keeps its completion ids
+
+Row 86. The triage call is recorded as a dispatch is - `triage/measured` shapes its result so
+`report/dispatch-step` makes the step - but the meta it shaped carried no completion ids, the
+one thing the two late-cost fixes of 2026-10-02 fetch by. So when the generation record
+lagged, the triage step stayed at cost nil for good, and the first real project's spend sheet
+says of run after run that the triage call is not priced, the figure taken off the balance.
+`measured` keeps the ids; nothing else changes, since `record` and `bb reprice` already read
+them off the step. The triage test asserts the id is there.
+
 ### `teardown` refuses before the record, and finishes after it
 
 Row 85, two more things from the same trial's end. Row 78 said the branches are the evidence

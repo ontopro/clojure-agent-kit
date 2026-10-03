@@ -121,6 +121,8 @@
       (is (nat-int? (:ms r)))
       (is (= "m-served" (get-in r [:result :runner/meta :model])))
       (is (= 1 (get-in r [:result :runner/meta :completions])) "one completion")
+      (is (= 1 (count (get-in r [:result :runner/meta :generation-ids])))
+          "and its id, so a cost that lagged can be fetched at record or by bb reprice")
       (is (str/includes? (:answer r) "generator violates")))
     (testing "the prompt carries the contract, the gate output, and both files as written"
       (let [body (:body (first reqs))
