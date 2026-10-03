@@ -634,7 +634,7 @@
         (testing "and teardown removes them, their branches and state.edn"
           (let [{:keys [torn deleted]} (teardown-with ctx)]
             (is (= [:coder :tester] torn))
-            (is (= ["t-4-coder" "t-4-tester" "t-4-reviewer"] deleted))
+            (is (= ["t-coder" "t-tester" "t-reviewer"] deleted) "named by the run id \"t\", not the task's")
             (is (not (fs/exists? (fs/path (:run-dir ctx) "state.edn"))))
             (testing "so start is no longer refused"
               (is (nil? (:thrown (let [ctx2 (assoc ctx :state (atom nil))]
@@ -702,7 +702,7 @@
     (testing "recorded: the three branches go, and the run stays history"
       (let [{:keys [ctx]} (start-run spec dispatched)]
         (recorded! ctx)
-        (is (= ["t-4-coder" "t-4-tester" "t-4-reviewer"] (teardown-with ctx {})))
+        (is (= ["t-coder" "t-tester" "t-reviewer"] (teardown-with ctx {})))
         (is (fs/exists? (fs/path (:run-dir ctx) "state.edn")) "state.edn is not removed: this is not a reset")))
     (testing "recorded, --keep-branches: kept for a run somebody means to reopen"
       (let [{:keys [ctx]} (start-run spec dispatched)]

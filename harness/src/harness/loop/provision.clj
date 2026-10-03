@@ -60,15 +60,28 @@
                                                :continue true}
                                       "git" args)]
     (when-not (zero? exit)
-      (throw (ex-info "git failed during provisioning"
+      ;; GIT'S OWN WORDS IN THE MESSAGE, not only in the data: a run stopped at
+      ;; "git failed during provisioning" and the one line that said why - the
+      ;; branch already existed - was in `:out`, which the stop did not print.
+      (throw (ex-info (str "git " (str/join " " args) " failed during provisioning: "
+                           (str/trim (str out err)))
                       {:args (vec args) :dir dir :exit exit :out (str out err)})))
     (str/trim out)))
 
 (defn branch-name
-  "The branch a workspace gets. One per (task, role), so an escalated worktree
-  can be committed to and inspected without touching anyone else's."
-  [task-id role]
-  (str task-id "-" (name role)))
+  "The branch a workspace gets, `<run-id>-<role>`: one per (run, role), so an
+  escalated worktree can be committed to and inspected without touching anyone
+  else's - and so two runs of one task can exist at once.
+
+  THE RUN'S, NOT THE TASK'S. It was `<task-id>-<role>`, and the first real
+  project's second run of a task - a trial of another Tester on the same spec,
+  its own run id and profile - stopped at provisioning because the first run's
+  branch existed, and the failed run's teardown then named the first run's
+  branches as absent. A run id is unique by construction (one run directory
+  each); a task id is shared by every run of the task. Callers that have only a
+  task id (the tests, a session from before) pass that, and get what they had."
+  [run-id role]
+  (str run-id "-" (name role)))
 
 ;; ---------------------------------------------------------------------------
 ;; readiness
@@ -126,15 +139,18 @@
   "One workspace. Returns a harness.contract.shapes/Session.
 
   Required: `:repo/root`, `:worktrees/dir`, `:task/id`, `:task/role`.
-  Optional: `:base` (default HEAD), plus anything in `defaults`.
+  Optional: `:run/id` (what the branch and the worktree are named by; the task
+  id when absent), `:base` (default HEAD), plus anything in `defaults`.
 
   `:nrepl?` false gives a worktree with no REPL — what the gate workspace
   wants, and why `:nrepl/port` is optional on the schema."
   [{:keys [repo/root worktrees/dir task/id task/role base nrepl?] :as opts}]
   (let [{:keys [nrepl/cmd project/subdir] :as opts} (merge defaults opts)
         nrepl? (if (nil? nrepl?) true nrepl?)
-        git-root (str (fs/path dir (branch-name id role)))
-        _ (git! root "worktree" "add" "-b" (branch-name id role) git-root (or base "HEAD"))
+        task-id id
+        branch (branch-name (or (:run/id opts) task-id) role)
+        git-root (str (fs/path dir branch))
+        _ (git! root "worktree" "add" "-b" branch git-root (or base "HEAD"))
         project (if subdir (str (fs/path git-root subdir)) git-root)
         ;; THE nREPL'S OUTPUT IS KEPT, not discarded. It was `:out :discard`,
         ;; which is fine right up to the first nREPL that refuses to start: the
@@ -148,18 +164,18 @@
         ;; rollback; `teardown!` removes it on the way out of a run that worked.
         ;; It is also then invisible to the scope check, which reads the
         ;; worktree, so it needs no entry in `harness-artifacts`.
-        log (str (fs/path dir (str (branch-name id role) ".nrepl.log")))
+        log (str (fs/path dir (str branch ".nrepl.log")))
         fail! (fn [e]
                 ;; If the REPL cannot start, remove the worktree before
                 ;; rethrowing. A half-provisioned workspace is worse than none:
-                ;; the branch name is derived from the task, so the debris
-                ;; collides with the next attempt at the same task and the
+                ;; the branch name is derived from the run, so the debris
+                ;; collides with the next attempt at the same run and the
                 ;; second failure names the wrong cause. And the branch —
                 ;; teardown! deliberately keeps it, because escalated work must
                 ;; stay reachable, but a provision that failed produced nothing
                 ;; to preserve.
                 (git! root "worktree" "remove" "--force" git-root)
-                (git! root "branch" "-D" (branch-name id role))
+                (git! root "branch" "-D" branch)
                 (throw e))
         proc (when nrepl?
                (try (apply p/process {:dir project :out (fs/file log) :err (fs/file log)} cmd)
@@ -171,7 +187,10 @@
                       (fail! e))))]
     (cond-> {:worktree/path project
              :worktree/git-root git-root
-             :task/id id
+             ;; the branch by name, so a teardown or a merge reads it off the session
+             ;; rather than deriving it again from whichever id it has to hand
+             :worktree/branch branch
+             :task/id task-id
              :task/role role}
       nrepl? (assoc :nrepl/port port
                     ;; The pid, not the process object: a session is data, and

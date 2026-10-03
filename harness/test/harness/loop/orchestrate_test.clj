@@ -402,7 +402,7 @@
       (is (thrown-with-msg? Exception #"retry cap 3 reached"
                             (driver/retry! (driver/context rd) "coder" triage))))
     (testing "the worktrees are left in place for whoever picks it up"
-      (is (fs/exists? (fs/path rd "wt" "t-01-coder"))))
+      (is (fs/exists? (fs/path rd "wt" "a-test-coder"))))
     (teardown! rd)))
 
 (deftest a-dead-repl-escalates-without-dispatching-anything
@@ -772,7 +772,7 @@
       (is (= impl-src (slurp (str (fs/path repo impl-path)))))
       (is (= test-src (slurp (str (fs/path repo test-path)))))
       (let [log (str/split-lines (:out (git! repo "log" "--format=%s" "-3")))]
-        (is (= ["Merge branch 't-01-reviewer'" "t-01 — run a-test" "init"] log)))
+        (is (= ["Merge branch 'a-test-reviewer'" "t-01 — run a-test" "init"] log)))
       (is (= 2 (count (str/split (str/trim (:out (git! repo "log" "--format=%P" "-1"))) #" ")))
           "--no-ff: a real merge commit, two parents, even though main had not moved"))
     (testing "the worktrees are gone, and so are the branches: the run is recorded and the work is on main"
@@ -789,7 +789,7 @@
       (is (= [:stopped :merge-commit :merged :balance] (vec (take-last 4 (kinds rd)))) "record adds the balance last")
       (let [[c m] (take 2 (take-last 3 (events rd)))]
         (is (= "the slice is met and the review found nothing" (:decision c) (:decision m)))
-        (is (= "t-01-reviewer" (:branch c) (:branch m)))
+        (is (= "a-test-reviewer" (:branch c) (:branch m)))
         (is (= "main" (:into m)))
         (is (= [impl-path test-path] (:files c)) "what the commit held — the assembled files and nothing else")
         (is (= (:commit c) (:commit m)))
@@ -813,8 +813,8 @@
     (testing "nothing merged; branches and worktrees preserved for whoever decides"
       (is (not (fs/exists? (fs/path repo impl-path))))
       (is (= ["init"] (str/split-lines (:out (git! repo "log" "--format=%s")))))
-      (is (contains? (branches repo) "t-01-reviewer"))
-      (is (fs/exists? (fs/path rd "wt" "t-01-reviewer" impl-path)))
+      (is (contains? (branches repo) "a-test-reviewer"))
+      (is (fs/exists? (fs/path rd "wt" "a-test-reviewer" impl-path)))
       (is (= :stopped (last (kinds rd))) "a refusal leaves no event"))
     (testing "and the run is still awaiting: the same stop, tomorrow"
       (is (= :awaiting-merge (:status (drive! rd {})))))
@@ -825,10 +825,10 @@
   (let [repo (scratch-repo)
         rd (run-dir! repo)]
     (drive! rd {})
-    (spit (str (fs/path rd "wt" "t-01-reviewer" impl-path)) (str impl-src "(defn sneaked-in [] :unreviewed)\n"))
+    (spit (str (fs/path rd "wt" "a-test-reviewer" impl-path)) (str impl-src "(defn sneaked-in [] :unreviewed)\n"))
     (is (thrown-with-msg? Exception #"not what the Reviewer read" (merge! rd "looks good")))
     (is (not (fs/exists? (fs/path repo impl-path))))
-    (is (= ["init"] (str/split-lines (:out (git! (str (fs/path rd "wt" "t-01-reviewer")) "log" "--format=%s"))))
+    (is (= ["init"] (str/split-lines (:out (git! (str (fs/path rd "wt" "a-test-reviewer")) "log" "--format=%s"))))
         "and nothing was committed on the gate branch either")
     (teardown! rd)))
 
@@ -864,7 +864,7 @@
     (testing "the failure is an event with git's output, and everything is still there"
       (is (= [:stopped :merge-commit :merge-failed] (vec (take-last 3 (kinds rd)))))
       (is (str/includes? (:out (last (events rd))) "CONFLICT"))
-      (is (fs/exists? (fs/path rd "wt" "t-01-reviewer" impl-path))))
+      (is (fs/exists? (fs/path rd "wt" "a-test-reviewer" impl-path))))
     (testing "once main is out of the way the same command merges, and commits nothing twice"
       (git! repo "rm" "-q" impl-path)
       (git! repo "commit" "-q" "-m" "out of the way")
@@ -1040,7 +1040,7 @@
       (is (= {:role :tester :files [test-path]}
              (select-keys (first (filter #(= :synced-from-gate (:event/kind %)) (events rd))) [:role :files]))))
     (testing "and the Tester was never handed the implementation this way: what sits at the impl path in its worktree is still the stub"
-      (is (not= impl-src (slurp (str (fs/path rd "wt" "t-01-tester" impl-path))))))
+      (is (not= impl-src (slurp (str (fs/path rd "wt" "a-test-tester" impl-path))))))
     (teardown! rd)))
 
 (deftest a-retry-typed-before-any-check-does-not-overwrite-newer-work

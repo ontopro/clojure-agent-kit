@@ -1101,6 +1101,9 @@
     (dirty-tree! ctx)
     (let [o {:repo/root (:repo/root cfg) :worktrees/dir (:worktrees/dir cfg)
              :task/id (:task/id sp) :project/subdir (:project/subdir cfg)
+             ;; the branches and worktrees are named by the RUN, so two runs of one
+             ;; task - a trial of another model on the same spec - can exist at once
+             :run/id (:run/id cfg)
              :nrepl/cmd (:nrepl/cmd cfg)}
           _ (fs/create-dirs (:worktrees/dir cfg))
           ;; EACH SESSION IS SAVED THE MOMENT IT EXISTS. They were saved together
@@ -1487,10 +1490,14 @@
   ([ctx {:keys [keep-branches?]}]
    (let [state @(:state ctx)
          repo-root (:repo/root (:config state))
-         task-id (:task/id (:spec state))
+         ;; THE RUN'S BRANCHES: by the session's own name where a session exists, else
+         ;; by the run id - never the task's, which another run of the task shares
+         branch-of (fn [k role]
+                     (or (:worktree/branch (get (sessions ctx) k))
+                         (prov/branch-name (or (:run/id (:config state)) (:task/id (:spec state))) role)))
          delete-branches! (fn []
-                            (doseq [role [:coder :tester :reviewer]
-                                    :let [branch (prov/branch-name task-id role)]]
+                            (doseq [[k role] [[:coder :coder] [:tester :tester] [:gate :reviewer]]
+                                    :let [branch (branch-of k role)]]
                               (println "  branch" branch (if (delete-branch! repo-root branch) "deleted" "absent"))))]
      (doseq [k [:coder :tester :gate]
              :let [s (get (sessions ctx) k)]
@@ -1602,7 +1609,7 @@
           {:keys [exit out]} (git-in root "commit" "-q" "-m" msg)]
       (when-not (zero? exit)
         (throw (ex-info "the gate worktree could not be committed" {:run-loop/error :commit-failed :out out})))
-      {:branch (prov/branch-name (:task/id gate) (:task/role gate))
+      {:branch (or (:worktree/branch gate) (prov/branch-name (:task/id gate) (:task/role gate)))
        :commit (:out (git-in root "rev-parse" "HEAD"))
        :files (str/split-lines (:out (git-in root "diff" "--name-only" "HEAD~1" "HEAD")))
        :message msg

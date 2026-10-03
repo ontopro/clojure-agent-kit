@@ -93,6 +93,34 @@
         (is (shapes/valid-session? s))
         (prov/teardown! s root)))))
 
+(deftest two-runs-of-one-task-are-named-by-their-run-ids-and-coexist
+  ;; A trial of another Tester on the same spec: its own run id and profile, the
+  ;; same task id. Named by the task, the second run died at provisioning on the
+  ;; first run's branch, and the message did not say so.
+  (let [root (repo) wt (str (fs/create-temp-dir))
+        a (prov/provision! (assoc (provision-opts root wt :coder) :nrepl? false :run/id "t-01-run-a"))
+        b (prov/provision! (assoc (provision-opts root wt :coder) :nrepl? false :run/id "t-01-run-b"))]
+    (is (= "t-01-run-a-coder" (:worktree/branch a)))
+    (is (= "t-01-run-b-coder" (:worktree/branch b)))
+    (is (= "t-01" (:task/id a) (:task/id b)) "the task id is still the task's")
+    (is (shapes/valid-session? a))
+    (is (every? #(str/includes? (:out (git! root "branch" "--list")) %) ["t-01-run-a-coder" "t-01-run-b-coder"]))
+    (prov/teardown! a root)
+    (prov/teardown! b root))
+  (testing "with no run id the branch is the task's, as every session before was"
+    (let [root (repo) wt (str (fs/create-temp-dir))
+          s (prov/provision! (assoc (provision-opts root wt :coder) :nrepl? false))]
+      (is (= "t-01-coder" (:worktree/branch s)))
+      (prov/teardown! s root)))
+  (testing "a git failure says what git said"
+    (let [root (repo) wt (str (fs/create-temp-dir))
+          s (prov/provision! (assoc (provision-opts root wt :coder) :nrepl? false))
+          e (try (prov/provision! (assoc (provision-opts root wt :coder) :nrepl? false)) nil
+                 (catch clojure.lang.ExceptionInfo e e))]
+      (is (some? e))
+      (is (str/includes? (ex-message e) "already exists") "git's own words are in the message, not only in the data")
+      (prov/teardown! s root))))
+
 (deftest teardown-removes-the-worktree-and-keeps-the-branch
   (let [root (repo) wt (str (fs/create-temp-dir))
         s (prov/provision! (provision-opts root wt :coder))]

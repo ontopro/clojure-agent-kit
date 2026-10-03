@@ -27,6 +27,24 @@ either; an entry's date is its reference.
 
 ## 2026-10-03
 
+### A run's branches are named by the run, so two runs of one task can exist
+
+Row 83. The loop's identity is `loop.edn`'s `:run/id` - one run directory each, unique by
+construction - but the branches and worktrees a run provisions were named from the spec's
+`:task/id`, which every run of a task shares. The first real project ran a second Tester on the
+same spec as a trial, with its own run id and profile: the dispatched-roles bake-off that row
+46 has waited for, done by hand. The second run stopped at provisioning on the first run's
+branch, with git's one useful line left in the exception's data where the stop did not print
+it; then `teardown` of the failed run, deriving names from the task, reported the first run's
+branches absent while they stood. The project gave the trial its own task id and went on.
+
+`provision!` takes `:run/id` and names the branch and the worktree `<run-id>-<role>`; the
+session records its branch; `teardown` and `merge` read it from the session, or derive it from
+the run id when a session is gone; with no run id the task id names them, so the tests and any
+session from before are unchanged. A git failure's message now carries git's words. Tests: two
+runs of one task provisioned side by side, the task's name when no run id is given, and the
+message on a branch that exists.
+
 ### `bb reprice` fills a priced step's provider and tokens too
 
 Row 80's residue, and a sentence of this log's own that was wrong. The entry below said

@@ -51,6 +51,9 @@
   [:map
    [:worktree/path [:string {:min 1}]]
    [:worktree/git-root [:string {:min 1}]]
+   ;; The branch the worktree is on, `<run-id>-<role>`. Optional: a session
+   ;; from before the branch was named by the run has none, and derives it.
+   [:worktree/branch {:optional true} [:string {:min 1}]]
    [:task/id [:string {:min 1}]]
    [:task/role Role]
    [:nrepl/port {:optional true} [:int {:min 1024 :max 65535}]]
