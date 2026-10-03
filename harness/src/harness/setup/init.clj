@@ -173,6 +173,16 @@
   (str "# " project " - the plan\n\n"
        "The reasoning, the contracts and the money for `" project "`, in its own repository so that it can\n"
        "stay private while the application is public.\n\n"
+       ;; WHAT THE NAME LEAVES OUT. The first real project's person, meeting profile.edn
+       ;; beside the requirements, took it for an application setting and asked whether it
+       ;; belonged in the application's repository. It did not - it configures the build,
+       ;; the roles must not see it, a model change is not a commit in the application -
+       ;; but nothing said so where they were looking.
+       "THIS REPOSITORY HOLDS MORE THAN THE PLAN: it is the build's side of the project. Beside the\n"
+       "plan's documents are the build's settings - `rules.edn`, `profile.edn`, `loop.edn` - and its\n"
+       "records - `runs/`, `RUNS.md`, `reviews/`. They are here and not in the application because they\n"
+       "configure and record the BUILD, not the thing built: the dispatched roles never see them, and a\n"
+       "change of model or rule is a commit here, never in the application's history.\n\n"
        "- `docs/` - the KIT's plan template, as shipped. Fill them in the order `docs/README.md`\n"
        "  gives; angle brackets mark what to replace. The method they implement is `method.md` in the KIT\n"
        "  (`" kit "`). `reviews/`, beside it, is for a review's raw material - each reader's output, any\n"

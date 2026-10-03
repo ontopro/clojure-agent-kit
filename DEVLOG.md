@@ -27,6 +27,22 @@ either; an entry's date is its reference.
 
 ## 2026-10-03
 
+### The plan's README says the repository is the build's side
+
+Row 87, written, from a remark the first real project kept rather than a fault. The person,
+reading the plan repository, met `profile.edn` beside the requirements and asked whether it
+should not live in the application's repository - an application setting, by its look and its
+neighbours. It should not: it configures the build, the dispatched roles never see it, and a
+change of model is a commit in the plan and never in the application's history. The project's
+own word for the repository was "the build information", and the KIT's word, "the plan",
+names a third of what it holds.
+
+The README `bb init` writes into the plan now says so in its first lines: the settings and the
+records beside the plan, and why they are not in the application. The name itself is left: a
+default such as `<name>-build` would say it, `bb init --plan` already lets a project choose one,
+and changing the default touches every document that says "the plan" - a boundary's work, not
+a stage's. `init_test` asserts the sentence is written.
+
 ### A triage call keeps its completion ids
 
 Row 86. The triage call is recorded as a dispatch is - `triage/measured` shapes its result so

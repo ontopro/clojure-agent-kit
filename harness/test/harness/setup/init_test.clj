@@ -173,7 +173,9 @@
         (is (= (slurp (str (fs/path kit-dir "plan-template" "stages" "stage-N-template.md")))
                (slurp (str (fs/path plan "docs" "stages" "stage-N-template.md"))))
             "the template keeps its tree, so their relative links still resolve")
-        (is (fs/exists? (fs/path plan "docs" "README.md")) "the order of writing travels with the documents"))
+        (is (fs/exists? (fs/path plan "docs" "README.md")) "the order of writing travels with the documents")
+        (is (str/includes? (slurp (str (fs/path plan "README.md"))) "HOLDS MORE THAN THE PLAN")
+            "the plan's README says it is the build's side: settings and records, not only the plan"))
       (testing "the workspace itself is not a repository"
         (is (not (fs/exists? (fs/path ws ".git")))))
       (testing "the harness finds it from a run directory, with the KIT absolute"
