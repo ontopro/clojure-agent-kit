@@ -211,7 +211,13 @@
   (when pid
     (try (p/shell {:continue true :out :discard :err :discard} "kill" (str pid))
          (catch Exception _ nil)))
-  (git! repo-root "worktree" "remove" "--force" git-root)
+  ;; A WORKTREE ALREADY GONE IS TORN DOWN, not an error. A teardown run after the
+  ;; record, on worktrees an earlier teardown had removed, failed on "is not a
+  ;; working tree" and left the three branches standing; git is told to forget
+  ;; the stale entry instead, and the branches get their turn.
+  (if (fs/exists? git-root)
+    (git! repo-root "worktree" "remove" "--force" git-root)
+    (git! repo-root "worktree" "prune"))
   ;; The nREPL log sits BESIDE the worktree so that a failed launch keeps it. A
   ;; teardown is the run saying it is finished with this workspace, so the log
   ;; goes with it rather than accumulating one file per role per run.

@@ -27,6 +27,26 @@ either; an entry's date is its reference.
 
 ## 2026-10-03
 
+### `teardown` refuses before the record, and finishes after it
+
+Row 85, two more things from the same trial's end. Row 78 said the branches are the evidence
+until the record is taken, and the teardown of an unrecorded run kept them and said so. The
+premise was wrong: the roles' files are uncommitted in the worktrees, and `record` copies them
+from there while the worktrees exist. A teardown typed before a record that had refused (row
+84's drift) removed the worktrees, kept three branches that held nothing of the files, and the
+record that followed wrote an empty `final/`; the project rebuilt the files from the
+transcripts' write and edit calls. Then the teardown after that record failed on the worktrees
+already gone - `git worktree remove` on a path that is not there - and stopped before the
+branches, which were deleted by hand.
+
+`teardown` now refuses a dispatched, unrecorded run before it touches anything, and the message
+gives the order: `record`, then `teardown`. `--discard` is the way to drop a run nobody will
+record; it removes the worktrees and the branches and says what it loses. And a worktree
+already gone is torn down rather than an error: `git worktree prune` for the stale entry, then
+the branches. Row 78's rule stands with its premise corrected - the record is the evidence, and
+until it exists the worktrees are. Tests: the refusal with no worktree touched, the discard,
+and a second teardown on a worktree that is gone.
+
 ### A reset removes the event log with the state
 
 Row 84, found at the end of the same trial run. `teardown` of a run that dispatched nothing

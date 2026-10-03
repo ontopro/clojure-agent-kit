@@ -154,7 +154,9 @@
 (defn- kinds [run-dir] (mapv :event/kind (events run-dir)))
 
 (defn- teardown! [run-dir]
-  (with-out-str (driver/teardown! (driver/context run-dir))))
+  ;; The tests' runs stop for a person and are never recorded; `--discard` is the
+  ;; way to drop such a run, and a plain teardown refuses it (row 85).
+  (with-out-str (driver/teardown! (driver/context run-dir) {:discard? true})))
 
 ;; ---------------------------------------------------------------------------
 ;; the stops

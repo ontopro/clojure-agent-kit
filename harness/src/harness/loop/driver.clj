@@ -63,7 +63,8 @@
                                               --no-ff into the base checkout, then `record`
                                               and `teardown`; {:decision \"...\"} is required,
                                               and so is a run the loop stopped for the merge
-    teardown  <run-dir> [--keep-branches]     remove the worktrees, and a recorded run's branches
+    teardown  <run-dir> [--keep-branches]     remove the worktrees, and a recorded run's branches;
+              [--discard]                     refused on a dispatched run that is not recorded, unless --discard
 
   EVERY DECISION IN HERE COST A RUN TO LEARN, and each is written where it is
   made rather than listed here. The shape of them: one state file and one clock,
@@ -1487,9 +1488,22 @@
   `git worktree add -b` refused on the branches. So such a run also loses its task branches and state.edn, and `start` can
   run again."
   ([ctx] (teardown! ctx {}))
-  ([ctx {:keys [keep-branches?]}]
+  ([ctx {:keys [keep-branches? discard?]}]
    (let [state @(:state ctx)
          repo-root (:repo/root (:config state))
+         recorded? (fs/exists? (run-file ctx "run.edn"))
+         ;; REFUSED BEFORE ANYTHING IS REMOVED. The branches were called the evidence
+         ;; until the record is taken, and that was never true: the roles' files sit
+         ;; UNCOMMITTED in the worktrees, and `record` copies them from there. A
+         ;; teardown typed before a record that had refused removed the worktrees,
+         ;; said "branches kept", and the record then wrote an empty final/. The
+         ;; order is the design: record, then teardown. `--discard` is for a run
+         ;; nobody will record, and says what it loses.
+         _ (when (and (dispatched? state) (not recorded?) (not discard?))
+             (throw (ex-info (str "this run dispatched and is not recorded: the roles' files are in the worktrees, "
+                                  "uncommitted, and `record` copies them from there. `record` first, then `teardown`; "
+                                  "or `teardown --discard` to remove the worktrees and the branches and lose those files")
+                             {:run-loop/error :not-recorded :run-dir (:run-dir ctx)})))
          ;; THE RUN'S BRANCHES: by the session's own name where a session exists, else
          ;; by the run id - never the task's, which another run of the task shares
          branch-of (fn [k role]
@@ -1516,8 +1530,9 @@
            (reset! (:state ctx) nil)
            (println "  nothing was dispatched: state.edn and events.log removed, so `start` can run again"))
 
-       (not (fs/exists? (run-file ctx "run.edn")))
-       (println "  branches kept: this run is not recorded - `record` it, and `teardown` then deletes them")
+       (and (not recorded?) discard?)
+       (do (delete-branches!)
+           (println "  discarded: this run was not recorded; its worktrees and branches are gone, and the roles' files with them"))
 
        keep-branches?
        (println "  branches kept (--keep-branches)")
@@ -1678,7 +1693,7 @@
   "usage: bb run-loop spec-review <run-dir>                    the contract, read cold by the Reviewer's model — before start
        bb run-loop run <run-dir>                            the loop, to its next stop
        bb run-loop <start|check|record> <run-dir>
-       bb run-loop teardown <run-dir> [--keep-branches]        the worktrees, and a recorded run's branches
+       bb run-loop teardown <run-dir> [--keep-branches|--discard]  the worktrees, and a recorded run's branches; record first
        bb run-loop continue <run-dir> [<decision.edn>]
        bb run-loop merge <run-dir> <decision.edn>              {:decision \"why this merges\"}
        bb run-loop retry <run-dir> <role> <triage.edn> [--allow-leak]
@@ -1731,7 +1746,8 @@
         "continue" (do (need-state) (apply continue! ctx args))
         "record" (do (need-state) (record! ctx))
         "merge" (do (need-state) (apply merge! ctx args))
-        "teardown" (do (need-state) (teardown! ctx {:keep-branches? (boolean (some #{"--keep-branches"} args))}))
+        "teardown" (do (need-state) (teardown! ctx {:keep-branches? (boolean (some #{"--keep-branches"} args))
+                                                    :discard? (boolean (some #{"--discard"} args))}))
         (do (println usage) (System/exit 2))))
     (catch clojure.lang.ExceptionInfo e
       (println "run-loop:" (ex-message e))

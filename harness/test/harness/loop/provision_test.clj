@@ -127,7 +127,11 @@
     (prov/teardown! s root)
     (is (not (fs/exists? (:worktree/git-root s))))
     (testing "the branch survives — §07 leaves escalated work reachable"
-      (is (str/includes? (:out (git! root "branch" "--list")) "t-01-coder")))))
+      (is (str/includes? (:out (git! root "branch" "--list")) "t-01-coder")))
+    (testing "a second teardown, the worktree already gone, is not an error"
+      ;; One after the record, on worktrees an earlier teardown had removed, failed
+      ;; on "is not a working tree" and left the branches standing.
+      (is (true? (:torn-down? (prov/teardown! s root)))))))
 
 (deftest scope-violations-see-every-file-not-only-clojure-ones
   (let [root (repo) wt (str (fs/create-temp-dir))

@@ -668,16 +668,15 @@
         (is (re-find #"teardown" (ex-message thrown)) "and the message says how to recover")
         (is (= 3 (count (:deleted (teardown-with ctx)))))
         (is (not (fs/exists? (fs/path (:run-dir ctx) "state.edn"))))))
-    (testing "a run that dispatched keeps its branches and state"
+    (testing "a run that dispatched is not reset, and is not torn down unrecorded either (row 85)"
       (let [{:keys [ctx]} (start-run spec {#'harness.loop.driver/dispatch!
                                            (fn [ctx step _ _]
                                              ;; as the real dispatch! does, record it
                                              (swap! (:state ctx) update :events conj
                                                     {:event/kind :dispatch :event/step step})
-                                             {})})
-            {:keys [deleted]} (teardown-with ctx)]
+                                             {})})]
         (is (loop/dispatched? @(:state ctx)))
-        (is (= [] deleted))
+        (is (thrown-with-msg? Exception #"record" (teardown-with ctx)))
         (is (fs/exists? (fs/path (:run-dir ctx) "state.edn")))))))
 
 (deftest a-recorded-runs-branches-are-deleted-at-teardown-and-kept-on-request
@@ -690,17 +689,25 @@
                     (fn [ctx step _ _]
                       (swap! (:state ctx) update :events conj {:event/kind :dispatch :event/step step})
                       {})}
+        torn (atom [])
         teardown-with (fn [ctx opts]
                         (let [deleted (atom [])]
-                          (with-redefs-fn {#'harness.loop.provision/teardown! (fn [s _] (assoc s :torn-down? true))
+                          (with-redefs-fn {#'harness.loop.provision/teardown! (fn [s _] (swap! torn conj (:task/role s)) (assoc s :torn-down? true))
                                            #'harness.loop.driver/delete-branch! (fn [_ b] (swap! deleted conj b) true)}
                             #(loop/teardown! ctx opts))
                           @deleted))
         recorded! (fn [ctx] (spit (str (fs/path (:run-dir ctx) "run.edn")) "{}"))]
-    (testing "dispatched and not recorded: the branches stay, and the run is not reset"
+    (testing "dispatched and not recorded: refused before anything is removed - the roles' files are in the worktrees"
       (let [{:keys [ctx]} (start-run spec dispatched)]
-        (is (= [] (teardown-with ctx {})))
+        (reset! torn [])
+        (is (thrown-with-msg? Exception #"not recorded" (teardown-with ctx {})))
+        (is (= [] @torn) "no worktree was touched")
         (is (fs/exists? (fs/path (:run-dir ctx) "state.edn")))))
+    (testing "dispatched and not recorded, --discard: removed, branches and all, and said so"
+      (let [{:keys [ctx]} (start-run spec dispatched)]
+        (reset! torn [])
+        (is (= ["t-coder" "t-tester" "t-reviewer"] (teardown-with ctx {:discard? true})))
+        (is (seq @torn))))
     (testing "recorded: the three branches go, and the run stays history"
       (let [{:keys [ctx]} (start-run spec dispatched)]
         (recorded! ctx)
