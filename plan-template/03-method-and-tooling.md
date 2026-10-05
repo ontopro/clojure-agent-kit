@@ -109,7 +109,10 @@ produced, and leaves the worktrees in place for inspection. The spec review runs
 dispatch and stops for the Architect when it finds something (§13 caps how often).
 
 **Every stop has an owner, and the loop says which.** A stop whose answer is an amendment to the
-contract is the Architect's: the seat session amends or leaves it and carries on. Everything else
+contract is the Architect's: the seat session amends or leaves it and carries on. Before reading a
+rejection, run the gated code over the real input (`method.md` §07 step 5): free, and it says
+whether the finding is about the code or about an input the sources cannot produce - the second
+kind is answered with scope in `rules.edn`, never with a new rule in the contract. Everything else
 is the person's: the cap, a merge (the loop never merges; an approval stops it `:awaiting-merge`),
 a `human` or `tooling` route, a dead REPL, a provider refusing for credit.
 

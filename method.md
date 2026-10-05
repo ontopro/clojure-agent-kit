@@ -387,6 +387,8 @@ Write exit criteria as things a person can *check*, not qualities they can admir
 > **The stage's decision-log updates are recorded** — spike outcomes noted against the decisions they gate, provisional entries confirmed or reversed.
 >
 > **Every behaviour the tests verify only as an HTTP contract gets an interaction check** — in a real browser, at the stage's end, outside the loop. A test that calls a handler as a function of a request map proves the fragment comes back with the right header; it cannot prove the page swapped it in, or that the form submitted at all. One project accepted its search swap unverified for a whole build and verified it the next with a ten-line script driving headless Chrome: load the page, type, submit, screenshot the result. Not a gate and not a test in the suite — it starts a server and a browser, which the Testers' rule keeps out — but recorded beside the screenshots, with the driver named. The KIT ships the driver as a tool pack, `tools/browser/`, run from the application's folder whatever its framework: `bb --config <kit>/tools/browser/bb.edn check` serves the application by the command given, screenshots the pages named as tall as they are with their measurements, scans them with axe-core, and stops - Etaoin under Babashka, a headless Firefox through geckodriver, no Node; the project's interaction checks are its own scripts on the same driver. Three things a first project learnt about it are written where the scripts are (`tools/browser/README.md`), the first being that the permission to start Firefox on macOS belongs to the terminal application and `geckodriver --version` cannot tell - which is why `bb health` starts one. The plan template's `03-method-and-tooling.md` §17 says how.
+>
+> **The owner walks through the result, with the browser checks already run.** Not a review of the code and not a gate: the person the site is for, at every page the stage made, saying what is wrong. On the first real project that walk produced ten changes at stage 1's end that no target could have named - a hero at the wrong width, cards' lines too small, icons half the size they should be - seven of them presentation done by hand in an hour, and the stage was not over until they were. Write it as an exit criterion, after the checks and before the tag.
 
 ### Flow, not timeboxes
 
@@ -474,7 +476,7 @@ The same shapes and interfaces the Coder implements against are what the Tester 
 
 ### Writing property targets
 
-Ten rules, each paid for once by a round or a stop in the first two projects built on this kit:
+Twelve rules, each paid for once by a round or a stop in the projects built on this kit:
 
 1. **One promise per target.** A two-clause target is "accounted for" when one clause is tested.
 2. **State a target as something checkable** — an equality, a named error — not a description.
@@ -546,6 +548,14 @@ Ten rules, each paid for once by a round or a stop in the first two projects bui
     the views draw on — read by every role, so the Reviewer knows the classes are expected and not
     review material — or a packet instruction labelled as a working instruction, never as contract.
     The sentence, once written, was enough: the next stage's views were styled without a hand change.
+12. **A packet carries ten to twenty targets, and names the fixture each test needs.** The first
+    real project's first run carried fifty, with a promise to list every refusal and its exact
+    line; its Tester used every round it had, its spec reviews drew findings until each was
+    answered with a new rule, and it cost a third of the whole build and merged nothing. The same
+    work merged for a third of that as two packets. Past twenty, a packet is two. And the fixture a
+    test needs - the page, the tree, the request the function under test takes - is named in the
+    input target that needs it, as what the seam before the function would produce: a Tester given
+    a target with no fixture to test it against searches for one until its rounds run out (§10).
 
 And one rule that is not about writing but about reading, set by a person after every model in the
 loop got it wrong on the same sentence: **types are followed as the language defines them.** A type
@@ -744,7 +754,7 @@ flowchart LR
 2. **Gate 0** — a pre-gate, not a gate: whatever's purely mechanical and fully automatable (formatting-on-write, delimiter repair) runs here, before it can consume an agent's capped retry budget.
 3. **Gates** — ordered cheap to expensive, each short-circuiting on first failure (§09). A failing gate's log goes straight back to the owning agent; **no Reviewer involvement yet.** Don't pay a frontier model to look at code that doesn't compile.
 4. **Triage** — route a failure to the role that *owns* it: an implementation bug to the Coder, a design flaw to the Architect, a defective test to the Tester — not reflexively back to whoever wrote last. Default ownership of a failing test is the Coder (make it green); if the Coder judges the *test* mis-encodes the contract, that is a triage decision, not the Coder's to make alone. And what a retry *carries* is part of the routing: the Tester never receives the Reviewer's findings or anything that names the implementation — its independence is that it derives tests from the contract, and one quoted line undoes it. The seed's driver refuses such feedback unless the judgement to send it is recorded.
-5. **Review** — only on green gates, by the independent-family Reviewer, focused on what tools can't catch: design, idiom, logic, naming, edge cases. Edge cases it surfaces return to the Tester as new cases and to the Coder for the fix.
+5. **Review** — only on green gates, by the independent-family Reviewer, focused on what tools can't catch: design, idiom, logic, naming, edge cases. Edge cases it surfaces return to the Tester as new cases and to the Coder for the fix. **Before the Architect reads a rejection, run the gated code over the real input.** It costs nothing and it says which kind of rejection this is: one about the code, or one about an input the Reviewer invented and the project's sources cannot produce. The first real project did it as a habit and found the second kind each time it looked; the answer to that kind is scope, in the rule source, never a new rule in the contract (rule 10 above).
 
 **Exit:** formatted, lint-clean, independently-authored tests green, boundaries green, Reviewer approved.
 

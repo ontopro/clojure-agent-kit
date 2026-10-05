@@ -87,6 +87,9 @@ N. **Containerize / CI** — <woven in here, not held for an infrastructure phas
 - <a concrete data behaviour, e.g. load v2, time-travel returns v1, diff lists changes>
 - Boundary gate passes; each protocol has one implementation **and a documented fallback**
 - Runs locally with one command
+- The stage-end checks run (`../03-method-and-tooling.md` §17), and then **the owner's walk
+  through every page the stage made**, with what they asked for done or written down - a
+  first project's walk produced ten changes no target could have named
 - **Decision-log updates recorded:** spike outcomes noted against the decisions they gate;
   provisional entries confirmed or reversed
 

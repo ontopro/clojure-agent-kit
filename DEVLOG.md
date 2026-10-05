@@ -27,6 +27,28 @@ either; an entry's date is its reference.
 
 ## 2026-10-05
 
+### What the first real project's close taught the method
+
+Four of the lessons the project wrote down at its close are the method's, and two of them
+confirm what the register already watched. In the KIT's words:
+
+- **A packet carries ten to twenty targets**, and the fixture a test needs is named in the
+  input target that needs it - §06's twelfth rule. The project's first run carried fifty, cost
+  a third of the whole build and merged nothing; the same work merged for a third of that once
+  it was two packets. The Blueprint review reads §06, so it reads this.
+- **The terms a Tester otherwise learns one try at a time** are in the `:data-conventions`
+  placeholder's own prompt now: that to refuse is to throw, that a shape var is data and not a
+  function to call, what a fixture is, and that a test file given to it exists to be edited.
+  The placeholder asked for the first in general words; a project filled it late, a try at a
+  time. The mirrors are re-rendered; a project pulls and runs `bb rules-sync`.
+- **Before the Architect reads a rejection, run the gated code over the real input** - §07
+  step 5 and the plan template's §5. Free, and it says whether the finding is about the code or
+  about an input the sources cannot produce; the second kind is answered with scope, never a
+  rule in the contract. Rows 34 and 36 record that this held on the project from its second task
+  on, and that the two-reviews brake was judged right at the close.
+- **The owner walks through every page the stage made, after the checks and before the tag** -
+  §04's exit criteria and the stage template's §11. Ten changes no target could have named.
+
 ### A role whose target already exists is told to read it once and edit it
 
 Row 89, the first of the lessons the first real project wrote down at its close. Its Tester,
