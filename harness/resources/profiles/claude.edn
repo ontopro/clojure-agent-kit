@@ -71,22 +71,31 @@
 ;;   dispatch for the last completion's record (row 25).
 ;;
 ;; THE ROUNDS A DISPATCH MAY TAKE are this project's to set, per role, as
-;; `:max-rounds n` in a role block below (none is set here: the harness's
-;; default applies, 24). A round is one completion answering the last tool
-;; result; the Tester, writing a test per target against a stub it cannot
-;; run, takes more than the Coder. The first real project's Tester ended on
-;; the default three times on a contract of fifty targets. The report's
-;; "Dispatch rounds" line says how close each dispatch came.
+;; `:max-rounds n` in a role block below. A round is one completion answering
+;; the last tool result; the Tester, writing a test per target against a stub
+;; it cannot run, takes more than the Coder. The Tester's is set here, 40, as
+;; the first real project set it on 2026-10-02 after its Tester ended on the
+;; harness's default of 24 three times on a contract of fifty targets; with
+;; packets of ten to twenty targets after, no Tester reached 40 and the Coder
+;; never passed 16 of its 24. The number is still a project's to measure: the
+;; report's "Dispatch rounds" line says how close each dispatch came.
 
 {:seat :claude
 
  :roles
- {;; CODER — Claude Fable 5.1 at low effort, over OpenRouter pinned to
-  ;; Anthropic's own serving. Effort dated 2026-09-14, the user's setting after
-  ;; a day on both low and medium; the route dated 2026-09-18 (header).
+ {;; CODER — Claude Sonnet 5.5 at medium effort, over OpenRouter pinned to
+  ;; Anthropic's own serving. A dated selection of 2026-10-02, the person's
+  ;; decision on the first real project after its first task: with Fable 5.1
+  ;; at low (the selection until then, dated 2026-09-14) the Coder was most of
+  ;; a run's cost, and Sonnet lists at a fraction of the price (`bb models`).
+  ;; On every task after - packets of ten to twenty targets, the contract
+  ;; lesson of method §06 written - Sonnet was right in its first round. Read
+  ;; that with its condition: a cheap Coder is right first time on a contract
+  ;; of that size; the fifty-target packet before it defeated the dearer model
+  ;; too. The route is dated 2026-09-18 (header).
   ;;
-  ;; THE MODEL NAME IS OPENROUTER'S SLUG, `anthropic/claude-fable-5.1` with a
-  ;; dot — not the API's `claude-fable-5-1`. The generation record resolves it
+  ;; THE MODEL NAME IS OPENROUTER'S SLUG, `anthropic/claude-sonnet-5.5` with a
+  ;; dot — not the API's `claude-sonnet-5-5`. The generation record resolves it
   ;; to the model that answered, and the report shows that one.
   ;;
   ;; PINNED TO "anthropic", NOT "google-vertex". Both serve this model. Pinned
@@ -110,11 +119,11 @@
   ;; the adapter's default of 4096 would cut a turn off mid-thought — 16000,
   ;; the non-streaming ceiling the API guidance gives.
   :coder {:family :anthropic
-          :model "anthropic/claude-fable-5.1"
+          :model "anthropic/claude-sonnet-5.5"
           :shape :openai
           :endpoint "https://openrouter.ai/api/v1"
           :key-env "OPENROUTER_API_KEY"
-          :params {:reasoning_effort "low"
+          :params {:reasoning_effort "medium"
                    :max_tokens 16000
                    :provider {:only ["anthropic"] :allow_fallbacks false}
                    :cache_control {:type "ephemeral"}}}
@@ -136,6 +145,8 @@
   ;; across three attempts of a single run, and "the model failed" was never a
   ;; safe reading after that.
   :tester {:family :google
+           ;; the rounds limit: the header says where 40 comes from
+           :max-rounds 40
            :model "google/gemini-3.8-flash"
            :shape :openai
            :endpoint "https://openrouter.ai/api/v1"
@@ -230,9 +241,10 @@
                                 :max_tokens 16000
                                 :provider {:only ["anthropic"] :allow_fallbacks false}}}
 
-  ;; ORCHESTRATOR — Claude Fable 5.1 at low effort, over OpenRouter pinned to
+  ;; ORCHESTRATOR — Claude Opus 5.5 at medium effort, over OpenRouter pinned to
   ;; Anthropic's own serving, as the Coder is and for the header's reasons.
-  ;; Dated selection 2026-09-16; the route 2026-09-18. TRIAGE ONLY: one
+  ;; Dated selection 2026-10-02 (below); Fable 5.1 at low from 2026-09-16 until
+  ;; then; the route 2026-09-18. TRIAGE ONLY: one
   ;; completion with no tools, on a red gate or a note, answering who owns it —
   ;; coder, tester, architect or human — with a reason and guidance for the
   ;; retried role. Dispatch itself is software (harness.loop.orchestrate); this
@@ -257,18 +269,33 @@
   ;; roles; Vertex would do here (caching is irrelevant to it, and the routes
   ;; it gave were the same) if latency ever matters.
   ;;
-  ;; LOW, MEASURED — high until 2026-09-18, "because this is judgement work".
+  ;; LOW WAS MEASURED, ON FABLE — high until 2026-09-18, "because this is judgement work".
   ;; The judgement did not differ: the first adopter's triage prompts, re-asked
   ;; at low, blind, gave the same route on all but one uncontested call, the
   ;; same split on the contested one, and on the one disagreement the better
   ;; route under the rule that an ambiguous contract is the Architect's. The
   ;; saving is small: triage's cost is its prompt, and effort changes only what
   ;; the model writes, which here is one JSON block. :max_tokens as the Coder's.
+  ;;
+  ;; OPUS 5.5 AT MEDIUM, NOT THE CODER'S MODEL — a dated selection of 2026-10-02,
+  ;; the person's decision on the first real project for its second stage.
+  ;; Sixteen triage calls on Fable at low had routed fifteen right and one
+  ;; wrong, so the judgement was not the reason; two things were. Price: Opus
+  ;; lists at well under half of Fable, and triage pays for its prompt. And a
+  ;; bias worth avoiding: triage judges the Coder's code against the Tester's
+  ;; test, and a triage by the Coder's own MODEL - Sonnet was the Coder, and was
+  ;; set aside for that - is the one form of kinship this role should not have;
+  ;; the family rule (§05) is for verifiers and says nothing here, so this is
+  ;; convention, like the Coder's family following the seat. Opus writes no
+  ;; code in this profile. The Blueprint reviewer is Opus too, reading the
+  ;; Architect's prose: a kinship of family and not of model. The project
+  ;; watched each route against what the fix turned out to be; `NOTES.md`
+  ;; row 2 is where the KIT keeps that watch.
   :orchestrator {:family :anthropic
-                 :model "anthropic/claude-fable-5.1"
+                 :model "anthropic/claude-opus-5.5"
                  :shape :openai
                  :endpoint "https://openrouter.ai/api/v1"
                  :key-env "OPENROUTER_API_KEY"
-                 :params {:reasoning_effort "low"
+                 :params {:reasoning_effort "medium"
                           :max_tokens 16000
                           :provider {:only ["anthropic"] :allow_fallbacks false}}}}}

@@ -27,6 +27,32 @@ either; an entry's date is its reference.
 
 ## 2026-10-05
 
+### The shipped profiles move with the first real project's decisions
+
+The selections in the shipped profiles are dated, and until now dated from the KIT's own
+development, whose records are not in this repository. The first real project made three
+decisions with evidence it wrote down, and the `claude` example follows them. The Coder is
+Sonnet 5.5 at medium: with Fable at low it was most of a run's cost, Sonnet lists at a fraction
+of the price, and on every packet of ten to twenty targets after the first task it was right in
+its first round - the comment says that condition, because the fifty-target packet before it
+defeated the dearer model too. The orchestrator is Opus 5.5 at medium: sixteen routes on Fable
+had fifteen right, so judgement was not the reason; price was, and a bias - triage judging the
+Coder's code against the Tester's test should not be the Coder's own model, which Sonnet now
+was. The family rule is for verifiers and says nothing here; the comment calls it the
+convention it is, and row 2 records how the watch was answered. The Tester carries
+`:max-rounds 40`, the project's number, with where it came from and that no Tester reached it
+on the smaller packets; row 82's "the number" is answered as far as one project can.
+
+The `agy-ide` example, which no build has used, changes by analogy and says so: its Reviewer
+and spec reviewer are Opus 5.5 at high, direct to Anthropic on the `:anthropic` shape - they
+are the KIT's only worked example of that shape and stay direct for it - with the pricing block
+at Opus's rates as `bb models` listed them today and Anthropic's cache multipliers, dated. The
+reasons are the Reviewer's price being the seat's biggest lever and Opus being the Blueprint
+reviewer both examples already trust; what was measured before was Fable's effort, which does
+not carry to another model, and the comments say so. Its orchestrator stays the Coder's model,
+with a comment naming that as the bias the other seat moved away from and why it is left: a
+model chosen for an unused seat would be a guess dressed as a selection.
+
 ### What the first real project's close taught the method
 
 Four of the lessons the project wrote down at its close are the method's, and two of them

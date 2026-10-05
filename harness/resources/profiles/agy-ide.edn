@@ -74,70 +74,75 @@
            :params {:reasoning_effort "medium"
                     :provider {:only ["openai"] :allow_fallbacks false}}}
 
-  ;; REVIEWER — Claude Fable 5.1 at high effort, direct to Anthropic, which is
-  ;; the :anthropic tool-call shape. Dated selection 2026-09-14; started at low,
-  ;; high from 2026-09-16, MEDIUM from 2026-09-18 by the user's decision. No :provider pin: that endpoint
-  ;; does no routing, so there is nothing to pin. No fallback model answers a
-  ;; refusal, and the cost is computed from :pricing because the endpoint
-  ;; reports none.
+  ;; REVIEWER — Claude Opus 5.5 at high effort, direct to Anthropic, which is
+  ;; the :anthropic tool-call shape: this role and the spec reviewer are the
+  ;; KIT's only worked example of that shape, and they stay direct for that
+  ;; reason. No :provider pin: that endpoint does no routing, so there is
+  ;; nothing to pin. No fallback model answers a refusal, and the cost is
+  ;; computed from :pricing because the endpoint reports none.
   ;;
-  ;; WHY MEDIUM, NOT HIGH. Low is positioned for simple, fast, subagent-style
-  ;; work, and a review is not that: every gate has already passed when the
-  ;; Reviewer is dispatched, so what is left is design, logic, edge cases and
-  ;; silent behaviour changes. But high is overkill for it, in the user's
-  ;; judgement (2026-09-18): the one measurement of this model on an open
-  ;; reading task — the spec review, high against low on the same specs — found
-  ;; high spending twice the money to find nothing more. Medium is the middle
-  ;; this profile has not tried; the first agy-ide run tests it.
+  ;; A DATED SELECTION OF 2026-10-05, BY ANALOGY, NOT MEASURED HERE. It was
+  ;; Fable 5.1 (low, then high, then medium from 2026-09-18 by the person's
+  ;; judgement). Two things moved it: Opus lists at well under half of Fable's
+  ;; price (`bb models`), and the first real project found that review, not
+  ;; code, is where a task's money goes - so the reader's price is the seat's
+  ;; biggest lever; and Opus is the Blueprint reviewer in both shipped
+  ;; profiles, where on that project it read a stage's Blueprint whole and
+  ;; drew findings the Architect acted on. A Reviewer reads a diff against a
+  ;; contract, the same kind of work. High, as claude.edn's reviewers run.
+  ;; What is not measured is this seat as a whole: no run has used it, and no
+  ;; Anthropic model has been dispatched as a Reviewer at all - the bake-off
+  ;; that would test one could not, because every case's code was written by
+  ;; an Anthropic Coder and §05 wants the verifier clear of the author's
+  ;; family. The first agy-ide run tests it; `bb bake-off` is how to choose
+  ;; from a measurement instead.
   ;;
-  ;; :max_tokens ROSE WITH IT, 16,000 to 32,000, because thinking counts against
-  ;; that cap on this shape. A Reviewer's findings are short, so the risk is not
-  ;; a long answer but a budget spent thinking with nothing left to say it with
-  ;; — which this kit has seen once, on a flash tier at high as Reviewer (see
-  ;; claude.edn).
-  ;;
-  ;; NEITHER SETTING IS MEASURED HERE. No run has used this seat, and no
-  ;; Anthropic model has been dispatched as a Reviewer at all: the bake-off that
-  ;; would have tested one could not, because every case's code was written by
-  ;; an Anthropic Coder and §05 wants the verifier clear of the author's family.
-  ;; This is reasoning from the tier guidance, and the first agy-ide run is what
-  ;; would test it.
+  ;; :max_tokens 32,000, because thinking counts against that cap on this
+  ;; shape. A Reviewer's findings are short, so the risk is not a long answer
+  ;; but a budget spent thinking with nothing left to say it with — which this
+  ;; kit has seen once, on a flash tier at high as Reviewer (see claude.edn).
   :reviewer {:family :anthropic
-             :model "claude-fable-5-1"
+             :model "claude-opus-5-5"
              :shape :anthropic
              :endpoint "https://api.anthropic.com"
              :key-env "ANTHROPIC_API_KEY"
-             :params {:output_config {:effort "medium"}
+             :params {:output_config {:effort "high"}
                       :max_tokens 32000}
              ;; USD per million tokens: base input, output, 5-minute and 1-hour
-             ;; cache writes, cache reads (0.025x on Fable 5.1; 0.1x elsewhere).
-             :pricing {:per-mtok {:in 10 :out 50
-                                  :cache-write-5m 12.5 :cache-write-1h 20
-                                  :cache-read 0.25}
+             ;; cache writes, cache reads. Input and output as `bb models` listed
+             ;; them on 2026-10-05; the cache rates by Anthropic's multipliers
+             ;; (1.25x and 2x the input for writes, 0.1x for reads).
+             :pricing {:per-mtok {:in 4 :out 20
+                                  :cache-write-5m 5 :cache-write-1h 8
+                                  :cache-read 0.4}
                        :source "https://platform.claude.com/docs/en/about-claude/pricing"
-                       :as-of "2026-09-14"}}
+                       :as-of "2026-10-05"}}
 
   ;; SPEC REVIEWER — the Reviewer's family, for the Reviewer's reason: not the
   ;; seat's family (Google here), and the seat is where the Architect writes
-  ;; the spec this role reads cold before `start`. Dated selection 2026-09-18.
+  ;; the spec this role reads cold before `start`. The Reviewer's model too,
+  ;; Opus 5.5 at high, the same dated selection of 2026-10-05 by analogy; it
+  ;; was Fable 5.1 at low (2026-09-18).
   ;;
-  ;; LOW EFFORT, MEASURED. This model reviewed the same specs at both efforts on
-  ;; the claude seat: high cost $0.26 a call and hit its budget cap after twenty
-  ;; calls; low found the same four gaps on the spec compared for $0.14. An open
-  ;; "find everything" question at high effort spends the budget thinking and
-  ;; finds nothing more. What is not measured is this seat as a whole.
+  ;; WHAT WAS MEASURED WAS FABLE'S EFFORT, NOT THIS. Fable reviewed the same
+  ;; specs at both efforts on the claude seat: high cost nearly twice low per
+  ;; call and hit its budget cap after twenty calls; low found the same four
+  ;; gaps. That measurement is Fable's and does not carry to another model;
+  ;; claude.edn's spec reviewer runs at high, and so does this one until the
+  ;; first agy-ide run says otherwise. What is not measured is this seat as a
+  ;; whole.
   :spec-reviewer {:family :anthropic
-                  :model "claude-fable-5-1"
+                  :model "claude-opus-5-5"
                   :shape :anthropic
                   :endpoint "https://api.anthropic.com"
                   :key-env "ANTHROPIC_API_KEY"
-                  :params {:output_config {:effort "low"}
+                  :params {:output_config {:effort "high"}
                            :max_tokens 16000}
-                  :pricing {:per-mtok {:in 10 :out 50
-                                       :cache-write-5m 12.5 :cache-write-1h 20
-                                       :cache-read 0.25}
+                  :pricing {:per-mtok {:in 4 :out 20
+                                       :cache-write-5m 5 :cache-write-1h 8
+                                       :cache-read 0.4}
                             :source "https://platform.claude.com/docs/en/about-claude/pricing"
-                            :as-of "2026-09-14"}}
+                            :as-of "2026-10-05"}}
 
   ;; BLUEPRINT REVIEWER — Claude Opus 5.5 at high effort, over OpenRouter
   ;; pinned to Anthropic's own serving: the same block as claude.edn's, for the
@@ -171,6 +176,14 @@
   ;; 24-iteration Reviewer dispatch, which this is not. If the first agy-ide
   ;; run shows an empty verdict, the fallback routes mechanically and the
   ;; record says so; drop to medium then.
+  ;;
+  ;; IT IS THE CODER'S MODEL, and claude.edn moved away from that on
+  ;; 2026-10-02: triage judges the Coder's code against the Tester's test, and
+  ;; the Coder's own model in that seat is the one kinship the role should
+  ;; not have (the family is convention; the model is the bias). Left as it is
+  ;; here, said plainly, because no run has used this seat and a model chosen
+  ;; for it unmeasured would be a guess dressed as a selection. The first
+  ;; agy-ide run decides it, the way the first real project decided the other.
   :orchestrator {:family :google
                  :model "google/gemini-3.8-flash"
                  :shape :openai
