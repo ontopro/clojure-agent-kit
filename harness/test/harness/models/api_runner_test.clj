@@ -264,6 +264,29 @@
   (let [out (runner/packet-prompt (assoc (packet ".") :task/role :coder))]
     (is (not (str/includes? out "ATTEMPT")))))
 
+(deftest a-role-whose-target-already-exists-is-told-to-read-it-once-and-edit-it
+  ;; A Tester given a test file to extend took every round and wrote nothing, six
+  ;; times on one build, reading the file in slices and reasoning; the retry that said
+  ;; "edit first, at most a few checks" wrote in a third of the rounds.
+  (let [p (assoc (packet ".") :task/role :tester :files/target ["test/app/service_test.clj"])]
+    (is (not (str/includes? (runner/packet-prompt p) "ALREADY EXISTS")) "a target not yet there: nothing said")
+    (let [out (runner/packet-prompt p {:existing-targets ["test/app/service_test.clj"]})]
+      (is (str/includes? out "YOUR TARGET ALREADY EXISTS: test/app/service_test.clj"))
+      (is (str/includes? out "read_file it ONCE"))
+      (is (str/includes? out "edit_file what the packet asks for into it"))
+      (is (str/includes? out "do not read it in slices through the REPL"))
+      (is (< (str/index-of out "ALREADY EXISTS") (str/index-of out "Your task packet")) "before the packet, where it is read")))
+  (testing "the runner finds the existing targets in the worktree itself"
+    (let [dir (git-repo)
+          _ (do (fs/create-dirs (fs/path dir "src" "app"))
+                (spit (str (fs/path dir "src" "app" "service.clj")) "(ns app.service)\n"))
+          seen (stub [(text "done")]
+                     #(let [seen (atom [])]
+                        (with-redefs [runner/packet-prompt (fn [pkt opts] (swap! seen conj opts) (str pkt))]
+                          (runner/run-agent (runner/api-runner (profile %)) :coder (packet dir)))
+                        @seen))]
+      (is (= [{:existing-targets ["src/app/service.clj"]}] seen)))))
+
 (deftest a-writing-role-is-told-to-edit-a-written-file-not-resend-it
   ;; The tool's description alone did not stop whole-file rewrites over one
   ;; lint warning; the sentence sits beside the deliverable that names write_file.

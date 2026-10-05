@@ -261,38 +261,56 @@
 
   The packet VERBATIM — §06 makes it the context-passing contract, and
   paraphrasing it here would create a second, undeclared one that drifts from
-  the schema — preceded by orientation and followed by the deliverable."
-  [packet]
-  (let [role (:task/role packet)
-        ;; FIRST, not last. A retry reason buried under the packet is a retry
-        ;; reason that competes with the packet for attention, and the whole
-        ;; point of :task/feedback is that this attempt differs from the last.
-        retry (when-let [fb (seq (:task/feedback packet))]
-                (str "THIS IS ATTEMPT " (:task/attempt packet)
-                     ". The previous attempt did not finish the task. Address"
-                     " each of these, then do the work again:\n\n"
-                     (str/join "\n\n"
-                               (for [{:keys [feedback/from feedback/text]} fb]
-                                 (str "— from the " (name from) ":\n" text)))
-                     "\n\n"))]
-    (str "You are the " (name role) " on task "
-         (:task/id packet) " — " (:task/title packet) ".\n\n"
-         retry
-         "Your workspace is " (:repl/worktree packet)
-         " and every path below is relative to it.\n\n"
-         (get deliverables role) "\n\n"
+  the schema — preceded by orientation and followed by the deliverable.
+
+  `:existing-targets` are the packet's target files already in the worktree
+  at dispatch. A ROLE WHOSE TARGET EXISTS IS TOLD SO, AND TOLD TO EDIT. The
+  deliverables say *write the file, call write_file early* - the words for a
+  file that is not there. Given a test file to extend, a Tester on the first
+  real project took every round and wrote nothing, six times - four of them
+  on a first try - reading the file in slices through the REPL and reasoning
+  about it; the retry that carried \"edit first, at most a few checks\" wrote
+  in a third of the rounds each time."
+  ([packet] (packet-prompt packet {}))
+  ([packet {:keys [existing-targets]}]
+   (let [role (:task/role packet)
+         ;; FIRST, not last. A retry reason buried under the packet is a retry
+         ;; reason that competes with the packet for attention, and the whole
+         ;; point of :task/feedback is that this attempt differs from the last.
+         retry (when-let [fb (seq (:task/feedback packet))]
+                 (str "THIS IS ATTEMPT " (:task/attempt packet)
+                      ". The previous attempt did not finish the task. Address"
+                      " each of these, then do the work again:\n\n"
+                      (str/join "\n\n"
+                                (for [{:keys [feedback/from feedback/text]} fb]
+                                  (str "— from the " (name from) ":\n" text)))
+                      "\n\n"))]
+     (str "You are the " (name role) " on task "
+          (:task/id packet) " — " (:task/title packet) ".\n\n"
+          retry
+          "Your workspace is " (:repl/worktree packet)
+          " and every path below is relative to it.\n\n"
+          (get deliverables role) "\n\n"
          ;; ONE SENTENCE ON HOW TO CHANGE A FILE, for the roles that write. With
          ;; write_file alone a fix to one lint warning was a whole rewrite, and
          ;; the tool's description alone did not stop it: a model reaches for
          ;; the tool the deliverable names.
-         (when (contains? (tools/for-role role) "edit_file")
-           (str "Once a file is written, change it with edit_file — the exact text "
-                "to replace and its replacement — rather than sending the whole file "
-                "again.\n\n"))
-         "Your task packet:\n\n"
-         (with-out-str (pp/pprint packet))
-         "\nWhen you are done, reply with a short summary: what you evaluated, "
-         "what came back, and what you wrote.")))
+          (when (contains? (tools/for-role role) "edit_file")
+            (str "Once a file is written, change it with edit_file — the exact text "
+                 "to replace and its replacement — rather than sending the whole file "
+                 "again.\n\n"))
+          (when (seq existing-targets)
+            (str "YOUR TARGET ALREADY EXISTS: " (str/join ", " existing-targets) ". It is not yours "
+                 "to write from nothing. read_file it ONCE, whole; then, within your first few "
+                 "rounds, edit_file what the packet asks for into it - add to it, change the "
+                 "part the packet names, keep the rest as it is. Do not rewrite it, and do not "
+                 "read it in slices through the REPL: a role that did spent every round it had "
+                 "and wrote nothing. At most a few REPL checks before your first edit; the gates "
+                 "run after you finish.\n\n"))
+          "Your task packet:\n\n"
+          (with-out-str (pp/pprint packet))
+          "\nWhen you are done, reply with a short summary: what you evaluated, "
+          "what came back, and what you wrote."))))
 
 (defn worktree-snapshot
   "Each file git reports changed or untracked in `dir`, mapped to its content —
@@ -424,14 +442,17 @@
     ;; four tool round-trips loses a run that has already been paid for.
     (try
       (if-let [cfg (get-in profile [:roles role])]
-        (let [before (when-not (= :reviewer role) (worktree-snapshot (:repl/worktree packet)))]
+        (let [before (when-not (= :reviewer role) (worktree-snapshot (:repl/worktree packet)))
+              ;; the targets already there, committed or not: a role that has one is told to edit it
+              existing (when-let [wt (:repl/worktree packet)]
+                         (vec (filter #(fs/exists? (fs/path wt %)) (:files/target packet))))]
           (outcome role packet
                    (agent/converse!
                     cfg
                     (rules/rule-block role (rules/prompt-substitutions
                                             {:repl-port (:repl/port packet)
                                              :layer (some-> (:layer/name packet) name)}))
-                    (packet-prompt packet)
+                    (packet-prompt packet {:existing-targets existing})
                     {:dir (:repl/worktree packet)
                      :targets (vec (:files/target packet))
                      :port (:repl/port packet)}

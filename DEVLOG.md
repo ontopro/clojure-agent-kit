@@ -27,6 +27,26 @@ either; an entry's date is its reference.
 
 ## 2026-10-05
 
+### A role whose target already exists is told to read it once and edit it
+
+Row 89, the first of the lessons the first real project wrote down at its close. Its Tester,
+given a test file to extend, took every round and wrote nothing - six times, four of them on a
+first try - and ended each time with a note saying it understood the task. The deliverable's
+words are for a file that is not there: *write the complete file, call write_file early*. A
+Tester with a file in front of it read it in slices through the REPL and reasoned; the retry
+whose feedback said "edit first, at most a few checks" wrote in a third of the rounds, every
+time. The project's lesson was that a retry on an existing file should carry those words; the
+KIT's is that a first try should.
+
+The runner knows which of a packet's targets exist in the worktree at dispatch - it reads
+the worktree anyway, for the files it will report written - and `packet-prompt` says so above
+the packet: the file by name, read it once and whole, `edit_file` what the packet asks for
+into it within the first few rounds, no rewrite, no slices, at most a few checks before the
+first edit. A retry builds its prompt the same way, so the words reach it too. Tests: the
+paragraph appears for an existing target and not for a new one, before the packet, and the
+runner finds the existing targets itself. Not measured against a model: these are the words
+that worked as retry feedback, moved to where the first try reads them.
+
 ### The KIT's fourth part: tool packs, and the browser checks are the first
 
 Row 88, from the first real project's remark rather than a fault: it built the stage-end
