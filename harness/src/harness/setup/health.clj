@@ -113,6 +113,7 @@
     {:subject :app
      :workspace workspace
      :dir app-dir
+     :kit kit
      :root app-name
      :gates (:gates defaults)
      :nrepl/cmd (:nrepl/cmd defaults)
@@ -433,10 +434,12 @@
                                     "/usr/bin/firefox" "/usr/local/bin/firefox" "/snap/bin/firefox"]))))))
 
 (defn check-browser
-  "The template's `bb browser-check --only screenshots /` in the application: it
-  serves, opens the page in a headless Firefox through geckodriver, screenshots
-  it as tall as it is, measures it, and stops the server. Ok when the task exits
-  0 and the screenshot exists.
+  "The KIT's browser pack, `bb --config <kit>/tools/browser/bb.edn check --only
+  screenshots /`, run in the application: it serves, opens the page in a
+  headless Firefox through geckodriver, screenshots it as tall as it is,
+  measures it, and stops the server. Ok when the task exits 0 and the
+  screenshot exists. The pack is the KIT's, not the template's, so this
+  certifies the KIT with the browser on this machine, whatever the application.
 
   A PROBE THAT PERFORMS. `geckodriver --version` passes on a machine where no
   browser can start: on macOS the permission to use Firefox belongs to the
@@ -452,20 +455,21 @@
   not run as one that passed. `run` is `(fn [dir env argv] -> {:exit :out})`,
   for a test."
   ([subject] (check-browser subject {}))
-  ([{:keys [dir] :as subject} {:keys [available? run]
-                               :or {available? browser-available?
-                                    run (fn [dir env argv]
-                                          (apply p/shell {:dir dir :out :string :err :string :continue true
-                                                          :extra-env env :timeout browser-timeout-ms}
-                                                 argv))}}]
+  ([{:keys [dir kit] :as subject} {:keys [available? run]
+                                   :or {available? browser-available?
+                                        run (fn [dir env argv]
+                                              (apply p/shell {:dir dir :out :string :err :string :continue true
+                                                              :extra-env env :timeout browser-timeout-ms}
+                                                     argv))}}]
    (if-not (available?)
      (assoc (result :browser subject true 0
-                    "skipped: no geckodriver on the PATH, or no Firefox - the template's browser checks need both (`bb doctor` has the row)")
+                    "skipped: no geckodriver on the PATH, or no Firefox - the KIT's browser pack needs both (`bb doctor` has the row)")
             :skipped? true)
      (let [out-dir (str (fs/create-temp-dir {:prefix "kit-health-browser"}))
            shot (fs/path out-dir "1440" "home.png")
            [{:keys [exit out err]} ms]
-           (timed #(try (run dir {"BROWSER_OUT" out-dir} ["bb" "browser-check" "--only" "screenshots" "/"])
+           (timed #(try (run dir {} ["bb" "--config" (str (fs/path kit "tools" "browser" "bb.edn"))
+                                     "check" "--only" "screenshots" "--out" out-dir "/"])
                         (catch Exception e {:exit -1 :out "" :err (ex-message e)})))
            ok? (and (= 0 exit) (fs/exists? shot) (pos? (fs/size shot)))
            tail (str/join "\n" (take-last 6 (str/split-lines (str out err))))]
@@ -475,7 +479,7 @@
                  (str "served, Firefox opened /, a screenshot as tall as the page and its measure; stopped"
                       (let [line (last (filter #(str/includes? % "scrollWidth") (str/split-lines (str out))))]
                         (when line (str "\n" (str/trim line)))))
-                 (str "bb browser-check exited " exit (when-not (fs/exists? shot) ", no screenshot written")
+                 (str "the browser pack's check exited " exit (when-not (fs/exists? shot) ", no screenshot written")
                       (when (str/includes? (str out err) "did not start")
                         "; Firefox did not start - on macOS, run once from a terminal and grant it the permission")
                       "\n" tail)))))))

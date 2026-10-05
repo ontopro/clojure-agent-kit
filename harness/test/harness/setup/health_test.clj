@@ -164,7 +164,7 @@
   ;; `geckodriver --version` passes on a machine where no browser can start; the
   ;; permission on macOS is the terminal application's, and a shell under a daemon
   ;; gets a silent refusal. Only a real start shows it, so health starts one.
-  (let [subject {:subject :app :dir (str (fs/create-temp-dir))}]
+  (let [subject {:subject :app :dir (str (fs/create-temp-dir)) :kit "/k"}]
     (testing "skipped, and said so, where geckodriver or Firefox is absent"
       (let [r (health/check-browser subject {:available? (constantly false)})]
         (is (true? (:ok? r)) "a run without a browser is still healthy")
@@ -173,15 +173,18 @@
     (testing "ok when the template's task exits 0 and wrote the screenshot"
       (let [seen (atom nil)
             r (health/check-browser subject {:available? (constantly true)
-                                             :run (fn [dir env argv]
+                                             :run (fn [dir _env argv]
                                                     (reset! seen {:dir dir :argv argv})
-                                                    (let [f (fs/path (get env "BROWSER_OUT") "1440" "home.png")]
+                                                    (let [out (second (drop-while #(not= "--out" %) argv))
+                                                          f (fs/path out "1440" "home.png")]
                                                       (fs/create-dirs (fs/parent f))
                                                       (spit (str f) "png")
                                                       {:exit 0 :out "/   1440x900 scrollWidth 1440\n1 page(s) at 1440 wide; 0 overflow\nstopped\n" :err ""}))})]
         (is (true? (:ok? r)))
         (is (not (:skipped? r)))
-        (is (= ["bb" "browser-check" "--only" "screenshots" "/"] (:argv @seen)) "the template's task, screenshots only, the home page")
+        (is (= ["bb" "--config" "/k/tools/browser/bb.edn" "check" "--only" "screenshots" "--out"] (vec (take 7 (:argv @seen))))
+            "the KIT's pack from the clone given, screenshots only")
+        (is (= "/" (last (:argv @seen))) "the home page")
         (is (= (:dir subject) (:dir @seen)))
         (is (str/includes? (:detail r) "scrollWidth 1440") "the measure line travels into the detail")))
     (testing "failed when the task exits non-zero, or exits 0 with no screenshot"

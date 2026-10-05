@@ -1,0 +1,24 @@
+;; THE BROWSER TOOL PACK - run from a project's own folder, against the project's own server,
+;; through this file:
+;;
+;;   bb --config <kit>/tools/browser/bb.edn check [--serve "<cmd>"] [--health <path>] [--base <url>]
+;;                                               [--out <dir>] [--running] [--only screenshots|accessibility]
+;;                                               [--width N]... [path ...]
+;;
+;; `<kit>` is the KIT's clone; a workspace's loop.edn has it as the boundary gate's path already.
+;; The pack carries its own dependency (Etaoin) so the harness's bb.edn stays free of it, and
+;; the project's bb.edn needs nothing. README.md beside this file says what each check does.
+{:deps {etaoin/etaoin {:mvn/version "1.1.43"}}
+ :tasks
+ {:init (do (require '[babashka.fs :as fs])
+            ;; where this pack is: the config bb was given, which is this file
+            (def pack-dir (str (fs/parent (fs/absolutize (System/getProperty "babashka.config"))))))
+
+  check {:doc "Serve (unless --running), screenshot and scan the paths named, stop. The whole stage-end browser check in one command"
+         :task (apply shell "bb" (str pack-dir "/check.bb") *command-line-args*)}
+
+  screenshots {:doc "Screenshots as tall as the page, with the scrollWidth measure, of the paths named; the application must be running"
+               :task (apply shell "bb" (str pack-dir "/screenshots.bb") *command-line-args*)}
+
+  accessibility {:doc "An axe-core scan of the paths named; the application must be running"
+                 :task (apply shell "bb" (str pack-dir "/accessibility.bb") *command-line-args*)}}}

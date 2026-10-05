@@ -23,13 +23,14 @@ something narrower each time:
 > with `git pull`, and nothing of the project is written into it. There is no library to
 > require; there is one commit of one template that a dated health check certifies with it.
 
-## Three parts
+## Four parts
 
 | | What it is |
 |---|---|
 | **[`method.md`](method.md)** | The method. Three phases — Plan, Foundation, Stages — run as one lean-agile discipline: lean decides *what* to build, agile decides *how*, and the flow is Kanban (pulled, WIP-limited, no timeboxes). Roles, the task-packet contract, the rule source, the decision log, the gate order, and a field guide of twelve lessons each bought with a real run. |
 | **[`plan-template/`](plan-template/)** | The plan template, half-written on purpose — the source a plan derives from, an overview with a ranked risk register, requirements with MVP/post-MVP scoping, architecture and method-and-tooling each in three parts (GIVEN by adopting the KIT, CHOSEN once in Foundation, THEIRS the domain), the decision log, and just-in-time stage docs. `bb init` copies it into the project's plan repository, beside the rules overlay, the profile and the run records that repository also holds, and `bb plan-check` reads the filled plan before Foundation. |
 | **[`harness/`](harness/)** | The code that runs, and its health check's first subject (`health/selfcheck/`, a deliberately trivial project with gates that execute and fixtures that make each fail): the doctor, `bb init` and the health check; the two readings of a filled plan (`bb plan-check`, the gate; `bb plan-review`, the model's pass); the packet assembler, the gate runner, gate 0 and the boundary gate, three-worktree provisioning, an API-backed runner, a per-run cost report that names the three commits it ran against, the rule source with a drift gate, a bake-off that compares candidates for a role with a judge reading blind, and the loop that drives them — stopping for a person at every branch it cannot decide. [Its own README](harness/README.md) is the inventory. |
+| **[`tools/`](tools/)** | Tool packs a project runs from the KIT's clone, each with its own `bb.edn` and dependencies, against the project's own server whatever its framework — the way a project already runs the boundary gate. The first is `tools/browser/`: the stage-end checks in a real browser (screenshots as tall as the page with the overflow measure, an axe-core scan, the serve-check-stop skeleton), Etaoin under Babashka driving a headless Firefox through geckodriver. [Its README](tools/README.md) is the list. |
 
 **Each of the repository's own documents has one job**, and none of them repeats another:
 
@@ -88,9 +89,9 @@ runs the gates until one fails, and checks the runner against the contract.
 Rendered by `bb health-sync` from `harness/health/records/`, one record per platform, each
 written by `bb health --record` after a run in which every check passed: the selfcheck project and an
 application generated from the pinned template, gates green, every gate failed on purpose, one
-task through the loop, the application served, a headless Firefox opening it through the template's
-`bb browser-check` where geckodriver and Firefox are installed (skipped, and the row says so, where
-they are not). `bb gates` fails if this block and the records
+task through the loop, the application served, a headless Firefox opening it through the KIT's browser
+pack (`tools/browser/`) where geckodriver and Firefox are installed (skipped, and the row says so,
+where they are not). `bb gates` fails if this block and the records
 disagree. The date is the claim; nothing here says it still holds today.
 
 <!-- health:begin -->

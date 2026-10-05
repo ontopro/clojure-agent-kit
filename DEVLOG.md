@@ -25,39 +25,52 @@ either; an entry's date is its reference.
 
 ---
 
-## 2026-10-03
+## 2026-10-05
 
-### The browser driver ships with the template, and `bb health` starts a Firefox
+### The KIT's fourth part: tool packs, and the browser checks are the first
 
 Row 88, from the first real project's remark rather than a fault: it built the stage-end
 browser driver the method asked for and shipped nothing of, and paid for three things the next
-project would have paid for again. The template's `kit-v2` carries the generic half: under
-`tools/browser/`, the driver (Etaoin under Babashka, a headless Firefox through geckodriver, no
-Node), screenshots as tall as the page with the `scrollWidth`/`innerWidth` measure, an
-axe-core scan fetched once and never committed, and `bb browser-check`, which serves, runs
-them on the paths named and stops; beside it `tools/server.clj`, the serve-check-stop a
-stage-end script stands on, whose stop goes through the process tree, then the JVM by its
-command, then whatever still listens on the port - `bb serve`'s JVM is a grandchild, and a
+project would have paid for again. Where to put the generic half took two tries.
+
+**The template, for a day.** On 2026-10-03 the scripts went into the template fork as a
+`kit-v2`: every generated application would carry `tools/browser/` and `bb browser-check`.
+Tried end to end on a workspace generated from the local template - served in six to eight
+seconds, one screenshot, two axe findings on the template's own home page, stopped, the port
+free - and committed and tagged there, unpushed. The person then asked the right question: a
+project that starts clean, brings its own application, or stands on another framework gets
+none of it. The loop's own rule is that it never looks inside a framework; the checks the
+method asks for at a stage's end are the same for every project; so they belong where every
+project reaches them. The fork went back to its pushed tip and the tag was dropped, before
+anything left the machine.
+
+**`tools/`, the fourth part.** Beside the method, the plan template and the harness: tool
+packs a project runs from the KIT's clone against its own server, each with its own `bb.edn`
+and its own dependencies - `bb --config <kit>/tools/browser/bb.edn check --serve "<cmd>"
+--health <path> --base <url> [path ...]` - the way a project already runs the boundary gate.
+`git pull` upgrades every project's packs at once; the harness's `bb.edn` stays free of Etaoin;
+the template carries nothing. The browser pack is the driver (Etaoin under Babashka, a
+headless Firefox through geckodriver, no Node, knowing nothing of any framework), screenshots
+as tall as the page with the `scrollWidth`/`innerWidth` measure, an axe-core scan fetched once
+and never committed, `check`, which serves, runs them and stops, and `server.clj`, the
+serve-check-stop skeleton any stage-end script stands on, whose stop goes through the process
+tree and then whatever still listens on the port - a serve task's JVM is a grandchild, and a
 tree kill was seen to miss it twice. The three hazards are in the README beside the scripts:
 the permission on macOS is the terminal application's, a shell under a daemon is refused
 silently and `geckodriver --version` cannot tell; a WebDriver screenshot is of the viewport;
-a key action left by one check changes the next. What stays the project's is its interaction
-checks and its keyboard walk, scripts of its own on the same driver.
+a key action left by one check changes the next. Output goes to the workspace's
+`work/browser/<app>/` when the application is in one, else `.local/browser/`. What stays the
+project's is its interaction checks and its keyboard walk, scripts of its own on the pack's
+driver.
 
-Tried before it was committed: a workspace generated from the local template with `bb init`,
-`bb browser-check / ` on its application, twice in a row - served in six to eight seconds, one
-screenshot, two axe findings on the template's own home page, stopped, the port free. The
-first version left the server behind once; the stop is what it is now because of that.
-
-In the KIT: `bb health` gains an eighth check, `app browser`, which runs the template's task
-with screenshots only on `/` - a probe that performs, where the doctor's version check passed
-the day the project lost an hour to a browser that could not start. Where geckodriver or
-Firefox is absent the check is skipped, the record carries `:skipped? true`, and the README's
-row says "7 of 8 ok, 1 skipped" rather than counting a check that did not run as passed. `bb
-doctor` has geckodriver as an optional row in no tier. The plan template's §14 names this
-driver as the worked example and §17 carries the hazards and the accessibility scan; `method.md`
-§04's paragraph says the template ships it. The pin to `kit-v2` and the health record retaken
-on it follow the fork's push, which is the person's.
+In the harness: `bb health` gains an eighth check, `app browser`, which runs the pack against
+the generated application with screenshots only on `/` - a probe that performs, where the
+doctor's version check passed the day the project lost an hour to a browser that could not
+start. Where geckodriver or Firefox is absent the check is skipped, the record carries
+`:skipped? true`, and the README's row says "7 of 8 ok, 1 skipped" rather than counting a
+check that did not run as passed. `bb doctor` has geckodriver as an optional row in no tier.
+The plan template's §14 names the pack as the worked example and §17 carries the hazards and
+the accessibility scan; `method.md` §04 says the KIT ships it; the root README has four parts.
 
 ### The plan's README says the repository is the build's side
 

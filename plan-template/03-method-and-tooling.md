@@ -302,14 +302,15 @@ justifies the extra call, or the reason it isn't justified here>.
   }
   ```
 
-- **The stage-end driver (§17):** <Etaoin under Babashka, driving a headless Firefox through
-  geckodriver - what the template ships under `tools/browser/` with `bb browser-check`: the
-  driver, screenshots with measurements, an axe-core scan, and the serve-check-stop skeleton in
-  `tools/server.clj`; the project's interaction checks are scripts of its own beside them; or
-  yours>. geckodriver and Firefox are hand steps, recorded in the stage document that first
-  needs them; `bb doctor` has the row, and `bb health` starts a Firefox once because
-  `geckodriver --version` passes on a machine where none can start (the permission on macOS is
-  the terminal application's; a shell under a daemon is refused silently).
+- **The stage-end driver (§17):** <the KIT's browser pack, `bb --config <kit>/tools/browser/bb.edn
+  check`, run from the application's folder: Etaoin under Babashka driving a headless Firefox
+  through geckodriver - screenshots with measurements, an axe-core scan, and the serve-check-stop
+  skeleton (`--serve`, `--health`, `--base` name this project's server); the project's own
+  interaction checks are scripts in the project built on the pack's `driver.clj`; or yours>.
+  geckodriver and Firefox are hand steps, recorded in the stage document that first needs them;
+  `bb doctor` has the row, and `bb health` starts a Firefox once because `geckodriver --version`
+  passes on a machine where none can start (the permission on macOS is the terminal
+  application's; a shell under a daemon is refused silently).
 
 ## 15. Pins and verified notes
 
@@ -348,23 +349,23 @@ justifies the extra call, or the reason it isn't justified here>.
 - **Screenshots** at the widths that matter (`<1440 and 390>`), from a real viewport: a
   headless browser driven by a script, not a window whose floor is wider than the narrow width.
   Kept under `<screenshots/stage-N/>` with a measurement file (`scrollWidth` against
-  `innerWidth` at each width says whether anything overflows). The template's
-  `bb browser-check --width 1440 --width 390 <paths>` does this; a WebDriver screenshot is of
-  the viewport, so the window is made as tall as the page first.
+  `innerWidth` at each width says whether anything overflows). The KIT's browser pack does this
+  (`check --width 1440 --width 390 <paths>`); a WebDriver screenshot is of the viewport, so the
+  window is made as tall as the page first.
 - **An interaction check per contract-only behaviour**: `<the search swap: load /, type a query,
   submit, confirm the results region changed and the URL did not>`. Its script, its output and a
   screenshot of the result, kept beside the screenshots. A key action left by one check has been
   seen to change the focus behaviour of the next, even after `release-actions`: run each
   interaction check in a browser of its own.
-- **An accessibility scan** of the stage's pages, by rule (axe-core, which the template's
-  `accessibility.bb` fetches once and never commits), and a keyboard walk of what matters
+- **An accessibility scan** of the stage's pages, by rule (axe-core, which the pack's
+  `accessibility` task fetches once and never commits), and a keyboard walk of what matters
   <`the header, a menu, the search`> by hand or by script: the scan finds what a rule can find,
   not what a person finds by using the page. Its report kept beside the screenshots.
-- **Serving for the check**: the template's `bb serve` runs the JVM as a grandchild, and a tree
-  kill has been seen to miss it - a server from one check answered the next. `tools/server.clj`'s
-  `with-server` serves, waits for `/health`, runs the checks, stops, and kills the JVM by its
-  command when the port stays held; stand a stage-end script on it rather than on `bb serve`
-  and a kill.
+- **Serving for the check**: a task that serves starts the JVM as a grandchild, and a tree kill
+  has been seen to miss it - a server from one check answered the next. The pack's `server.clj`
+  (`with-server`) serves by the command given, waits for the health path, runs the checks, stops,
+  and kills whatever still listens on the port when the tree kill did not reach it; stand a
+  stage-end script of your own on it rather than on the serve task and a kill.
 
 ## 18. Readiness — the record
 
