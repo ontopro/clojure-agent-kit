@@ -27,6 +27,23 @@ either; an entry's date is its reference.
 
 ## 2026-10-05
 
+### The second tool pack: a check of the SVG files a project produces
+
+Row 90, from the first real project's remark N-4. It recolours its icons by script, dozens of
+files, and the only check was the person's walk at the stage's end over every one. Another
+project on this machine rasterises SVG with Apache Batik in the JVM in milliseconds, which is
+the whole check an icon needs before a person looks: does it render, is anything drawn, is it
+the colour it should be. `tools/svg/` does that - `bb --config <kit>/tools/svg/bb.edn check
+[--color #rrggbb] <files or folders>` - writing a PNG per file and a report, exiting 1 on a
+file that does not render or draws nothing, and reporting the colour share without judging it:
+an icon all one brand colour and a diagram mostly not are both right. The pack is handed to
+the Clojure CLI as a local dependency, so it runs from any folder with the caller's paths.
+Opt-in, and the README says why: Batik is ten megabytes fetched on the first run, a JVM is
+needed, and neither is a dependency of every application; it cannot render a page and does not
+replace the browser pack. Tried on four sample files - a filled shape (a third of the pixels
+drawn, all the colour), a thin stroke, an empty file (draws nothing), a broken one (no render,
+the parser's reason on one line) - each reported as it is.
+
 ### The shipped profiles move with the first real project's decisions
 
 The selections in the shipped profiles are dated, and until now dated from the KIT's own

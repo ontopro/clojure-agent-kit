@@ -23,6 +23,7 @@ the browser checks for a day; it reached one kind of project of the three, and c
 | Pack | What | Needs on the machine |
 |---|---|---|
 | [`browser/`](browser/README.md) | the stage-end checks in a real browser: screenshots as tall as the page with the overflow measure, an axe-core accessibility scan, and the serve-check-stop skeleton a stage-end script stands on. Etaoin under Babashka, a headless Firefox through geckodriver | geckodriver, Firefox |
+| [`svg/`](svg/README.md) | a check of the SVG files a project produces - the icons it draws or recolours by script: each rasterised with Apache Batik in the JVM, no browser; renders, draws something, and how much of it is the colour asked for | a JDK (the loop's); Batik is fetched on the first run, about ten megabytes |
 
 A pack is optional and says what it is for; the plan template's `03-method-and-tooling.md`
 §14 and §17 are where a project names the ones it uses.

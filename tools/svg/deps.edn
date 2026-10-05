@@ -1,0 +1,5 @@
+;; The pack as a Clojure project, so bb.edn can hand it to the CLI as a local dependency from
+;; any folder: `clojure -Sdeps '{:deps {kit/svg-check {:local/root "<this folder>"}}} -M -m svg-check`.
+{:paths ["src"]
+ :deps {org.apache.xmlgraphics/batik-transcoder {:mvn/version "1.19"}
+        org.apache.xmlgraphics/batik-codec {:mvn/version "1.19"}}}

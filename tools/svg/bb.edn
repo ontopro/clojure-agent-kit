@@ -1,0 +1,18 @@
+;; THE SVG TOOL PACK - a check, in the JVM and with no browser, that the SVG files a project
+;; produces render, are not empty, and (when asked) are the colour they should be:
+;;
+;;   bb --config <kit>/tools/svg/bb.edn check [--out <dir>] [--size N] [--color #rrggbb] <file-or-dir>...
+;;
+;; Apache Batik rasterises each file in milliseconds; the first run fetches it (about ten
+;; megabytes of jars, from Maven Central), which is why this is a pack a project opts into and
+;; never a dependency of every application. It cannot render HTML pages and does not replace the
+;; browser pack. README.md beside this file says what the check reports. The pack is handed to
+;; the Clojure CLI as a local dependency (deps.edn beside this file), so it runs from any folder
+;; and the paths given are the caller's.
+{:tasks
+ {:init (do (require '[babashka.fs :as fs])
+            (def pack-dir (str (fs/parent (fs/absolutize (System/getProperty "babashka.config"))))))
+
+  check {:doc "Rasterise each SVG named (files, or folders searched for *.svg): renders, not empty, the colour share when --color is given; PNGs and a report under the output folder"
+         :task (apply shell "clojure" "-Sdeps" (pr-str {:deps {'kit/svg-check {:local/root pack-dir}}})
+                      "-M" "-m" "svg-check" *command-line-args*)}}}
