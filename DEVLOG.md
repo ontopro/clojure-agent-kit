@@ -25,6 +25,44 @@ either; an entry's date is its reference.
 
 ---
 
+## 2026-10-06
+
+### The method's shape is layered by stage kind, and scoping is its step 0
+
+Row 91. The drawing at the top of `method.md` was three phases in a line - plan, Foundation,
+stages - and the first project that read it wrote its requirements complete before Foundation,
+approved the whole plan at once, and built its first stage over every input it had. The
+method's text already said the opposite in §01 and §04: everything beyond the stage in
+progress is provisional; flow, not timeboxes; the first stage a thin vertical slice. The
+picture did not, and a picture is what a reader keeps.
+
+The new drawing has five layers. Stage 0 is a spike: scope, plan, Foundation, implement,
+deploy locally, and what it owes is decisions confirmed or reversed and running software,
+with code kept only where it passed its criterion. Stage 1 is the walking skeleton in the
+strict sense - one small function end to end through every layer, the first thing the owner
+walks. Stages 2 to N are increments, each the same four steps, looping. Pre-release is one
+stage or more holding what release needs and nothing a user-visible stage needed earlier.
+Release packages and deploys or publishes, then returns to the next increment, and a later
+release has a smaller pre-release before it. Foundation runs under every stage from stage 0.
+Stages are numbered through and each has a kind; the names stay the project's.
+
+§02 now opens with step 0, scoping: the conversation before a workspace exists. Six groups of
+questions and only those - who it is for, what it shows or does, what material exists and
+which part of it is content, what must be proved early, the first thing worth seeing, the
+money and the stops - with the answers recorded as given in `source.md` §1 and the brief as
+its appendix, so a requirement can cite what it rests on. A question the person cannot answer
+becomes a risk with a stage or an open decision with an owner, never a blocker. Scoping does
+not ask for features, a data model or a stack. It is a subsection of §02 rather than a section
+of its own because the harness and the templates cite the method's sections by number -
+`bb plan-review` reads §02's checklist by its heading - and renumbering would touch every one
+of them for no gain.
+
+This is the first of four commits on the method; the vocabulary and the Kanban rules in §01,
+the plan committing to stage 0 in §02 and §03, and the stage kinds with the term table in §04
+follow. After the method come the templates, the workflow, the harness, the skills, and two
+new commands - the order is the KIT's local plan for this change, and each lands with its
+own row.
+
 ## 2026-10-05
 
 ### The second tool pack: a check of the SVG files a project produces

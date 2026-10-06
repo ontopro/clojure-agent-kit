@@ -5,15 +5,29 @@
 A gate-driven way to build a Clojure application with a small team of independent AI agents — a contract-first Blueprint, an isolated dispatch loop, a living decision log, and quality gates ordered cheap-to-expensive. Scaffolded on the KIT's pinned fork of [**Clojure Stack Lite**](https://github.com/ontopro/clojure-stack-lite) (HTMX, AlpineJS, TailwindCSS, SQLite/PostgreSQL; upstream is [abogoyavlensky's](https://github.com/abogoyavlensky/clojure-stack-lite), MIT), with [**XTDB v2**](https://xtdb.com) as a SQL-compatible alternative datastore.
 
 ```
-     ┌───────── each stage re-plans the ones after it ─────────┐
-     ▼                                                         │
-    PLAN  ──▶  FOUNDATION  ──▶  STAGE 1  ──▶  STAGE 2  ──▶  STAGE 3  ──▶ …
-                   │               ▲             ▲             ▲
-                   └───────────────┴─────────────┴─────────────┘
-                            every stage runs through it
+stage 0      the spike          scope ▶ plan ▶ FOUNDATION ▶ implement ▶ deploy locally
+                                scope is the scoping conversation; plan is the risks ranked,
+                                the candidate architecture, the pass criteria; what it owes is
+                                decisions confirmed or reversed, and running software - code
+                                kept only where it passed its criterion
+
+stage 1      walking skeleton   scope ▶ plan ▶ implement ▶ deploy locally
+                                one small function end to end through every layer; the first
+                                owner's walk
+
+stages 2..N  increments         ┌ scope ▶ plan ▶ implement ▶ deploy locally ┐ ──▶ the next
+                                └──────────────────────────────────────────┘
+                                Foundation runs under every stage from stage 0
+
+pre-release  one stage or more  what release needs and nothing earlier: host, publish, backup,
+                                restore, metrics, logging, auditing, the pre-publish gate
+
+release                         package ▶ deploy on the server, or publish for download
+                                then back to the next increment; a later release has a smaller
+                                pre-release before it
 ```
 
-**No phase is finished when the next begins.** Plan is thin at the start and re-planned after every stage; Foundation is configured once and then improves continuously underneath the stages; stages repeat. Stage names and count are yours; nothing here prescribes them.
+**Every stage has the same four steps, and no phase is finished when the next begins.** The plan is thin at the start - it commits to stage 0 and nothing after it - and is revised at every stage's end; Foundation is built in stage 0 and then improves continuously underneath the stages; stages repeat until the product is released, and release repeats. Stages are numbered through, and each has a kind: spike, skeleton, increment, pre-release, release. The names are yours; the kinds and their order are the method's.
 
 > Distilled from a live multi-agent build that ran this loop across dozens of real dispatches — including a few it got wrong — before anyone trusted it with real work. What follows is the discipline that survived contact with those runs, not a design done on paper.
 
@@ -77,6 +91,21 @@ Most process documents number their phases 1–5 and imply each one ends before 
 ---
 
 ## 02 — Phase A — Plan
+
+### Step 0 — Scoping, before anything is set up
+
+The plan starts as a conversation between the person who wants the thing and the session that will write the plan, before a workspace exists and before any document is opened. Its output is the **brief**: the person's one-page ask, in their words, kept as the plan's first record. Six groups of questions, and only these:
+
+- **Who it is for.** Who uses it, and what do they come to do - one sentence per kind of user. Who owns it, decides what is right, and signs off; is that the person asking?
+- **What it shows or does.** The product in one paragraph as a user would see it, not as a system. The one thing it must do on day one for it to be worth having at all. What it does not do - with the reason, because an exclusion is a decision (see *The MVP boundary is scoping*, below).
+- **What material exists.** What is handed over: documents, data, an existing codebase, designs, a brand - where it is and in what form. Which part of it is **content** the product shows, and which is background; a site has content, a library has none, and the two are named apart in `source.md`. Who may change that material, and how a change is approved.
+- **What must be proved early.** Which parts the person is least sure of - a technology, an integration, a scale, a format - and which of those would be expensive to discover wrong late. These are the first risks, and stage 0 exists to prove them. Whether a stack or a constraint is already fixed, and by whom.
+- **The first thing worth seeing.** The smallest thing that, shown in a browser or at a REPL, would tell the person the project is real: a page, a command, a function with its output. Named before any requirement is written, because it is what stage 1 builds. Who walks through it, and what would make them say it is wrong.
+- **The money and the stops.** How much for stage 0, and what stops the build early. Who pays, and who sees the spend.
+
+Two rules. **The answers are recorded as they were given**, numbered, in `source.md` §1, with the brief as its appendix - so that a requirement can later cite the observation it rests on, and so that a reader can tell what the person said from what the plan made of it. **A question the person cannot answer is not a blocker**: it becomes a risk with a stage that will prove it, or an open decision with an owner. That is the lean move, and the one the rest of this section is built on.
+
+What scoping does not ask: a list of features, a data model, a stack choice. Those come out of stage 0 and stage 1, not out of the conversation before them.
 
 ### Decide as little as possible
 
