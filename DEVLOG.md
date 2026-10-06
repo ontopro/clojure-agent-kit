@@ -27,6 +27,41 @@ either; an entry's date is its reference.
 
 ## 2026-10-06
 
+### The plan commits to stage 0, requirements are written per stage, and the review reads every stage
+
+Row 93. §02 said "decide as little as possible" and then described a document set whose
+requirements document held every requirement, reviewed once before Foundation and approved
+whole. A project did exactly that. The section now says what little is: the plan commits to
+stage 0 and nothing after it - the risks ranked, the candidate architecture as provisional
+decisions each with the pass criterion stage 0 applies, a stage map by kind with a cap on
+stage 0 alone, the three scope lists. Requirements are written per stage, when the stage is
+pulled, in its stage document with a permanent ID; the requirements document keeps the index.
+A requirement written for a stage not yet pulled is a finding of the review pass, as a
+decision made too early is. Approval and the cap are per stage, never the whole plan at once.
+
+Scope is three lists revised at every stage's end: what ships first, deferred with the stage
+that takes it, out of scope with the reason. "Non-goals, never" is gone: an exclusion is a
+decision with an ID, reversed only by a later decision that cites it - never reargued in
+passing, never sealed - and the brief is a starting point, not a contract. The MVP is named
+afterwards, as the first stage boundary at which "could we ship?" is yes.
+
+The plan-review pass runs in every stage's plan step, over the stage document and the
+documents the stage revised, so the stage document - which now carries requirements and a cap
+- is read cold before a Blueprint is cut from it. The pass's two words are said: cold, because
+the writer cannot find where their own sentence reads two ways; adversarial, because "looks
+good" is a failed reading. Three findings join the list it sends: a requirement for a stage
+not pulled, a risk with no owning stage, a lesson of the last stage the document does not
+answer. The document set gains `05-lessons.md`, one section per stage, read first when the
+next stage is planned. Phase A's exit criteria are rewritten around stage 0, and the MVP is
+named among what is NOT on the list.
+
+§03 follows: Foundation is built inside stage 0, before its first packet; the smallest machine
+is the one that lets stage 0's packets dispatch; and the live run with the project's own models
+is stage 0's first packet, since a spike's packets are what prove the machine - a rehearsal on
+a trivial task stays an option, torn down as before. The harness's `plan-review` still reads
+the checklist from the same heading and sends what it finds there; teaching it the three new
+findings as kinds is a harness change of its own.
+
 ### The method says what its words mean, and draws how they relate
 
 Row 92. §01 had the three phases and two rules, and the words the rest of the document

@@ -178,27 +178,31 @@ What scoping does not ask: a list of features, a data model, a stack choice. Tho
 
 ### Decide as little as possible
 
-The output of this phase is not a finished plan. It is the smallest set of decisions that lets Foundation start, plus an honest register of everything you have deliberately *not* decided — each with the stage that will own it.
+The output of this phase is not a finished plan. It is the smallest set of decisions that lets stage 0 start, plus an honest register of everything you have deliberately *not* decided — each with the stage that will own it. **The plan commits to stage 0 and nothing after it.** Stage 0 is a spike: what the plan writes for it is the risks ranked, the candidate architecture as provisional decisions each with the pass criterion stage 0 will apply, a stage map naming the candidate stages by kind with no cap on any but stage 0, and the three scope lists below. Requirements proper arrive with stage 1.
 
-Be honest about what this looks like in practice: the source project did write a substantial requirements and architecture set up front, and the documents below are real. But most of what was *in* them was marked PROVISIONAL with a gating spike, or OPEN with a named owning stage. The lean move is not writing fewer documents — you still need somewhere to put what you know. It is **committing to less of what is in them**, and being explicit about which parts are commitments and which are working assumptions.
+**Requirements are written per stage, when the stage is pulled.** The requirements document holds the purpose, the users, the scope lists and the success criteria; the stage that builds a requirement writes it, in its stage document, with a permanent ID, and the requirements document keeps the index of them by stage. A requirement written for a stage not yet pulled is a finding of the review pass below, the same way a decision made too early is. Approval and the cap are per stage: the person approves stage 0 with its cap, then each stage with its own, at the stage document — never the whole plan at once.
 
-The failure this prevents: a RESOLVED decision made in month one, on no evidence, that everything downstream then treats as settled.
+Be honest about what this looks like in practice: a project that does not hold to this writes a substantial requirements and architecture set up front, and the documents below are real. Most of what is *in* them can still be marked PROVISIONAL with a gating spike, or OPEN with a named owning stage. The lean move is not writing fewer documents — you still need somewhere to put what you know. It is **committing to less of what is in them**, and being explicit about which parts are commitments and which are working assumptions. A project on this method once wrote every requirement before Foundation and approved the whole with one cap; its first stage carried every input it had, and the first packet cut from it cost a third of the build and merged nothing.
 
-### The MVP boundary is scoping
+The failure this prevents: a RESOLVED decision made in month one, on no evidence, that everything downstream then treats as settled — and a requirement set that reads as a contract before a line of it has met a user.
 
-**MVP is the smallest *shippable* feature set that delivers real value to a user.** It is a scope decision, and scope is all it is — what goes in the first release and what waits for the next. Write three lists together and keep them together:
+### Scope is three lists, revised at every stage's end
 
-- **MVP** — what ships first, by requirement ID.
-- **Post-MVP** — deferred, each with the reason it can wait.
-- **Non-goals** — what this product is never going to be, so nobody re-litigates it in stage 3.
+Scope is a product decision, and scope is all it is — what goes first and what waits. Write three lists together and keep them together:
 
-All three live together in the requirements document (§10 of the template), because they are one product decision rather than three engineering ones — and because a deferral and an exclusion look identical six months later unless you wrote down which you meant.
+- **What ships first** — by requirement ID, as the stages write them.
+- **Deferred** — each with the reason it can wait and the stage that will take it.
+- **Out of scope** — each with the reason. An exclusion is a decision with an ID (§08), reversed only by a later decision that cites it: never reargued in passing, and never sealed. The brief is a starting point, not a contract.
+
+All three live together in the requirements document (§10 of the template), because they are one product decision rather than three engineering ones — and because a deferral and an exclusion look identical six months later unless you wrote down which you meant. A deferral and an exclusion differ by one thing only: a deferral has a stage that will take it, an exclusion does not yet. The lists are revised at every stage's end, against the source: the observations of `source.md` that no requirement, deferral or exclusion claims are the backlog nobody decided on, and the stage's end is where they are decided.
+
+**The MVP is named afterwards, not before.** The first increment a person could ship is the product's first release, and it is a stage boundary found by building, not a list fixed before stage 0. "Could we ship after this one?" is answerable at every stage boundary; the one where the answer is first yes is the MVP.
 
 ### De-risking is a separate activity, and it never stops
 
-Prototyping to prove a design is **not** the same thing as scoping an MVP, and collapsing the two is a common and expensive mistake. A spike proves a design; an MVP ships a product. Confuse them and you get either a prototype nobody can ship, or an MVP built on a design nobody proved.
+Prototyping to prove a design is **not** the same thing as scoping a release, and collapsing the two is a common and expensive mistake. A spike proves a design; an increment ships a product. Confuse them and you get either a prototype nobody can ship, or a product built on a design nobody proved.
 
-So keep them apart. Prototype early, and prototype **whenever the design or the architecture changes** — not only at the start:
+So keep them apart. **Stage 0 is the first spike**, the one that proves the foundational choices and ends in running software that is owed nothing: stage 1 keeps what passed its criterion and rewrites the rest. Prototype early, and prototype **whenever the design or the architecture changes** — not only at the start:
 
 - **Before committing to any high-risk design choice**, in Phase A or later.
 - **During MVP**, when the slice you are building first meets a store, a format, or a scale you have not tried.
@@ -211,7 +215,7 @@ What makes a spike a spike rather than a poke around — an owning stage, a pass
 
 List what could kill the project — technology that might not scale, an integration that might not exist, a constraint you have assumed rather than checked — and rank them. Then **order the stages by the risk each one retires**, not by dependency convenience and not by what is easiest to build first.
 
-The tech stack and the architecture are the early priority, because they are the expensive things to be wrong about: a wrong store choice discovered in stage 4 is a rewrite, and the same choice discovered in stage 1 is a config change behind a protocol. This is why the first stage should be a thin, full-depth vertical slice (§04) — it is the cheapest structure that touches every risky seam at once.
+The tech stack and the architecture are the early priority, because they are the expensive things to be wrong about: a wrong store choice discovered in stage 4 is a rewrite, and the same choice discovered in stage 0 is a config change behind a protocol. This is why stage 0 is a spike over the top risks, and stage 1 a walking skeleton (§04) — one small function through every layer is the cheapest structure that touches every risky seam at once.
 
 Each top risk gets an experiment cheap enough to be worth running and specific enough to fail.
 
@@ -225,12 +229,13 @@ Six or seven documents, each with a **different change cadence** — that separa
 |---|---|---|
 | `source.md` | What the plan derives from: the brief, the material handed over, what was read from it - numbered, so a requirement cites its evidence | A record — appended to, never revised |
 | `00-overview.md` | Mission, governing decisions, the document map, the stage map | Updated at stage boundaries |
-| `01-requirements.md` | Users, use cases, functional + non-functional requirements, constraints, assumptions, non-goals, **MVP / post-MVP scope**, success criteria | Slow-moving, but not frozen — the scope split shifts as stages teach you; revise via review |
+| `01-requirements.md` | Users, use cases, constraints, assumptions, **the three scope lists**, success criteria; the requirements stage 1 needs, and an index of every requirement by the stage that wrote it | The scope lists revised at every stage's end; the index appended at each stage boundary; the rest slow-moving |
 | `02-architecture.md` | Layers, storage, versioning, cross-cutting concerns; provisional parts marked, decisions referenced **by ID** | Evolves; churn lives in the log, not here |
 | `02a-<domain>-model.md` | The canonical data model, if your domain has one worth its own document | Evolves stage-by-stage as adapters land |
 | `03-method-and-tooling.md` | This method, instantiated: your roles, model picks, gates, scaffold, harness | Stable once ready; runs under every stage |
 | `04-decision-log.md` | **Every** decision, with status and owner (§08) | **Living** — the mechanism by which everything else evolves |
-| `stages/stage-N-*.md` | One document per stage: goal, scope, task list, exit criteria (§04) | Created **just-in-time**, when the stage begins |
+| `stages/stage-N-*.md` | One document per stage: goal, the requirements it adds, task list, exit criteria (§04) | Created **just-in-time**, when the stage is pulled; approved, with the stage's cap, by the person |
+| `05-lessons.md` | One section per stage, written at its end: what the roles did, what the person did by hand, what the next stage changes — each lesson ending as a rule, a line in the next stage document, or a decision | Appended at every stage's end; read first when the next stage's document is written |
 
 Beside `docs/`, a `reviews/` folder holds a review's raw material — each reader's output from the
 review pass below, the raw reads of a Blueprint, any comparison of readers. It is about the reading,
@@ -247,9 +252,15 @@ Requirements (`FR-n`/`NFR-n`), architecture decisions (`D-n`), schema decisions 
 
 ### The plan-review pass — the cheapest gate in the whole method
 
-Before Foundation starts, review the plan **as an artifact, adversarially, looking for gaps** — ideally with a different model or a different person from whoever wrote it. Record each finding with an ID and its resolution, and keep that table in the overview. This costs an afternoon and catches things that would otherwise surface as a rewrite three stages in. The KIT runs it: `bb plan-review` in its `harness/` sends the six documents and the checklist below to the profile's `:spec-reviewer` - a model of another family than the seat's - and writes the findings to `reviews/`. It is a reading, not a gate. The gate is `bb plan-check`: no mark and none of the template's instructions left in the documents, the rules overlay filled, the given parts intact; `start` runs it once per workspace before its first dispatch.
+Review the plan **as an artifact, adversarially, looking for gaps** — with a different model or a different person from whoever wrote it. *Cold*: the reader has seen nothing of the work before, and gets the documents and this checklist in one call, because the writer cannot find where their own sentence reads two ways. *Adversarial*: the reader is asked for faults, not confirmation, and a reading that says "looks good" has failed at its job. Record each finding with an ID and its resolution, and keep that table in the overview. This costs an afternoon and catches things that would otherwise surface as a rewrite three stages in.
+
+**The pass runs in every stage's plan step, not once before Foundation.** In stage 0 it reads the whole set; in every stage after, it reads the stage document and the documents the stage revised — so the stage document, which carries the stage's requirements and its cap, is read cold before the Blueprint is cut from it. The KIT runs it: `bb plan-review` in its `harness/` sends the documents and the checklist below to a reader of another family than the seat's and writes the findings to `reviews/`. It is a reading, not a gate. The gate is `bb plan-check`: no mark and none of the template's instructions left in the documents, the rules overlay filled, the given parts intact; `start` runs it once per workspace before its first dispatch.
 
 The findings that recur, worth checking for by name:
+
+- **Requirements written for a stage not yet pulled** — detail bought before the stage that would use it exists. The plan commits to stage 0; a requirement belongs to the stage document of the stage that builds it.
+- **A risk with no owning stage** — ranked, and then assigned to nothing. Every top risk names the stage that proves it, and stage 0 names the ones it takes.
+- **A lesson of the last stage this document does not answer** — `05-lessons.md` is written to be read when the next stage is planned; a lesson that ended as "a line in the next stage document" and is not there is the finding.
 
 - **Direct contradictions between documents** — two docs that disagree about a load-bearing choice (which frontend, which store), usually because one was updated and the other wasn't.
 - **Status inconsistency** — something marked RESOLVED in one place and "under evaluation" in another. Downgrade it to PROVISIONAL with a named gating spike (§08).
@@ -262,9 +273,9 @@ The findings that recur, worth checking for by name:
 - **Broken cross-references** — a document pointing at a filename that doesn't exist.
 - **Decided too much, too early** — a RESOLVED entry with no evidence behind it. That is a commitment bought before it was needed, and the review pass is the last cheap moment to downgrade it to PROVISIONAL with a gating spike, or OPEN with an owner.
 
-**Exit criteria for Phase A:** you can name the MVP and what is deliberately post-MVP; the top risks are ranked and each has an experiment assigned to a stage; the plan survives its review and the findings table records every gap and its resolution; and every decision in the log is RESOLVED, PROVISIONAL-with-a-gate, or OPEN-with-an-owner — nothing is ownerless.
+**Exit criteria for Phase A:** the brief is recorded in `source.md` with the content named apart; the three scope lists are written, every exclusion a decision with a reason; the top risks are ranked and stage 0 names which it proves, each with a pass criterion and a fallback; the candidate architecture is in the decision log as PROVISIONAL entries gated by those criteria; the stage map names the candidate stages by kind, with a cap on stage 0 alone; the plan survives its review and the findings table records every gap and its resolution; every decision in the log is RESOLVED, PROVISIONAL-with-a-gate, or OPEN-with-an-owner — nothing is ownerless; and the person has approved stage 0 with its cap.
 
-Note what is *not* on that list: a complete architecture, a full requirement set, or a stage map you believe. Those arrive as the stages teach you.
+Note what is *not* on that list: the MVP, a complete architecture, any requirement beyond what stage 1 will need, or a stage map you believe. Those arrive as the stages teach you.
 
 ---
 
@@ -272,17 +283,17 @@ Note what is *not* on that list: a complete architecture, a full requirement set
 
 ### Infrastructure, not a stage
 
-The workflow, the scaffold, and the gates are set up **once, before any feature work dispatches** — and then keep running underneath every stage that follows. Unlike a stage, Foundation doesn't finish; it just keeps operating. It has no slot in the delivery timeline because it isn't delivery, it's the machine delivery runs through.
+The workflow, the scaffold, and the gates are set up **once, inside stage 0, before its first packet dispatches** — and then keep running underneath every stage that follows. Unlike a stage, Foundation doesn't finish; it just keeps operating. It has no slot in the delivery timeline because it isn't delivery, it's the machine delivery runs through. Stage 0 is where it is built because stage 0 is a spike over the foundational choices, and the machine is one of them: stage 0 proves the architecture and the machine at once.
 
 ### Build the minimum machine, then prove it
 
-Foundation is where this method is most often over-built, because it is the part that feels like engineering. Resist that. **Build the smallest machine that lets stage 1 dispatch, and no more.**
+Foundation is where this method is most often over-built, because it is the part that feels like engineering. Resist that. **Build the smallest machine that lets stage 0's packets dispatch, and no more.**
 
 - **The readiness checklist below ends with a live run** — not a design review. Validate the machine on one deliberately trivial, throwaway task before you commit to it. A design review tells you the plan looks right; only a real run tells you the machine works.
 - **The dispatch mechanism starts crude on purpose.** Step 4 says a script, or a human copy-pasting packets, is enough — and §12 says the same thing about the harness: run the loop by hand until you have felt where it hurts. Automating a process you have not run automates the wrong things. This is the same lean principle you applied to the product in §02, turned on your own tooling.
 - **Foundation never finishes, and that is kaizen rather than incompleteness.** It keeps improving underneath the stages as they teach you things. The field guide (§10) is the record of exactly that — every entry bought with a real run rather than designed on paper.
 
-The failure to avoid: treating Foundation as a phase to *complete*, and building a full orchestration harness before a single feature has tested any of it. Foundation is ready when stage 1 can dispatch through it — not before, and not after.
+The failure to avoid: treating Foundation as a phase to *complete*, and building a full orchestration harness before a single feature has tested any of it. Foundation is ready when stage 0's first packet can dispatch through it — not before, and not after.
 
 ### Step 1 — The toolchain, then the workspace: `bb doctor`, `bb init`
 
@@ -419,13 +430,16 @@ This is the step people skip, and it is the only one that produces evidence rath
 confidence. `bb health` does it for you, with a scripted runner in every model's seat and
 everything else real - a `clamp` function through provisioning, two nREPLs, dispatch, assembly,
 gate 0, the gates and the review, to the merge stop, on its selfcheck project and on an application it just
-generated. Then run it yourself with your profile's models on the same kind of task: a live run
-tells you what your machine does with a model in the seat, which the scripted one cannot. Run it to
-`:awaiting-merge` and then **tear it down, not merge it**: `bb run-loop record` first, so the plan's
-`runs/` keeps the evidence, then `bb run-loop teardown`. The task is a rehearsal of the machine, and
-nothing of it belongs in the application: two projects merged theirs, and one of them later paid a
-whole run to fix a flaky property test the rehearsal had left behind. The health check does exactly
-this with its own trivial task.
+generated. Then run it yourself with your profile's models: a live run tells you what your machine
+does with a model in the seat, which the scripted one cannot. **Stage 0's first packet is that
+run** — a small packet with a real question, since stage 0 is a spike and its packets are what prove
+the machine. Trying two options against each other is faster in the Architect's REPL than through
+contracts, so a spike may do that by hand; what it keeps goes through the loop. If you rehearse on a
+trivial task instead, run it to `:awaiting-merge` and then **tear it down, not merge it**:
+`bb run-loop record` first, so the plan's `runs/` keeps the evidence, then `bb run-loop teardown`.
+A rehearsal is of the machine, and nothing of it belongs in the application: two projects merged
+theirs, and one of them later paid a whole run to fix a flaky property test the rehearsal had left
+behind. The health check does exactly this with its own trivial task.
 
 ### Readiness checklist — closed against live evidence, not a document
 
@@ -442,11 +456,11 @@ this with its own trivial task.
    the plan's `runs/`, its three commits held to the repositories - and torn down. Criteria 3–6
    of the older list are this one command, and its record names the KIT commit and the template
    commit it certified.
-4. **You have run the loop once with your own models**, on a task with no design content, and
-   watched it succeed or fail informatively — then recorded it and torn it down. Its record is in
-   the plan; the application is as `bb init` left it.
+4. **You have run the loop once with your own models** — stage 0's first packet, or a rehearsal
+   with no design content, recorded and torn down — and watched it succeed or fail informatively.
+   Its record is in the plan.
 
-Only then does Stage 1 dispatch. Foundation is now *ready* — not done; it never becomes done.
+Only then does the next packet dispatch. Foundation is now *ready* — not done; it never becomes done.
 
 ---
 
