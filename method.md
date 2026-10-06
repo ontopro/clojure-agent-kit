@@ -110,42 +110,42 @@ How the words relate — the stage is the hinge, everything in the plan feeds it
 
 ```mermaid
 graph LR
-  subgraph source
+  subgraph source["source — what was handed over"]
     brief
     content
   end
-  subgraph build["build — the plan, the settings, the records"]
+  subgraph plan["the plan, in the build repository"]
     requirement
     scope
-    stagemap[stage map]
     risk
     decision
-    stage
-    skeleton[walking skeleton]
+    stagemap[stage map]
+  end
+  subgraph kinds["the kinds of stage"]
+    spike["spike — stage 0"]
+    skeleton["walking skeleton — stage 1"]
     prerelease[pre-release stage]
-    spike
     release
-    exit[exit criteria]
   end
   subgraph application
     increment
   end
-  requirement -- cites --> source
-  scope -- lists --> requirement
+  source -- "cited by" --> requirement
+  requirement -- "listed in" --> scope
+  requirement -- "written by, when pulled" --> stage
   scope -- "defers to" --> stage
   scope -- "out of scope is a" --> decision
-  stagemap -- "ordered by" --> risk
-  stage -- "pulled from" --> stagemap
-  stage -- "adds, when pulled" --> requirement
-  stage -- retires --> risk
-  stage -- "ships, from stage 1 on" --> increment
-  stage -- "ends at" --> exit
+  risk -- orders --> stagemap
+  risk -- "retired by" --> stage
+  risk -- "proved by" --> spike
+  decision -- "gated by" --> spike
+  stagemap -- pulls --> stage
   spike -- "is stage 0" --> stage
-  spike -- proves --> risk
-  spike -- gates --> decision
   skeleton -- "is stage 1" --> stage
   prerelease -- "is a" --> stage
   release -- "is a" --> stage
+  stage -- "ends at" --> exit[exit criteria]
+  stage -- "ships, from stage 1 on" --> increment
   release -- deploys --> increment
 ```
 
