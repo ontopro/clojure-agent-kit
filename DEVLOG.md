@@ -27,6 +27,24 @@ either; an entry's date is its reference.
 
 ## 2026-10-06
 
+### The method says what its words mean, and draws how they relate
+
+Row 92. §01 had the three phases and two rules, and the words the rest of the document
+leans on - stage, spike, increment, scope, risk, decision - were defined nowhere, each
+reader supplying their own meaning. The words are now a table in §01, seventeen of them,
+each meaning one thing: a stage is a unit of scope with a gate at its end and never a unit
+of time; a spike owes decisions and not code; the walking skeleton is stage 1 in its strict
+sense; scope is three lists, and an exclusion is a decision reversed only by a later one;
+the build is the repository beside the application that holds the plan and the records.
+Under the table a Mermaid graph draws the relations, with the stage as the hinge:
+everything in the plan feeds it, everything the project produces leaves through it.
+
+The phase table moves with the shape: Phase A commits to stage 0 and nothing after it;
+Foundation is built inside stage 0 and lets its packets dispatch; Phase C names the kinds.
+The two rules become three: the Kanban words pull, work-in-progress limit and definition of
+done are written as rules, because each named something the method did without saying -
+the first project's fifty-target packet was a WIP breach by another name.
+
 ### The method's shape is layered by stage kind, and scoping is its step 0
 
 Row 91. The drawing at the top of `method.md` was three phases in a line - plan, Foundation,

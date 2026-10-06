@@ -78,15 +78,84 @@ Most process documents number their phases 1–5 and imply each one ends before 
 
 | Phase | Produces | Shape | Ends when | Where |
 |---|---|---|---|---|
-| **A · Plan** | The MVP boundary, a ranked risk register, and the few decisions that must be made now — everything else opened as OPEN with a named owner | **As little as possible, as late as responsible** — deliberately incomplete | You can name the MVP, the top risks have experiments assigned, and nothing is ownerless | §02 |
-| **B · Foundation** | The machine: scaffold, tooling, gates, dispatch loop | Build the **minimum** that lets stage 1 dispatch, then run continuously underneath every stage — it never finishes | Its readiness checklist passes **against a live run**, not a document review | §03 |
-| **C · Stages** | Working, functional software — one vertical slice at a time | **Pulled, not scheduled**; repeats, and each stage re-plans the ones after it | Never, until the product is done. Each *stage* ends at a gate, not a date | §04, §07 |
+| **A · Plan** | The brief and the scope, a ranked risk register, the candidate architecture as provisional decisions each with the pass criterion stage 0 will apply, and a stage map by kind — everything else opened as OPEN with a named owner | **As little as possible, as late as responsible** — it commits to stage 0 and nothing after it | The top risks are ranked and stage 0 names which it proves, nothing is ownerless, and stage 0 is approved with its cap | §02 |
+| **B · Foundation** | The machine: scaffold, tooling, gates, dispatch loop — built inside stage 0 | Build the **minimum** that lets stage 0's packets dispatch, then run continuously underneath every stage — it never finishes | Its readiness checklist passes **against a live run**, not a document review | §03 |
+| **C · Stages** | Working, functional software — stage 0 a spike, stage 1 a walking skeleton, then increments, pre-release stages and release | **Pulled, not scheduled**; repeats, and each stage's end revises the scope, the stage map and the next stage's requirements | Never, until the product is released — and release repeats. Each *stage* ends at a gate, not a date | §04, §07 |
 
-### Two rules that make the shape work
+### The words
 
-**Infrastructure and operations are woven into stages, not held in a phase of their own.** Containerization lands in the first stage that ships something; performance targets are set from the first stage that measures something; production topology lands in the stage before launch. A separate "Phase 3: Infrastructure" is a slot nobody can schedule and everybody defers.
+The method uses a small vocabulary and means one thing by each word. A reader who knows Scrum or Kanban will find their counterparts in §04.
 
-**Everything beyond the stage in progress is provisional.** Write each stage's document just before it starts. A stage map three stages deep is a statement of intent, not a plan — and it is expected to be rewritten by what the current stage teaches you. That is the point of the method, not a failure of it.
+| Word | Means |
+|---|---|
+| **brief** | the person's one-page ask, in their words: who it is for, what it shows or does, what material exists, what must be proved early, the first thing worth seeing, the money (§02, step 0) |
+| **source** | what was handed over, recorded in `source.md` and numbered so that a requirement can cite the observation it rests on |
+| **content** | the part of the source the product shows, named apart from the rest — a site has content, a library has none |
+| **requirement** | one thing the product must do or be, with a permanent ID; written when the stage that builds it is pulled, never earlier |
+| **scope** | three lists kept together: what ships first; what is deferred, with the reason and the stage that will take it; what is out of scope, with the reason. An exclusion is a decision with an ID, reversed only by a later decision that cites it — never reargued in passing and never sealed. The lists are revised at every stage's end |
+| **risk** | what could kill the project — a technology that may not scale, an integration that may not exist, a constraint assumed and not checked; ranked, and the stages ordered by it |
+| **decision** | one thing settled, with a permanent ID, its status and its owner, in the decision log (§08); provisional until the spike that gates it runs; reversed only by a later decision that cites it |
+| **stage map** | the candidate stages in the order the risks put them, each with its kind; only the stage in progress has a cap; re-ranked after every stage |
+| **stage** | a unit of scope with a gate at its end: defined by what risk it retires and what it ships; pulled when the previous one closes; never a unit of time. Numbered through, each with a kind |
+| **spike** | a proof of one or more risks, with a pass criterion written before it runs and a fallback written beside it; what it owes is decisions confirmed or reversed, not code. Stage 0 is a spike |
+| **walking skeleton** | stage 1: one small function end to end through every layer the architecture names, built on what stage 0 settled and keeping stage 0's code only where it passed; the first thing the owner walks |
+| **increment** | what a stage from 1 on ships into the application; stages 2 to N are increments; the first increment a person could ship is what the first release carries |
+| **pre-release stage** | what release needs and nothing a user-visible stage needed earlier: host, publish, backup, restore, metrics, logging, auditing, the pre-publish gate — one stage or several, each with its own gate |
+| **release** | package, then deploy on the server or publish for download; after any stage whose increment is shippable, and again after later stages with a smaller pre-release before it |
+| **exit criteria** | a stage's definition of done: things a person can check, the owner's walk and the decision-log update among them; from stage 1 on, *deployed locally* is one of them |
+| **build** | the repository beside the application that holds the plan, the build's settings and its records |
+| **application** | the repository of the code; what an increment lands in |
+
+How the words relate — the stage is the hinge, everything in the plan feeds it and everything the project produces leaves through it:
+
+```mermaid
+graph LR
+  subgraph source
+    brief
+    content
+  end
+  subgraph build["build — the plan, the settings, the records"]
+    requirement
+    scope
+    stagemap[stage map]
+    risk
+    decision
+    stage
+    skeleton[walking skeleton]
+    prerelease[pre-release stage]
+    spike
+    release
+    exit[exit criteria]
+  end
+  subgraph application
+    increment
+  end
+  requirement -- cites --> source
+  scope -- lists --> requirement
+  scope -- "defers to" --> stage
+  scope -- "out of scope is a" --> decision
+  stagemap -- "ordered by" --> risk
+  stage -- "pulled from" --> stagemap
+  stage -- "adds, when pulled" --> requirement
+  stage -- retires --> risk
+  stage -- "ships, from stage 1 on" --> increment
+  stage -- "ends at" --> exit
+  spike -- "is stage 0" --> stage
+  spike -- proves --> risk
+  spike -- gates --> decision
+  skeleton -- "is stage 1" --> stage
+  prerelease -- "is a" --> stage
+  release -- "is a" --> stage
+  release -- deploys --> increment
+```
+
+### Three rules that make the shape work
+
+**Infrastructure and operations are woven into stages, not held in a phase of their own.** Containerization lands in the first stage that ships something; performance targets are set from the first stage that measures something; what release needs lands in the pre-release stages, which are stages like any other, with a gate each. A separate "Phase 3: Infrastructure" is a slot nobody can schedule and everybody defers.
+
+**Everything beyond the stage in progress is provisional.** Write each stage's document just before it starts, and its requirements with it. A stage map three stages deep is a statement of intent, not a plan — and it is expected to be rewritten by what the current stage teaches you. That is the point of the method, not a failure of it.
+
+**Three Kanban words are rules here, because each names something the method does without saying.** *Pull*: a stage starts when capacity frees, never on a date. *Work-in-progress limit*: one stage open, one run per task, a packet of ten to twenty targets (§06). *Definition of done*: the exit criteria, with the owner's walk and the decision-log update as items in it, and nothing closes a stage but them.
 
 ---
 
