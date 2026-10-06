@@ -468,33 +468,40 @@ Only then does the next packet dispatch. Foundation is now *ready* — not done;
 
 ### A stage is defined by what it retires — and what it ships
 
-Not by a calendar slot, and not by a feature list. A stage exists to take **a named set of risks off the table and deliver a named increment of the MVP**. Both halves matter: risk-only stages produce a very well-understood product that nobody can use, and increment-only stages defer every hard question until it is expensive.
+Not by a calendar slot, and not by a feature list. A stage exists to take **a named set of risks off the table and deliver a named increment of the product**. Both halves matter: risk-only stages produce a very well-understood product that nobody can use, and increment-only stages defer every hard question until it is expensive.
 
-The first stage should almost always be a **thin but full-depth vertical slice**: end to end through every layer on the smallest realistic input, chosen to prove the seams and de-risk the provisional decisions rather than to demonstrate scale.
+Stages are numbered through, and each has a kind. The kinds and their order are the method's; the names are yours.
+
+- **Stage 0 is a spike.** It proves the foundational choices — the architecture's provisional decisions, the stack, the machine — against pass criteria written before it runs, and it ends in running software. What it owes is decisions confirmed or reversed, not code: stage 1 keeps what passed its criterion and rewrites the rest with no obligation. Foundation is built in it (§03).
+- **Stage 1 is the walking skeleton.** One small function end to end through every layer the architecture names, on the smallest input a person can walk in a browser or at a REPL — for a site, the home page and two pages; for a library, one public function with its test and its line in the README. **Full depth and the smallest breadth**, and both halves are the point: a project that heard only the depth half made its first stage over every input it had, and the first packet cut from it cost a third of the build and merged nothing. The skeleton is the first thing the owner walks.
+- **Stages 2 to N are increments**, each the same four steps — scope, plan, implement, deploy locally — each defined by what it retires and what it ships, each ending at a gate.
+- **Pre-release stages** hold what release needs and nothing a user-visible stage needed earlier: host, publish, backup, restore, metrics, logging, auditing, the pre-publish gate. One stage or several, each with its own gate; see below.
+- **Release** packages and deploys on the server, or publishes for download; then the next increment. It repeats, and a later release has a smaller pre-release before it.
 
 ### The stage document, written just-in-time
 
-Roughly ten sections, and the third one is the one people leave out:
+Written when the stage is pulled, with the previous stage's residual risks and `05-lessons.md` read first, and approved by the person with the stage's cap before its Blueprint is cut. Roughly a dozen sections, and the fourth one is the one people leave out:
 
-1. **Goal** — one paragraph. What full-depth slice, over what input, proving what.
-2. **Decisions exercised by this stage** — a table pointing into the decision log by ID.
-3. **What it proves — and what it deliberately does NOT prove.** Write both columns. The "does not" column is what stops a prototype from being mistaken for a scale test, and it is where deferred work gets *tracked* rather than forgotten.
-4. **Architecture — the seams.** The protocols and contracts this stage establishes. For the first stage this is the heart of the document.
-5. **Data shapes** — the ones this stage introduces (this feeds the Blueprint directly, §06).
-6. **Domain specifics** — whatever is peculiar to this stage's input.
-7. **Tech stack for this stage** — including anything provisional.
-8. **Local development environment** and, if relevant, the local → deployed portability story.
-9. **Dependency-ordered task list** — the input to the Architect's Blueprint.
-10. **Exit criteria** — concrete and checkable (see below).
-11. **Residual risks / what feeds the next stage.**
+1. **Goal** — one paragraph. What slice, over what input, proving what; the stage's kind.
+2. **Requirements this stage adds** — with permanent IDs, each citing the observation in `source.md` it rests on or marked as the Architect's inference. This is where requirements are written (§02); the requirements document indexes them.
+3. **Decisions exercised by this stage** — a table pointing into the decision log by ID. For stage 0, each with its pass criterion and its fallback.
+4. **What it proves — and what it deliberately does NOT prove.** Write both columns, and for the skeleton write breadth as well as depth: what it shows, and what it does not yet show. The "does not" column is what stops a prototype from being mistaken for a scale test, and it is where deferred work gets *tracked* rather than forgotten.
+5. **Architecture — the seams.** The protocols and contracts this stage establishes. For stage 1 this is the heart of the document.
+6. **Data shapes** — the ones this stage introduces (this feeds the Blueprint directly, §06).
+7. **Domain specifics** — whatever is peculiar to this stage's input.
+8. **Tech stack for this stage** — including anything provisional.
+9. **Local development environment** and, if relevant, the local → deployed portability story.
+10. **Dependency-ordered task list** — the input to the Architect's Blueprint.
+11. **Exit criteria** — concrete and checkable (see below), and the stage's cap.
+12. **Residual risks / what feeds the next stage.**
 
 ### Spike gates: how a PROVISIONAL decision gets settled
 
-Give each validation spike its own ID (`R1`, `R2`, …) and name, in the decision log, **which spike gates which decision**. A spike is not "we'll try it and see" — it has a stage that runs it, a pass/fail criterion written before it runs, and a pre-documented fallback that executes if it fails. Concentrating two young dependencies in one stage is itself a risk worth an ID.
+Give each validation spike its own ID (`R1`, `R2`, …) and name, in the decision log, **which spike gates which decision**. A spike is not "we'll try it and see" — it has a stage that runs it, a pass/fail criterion written before it runs, and a pre-documented fallback that executes if it fails. Concentrating two young dependencies in one stage is itself a risk worth an ID. Stage 0 is the spike that runs first and carries the most: every decision it gates is answered at its end, pass or fallback, and that answer is what it owes.
 
 ### Exit criteria, and what happens when a gate fails
 
-Write exit criteria as things a person can *check*, not qualities they can admire: "search returns results and clicking a result opens detail"; "load release two, time-travel returns release one's state, diff lists added/removed/changed"; "the boundary gate passes"; "each protocol has one implementation and a documented fallback"; and **"the system boots"** - `bb serve` from a clean checkout answers on its port. No gate boots the system, rightly, and a third project reached its stage end with every gate green, five tasks merged and a component refusing its own config; the person who looked found it, free. Add two more that are easy to forget:
+Write exit criteria as things a person can *check*, not qualities they can admire: "search returns results and clicking a result opens detail"; "load release two, time-travel returns release one's state, diff lists added/removed/changed"; "the boundary gate passes"; "each protocol has one implementation and a documented fallback"; and **"the system boots"** - `bb serve` from a clean checkout answers on its port. No gate boots the system, rightly, and a third project reached its stage end with every gate green, five tasks merged and a component refusing its own config; the person who looked found it, free. From stage 1 on, write that one as **"deployed locally"**: served by the project's own command from a clean checkout, the browser checks run against it, and the owner's walk done on it — that is the fourth step of every stage, and the gate sits at its end. For stage 0, the criteria are its pass criteria: each answered, pass or fallback, with what is kept said. Add these, which are easy to forget:
 
 > **The stage's decision-log updates are recorded** — spike outcomes noted against the decisions they gate, provisional entries confirmed or reversed.
 >
@@ -506,9 +513,38 @@ Write exit criteria as things a person can *check*, not qualities they can admir
 
 Stages are **pulled when capacity frees, not scheduled**. There is no iteration length in this method and no timebox anywhere — a stage takes exactly as long as its exit criteria take, and the honest response to a stage running long is to look at what it is stuck on, not to declare it done at a date.
 
-Mark which stage completes the MVP. Everything after that boundary is post-MVP by construction, which makes the question *"could we ship after this one?"* answerable at every stage boundary rather than only at the end.
+The question *"could we ship after this one?"* is answerable at every stage boundary, and the first boundary where the answer is yes is the MVP — named afterwards, by building, never fixed before stage 0 (§02).
 
 Stage boundaries are **gates, not dates**. A gate can loop back: if a spike fails, the documented fallback executes behind the protocol and the stage re-runs its exit criteria. The stage loops; it does not silently pass.
+
+At a stage's end, three things are written before the next stage is pulled: the lessons, one section of `05-lessons.md`, each ending as a rule, a line in the next stage document, or a decision; the scope lists, revised against the source; and the stage map, re-ranked. Then the next stage — an increment, a pre-release stage, or the release — is pulled, and its document written.
+
+### For a reader who knows Scrum or Kanban
+
+The method is Kanban's shape with two of Scrum's ceremonies attached to the gate. **Stage is the word**: not sprint, which brings a timebox the method rejects; not iteration, which is already taken by the loop's rounds and a task's retries.
+
+| | Scrum | Kanban | This method |
+|---|---|---|---|
+| unit of work | sprint, a timebox | a card, pulled | a stage, pulled, ends at a gate |
+| what ships | increment | continuous | the stage's increment |
+| what comes next | product backlog | the board's queue | the stage map, ordered by risk, re-ranked after each stage |
+| refining the next item | backlog refinement | just-in-time | the stage document, written when the stage is pulled |
+| done | definition of done | exit policy per column | the exit criteria |
+| work-in-progress limit | one sprint goal | explicit limits | one stage open, one run per task, a packet of ten to twenty targets |
+| showing the result | sprint review | none fixed | the owner's walk, after the browser checks |
+| learning | retrospective | none fixed | the lessons at a stage's close, the decision log |
+| smallest item | story or task | card | the task packet, one run through the loop (§06) |
+
+Backlog and story stay out: the stage map and the task packet already mean exactly what they mean, and a story's shape — *as a user I want* — is the brief's job at step 0, not the packet's.
+
+### Pre-release and release
+
+Both are stages, pulled and gated like any other, and both are host-neutral in this document: the method names no host, as the loop names no framework. What they hold:
+
+- **A pre-release stage** takes a share of what release needs — the host and the publish command; backup and restore, with a restore rehearsed; metrics, logging, auditing; the pre-publish gate, which says what must be true of the application before anything is published. Its exit criteria include the deploy path rehearsed against a throwaway host the project names — a container, a scratch machine — before the real one. Nothing a user-visible stage needed earlier is left for here: a performance target is measured from the first stage that measures, and the logging a stage needs to be debugged lands in that stage. Most non-functional requirements are written here, when pulled, like any requirement.
+- **The release stage** packages, then deploys on the server or publishes for download, and has three exit criteria of its own beyond the increment's: the released artifact started *as packaged, on an empty home, with the build's caches out of reach*, by a command kept with the release — the KIT's own health-check lesson, that three projects failed in their first hour for reasons an empty repository could not show, turned on the adopter's release; from the second release on, the previous release's data and configuration opened by the new one, with what is kept of the old said; and a publish that, re-run after a partial failure, skips what is already published and finishes. A changelog entry in the user's terms, with an Upgrading paragraph when there is one, and the rollback named.
+
+Release repeats. After the first, stages continue, and a later release carries a smaller pre-release delta. The browser checks and the owner's walk run against the released address as they ran locally.
 
 ---
 

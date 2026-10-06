@@ -27,6 +27,37 @@ either; an entry's date is its reference.
 
 ## 2026-10-06
 
+### The stages have kinds, the skeleton has a breadth, and release is a stage
+
+Row 94. §04 said the first stage should be a thin, full-depth vertical slice, and a project
+heard the depth half: full depth over every input it had. The section now names the five
+kinds in order. Stage 0 is a spike over the foundational choices, owing decisions and running
+software and no code; stage 1 is the walking skeleton with both halves said - full depth and
+the smallest breadth a person can walk, a home page and two pages for a site, one public
+function for a library; stages 2 to N are increments; pre-release stages hold what release
+needs and nothing earlier; release repeats. The stage document gains the requirements the
+stage adds as its second section, since §02 moved requirements there, and its approval with
+the stage's cap; it is written with the previous stage's residual risks and `05-lessons.md`
+read first.
+
+"Deployed locally" is an exit criterion from stage 1 on - served from a clean checkout, the
+browser checks run against it, the owner's walk done on it - and stage 0's criteria are its
+pass criteria answered. A stage's end writes three things before the next is pulled: the
+lessons, the scope lists revised against the source, the stage map re-ranked. The MVP is the
+first boundary where "could we ship?" is yes, named afterwards.
+
+Two subsections are new. A table for a reader who knows Scrum or Kanban, so that nobody
+re-litigates "why no sprints": the method is Kanban's shape with two of Scrum's ceremonies at
+the gate, and stage is the word. And pre-release and release, host-neutral: what a
+pre-release stage holds and its rehearsal against a throwaway host; the release stage's three
+criteria - the artifact started as packaged on an empty home, the previous release's data
+opened by the new one, a publish that finishes when re-run - with the changelog and the
+rollback. Those criteria come from reading two projects that release, one of them nine times
+in six days; the KIT had no practice of its own.
+
+This closes the method's part of the change. The templates, the workflow, the harness and the
+skills follow, each its own change.
+
 ### The plan commits to stage 0, requirements are written per stage, and the review reads every stage
 
 Row 93. §02 said "decide as little as possible" and then described a document set whose
