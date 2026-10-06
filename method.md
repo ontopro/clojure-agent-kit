@@ -110,6 +110,27 @@ The method uses a small vocabulary and means one thing by each word. A reader wh
 | **build** | the repository beside the application that holds the plan, the build's settings and its records |
 | **application** | the repository of the code; what an increment lands in |
 
+**The three levels** — project plan, blueprint, spec — are each cut from the one above, and their counts are fixed:
+
+| | Per project | Per stage, including stage 0 and the pre-release stages | Per task |
+|---|---|---|---|
+| **project plan** | one, the document set | one stage plan, the plan's slice for the stage | |
+| **blueprint** | | exactly one, cut from the stage plan | |
+| **spec** | | one or more | one, a packet cut from the blueprint |
+
+```mermaid
+graph LR
+  subgraph pp["project plan — one per project"]
+    docs["source, overview, requirements,<br/>architecture, method, decision log, lessons"]
+    sp["stage plan — one per stage"]
+  end
+  sp -- "exactly one" --> bp["blueprint — the stage's technical specification"]
+  bp -- "one or more" --> spec["spec — one task's contract"]
+  spec -- "one each" --> run["a run through the loop"]
+```
+
+The release stage's blueprint may be a single packet; an increment's specs carry ten to twenty targets each (§06). Each spec is one run: the spec review reads it cold, two roles work from it, the gates and the code review close it, the person merges it (§07).
+
 How the words relate — the stage is the hinge, everything in the plan feeds it and everything the project produces leaves through it:
 
 ```mermaid
