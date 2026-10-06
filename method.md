@@ -206,7 +206,7 @@ So keep them apart. **Stage 0 is the first spike**, the one that proves the foun
 
 - **Before committing to any high-risk design choice**, in Phase A or later.
 - **During MVP**, when the slice you are building first meets a store, a format, or a scale you have not tried.
-- **During post-MVP**, on exactly the same terms — a post-MVP feature that needs a new datastore is as risky as an MVP one that does.
+- **After the first release**, on exactly the same terms — a later increment that needs a new datastore is as risky as an earlier one that does.
 - **Especially at any design or architectural change**, where the spike is only half the work. The other half is the impact analysis in §08.
 
 What makes a spike a spike rather than a poke around — an owning stage, a pass criterion written before it runs, a pre-documented fallback — is in §04.
@@ -1076,19 +1076,20 @@ Two things to get right early because they're cheap now and expensive later: **a
 
 ## 13 — Quick start
 
-**Phase A — Plan** *(decide as little as possible)*
-- [ ] Name the **MVP** — the smallest shippable feature set — and what is deliberately post-MVP
-- [ ] Rank the risks; give each top one an experiment cheap enough to run and specific enough to fail
-- [ ] Order the stages by the risk each retires, not by what is easiest to build
-- [ ] Decide only what blocks starting; open the log with everything else PROVISIONAL-with-a-gate or OPEN-with-an-owner
+**Phase A — Plan** *(commit to stage 0 and nothing after it)*
+- [ ] Scope first (§02, step 0): the six groups of questions and only those; the answers recorded as given in `source.md`, the content named apart; the first thing worth seeing named
+- [ ] Write the three scope lists — ships first, deferred with its stage, out of scope with its reason — and treat every exclusion as a decision
+- [ ] Rank the risks; name which ones stage 0 proves, each with a pass criterion and a fallback written before it runs
+- [ ] Put the candidate architecture in the log as PROVISIONAL entries gated by those criteria; open everything else OPEN-with-an-owner
+- [ ] Draw the stage map by kind — spike, skeleton, increments, pre-release, release — and cap stage 0 alone
 - [ ] Assign ID families; make "IDs are permanent" a written working agreement
-- [ ] Run the adversarial plan review (§02) — including "did we decide too much, too early?"
-- [ ] Confirm no decision is ownerless
+- [ ] Run the adversarial plan review (§02) — including "did we decide too much, too early?" and "is any requirement written for a stage not yet pulled?"
+- [ ] Confirm no decision is ownerless; approve stage 0 with its cap
 
-**Phase B — Foundation** *(build the minimum machine, then prove it)*
+**Phase B — Foundation** *(inside stage 0: build the minimum machine, then prove it)*
 - [ ] Install JDK 21, the Clojure CLI and Babashka; `bb doctor` until both verdicts say yes
 - [ ] `bb health` once - the KIT, this machine, the pinned template, certified together
-- [ ] `bb init <name>` - the application generated and committed untouched, the plan, the workspace
+- [ ] `bb init <name>` - the application generated and committed untouched, the build repository, the workspace
 - [ ] Choosing XTDB v2 instead? Pin the library *and* the JDK, decide whether migrations are needed, write the thin SQL write layer, and check the stateless-transaction constraint against your access patterns
 - [ ] Put the datastore behind a protocol before writing the first feature
 - [ ] One REPL per workspace - the harness provisions them; never share one
@@ -1097,15 +1098,17 @@ Two things to get right early because they're cheap now and expensive later: **a
 - [ ] Decide your retry cap, and what "escalate" does with partial output
 - [ ] Name your two human gates; resist adding a third
 - [ ] The application's `.mise.toml` is a dated known-good set; `bb doctor` reads it as floors, the JDK's major as the one pin
-- [ ] Run the loop by hand, end to end, on one trivial task — before automating any of it
+- [ ] Run the loop by hand, end to end, on stage 0's first packet — before automating any of it
 
 **Phase C — Stages** *(pull, don't schedule)*
-- [ ] Write the stage doc just-in-time, including the "does NOT prove" column
-- [ ] Set a WIP limit — start at one task in flight
-- [ ] Mark which stage completes the MVP
+- [ ] Stage 0 is a spike: it owes decisions confirmed or reversed and running software, not code
+- [ ] Stage 1 is the walking skeleton: one small function through every layer, the smallest breadth a person can walk — and the first owner's walk
+- [ ] Write each stage doc just-in-time, with the lessons of the last stage read first, the requirements it adds, the "does NOT prove" column, and its cap approved
+- [ ] Set a WIP limit — one stage open, one task in flight, a packet of ten to twenty targets
 - [ ] Name the spikes, their pass criteria, and their fallbacks — before running them
 - [ ] Get the Blueprint signed off (human gate #1); dispatch in dependency order
-- [ ] Close the stage on exit criteria *and* recorded decision-log updates, not on a date
+- [ ] Close the stage on exit criteria *and* recorded decision-log updates, not on a date — deployed locally, the browser checks, the owner's walk
+- [ ] At every boundary ask "could we ship after this one?"; the first yes is the MVP. Then pre-release stages for what release needs, and release — which repeats
 
 ---
 

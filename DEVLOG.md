@@ -27,6 +27,19 @@ either; an entry's date is its reference.
 
 ## 2026-10-06
 
+### The quick start follows the shape
+
+Rows 93 and 94, residue. §13's checklist still began "name the MVP and what is post-MVP" and
+ended "mark which stage completes the MVP", and §02's de-risking list spoke of post-MVP
+features. The checklist now walks the shape: scope first, the three lists, the risks stage 0
+proves with their criteria, the candidates as provisional entries, the stage map by kind with
+a cap on stage 0 alone, the review's two questions, stage 0 approved; Foundation inside stage
+0, the live run its first packet; stage 0 a spike and stage 1 the skeleton, the stage document
+with the lessons read first and the requirements it adds, the WIP limit as one stage and one
+task and one packet of ten to twenty targets, the stage closed on deployed locally and the
+walk, the MVP named at the first boundary where "could we ship?" is yes, then pre-release and
+release. The same method, read in one page.
+
 ### The stages have kinds, the skeleton has a breadth, and release is a stage
 
 Row 94. §04 said the first stage should be a thin, full-depth vertical slice, and a project
