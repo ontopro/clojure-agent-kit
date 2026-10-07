@@ -610,7 +610,7 @@
   (let [ws (str (fs/real-path (fs/create-temp-dir)))
         elsewhere (str (fs/create-temp-dir))]
     (spit (str (fs/path ws "workspace.edn"))
-          (pr-str {:workspace/plan "p" :workspace/run-tables "p/RUNS.md" :workspace/records "p/runs"}))
+          (pr-str {:workspace/build "p" :workspace/run-tables "p/RUNS.md" :workspace/records "p/runs"}))
     (is (:skip (report/check-targets [] (workspace/current [] elsewhere)))
         "a KIT kept outside the workspace: nothing to check, as outside any")
     (is (= {:md-path (str (fs/path ws "p" "RUNS.md")) :dir (str (fs/path ws "p" "runs"))}

@@ -2,11 +2,11 @@
   "`bb init <name> [dir]` - create the workspace a project is built in.
 
   A workspace is a plain folder, NOT a repository, holding sibling repositories:
-  the KIT's clone, the application, the plan - and `work/`, scratch that belongs
+  the KIT's clone, the application, the build - and `work/`, scratch that belongs
   to none of them. `harness.setup.workspace` reads what this writes.
 
   TWO SEPARABLE PARTS, AND THIS NAMESPACE IS THE FIRST. Creating the workspace -
-  the folders, `workspace.edn`, the plan from `plan-template/`, the agent file, the
+  the folders, `workspace.edn`, the build repository with the plan from `plan-template/`, the agent file, the
   wiring - knows nothing about any template. Generating the application is the
   only part that knows about one, and it arrives as `:app-fn`, a function of the
   application's folder. With none, the workspace names an application folder it
@@ -59,12 +59,12 @@
     (str (fs/relativize (fs/normalize ws-dir) (fs/normalize kit-dir)))
     (str (fs/normalize kit-dir))))
 
-(defn- workspace-edn [{:workspace/keys [kit app plan work rule-mirrors rules-overlay records run-tables]}]
+(defn- workspace-edn [{:workspace/keys [kit app build work rule-mirrors rules-overlay records run-tables]}]
   (str ";; Which folder is which, for the KIT's harness (`harness.setup.workspace` reads it). Written by\n"
        ";; `bb init`. A relative path is relative to this file. In no repository: if it is lost, write it again.\n"
        "{:workspace/kit " (pr-str kit) "\n"
        " :workspace/app " (pr-str app) "\n"
-       " :workspace/plan " (pr-str plan) "\n"
+       " :workspace/build " (pr-str build) "\n"
        " :workspace/work " (pr-str work) "\n"
        " ;; generated rule mirrors outside the KIT, checked by the KIT's `bb rules-check`\n"
        " :workspace/rule-mirrors " (pr-str rule-mirrors) "\n"
@@ -76,7 +76,7 @@
        " :workspace/run-tables " (pr-str run-tables) "}\n"))
 
 (defn- rules-overlay-edn
-  "`<plan>/rules.edn` as `bb init` writes it: the rule source's placeholder rules,
+  "`<build>/rules.edn` as `bb init` writes it: the rule source's placeholder rules,
   text as shipped, for the adopter to fill HERE - `harness.rules/overlay` merges
   the file over the source by id, so the clone's source is never edited by a
   project and `start` still lists what stands unfilled."
@@ -110,7 +110,7 @@
   (str (fs/path kit-dir "harness" profile/examples-dir (str seat ".edn"))))
 
 (defn- profile-edn
-  "`<plan>/profile.edn` as `bb init` writes it: the seat's shipped example,
+  "`<build>/profile.edn` as `bb init` writes it: the seat's shipped example,
   whole - its header explains the pair of examples and the independence rule,
   and stays - under a line saying what this copy is. Nil when the KIT ships no
   example for the seat, which `refusals` turns into a sentence before anything
@@ -119,19 +119,19 @@
   (let [source (shipped-profile kit-dir seat)]
     (when (fs/exists? source)
       (str ";; THIS PROJECT'S PROFILE - the models per role, and the seat. Copied by `bb init` from the KIT's\n"
-           ";; example for seat " seat " (" kit "/harness/" profile/examples-dir "/" seat ".edn); edit it HERE. The plan's\n"
+           ";; example for seat " seat " (" kit "/harness/" profile/examples-dir "/" seat ".edn); edit it HERE. The build's\n"
            ";; loop.edn names it, `bb profile` in the KIT's harness/ checks it, and nothing of it goes in the clone.\n"
            ";;\n"
            (slurp source)))))
 
-(defn- workspace-readme [project {:workspace/keys [kit app plan work]}]
+(defn- workspace-readme [project {:workspace/keys [kit app build work]}]
   (str "# " project " - a workspace, not a repository\n\n"
        "Written by the KIT's `bb init`. This folder holds sibling git repositories and is not one\n"
        "itself; each has its own history and none is rewritten to change another.\n\n"
        "| Folder | What it is |\n|---|---|\n"
        "| `" kit "` | the KIT (the Clojure Agent Kit): the method and the harness. Upgraded with `git pull`; nothing of this project is written into it |\n"
        "| `" app "/` | the application. No harness code and no planning documents |\n"
-       "| `" plan "/` | the plan: `docs/` from the KIT's plan template, `rules.edn` this project's rules over the KIT's rule source, `profile.edn` the models per role, `loop.edn` defaults for runs, and `runs/` the run records with `RUNS.md` their published tables. Read before the first dispatch by `bb plan-check` in the KIT's `harness/` |\n"
+       "| `" build "/` | the build: the plan's documents in `docs/` from the KIT's template, `rules.edn` this project's rules over the KIT's rule source, `profile.edn` the models per role, `loop.edn` defaults for runs, and `runs/` the run records with `RUNS.md` their published tables. Read before the first dispatch by `bb plan-check` in the KIT's `harness/` |\n"
        "| `" work "/` | scratch, in no repository: `runs/<id>/` and `worktrees/`. Safe to delete between runs |\n"
        "| `workspace.edn` | which folder is which, for the harness |\n\n"
        "Start sessions HERE, not inside one of the repositories. One workspace is one project.\n"))
@@ -142,7 +142,7 @@
   it would hand those to every session of every project. The rules a project's
   agents follow are in the application's `AGENTS.md`, from the rule source, and
   this file does not restate them: the source is the only place a rule is written."
-  [project {:workspace/keys [kit app plan work]}]
+  [project {:workspace/keys [kit app build work]}]
   (str "# " project "/ - a workspace, not a repository\n\n"
        "Sessions start here, and a session here is the Architect's: it plans, writes task specs and\n"
        "drives the loop; dispatched agents write the code. This folder holds sibling git repositories\n"
@@ -150,8 +150,8 @@
        "- `" kit "/` - the KIT (the Clojure Agent Kit): the method and the harness. Nothing of this\n"
        "  project is written into it. Its own `CLAUDE.md` is the KIT's development rules, not this project's.\n"
        "- `" app "/` - the application. Its `AGENTS.md` is the rules every agent working in it follows,\n"
-       "  generated from the KIT's rule source and this project's `" plan "/rules.edn`; `CLAUDE.md` there imports it.\n"
-       "- `" plan "/` - the plan: `docs/`, `rules.edn`, `profile.edn` and `loop.edn` defaults for runs. THE PLAN IS FILLED HERE, in this\n"
+       "  generated from the KIT's rule source and this project's `" build "/rules.edn`; `CLAUDE.md` there imports it.\n"
+       "- `" build "/` - the build repository: the plan in `docs/`, and beside it `rules.edn`, `profile.edn` and `loop.edn` defaults for runs. THE PLAN IS FILLED HERE, in this\n"
        "  session, before any loop runs: `docs/README.md` gives the order (`docs/source.md` first - what the plan\n"
        "  derives from - then requirements, `docs/00-overview.md` last, and it is the entry point once written),\n"
        "  `method.md` §02 is the review at the end, and a `<placeholder>` left standing is not a decision.\n"
@@ -170,7 +170,7 @@
        "the loop, is the role in `.claude/agents/interactive-programmer.md`.\n"))
 
 (defn- plan-readme [project {:workspace/keys [kit]}]
-  (str "# " project " - the plan\n\n"
+  (str "# " project " - the build\n\n"
        "The reasoning, the contracts and the money for `" project "`, in its own repository so that it can\n"
        "stay private while the application is public.\n\n"
        ;; WHAT THE NAME LEAVES OUT. The first real project's person, meeting profile.edn
@@ -178,7 +178,7 @@
        ;; belonged in the application's repository. It did not - it configures the build,
        ;; the roles must not see it, a model change is not a commit in the application -
        ;; but nothing said so where they were looking.
-       "THIS REPOSITORY HOLDS MORE THAN THE PLAN: it is the build's side of the project. Beside the\n"
+       "THIS REPOSITORY IS THE BUILD'S SIDE OF THE PROJECT, which is why it is called the build. Beside the\n"
        "plan's documents are the build's settings - `rules.edn`, `profile.edn`, `loop.edn` - and its\n"
        "records - `runs/`, `RUNS.md`, `reviews/`. They are here and not in the application because they\n"
        "configure and record the BUILD, not the thing built: the dispatched roles never see them, and a\n"
@@ -228,7 +228,7 @@
   [extra kit-dir]
   (str ";; DEFAULTS for this project's runs. NOT read from here: copy into each run directory\n"
        ";; (../work/runs/<id>/loop.edn) and set :run/id. The harness finds the application through\n"
-       ";; ../workspace.edn, so :repo/root is not needed. :profile is relative to THIS folder, the plan,\n"
+       ";; ../workspace.edn, so :repo/root is not needed. :profile is relative to THIS folder, the build,\n"
        ";; wherever the run directory is: profile.edn beside this file is the seat's shipped example as\n"
        ";; `bb init` copied it, and the KIT's clone holds nothing of this project's. Every key: the\n"
        ";; docstring of harness/src/harness/loop/driver.clj.\n"
@@ -249,12 +249,12 @@
   adopter cloned the KIT into the folder they mean to work in. An explicit
   `:dir` is consent to use exactly that folder, and the KIT may then be
   anywhere. `:plan-template` are the plan documents to copy, relative to
-  `<kit>/plan-template`. `:seat` names which shipped profile the plan gets
+  `<kit>/plan-template`. `:seat` names which shipped profile the build gets
   (`default-seat` when nil). `:rule-mirrors` and `:loop/defaults` come from
   whatever generates the application.
 
-  `:app` and `:plan` name the two repositories' folders; nil means
-  `<name>-app` and `<name>-plan`. THE FOLDER IS NOT THE NAME: the name is the
+  `:app` and `:build` name the two repositories' folders; nil means
+  `<name>-app` and `<name>-build`. THE FOLDER IS NOT THE NAME: the name is the
   application's root namespace and stays short; the folders are what a real
   project calls its repositories, and the experiments never needed to call
   them anything. Everything downstream reads the folders from `workspace.edn`,
@@ -266,26 +266,26 @@
   application's folder: created only by an `:app-fn`). `:repos` are the folders
   that become repositories."
   [{:keys [kit-dir dir plan-template rule-mirrors seat] project :name defaults :loop/defaults
-    app-folder :app plan-folder :plan}]
+    app-folder :app build-folder :build}]
   (let [ws-dir (str (fs/normalize (or dir (fs/parent kit-dir))))
         seat (or seat default-seat)
         app (or app-folder (str project "-app"))
-        plan (or plan-folder (str project "-plan"))
+        build (or build-folder (str project "-build"))
         ws {:workspace/kit (kit-ref ws-dir kit-dir)
             :workspace/app app
-            :workspace/plan plan
+            :workspace/build build
             :workspace/work "work"
             :workspace/rule-mirrors (vec rule-mirrors)
-            :workspace/rules-overlay (str plan "/rules.edn")
-            :workspace/records (str plan "/runs")
-            :workspace/run-tables (str plan "/RUNS.md")}
+            :workspace/rules-overlay (str build "/rules.edn")
+            :workspace/records (str build "/runs")
+            :workspace/run-tables (str build "/RUNS.md")}
         kit-path #(str (fs/path kit-dir %))]
     {:workspace/dir ws-dir
      :default? (nil? dir)
      :workspace ws
-     :repos [plan]
-     ;; THE PLAN BEFORE THE APPLICATION: the application's AGENTS.md is rendered from the
-     ;; rules overlay at generation, and the overlay is the plan's.
+     :repos [build]
+     ;; THE BUILD BEFORE THE APPLICATION: the application's AGENTS.md is rendered from the
+     ;; rules overlay at generation, and the overlay is the build's.
      :entries
      (vec (concat
            [{:path "workspace.edn" :what "which folder is which, for the harness"
@@ -297,25 +297,25 @@
             {:path ".claude/agents/interactive-programmer.md"
              :what "the off-loop role, copied from the KIT"
              :copy-from (kit-path "harness/agents/interactive-programmer.md")}
-            {:path plan :what "the plan (its own repository): docs/ from the KIT's plan template" :dir? true}
-            {:path (str plan "/README.md") :what "what the plan repository is"
+            {:path build :what "the build (its own repository): the plan's docs/ from the KIT's template, the settings, the records" :dir? true}
+            {:path (str build "/README.md") :what "what the build repository is"
              :content (plan-readme project ws)}
-            {:path (str plan "/rules.edn") :what "this project's rules over the KIT's rule source: the placeholders, to fill"
+            {:path (str build "/rules.edn") :what "this project's rules over the KIT's rule source: the placeholders, to fill"
              :content (rules-overlay-edn ws)}
-            {:path (str plan "/profile.edn") :what (str "this project's profile: the KIT's example for seat " seat ", to edit")
+            {:path (str build "/profile.edn") :what (str "this project's profile: the KIT's example for seat " seat ", to edit")
              :content (profile-edn ws kit-dir seat)}
-            {:path (str plan "/loop.edn") :what "this project's defaults for a run"
+            {:path (str build "/loop.edn") :what "this project's defaults for a run"
              :content (loop-edn defaults (fs/normalize (fs/absolutize kit-dir)))}
-            ;; THE RECORDS' HOME AND THEIR DOCUMENT, so the plan holds what four documents
+            ;; THE RECORDS' HOME AND THEIR DOCUMENT, so the build holds what four documents
             ;; said it held. `record` made the folder on its first copy and nobody made the
             ;; document: the fifth project wrote RUNS.md by hand before `bb report-check`
             ;; would pass. The folder is empty until the first record and git tracks it from
-            ;; then; the document is tracked from the plan's first commit.
-            {:path (str plan "/runs") :what "one record per run, copied here by the loop's record" :dir? true}
-            {:path (str plan "/RUNS.md") :what "the records' tables, published; bb report-check holds it to runs/"
+            ;; then; the document is tracked from the build's first commit.
+            {:path (str build "/runs") :what "one record per run, copied here by the loop's record" :dir? true}
+            {:path (str build "/RUNS.md") :what "the records' tables, published; bb report-check holds it to runs/"
              :content (runs-md project ws)}]
            (for [s (sort plan-template)]
-             {:path (str plan "/docs/" s) :what "a plan document, from the template"
+             {:path (str build "/docs/" s) :what "a plan document, from the template"
               :copy-from (kit-path (str "plan-template/" s))})
            [{:path app :what "the application (its own repository)" :app? true}
             {:path "work" :what "scratch, in no repository: runs/<id>/, worktrees/" :dir? true}
@@ -335,7 +335,7 @@
   a KIT cloned into a folder of unrelated repositories would have a project
   scattered among them. An explicit `dir` is not second-guessed - except one
   inside the KIT's clone, where nothing of a project is ever written."
-  [{project :name :keys [kit-dir seat]} {:keys [default?] ws-dir :workspace/dir {:workspace/keys [app plan]} :workspace} facts]
+  [{project :name :keys [kit-dir seat]} {:keys [default?] ws-dir :workspace/dir {:workspace/keys [app build]} :workspace} facts]
   (cond-> []
     (not (and project (re-matches name-pattern project)))
     (conj (str "the name " (pr-str project) " cannot be used: lowercase letters, digits and single "
@@ -343,18 +343,18 @@
 
     ;; A chosen folder is held to the same pattern as the name it replaces: a path, a
     ;; space or a capital in `workspace.edn` reaches every task that reads it.
-    (not (and app plan (re-matches name-pattern app) (re-matches name-pattern plan)))
-    (conj (str "a folder name cannot be used (--app " (pr-str app) ", --plan " (pr-str plan)
+    (not (and app build (re-matches name-pattern app) (re-matches name-pattern build)))
+    (conj (str "a folder name cannot be used (--app " (pr-str app) ", --build " (pr-str build)
                "): lowercase letters, digits and single hyphens, starting with a letter"))
 
-    (and app (= app plan))
-    (conj (str "--app and --plan name the same folder " (pr-str app) ": the application and the "
-               "plan are two repositories"))
+    (and app (= app build))
+    (conj (str "--app and --build name the same folder " (pr-str app) ": the application and the "
+               "build are two repositories"))
 
     (not (:kit? facts))
     (conj "this is not a clone of the KIT (no plan-template/ beside harness/): run `bb init` at the root of one")
 
-    ;; The plan's profile is a copy of a shipped example, so a seat the KIT has no example
+    ;; The build's profile is a copy of a shipped example, so a seat the KIT has no example
     ;; for has nothing to copy - and an empty profile.edn would fail at the first `start`.
     (and (:kit? facts) (not (contains? (set (:seats facts)) (or seat default-seat))))
     (conj (str "no shipped profile for seat " (pr-str (or seat default-seat)) ": the KIT has "
@@ -481,11 +481,11 @@
 
 (def ^:private valued-flags
   "The flags that take the next argument as their value, each to its key."
-  {"--seat" :seat "--app" :app "--plan" :plan})
+  {"--seat" :seat "--app" :app "--build" :build})
 
 (defn parse-args
   "`bb init`'s arguments as a map: `:positional` (name, dir), `:seat`, `:app`
-  and `:plan` (the value after each flag), `:dry-run?`. The valued flags are
+  and `:build` (the value after each flag), `:dry-run?`. The valued flags are
   parsed here and not by looking for a leading `--`."
   [args]
   (loop [[a & more] args, m {:positional []}]
@@ -496,14 +496,14 @@
       :else (recur more (update m :positional conj a)))))
 
 (defn -main
-  "bb init <name> [dir] [--seat <name>] [--app <folder>] [--plan <folder>] [--dry-run]
+  "bb init <name> [dir] [--seat <name>] [--app <folder>] [--build <folder>] [--dry-run]
 
   With no `dir` the workspace is the folder the KIT's clone is in. Run from
   `harness/`, a relative `dir` is relative to `harness/`; the KIT's
   root `bb.edn` makes it absolute first, so there it means what was typed.
-  `--seat` picks which shipped profile the plan gets (default `claude`).
-  `--app` and `--plan` name the two repositories' folders (default `<name>-app`
-  and `<name>-plan`); the name stays the application's namespace.
+  `--seat` picks which shipped profile the build gets (default `claude`).
+  `--app` and `--build` name the two repositories' folders (default `<name>-app`
+  and `<name>-build`); the name stays the application's namespace.
   `--dry-run` prints what would be created, and any refusal, and writes nothing.
 
   THE TWO PARTS MEET HERE AND NOWHERE ELSE: the pin's `:loop/defaults`, the
@@ -511,11 +511,11 @@
   no template. `KIT_TEMPLATE_LOCAL`, a local clone of the template, replaces the
   pinned commit for someone developing it."
   [& args]
-  (let [{:keys [positional seat dry-run?] app-folder :app plan-folder :plan} (parse-args args)
+  (let [{:keys [positional seat dry-run?] app-folder :app build-folder :build} (parse-args args)
         [project dir] positional
         kit-dir (str (fs/parent (fs/normalize (fs/absolutize "."))))]
     (when-not project
-      (println "usage: bb init <name> [dir] [--seat <name>] [--app <folder>] [--plan <folder>] [--dry-run]")
+      (println "usage: bb init <name> [dir] [--seat <name>] [--app <folder>] [--build <folder>] [--dry-run]")
       (System/exit 1))
     (let [pin (template/pin (template/load-pins))
           local-root (some-> (System/getenv "KIT_TEMPLATE_LOCAL") not-empty fs/absolutize fs/normalize str)
@@ -525,7 +525,7 @@
                :dir (some-> dir fs/absolutize fs/normalize str)
                :seat seat
                :app app-folder
-               :plan plan-folder
+               :build build-folder
                :plan-template (plan-template-files kit-dir)
                ;; THE MIRROR FOLLOWS THE FOLDER, not the name: it is a path in workspace.edn.
                :rule-mirrors [(str app-folder "/AGENTS.md")]
@@ -546,7 +546,7 @@
               ;; A folder that cannot be written, a git with no identity, a generation that
               ;; failed: a sentence, not a stack trace - and the truth about what is left behind.
               (try (create! lay {:app-fn (app/app-fn pin {:app-name project
-                                                          :plan-folder (get-in lay [:workspace :workspace/plan])
+                                                          :build-folder (get-in lay [:workspace :workspace/build])
                                                           :local-root local-root})})
                    (catch Exception e
                      (println (str "bb init: stopped - " (.getSimpleName (class e)) ": " (ex-message e)

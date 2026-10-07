@@ -2,14 +2,14 @@
   "Where things are: the workspace a path is in, and what its `workspace.edn` says.
 
   A WORKSPACE IS A PLAIN FOLDER HOLDING SIBLING REPOSITORIES - the KIT, the
-  application, the plan - and `workspace.edn`, written by `bb init`, says which
+  application, the build - and `workspace.edn`, written by `bb init`, says which
   is which:
 
     {:workspace/kit \"clojure-agent-kit\"  :workspace/app \"xyx-app\"
-     :workspace/plan \"xyx-plan\"          :workspace/work \"work\"
+     :workspace/build \"xyx-build\"          :workspace/work \"work\"
      :workspace/rule-mirrors [\"xyx-app/AGENTS.md\"]
-     :workspace/rules-overlay \"xyx-plan/rules.edn\"
-     :workspace/records \"xyx-plan/runs\"  :workspace/run-tables \"xyx-plan/RUNS.md\"}
+     :workspace/rules-overlay \"xyx-build/rules.edn\"
+     :workspace/records \"xyx-build/runs\"  :workspace/run-tables \"xyx-build/RUNS.md\"}
 
   every path relative to the file (or absolute: a KIT kept elsewhere). The
   overlay is the project's rules over the KIT's source (`harness.rules/overlay`);
@@ -50,7 +50,7 @@
                 (assoc :workspace/dir (str dir))
                 (update :workspace/kit abs)
                 (update :workspace/app abs)
-                (update :workspace/plan abs)
+                (update :workspace/build abs)
                 (update :workspace/work abs)
                 (update :workspace/rules-overlay abs)
                 (update :workspace/records abs)

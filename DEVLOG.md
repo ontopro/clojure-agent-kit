@@ -27,6 +27,23 @@ either; an entry's date is its reference.
 
 ## 2026-10-06
 
+### The repository beside the application is the build, and `bb init` names it so
+
+Row 87, fixed. `bb init` made `<name>-plan`, and the KIT called it the plan throughout,
+while it held the plan's documents and, beside them, the build's settings and its records;
+a person meeting `profile.edn` there took it for an application setting. The default is
+`<name>-build` now, the option that names it is `--build <folder>` (the `--plan` spelling
+is gone, not aliased: nothing on `main` used it), and `workspace.edn`'s key is
+`:workspace/build`, which every reader of the workspace - the driver, the plan check, the
+profile, the readings, the bake-off, the balance - now reads. The files `bb init` writes
+say the build where they meant the repository: the workspace's README and `CLAUDE.md`, the
+build's own README ("the build's side of the project, which is why it is called the
+build"), `loop.edn`'s header; so do the harness README and its `AGENTS.md`, the workflow's
+two mentions, the plan template's README and the shipped profiles' headers. `bb plan-check`
+and `bb plan-review` keep their names, because the plan is still the plan: the document set
+the build holds. Going forward only, as the person decided: a workspace made before carries
+`:workspace/plan`, which the harness no longer reads, and is owed nothing.
+
 ### The quick start follows the shape
 
 Rows 93 and 94, residue. §13's checklist still began "name the MVP and what is post-MVP" and

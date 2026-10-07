@@ -28,19 +28,19 @@
   (let [lay (init/layout (request {:kit-dir "/w/clojure-agent-kit" :plan-template ["00-overview.md"]}))]
     (is (= "/w" (:workspace/dir lay)))
     (is (true? (:default? lay)))
-    (is (= {:workspace/kit "clojure-agent-kit" :workspace/app "xyx-app" :workspace/plan "xyx-plan"
+    (is (= {:workspace/kit "clojure-agent-kit" :workspace/app "xyx-app" :workspace/build "xyx-build"
             :workspace/work "work" :workspace/rule-mirrors []
-            :workspace/rules-overlay "xyx-plan/rules.edn"
-            :workspace/records "xyx-plan/runs" :workspace/run-tables "xyx-plan/RUNS.md"}
+            :workspace/rules-overlay "xyx-build/rules.edn"
+            :workspace/records "xyx-build/runs" :workspace/run-tables "xyx-build/RUNS.md"}
            (:workspace lay))
         "the KIT is named relatively, so the workspace can be moved whole")
     (is (= #{"workspace.edn" "README.md" "CLAUDE.md" ".claude/agents/interactive-programmer.md"
-             "xyx-app" "xyx-plan" "xyx-plan/README.md" "xyx-plan/rules.edn" "xyx-plan/profile.edn"
-             "xyx-plan/loop.edn" "xyx-plan/runs" "xyx-plan/RUNS.md"
-             "xyx-plan/docs/00-overview.md" "work" "work/runs"}
+             "xyx-app" "xyx-build" "xyx-build/README.md" "xyx-build/rules.edn" "xyx-build/profile.edn"
+             "xyx-build/loop.edn" "xyx-build/runs" "xyx-build/RUNS.md"
+             "xyx-build/docs/00-overview.md" "work" "work/runs"}
            (paths lay))
         "the records' folder and their document among them: four documents said the plan held both, and init wrote neither")
-    (is (= ["xyx-plan"] (:repos lay)) "the application is not this part's to create")))
+    (is (= ["xyx-build"] (:repos lay)) "the application is not this part's to create")))
 
 (deftest an-explicit-folder-is-used-as-given-and-the-kit-may-be-elsewhere
   (let [lay (init/layout (request {:kit-dir "/tools/clojure-agent-kit" :dir "/projects/xyx"}))]
@@ -57,7 +57,7 @@
   (let [lay (init/layout (request {:kit-dir "/w/clojure-agent-kit"}))
         content (:content (first (filter #(= "CLAUDE.md" (:path %)) (:entries lay))))]
     (is (not (re-find #"(?m)^@" content)) "no import line")
-    (doseq [named ["clojure-agent-kit/" "xyx-app/" "xyx-plan/" "xyx-plan/rules.edn" "work/" "workspace.edn"
+    (doseq [named ["clojure-agent-kit/" "xyx-app/" "xyx-build/" "xyx-build/rules.edn" "work/" "workspace.edn"
                    "clojure-agent-kit/method.md" "clojure-agent-kit/harness/README.md"
                    "docs/00-overview.md" "AGENTS.md" ".claude/agents/interactive-programmer.md"
                    "bb plan-check" "bb plan-review"]]
@@ -78,9 +78,9 @@
     (is (= {:run/id "<one per run>" :profile "profile.edn"
             :nrepl/cmd ["clojure" "-Srepro" "-M:test:nrepl"]
             :gates [[:deps "bb --config /tools/clojure-agent-kit/harness/bb.edn boundary"]]}
-           (edn/read-string (content "xyx-plan/loop.edn")))
+           (edn/read-string (content "xyx-build/loop.edn")))
         "{{kit}} is the KIT's absolute path, wherever the KIT is")
-    (is (str/includes? (content "xyx-plan/loop.edn") ":architecture {:from \"arch\" :files [\"layers.edn\"]}")
+    (is (str/includes? (content "xyx-build/loop.edn") ":architecture {:from \"arch\" :files [\"layers.edn\"]}")
         "the header says how a layers.edn entry reaches a run - the file every run directory copies is where an adopter looks")))
 
 (deftest it-refuses-in-sentences-and-says-nothing-when-it-will-run
@@ -95,8 +95,8 @@
       (doseq [good ["xyx" "my-site" "a1" "site-2-go"]]
         (is (= [] (init/refusals (assoc req :name good) lay clean)) good)))
     (testing "anything already there is named, absolutely, and nothing is overwritten"
-      (is (str/includes? (why req lay (assoc clean :existing ["CLAUDE.md" "xyx-plan"]))
-                         "/w/CLAUDE.md, /w/xyx-plan")))
+      (is (str/includes? (why req lay (assoc clean :existing ["CLAUDE.md" "xyx-build"]))
+                         "/w/CLAUDE.md, /w/xyx-build")))
     (testing "the DEFAULT target is refused when it looks shared, and says how to proceed"
       (let [s (why req lay (assoc clean :other-repos ["some-project" "another"]))]
         (is (str/includes? s "some-project, another"))
@@ -142,12 +142,12 @@
     (is (= ["abc"] (:workspaces-below (init/survey req lay (constantly true)))))
     (fs/create-dirs (fs/path ws "neighbour" ".git"))
     (fs/create-dirs (fs/path ws "not-a-repo"))
-    (fs/create-dirs (fs/path ws "xyx-plan" "docs"))
-    (spit (str (fs/path ws "xyx-plan" "README.md")) "")
+    (fs/create-dirs (fs/path ws "xyx-build" "docs"))
+    (spit (str (fs/path ws "xyx-build" "README.md")) "")
     (fs/create-dirs (fs/path ws ".claude"))
     (let [facts (init/survey req lay (constantly false))]
       (is (= ["neighbour"] (:other-repos facts)) "abc/ has no .git: a workspace is not a repository")
-      (is (= ["xyx-plan"] (:existing facts))
+      (is (= ["xyx-build"] (:existing facts))
           "a folder that exists is reported once, not once per file in it; a bare .claude/ is no conflict")
       (is (false? (:doctor/ok? facts))))))
 
@@ -162,7 +162,7 @@
     (is (= [] (init/refusals req lay (init/survey req lay (constantly true))))
         "a folder that does not exist yet is a fine target")
     (let [made (init/create! lay {:git-env git-env})
-          plan (str (fs/path ws "xyx-plan"))]
+          plan (str (fs/path ws "xyx-build"))]
       (is (false? (:app/created? made)))
       (testing "every entry is there except the application, which no generator was given for"
         (doseq [{:keys [path app?]} (:entries lay)]
@@ -174,8 +174,8 @@
                (slurp (str (fs/path plan "docs" "stages" "stage-N-template.md"))))
             "the template keeps its tree, so their relative links still resolve")
         (is (fs/exists? (fs/path plan "docs" "README.md")) "the order of writing travels with the documents")
-        (is (str/includes? (slurp (str (fs/path plan "README.md"))) "HOLDS MORE THAN THE PLAN")
-            "the plan's README says it is the build's side: settings and records, not only the plan"))
+        (is (str/includes? (slurp (str (fs/path plan "README.md"))) "IS THE BUILD'S SIDE OF THE PROJECT")
+            "the build's README says why it is called the build: settings and records beside the plan"))
       (testing "the workspace itself is not a repository"
         (is (not (fs/exists? (fs/path ws ".git")))))
       (testing "the harness finds it from a run directory, with the KIT absolute"
@@ -184,9 +184,9 @@
           (is (= kit-dir (:workspace/kit found)))
           (is (= (str (fs/path ws "xyx-app")) (:workspace/app found)))
           (is (= [] (:workspace/rule-mirrors found)))
-          (is (= (str (fs/path ws "xyx-plan" "rules.edn")) (:workspace/rules-overlay found)))
-          (is (= (str (fs/path ws "xyx-plan" "runs")) (:workspace/records found)) "where `record` copies run.edn")
-          (is (= (str (fs/path ws "xyx-plan" "RUNS.md")) (:workspace/run-tables found)) "and what publishes it")
+          (is (= (str (fs/path ws "xyx-build" "rules.edn")) (:workspace/rules-overlay found)))
+          (is (= (str (fs/path ws "xyx-build" "runs")) (:workspace/records found)) "where `record` copies run.edn")
+          (is (= (str (fs/path ws "xyx-build" "RUNS.md")) (:workspace/run-tables found)) "and what publishes it")
           (testing "both exist from init, and report-check holds them to each other from the first gate run"
             ;; The fifth project found neither, wrote RUNS.md by hand, and `record` made runs/.
             (is (= :both (report/published-state (:workspace/run-tables found) (:workspace/records found))))
@@ -199,7 +199,7 @@
       (testing "a second run refuses, naming what is there"
         (let [facts (init/survey req lay (constantly true))]
           (is (= ["workspace.edn" "README.md" "CLAUDE.md" ".claude/agents/interactive-programmer.md"
-                  "xyx-plan" "work"]
+                  "xyx-build" "work"]
                  (:existing facts)))
           (is (seq (init/refusals req lay facts))))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"appeared while"
@@ -239,18 +239,18 @@
   ;; plan. As written it changes nothing, so `start` still lists the three - in the plan's file.
   (let [lay (init/layout (request {:kit-dir "/w/clojure-agent-kit" :rule-mirrors ["xyx-app/AGENTS.md"]}))
         content (fn [path] (:content (first (filter #(= path (:path %)) (:entries lay)))))
-        overlay (edn/read-string (content "xyx-plan/rules.edn"))
+        overlay (edn/read-string (content "xyx-build/rules.edn"))
         shipped (rules/shipped)]
-    (is (= "xyx-plan/rules.edn" (:workspace/rules-overlay (edn/read-string (content "workspace.edn")))))
+    (is (= "xyx-build/rules.edn" (:workspace/rules-overlay (edn/read-string (content "workspace.edn")))))
     (is (= (mapv :id (filter (comp (rules/placeholder-ids shipped) :id) shipped)) (mapv :id overlay))
         "exactly the source's placeholder rules, in the source's order")
     (is (= (mapv :text (filter (comp (rules/placeholder-ids shipped) :id) shipped)) (mapv :text overlay))
         "text as shipped, the placeholder standing")
     (is (= (mapv :id (rules/unfilled shipped)) (mapv :id (rules/unfilled (rules/overlay shipped overlay)))))
-    (is (str/includes? (content "xyx-plan/rules.edn") "clojure-agent-kit/harness/resources/agent-rules.edn")
+    (is (str/includes? (content "xyx-build/rules.edn") "clojure-agent-kit/harness/resources/agent-rules.edn")
         "the file says what it overlays, by the workspace's own name for the KIT")
     (let [order (mapv :path (:entries lay))]
-      (is (< (.indexOf order "xyx-plan/rules.edn") (.indexOf order "xyx-app"))
+      (is (< (.indexOf order "xyx-build/rules.edn") (.indexOf order "xyx-app"))
           "the application's mirror is rendered from the overlay at generation, so the overlay is there first"))))
 
 (deftest the-plan-gets-the-seats-shipped-profile-and-loop-edn-names-it
@@ -260,22 +260,22 @@
   (let [content (fn [lay path] (:content (first (filter #(= path (:path %)) (:entries lay)))))
         default (init/layout (request {:dir "/projects/xyx"}))
         agy (init/layout (request {:dir "/projects/xyx" :seat "agy-ide"}))]
-    (is (str/starts-with? (content default "xyx-plan/profile.edn") ";; THIS PROJECT'S PROFILE"))
-    (is (str/ends-with? (content default "xyx-plan/profile.edn")
+    (is (str/starts-with? (content default "xyx-build/profile.edn") ";; THIS PROJECT'S PROFILE"))
+    (is (str/ends-with? (content default "xyx-build/profile.edn")
                         (slurp (init/shipped-profile kit-dir "claude")))
         "the shipped example, whole and header kept, for the default seat")
-    (is (str/ends-with? (content agy "xyx-plan/profile.edn") (slurp (init/shipped-profile kit-dir "agy-ide")))
+    (is (str/ends-with? (content agy "xyx-build/profile.edn") (slurp (init/shipped-profile kit-dir "agy-ide")))
         "--seat picks another")
     (is (= (edn/read-string (slurp (init/shipped-profile kit-dir "claude")))
-           (edn/read-string (content default "xyx-plan/profile.edn")))
+           (edn/read-string (content default "xyx-build/profile.edn")))
         "and reads as the same profile")
-    (is (= "profile.edn" (:profile (edn/read-string (content default "xyx-plan/loop.edn"))))
+    (is (= "profile.edn" (:profile (edn/read-string (content default "xyx-build/loop.edn"))))
         "relative to the plan, where the driver resolves it in a workspace")
     (testing "a seat the KIT ships no example for is refused by name, before anything is written"
       (let [req (request {:dir "/projects/xyx" :seat "emacs"})
             lay (init/layout req)
             facts (init/survey req lay (constantly true))]
-        (is (nil? (content lay "xyx-plan/profile.edn")))
+        (is (nil? (content lay "xyx-build/profile.edn")))
         (is (= ["agy-ide" "claude"] (:seats facts)))
         (is (some #(re-find #"no shipped profile for seat \"emacs\": the KIT has agy-ide, claude" %)
                   (init/refusals req lay facts)))
@@ -287,21 +287,21 @@
          (init/parse-args ["xyx" "--seat" "agy-ide" "/w" "--dry-run"]))
       "--seat takes the next argument, wherever it sits")
   (is (= {:positional ["xyx"]} (init/parse-args ["xyx"])))
-  (is (= {:positional ["mnj"] :app "mnj-site" :plan "mnj-plan-docs"}
-         (init/parse-args ["mnj" "--app" "mnj-site" "--plan" "mnj-plan-docs"]))
-      "--app and --plan take the next argument too"))
+  (is (= {:positional ["mnj"] :app "mnj-site" :build "mnj-build-docs"}
+         (init/parse-args ["mnj" "--app" "mnj-site" "--build" "mnj-build-docs"]))
+      "--app and --build take the next argument too"))
 
 (deftest the-repositories-folders-can-be-named-and-the-name-stays-the-namespace
   ;; A real project calls its repositories what it calls them; the experiments never
   ;; needed to. The name is still the application's namespace, and everything after
   ;; init reads the folders from workspace.edn.
   (let [lay (init/layout (request {:kit-dir "/w/clojure-agent-kit" :name "mnj"
-                                   :app "mnj-breastconnect-site" :plan "mnj-breastconnect-plan"
+                                   :app "mnj-breastconnect-site" :build "mnj-breastconnect-plan"
                                    :rule-mirrors ["mnj-breastconnect-site/AGENTS.md"]
                                    :plan-template ["00-overview.md"]}))
         content (fn [path] (:content (first (filter #(= path (:path %)) (:entries lay)))))]
     (is (= {:workspace/kit "clojure-agent-kit"
-            :workspace/app "mnj-breastconnect-site" :workspace/plan "mnj-breastconnect-plan"
+            :workspace/app "mnj-breastconnect-site" :workspace/build "mnj-breastconnect-plan"
             :workspace/work "work" :workspace/rule-mirrors ["mnj-breastconnect-site/AGENTS.md"]
             :workspace/rules-overlay "mnj-breastconnect-plan/rules.edn"
             :workspace/records "mnj-breastconnect-plan/runs"
@@ -316,8 +316,8 @@
     (testing "a folder name is held to the name's pattern, and the two must differ"
       (let [clean {:kit? true :existing [] :other-repos [] :workspaces-below [] :seats ["claude"] :doctor/ok? true}
             why (fn [m] (str/join "\n" (init/refusals (request m) (init/layout (request m)) clean)))]
-        (is (= [] (init/refusals (request {:name "mnj" :app "a-site" :plan "a-plan"})
-                                 (init/layout (request {:name "mnj" :app "a-site" :plan "a-plan"})) clean)))
+        (is (= [] (init/refusals (request {:name "mnj" :app "a-site" :build "a-build"})
+                                 (init/layout (request {:name "mnj" :app "a-site" :build "a-build"})) clean)))
         (is (str/includes? (why {:name "mnj" :app "My Site"}) "a folder name cannot be used"))
-        (is (str/includes? (why {:name "mnj" :plan "../plan"}) "a folder name cannot be used"))
-        (is (str/includes? (why {:name "mnj" :app "same" :plan "same"}) "the same folder"))))))
+        (is (str/includes? (why {:name "mnj" :build "../build"}) "a folder name cannot be used"))
+        (is (str/includes? (why {:name "mnj" :app "same" :build "same"}) "the same folder"))))))

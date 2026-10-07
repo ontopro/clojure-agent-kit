@@ -6,7 +6,7 @@ profile, a person, a script, or nothing. `method.md` §05 says what each role is
 order the acts happen; this document is the map between an act and its actor, which none of those
 holds. The Model column is the shipped `claude` example
 (`resources/profiles/claude.edn`) as of 2026-09-25 — every role over OpenRouter, pinned to its
-provider with no fallback; a project's own profile is `<name>-plan/profile.edn`, and `bb profile`
+provider with no fallback; a project's own profile is `<name>-build/profile.edn`, and `bb profile`
 prints the live model behind each role there.
 
 | Act | When | Kind | Profile role | Model | Notes |

@@ -132,7 +132,7 @@
 (defn -main
   "bb balance [profile.edn] [state.edn|run-record.edn ...] — the line above, over
   the steps of every record given (none: the OpenRouter status alone). Without
-  a profile argument, the workspace's `<plan>/profile.edn`."
+  a profile argument, the workspace's `<build>/profile.edn`."
   [& args]
   (let [[profile-path files] (split-args args)]
     (when-not profile-path

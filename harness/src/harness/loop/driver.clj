@@ -30,9 +30,9 @@
     <step>.packet.edn, <step>.transcript.edn, reviewer*.diff, final/
                      what each dispatch was given, said and ran, and made
 
-  `:profile` resolves against the PLAN when the run is in a workspace whose
-  `workspace.edn` names one (`bb init` writes `<name>-plan/profile.edn` and points
-  the plan's `loop.edn` at it), and against the working directory otherwise (the
+  `:profile` resolves against the BUILD when the run is in a workspace whose
+  `workspace.edn` names one (`bb init` writes `<name>-build/profile.edn` and points
+  the build's `loop.edn` at it), and against the working directory otherwise (the
   shipped examples live in `resources/profiles/`); every other relative path in
   `loop.edn` resolves against the run directory. The profile is READ ONCE, at
   `start`, and kept in `state.edn`: the
@@ -161,9 +161,9 @@
   `ws`, when the run is in a workspace (`workspace/find-workspace`), moves the worktrees
   from the system's temp folder to `<work>/worktrees/<run-id>`: scratch that a
   person can find, in no repository, and gone with the workspace - and resolves
-  `:profile` against the workspace's PLAN, where `bb init` put the project's
+  `:profile` against the workspace's BUILD, where `bb init` put the project's
   profile, so the clone carries nothing of it. Outside a workspace, or in one
-  whose `workspace.edn` names no plan (the health check's selfcheck), `:profile`
+  whose `workspace.edn` names no build (the health check's selfcheck), `:profile`
   resolves against the working directory, where the shipped examples are. An
   absolute `:profile` is taken as given either way.
 
@@ -176,7 +176,7 @@
       (throw (ex-info (str "loop.edn needs " k)
                       {:run-loop/error :missing-config :key k :run-dir run-dir}))))
   (let [in-run (fn [path] (str (fs/absolutize (fs/path run-dir path))))
-        profile (str (if-let [plan (:workspace/plan ws)]
+        profile (str (if-let [plan (:workspace/build ws)]
                        (fs/normalize (fs/path plan (:profile cfg)))
                        (fs/absolutize (:profile cfg))))]
     (cond-> (merge {:project/subdir nil
@@ -195,7 +195,7 @@
                     ;; where `record` copies run.edn, and the two other repositories whose
                     ;; commits it names - kept from `start`, like everything else here
                     :records/dir (:workspace/records ws)
-                    :plan/root (:workspace/plan ws)
+                    :plan/root (:workspace/build ws)
                     :kit/root (or (:workspace/kit ws) (git-toplevel "."))})
       (:worktrees/dir cfg) (update :worktrees/dir in-run)
       (:architecture cfg) (update-in [:architecture :from] in-run))))
@@ -1003,17 +1003,17 @@
   [ctx]
   (let [cfg (:config ctx)
         ws (or workspace/*of-run* (workspace/find-workspace (:run-dir ctx)))]
-    (when (and (:plan-check? cfg true) (:workspace/plan ws) (:workspace/work ws))
+    (when (and (:plan-check? cfg true) (:workspace/build ws) (:workspace/work ws))
       (let [cache (fs/path (:workspace/work ws) "plan-check.edn")
-            h (plan/inputs-hash (:workspace/plan ws) ws)
+            h (plan/inputs-hash (:workspace/build ws) ws)
             cached (when (fs/exists? cache) (edn/read-string (slurp (str cache))))]
         (if (= h (:hash cached))
           (do (println (str "  plan checked: unchanged since " (:at cached) " (" cache ")"))
               {:plan/checked :cached :at (:at cached)})
-          (let [{:keys [problems documents]} (plan/check (:workspace/plan ws) ws)]
+          (let [{:keys [problems documents]} (plan/check (:workspace/build ws) ws)]
             (when (seq problems)
               (throw (ex-info (str "the plan is not ready - " (count problems) " thing" (when (> (count problems) 1) "s")
-                                   " left in " (:workspace/plan ws) ":\n"
+                                   " left in " (:workspace/build ws) ":\n"
                                    (str/join "\n" (map #(str "    " %) problems))
                                    "\n  fill or fix, then `start` again (`bb plan-check` in the KIT's harness/ runs this check alone)")
                               {:run-loop/error :plan-check :problems problems :run-dir (:run-dir ctx)})))
@@ -1440,7 +1440,7 @@
                                     record)
                                   e))
                               events)))
-          ;; THE COPY IS THE RECORD'S HOME. Two builds copied run.edn into the plan by
+          ;; THE COPY IS THE RECORD'S HOME. Two builds copied run.edn into the build repository by
           ;; hand, by the convention this now keeps; the run directory is scratch.
           kept (when-let [dir (:records/dir cfg)]
                  (str (fs/path dir (str (:run/id out) ".edn"))))]

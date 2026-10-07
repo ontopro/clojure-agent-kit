@@ -302,7 +302,7 @@
                (let [p (fs/path dir (str (:run/id cfg) ".edn"))]
                  {:path (str p) :exists? (fs/exists? p)
                   :same? (and (fs/exists? p) (fs/exists? rec-file) (= (slurp (str p)) (slurp (str rec-file))))}))
-        plan-dir (:workspace/plan ws)
+        plan-dir (:workspace/build ws)
         in-ws #(str (fs/relativize (:workspace/dir ws) %))
         under-plan (fn [p] (when (and plan-dir p (fs/starts-with? (fs/normalize p) (fs/normalize plan-dir))) (in-ws p)))
         plan (when plan-dir {:rules (under-plan (:workspace/rules-overlay ws))

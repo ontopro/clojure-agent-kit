@@ -1,5 +1,5 @@
 ;; A WORKED EXAMPLE shipped with the seed — not a configuration. Copy the one
-;; matching your seat (`--seat <name>`, default claude) to <name>-plan/profile.edn; edit it there.
+;; matching your seat (`--seat <name>`, default claude) to <name>-build/profile.edn; edit it there.
 ;;
 ;; SEAT :agy-ide — the Antigravity IDE's CLI. Its sibling is claude.edn, and the
 ;; pair is instructive: they are near mirror images. Here Google writes and

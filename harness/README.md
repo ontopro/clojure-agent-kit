@@ -18,7 +18,7 @@ that is the part you cannot reconstruct from the code.
 ```bash
 bb doctor     # every tool, its version, what fixes a miss; two verdicts: the gates, a loop
 bb health     # the KIT, this machine, the pinned template - certified together (minutes, JVMs)
-bb init xyx   # the workspace: the application generated from the pin, the plan, work/
+bb init xyx   # the workspace: the application generated from the pin, the build, work/
 bb plan-check  # the filled plan, before Foundation: no mark, no instruction, the overlay filled, the given parts intact
 bb plan-review # method.md §02's review pass, run: the plan read cold by the :spec-reviewer; a reading, not a gate
 bb spec-from-blueprint <blueprint.md> <task-id> [<out.edn>]  # a task's spec.edn out of the Blueprint, its named shapes inlined from §1; pipes into bb sigs
@@ -113,7 +113,7 @@ so `bb run-loop start` lists the ones still standing (`harness.rules/unfilled`).
 the harness runs its own selfcheck project with them standing.
 
 **Where they are filled: in the project's rules OVERLAY, never in the clone.** `bb init` writes
-`<name>-plan/rules.edn` with the three as shipped, and `workspace.edn` names it
+`<name>-build/rules.edn` with the three as shipped, and `workspace.edn` names it
 (`:workspace/rules-overlay`); `harness.rules/overlay` merges it over the source by id - a placeholder
 rule's text replaced, a rule of a new id added, any other rule of the source refused by name, which is
 what holds the KIT's own rules against an edit made by accident. Every rendering reads the merged
@@ -131,7 +131,7 @@ content, and the only question is which bucket you are in:
 
 | What you are adding | Where it goes |
 |---|---|
-| A rule for agents | the rule source - a project's `<name>-plan/rules.edn` (the overlay), this repository's `resources/agent-rules.edn` - then `bb rules-sync` |
+| A rule for agents | the rule source - a project's `<name>-build/rules.edn` (the overlay), this repository's `resources/agent-rules.edn` - then `bb rules-sync` |
 | A rule only humans need | the same, with `:audience #{:human}` — renders here, reaches no prompt |
 | **Not a rule** — orientation, the task surface, pointers to docs | Hand-written in `AGENTS.md`, outside the markers |
 
@@ -248,34 +248,34 @@ builds, `bb init` wires the two through `workspace.edn`, and `git pull` upgrades
 of a project is written into it - which is why the list below is short.
 
 - **What the harness needs of a project** - and all it needs, whatever the framework: a git
-  repository; gate commands and an nREPL command named in the plan's `loop.edn` (`bb init` writes
+  repository; gate commands and an nREPL command named in the build's `loop.edn` (`bb init` writes
   the pinned template's); Clojure source; and a `layers.edn` if the boundary gate is in the
   sequence. Two of three projects built with it were bare-`deps.edn` projects and the loop ran.
   Supported is narrower than possible: the health check certifies the pinned pair only.
 - **The application's rule mirror** is the application folder's `AGENTS.md` (`<name>-app/` unless
   `bb init --app` named the folder), listed in `workspace.edn` under
   `:workspace/rule-mirrors`, and `bb rules-sync` / `bb rules-check` here read it from there. Fill
-  the rule source's placeholders, and add rules of your own, in `<name>-plan/rules.edn` - the overlay
+  the rule source's placeholders, and add rules of your own, in `<name>-build/rules.edn` - the overlay
   `bb init` wrote and `workspace.edn` names; the clone's source is never edited. `start` prints the
   ones still standing, and `bb plan-check` holds the overlay to none; `bb rules-sync` re-renders
   the mirror after an edit.
 - **The plan is read before Foundation, by two commands.** `bb plan-check` is the gate: no mark and
-  none of the template's instructions left in `<name>-plan/docs/`, the overlay's placeholders
+  none of the template's instructions left in `<name>-build/docs/`, the overlay's placeholders
   filled, the given parts intact - the KIT's rules unedited in the overlay, the application's
   `layers.edn` not loosened against the pin's layers, the gate keys in `loop.edn` in the KIT's
   order. Exit 1 with the list, one sentence each; `start` runs it once per workspace before its
   first dispatch and knows once by a hash of what it read (`work/plan-check.edn`). `bb plan-review`
   is `method.md` §02's review pass, run: the six Phase A documents and §02's checklist to the
   profile's `:spec-reviewer` - a model of another family than the seat's - one completion, the
-  findings printed with the cost and written to `<name>-plan/reviews/plan-review.edn`; the
+  findings printed with the cost and written to `<name>-build/reviews/plan-review.edn`; the
   Architect resolves them in the overview's table. A reading, not a gate. Both take the workspace's
   plan by default, a plan path otherwise. **And each stage's Blueprint is read the same way before
   sign-off**: `bb blueprint-review <blueprint.md>` sends the stage document and the Blueprint to the
   profile's `:blueprint-reviewer` with `method.md` §07 step 2's question and §06's rules, and writes
-  the findings to `<name>-plan/reviews/<stage>/`; the spec review still reads every packet after.
+  the findings to `<name>-build/reviews/<stage>/`; the spec review still reads every packet after.
 - **Before choosing a role's model, a bake-off.** `bb bake-off new` asks for an act, the candidates
   (a slug or a word - `bb models grok` shows what a word names) and a judge, and writes
-  `<name>-plan/bake-offs/<id>/bake-off.edn`; `bb bake-off run` reads every case on disk for the act
+  `<name>-build/bake-offs/<id>/bake-off.edn`; `bb bake-off run` reads every case on disk for the act
   with each candidate once, has the judge map where they agree and disagree, blind, and renders
   `TABLE.md`; you mark the rows real or not in `marks.edn` and `bb bake-off table` re-renders.
   The winner's block is pasted into `profile.edn` as it is. `bb gates` here holds the table to the
@@ -289,9 +289,9 @@ of a project is written into it - which is why the list below is short.
   named that has no `workspace.edn` at or above it is refused by name. A loop command needs
   neither: the run directory is under the workspace's `work/`, and the run's workspace is the
   command's, whatever the shell says.
-- **Your profile is `<name>-plan/profile.edn`.** `bb init` copies the shipped example for your
-  seat there (`--seat <name>`, default `claude`) and points the plan's `loop.edn` at it: in a
-  workspace, `:profile` resolves against the plan. Edit it there; `bb profile` here checks it, and
+- **Your profile is `<name>-build/profile.edn`.** `bb init` copies the shipped example for your
+  seat there (`--seat <name>`, default `claude`) and points the build's `loop.edn` at it: in a
+  workspace, `:profile` resolves against the build. Edit it there; `bb profile` here checks it, and
   `bb balance` with no profile argument reads it. `resources/profiles/` is the shipped examples'
   folder, held by the KIT's own tests to exactly those files - nothing of a project goes in the clone.
   The doctor lists five seats and the KIT ships examples for two: `claude`, the seat every build on
@@ -304,10 +304,10 @@ of a project is written into it - which is why the list below is short.
   direct to Anthropic, which is where the `:anthropic` shape's worked example now is; `bb init --seat` refuses the other
   three by name until an example exists. Portability across seats is the design, proved one seat
   at a time - `portability.md` has the mechanics per seat.
-- **Run records live in the plan.** The driver's `record` writes `run.edn` in the run directory
-  and copies it to `<name>-plan/runs/<run-id>.edn` - the folder `workspace.edn` names
+- **Run records live in the build repository.** The driver's `record` writes `run.edn` in the run directory
+  and copies it to `<name>-build/runs/<run-id>.edn` - the folder `workspace.edn` names
   (`:workspace/records`); every record names the KIT, application and plan commits it was taken
-  at, and `bb report` prints them. `<name>-plan/RUNS.md` (`:workspace/run-tables`) publishes the
+  at, and `bb report` prints them. `<name>-build/RUNS.md` (`:workspace/run-tables`) publishes the
   tables, and `bb report-check` with no arguments holds the two to each other - `bb gates` in the
   workspace's clone runs it, so a record nobody published, or a table whose record is gone, fails
   there. `record` fetches, once and without waiting, the cost, provider and tokens of every step

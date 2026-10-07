@@ -10,7 +10,7 @@ diamonds are the human gates.
 flowchart TD
   subgraph SETUP["Setup — the person, once"]
     S1["bb doctor"] --> S2["bb health"] --> S3["bb init xyx"]
-    S3 --> S4["xyx-app/ · xyx-plan/ (docs, rules.edn, profile.edn, loop.edn) · work/ · workspace.edn"]
+    S3 --> S4["xyx-app/ · xyx-build/ (docs, rules.edn, profile.edn, loop.edn) · work/ · workspace.edn"]
   end
 
   subgraph PLAN["Phase A — Plan: the Architect's session"]
@@ -45,7 +45,7 @@ flowchart TD
     L5 --> L4
     L4 -- green --> L6["code review (Reviewer)"]
     L6 -- reject --> L5
-    L6 -- approve --> L7{"the person merges; record → xyx-plan/runs/, RUNS.md"}
+    L6 -- approve --> L7{"the person merges; record → xyx-build/runs/, RUNS.md"}
   end
 
   S4 --> P1
@@ -72,7 +72,7 @@ flowchart TD
 | 10 | Sign-off | the person | Do these packets dispatch as written? | — | the Blueprint's status changes; packets may dispatch |
 | 11 | A packet | `bb spec-from-blueprint`, `bb sigs` | What exactly does this task's Coder and Tester receive, and do its signatures match the source they name? | the packet pulled out of the Blueprint, §1's shapes inlined, its signatures checked | `spec.edn` in the run directory |
 | 12 | The loop | `bb run-loop start` and its steps | Can a contract be read two ways? Does the code satisfy it? Does the review approve? If not, whose problem is it? | plan-check once; the spec review; provisioning; dispatch; gate 0; the gates; triage; the code review | a run stopped at `:awaiting-merge`, or stopped for a person with the owner named |
-| 13 | The merge | the person | Do the bytes the gates passed and the Reviewer read go in? | `bb run-loop merge`, `record` | the gate worktree merged; the record in `<name>-plan/runs/`, its tables in `RUNS.md` |
+| 13 | The merge | the person | Do the bytes the gates passed and the Reviewer read go in? | `bb run-loop merge`, `record` | the gate worktree merged; the record in `<name>-build/runs/`, its tables in `RUNS.md` |
 | 14 | The stage's end | the Architect's session, then the person | Are the exit criteria met, in a browser and not only in the gates, and what did this stage teach the plan? | build, serve, screenshots, the interaction check | exit criteria checked; the decision log and the overview revised; the next stage pulled |
 
 ## Three things the diagram says that prose tends to lose

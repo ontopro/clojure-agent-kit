@@ -24,14 +24,14 @@
 (deftest a-placeholder-is-an-angle-bracket-a-project-fills
   (is (= ["<Project>" "<YYYY-MM-DD>"] (plan/placeholders "# <Project>\n\n**Last updated:** <YYYY-MM-DD>")))
   (testing "not a path token the workspace already knows"
-    (is (= ["<seat>"] (plan/placeholders "`<name>-plan/profile.edn` for `<seat>`, via `<kit>/harness`"))))
+    (is (= ["<seat>"] (plan/placeholders "`<name>-build/profile.edn` for `<seat>`, via `<kit>/harness`"))))
   (testing "not documentation of a command inside a fence, nor an autolink or a comment"
     (is (= [] (plan/placeholders "```bash\nclj-nrepl-eval -p <port> \"<code>\"\n```\n<https://x> <!-- note -->")))
     (is (= ["<after>"] (plan/placeholders "```\n<in>\n```\n<after>\n```\n<in again>\n```")))
     (is (= ["<Store>"] (plan/placeholders "| Storage | `<Store>` |")) "inline code counts: a seam's name is a decision")))
 
 (deftest the-shipped-template-carries-exactly-these-marks
-  ;; The fixture. `bb init` copies every one of these into `<name>-plan/docs/`.
+  ;; The fixture. `bb init` copies every one of these into `<name>-build/docs/`.
   (is (= {"00-overview.md" 18
           "01-requirements.md" 12
           "02-architecture.md" 23
@@ -131,12 +131,12 @@
   an application's `layers.edn` and a stub profile. `:filled?` fills the plan."
   [{:keys [filled?]}]
   (let [ws (str (fs/real-path (fs/create-temp-dir {:prefix "plan-check-"})))
-        plan (fs/path ws "xyx-plan")
+        plan (fs/path ws "xyx-build")
         docs (fs/path plan "docs")]
     (spit (str (fs/path ws "workspace.edn"))
-          (pr-str {:workspace/kit kit-dir :workspace/app "xyx-app" :workspace/plan "xyx-plan"
+          (pr-str {:workspace/kit kit-dir :workspace/app "xyx-app" :workspace/build "xyx-build"
                    :workspace/work "work" :workspace/rule-mirrors []
-                   :workspace/rules-overlay "xyx-plan/rules.edn"}))
+                   :workspace/rules-overlay "xyx-build/rules.edn"}))
     (doseq [rel (plan/documents template-dir)
             :let [text (slurp (str (fs/path template-dir rel)))]]
       (fs/create-dirs (fs/parent (fs/path docs rel)))
@@ -156,7 +156,7 @@
     (fs/create-dirs (fs/path ws "work" "runs"))
     ws))
 
-(defn- check [ws] (plan/check (str (fs/path ws "xyx-plan")) (workspace/find-workspace ws)))
+(defn- check [ws] (plan/check (str (fs/path ws "xyx-build")) (workspace/find-workspace ws)))
 
 (deftest the-plan-as-init-left-it-fails-with-everything-named
   (let [{:keys [problems documents]} (check (workspace {}))
@@ -173,7 +173,7 @@
 
 (deftest a-filled-plan-passes-and-each-way-of-breaking-it-is-one-sentence
   (let [ws (workspace {:filled? true})
-        plan (fs/path ws "xyx-plan")
+        plan (fs/path ws "xyx-build")
         doc (fn [nm] (str (fs/path plan "docs" nm)))]
     (is (= [] (:problems (check ws))))
     (is (str/includes? (plan/report (check ws)) "nothing left to fill, the given parts intact"))
@@ -219,7 +219,7 @@
 (deftest the-hash-covers-what-the-check-reads-and-nothing-else
   (let [ws (workspace {:filled? true})
         wsm (workspace/find-workspace ws)
-        plan (str (fs/path ws "xyx-plan"))
+        plan (str (fs/path ws "xyx-build"))
         h0 (plan/inputs-hash plan wsm)]
     (spit (str (fs/path plan "docs" "README.md")) "changed")
     (is (= h0 (plan/inputs-hash plan wsm)) "the README is not read")
@@ -254,11 +254,11 @@
       (is (fs/exists? cache))
       (is (= :cached (:plan/checked (driver/plan-check! ctx))))
       (is (str/includes? (with-out-str (driver/plan-check! ctx)) "unchanged since"))
-      (spit (str (fs/path ws "xyx-plan" "docs" "source.md")) "# revised\n")
+      (spit (str (fs/path ws "xyx-build" "docs" "source.md")) "# revised\n")
       (is (= :now (:plan/checked (driver/plan-check! ctx))) "a revised plan is read again")
-      (spit (str (fs/path ws "xyx-plan" "docs" "source.md")) "# revised again <with a mark>\n")
+      (spit (str (fs/path ws "xyx-build" "docs" "source.md")) "# revised again <with a mark>\n")
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not ready" (driver/plan-check! ctx)))
-      (spit (str (fs/path ws "xyx-plan" "docs" "source.md")) "# revised\n")
+      (spit (str (fs/path ws "xyx-build" "docs" "source.md")) "# revised\n")
       (is (= :cached (:plan/checked (driver/plan-check! ctx))) "a failure did not move the cache on")))
   (testing "off by loop.edn, and outside a workspace with a plan: nothing, and nothing said"
     (is (nil? (driver/plan-check! (run-ctx (workspace {}) {:plan-check? false}))))

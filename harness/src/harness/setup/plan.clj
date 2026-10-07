@@ -1,6 +1,6 @@
 (ns harness.setup.plan
   "What the harness knows about a plan's documents: the template the KIT ships
-  (`plan-template/`, copied into `<name>-plan/docs/` by `bb init`), the
+  (`plan-template/`, copied into `<name>-build/docs/` by `bb init`), the
   marks in it that a filled plan must no longer carry, and the check that
   reads a filled plan before Foundation - `bb plan-check`.
 
@@ -33,7 +33,7 @@
 (def known
   "Marks that are not a project's to fill: the workspace knows the project's
   name (`bb init` was given it) and the KIT's own path, and the template uses
-  both as path tokens - `<name>-plan/rules.edn`, `<kit>/harness/bb.edn`."
+  both as path tokens - `<name>-build/rules.edn`, `<kit>/harness/bb.edn`."
   #{"<name>" "<kit>"})
 
 (defn- strip-fences
@@ -227,7 +227,7 @@
   A file that is not there is a sentence too - `bb init` wrote both."
   [ws pin]
   (let [layers (fs/path (:workspace/app ws) boundary/file-name)
-        loop-edn (fs/path (:workspace/plan ws) "loop.edn")]
+        loop-edn (fs/path (:workspace/build ws) "loop.edn")]
     (vec (concat
           (if (fs/exists? layers)
             (layer-problems (read-edn-file layers) (:layers pin))
@@ -261,7 +261,7 @@
         files (concat (when (fs/directory? docs) (map #(fs/path docs %) (governing docs)))
                       (when ws [(:workspace/rules-overlay ws)
                                 (fs/path (:workspace/app ws) boundary/file-name)
-                                (fs/path (:workspace/plan ws) "loop.edn")]))]
+                                (fs/path (:workspace/build ws) "loop.edn")]))]
     (hash (vec (for [f files :when f]
                  [(str f) (when (fs/exists? f) (slurp (str f)))])))))
 
@@ -276,7 +276,7 @@
   template and the pin found from here. Returns
   `{:plan _ :workspace _ :problems [...] :documents n}`."
   [plan-dir ws]
-  (let [plan (str (fs/normalize (fs/absolutize (or plan-dir (:workspace/plan ws)))))
+  (let [plan (str (fs/normalize (fs/absolutize (or plan-dir (:workspace/build ws)))))
         docs (fs/path plan "docs")]
     {:plan plan
      :workspace (some-> ws :workspace/dir)

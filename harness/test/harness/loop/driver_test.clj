@@ -35,15 +35,15 @@
       (is (= (str (fs/absolutize (fs/path run-dir "arch"))) (get-in cfg [:architecture :from])))
       (is (= (str (fs/absolutize "resources/profiles/claude.edn")) (:profile cfg))))
     (testing "in a workspace with a plan, the profile resolves against the PLAN - where bb init put it"
-      (let [ws {:workspace/dir "/ws" :workspace/app "/ws/xyx-app" :workspace/plan "/ws/xyx-plan" :workspace/work "/ws/work"}]
-        (is (= "/ws/xyx-plan/profile.edn"
+      (let [ws {:workspace/dir "/ws" :workspace/app "/ws/xyx-app" :workspace/build "/ws/xyx-build" :workspace/work "/ws/work"}]
+        (is (= "/ws/xyx-build/profile.edn"
                (:profile (loop/resolve-config run-dir "/repo" {:run/id "r" :profile "profile.edn"} ws))))
         (is (= "/elsewhere/p.edn"
                (:profile (loop/resolve-config run-dir "/repo" {:run/id "r" :profile "/elsewhere/p.edn"} ws)))
             "an absolute path is taken as given")
         (is (= (str (fs/absolutize "resources/profiles/claude.edn"))
                (:profile (loop/resolve-config run-dir "/repo" {:run/id "r" :profile "resources/profiles/claude.edn"}
-                                              (dissoc ws :workspace/plan))))
+                                              (dissoc ws :workspace/build))))
             "a workspace without a plan (the health check's selfcheck) resolves as outside one")))
     (testing "a missing run id or profile is refused, not invented"
       (is (thrown-with-msg? Exception #":run/id" (loop/resolve-config run-dir "/repo" {:profile "p"})))
@@ -993,7 +993,7 @@
     (fs/create-dirs (fs/path ws "work" "runs" "r1"))
     (fs/create-dirs (fs/path ws "kit" "runs" "r1"))
     (spit (str (fs/path ws "workspace.edn"))
-          (pr-str {:workspace/app "xyx-app" :workspace/plan "xyx-plan" :workspace/work "work"}))
+          (pr-str {:workspace/app "xyx-app" :workspace/build "xyx-build" :workspace/work "work"}))
     (str ws)))
 
 (deftest a-workspace-is-found-by-walking-up-and-its-folders-are-absolute
@@ -1080,10 +1080,10 @@
     (is (= [] (loop/dirty-files "/nowhere/at/all" [])) "not a repository: nothing, never a throw")))
 
 (deftest context-finds-the-projects-profile-in-the-plan
-  ;; `bb init` writes <plan>/profile.edn and a loop.edn that says `:profile "profile.edn"`;
+  ;; `bb init` writes <build>/profile.edn and a loop.edn that says `:profile "profile.edn"`;
   ;; from a run directory under work/, `start` must read that file and not one in the clone.
   (let [ws (workspace!)
-        plan (fs/path ws "xyx-plan")
+        plan (fs/path ws "xyx-build")
         run-dir (str (fs/path ws "work" "runs" "r1"))]
     (fs/create-dirs plan)
     (fs/copy "resources/profiles/claude.edn" (fs/path plan "profile.edn"))
@@ -1099,19 +1099,19 @@
     (is (nil? (:workspace/records (workspace/find-workspace ws)))
         "a workspace.edn from before the keys: no home, so no copy")
     (spit (str (fs/path ws "workspace.edn"))
-          (pr-str {:workspace/app "xyx-app" :workspace/plan "xyx-plan" :workspace/work "work"
-                   :workspace/records "xyx-plan/runs" :workspace/run-tables "xyx-plan/RUNS.md"}))
+          (pr-str {:workspace/app "xyx-app" :workspace/build "xyx-build" :workspace/work "work"
+                   :workspace/records "xyx-build/runs" :workspace/run-tables "xyx-build/RUNS.md"}))
     (let [found (workspace/find-workspace (str (fs/path ws "work" "runs" "r1")))]
-      (is (= (str (fs/path ws "xyx-plan" "runs")) (:workspace/records found)))
-      (is (= (str (fs/path ws "xyx-plan" "RUNS.md")) (:workspace/run-tables found))))))
+      (is (= (str (fs/path ws "xyx-build" "runs")) (:workspace/records found)))
+      (is (= (str (fs/path ws "xyx-build" "RUNS.md")) (:workspace/run-tables found))))))
 
 (deftest config-keeps-where-the-record-goes-and-which-repositories-it-names
-  (let [ws {:workspace/dir "/ws" :workspace/app "/ws/xyx-app" :workspace/plan "/ws/xyx-plan"
-            :workspace/work "/ws/work" :workspace/kit "/ws/kit" :workspace/records "/ws/xyx-plan/runs"}
+  (let [ws {:workspace/dir "/ws" :workspace/app "/ws/xyx-app" :workspace/build "/ws/xyx-build"
+            :workspace/work "/ws/work" :workspace/kit "/ws/kit" :workspace/records "/ws/xyx-build/runs"}
         cfg (loop/resolve-config "/ws/work/runs/r1" "/ws/xyx-app" {:run/id "r1" :profile "profile.edn"} ws)]
-    (is (= "/ws/xyx-plan/runs" (:records/dir cfg)))
+    (is (= "/ws/xyx-build/runs" (:records/dir cfg)))
     (is (= "/ws/kit" (:kit/root cfg)))
-    (is (= "/ws/xyx-plan" (:plan/root cfg)))
+    (is (= "/ws/xyx-build" (:plan/root cfg)))
     (let [bare (loop/resolve-config "/x/run" "/x" {:run/id "r" :profile "p"})
           here (str/trim (:out (p/shell {:out :string :err :string} "git" "rev-parse" "--show-toplevel")))]
       (is (nil? (:records/dir bare)) "no workspace: the run directory is the record's only home")
@@ -1122,7 +1122,7 @@
   ;; Two builds copied run.edn into the plan by hand and answered "against which commit?"
   ;; from memory. The record is what a document cites, so it carries both.
   (let [ws (workspace!)
-        plan (git-repo! (fs/path ws "xyx-plan"))
+        plan (git-repo! (fs/path ws "xyx-build"))
         commit! (fn [dir]
                   (spit (str (fs/path dir "f")) "x")
                   (p/shell {:dir dir :out :string :err :string} "git" "add" "-A")
@@ -1134,12 +1134,12 @@
         spec {:files/impl [] :files/test []}
         run-dir (fs/path ws "work" "runs" "r1")
         ctx (record-ctx run-dir {} [{:event/kind :dispatch :role :coder}] spec)]
-    (swap! (:state ctx) assoc :config {:run/id "r1" :records/dir (str (fs/path ws "xyx-plan" "runs"))
+    (swap! (:state ctx) assoc :config {:run/id "r1" :records/dir (str (fs/path ws "xyx-build" "runs"))
                                        :repo/root (str (fs/path ws "xyx-app"))
                                        :kit/root (str (fs/path ws "kit")) :plan/root plan})
     (let [out (with-out-str (loop/record! ctx))
           r (clojure.edn/read-string (slurp (str (fs/path run-dir "run.edn"))))
-          kept (fs/path ws "xyx-plan" "runs" "r1.edn")]
+          kept (fs/path ws "xyx-build" "runs" "r1.edn")]
       (is (= {:run/kit-commit kit-sha :run/app-commit app-sha :run/plan-commit plan-sha}
              (select-keys r [:run/kit-commit :run/app-commit :run/plan-commit])))
       (is (fs/exists? kept) "the plan's copy, by run id")

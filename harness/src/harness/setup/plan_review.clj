@@ -193,7 +193,7 @@
                                            :else (recur more flags (conj positional a))))
         plan-arg (first positional)
         ws (if plan-arg (workspace/find-workspace plan-arg) (workspace/current-or-exit args))
-        plan-dir (or plan-arg (:workspace/plan ws))]
+        plan-dir (or plan-arg (:workspace/build ws))]
     (when-not plan-dir
       (println "plan-review: no plan given and no workspace.edn at or above here - bb plan-review <plan-dir>")
       (System/exit 2))

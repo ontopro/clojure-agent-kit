@@ -57,7 +57,7 @@
     (testing "the mirror is current against the rule source, and CLAUDE.md imports it"
       (is (false? (:changed? (rules/sync! (str (fs/path app-dir "AGENTS.md")) :check? true))))
       (is (str/starts-with? (slurp (str (fs/path app-dir "CLAUDE.md"))) "@AGENTS.md"))
-      (is (str/includes? (slurp (str (fs/path app-dir "AGENTS.md"))) "`../xyx-plan/rules.edn`")
+      (is (str/includes? (slurp (str (fs/path app-dir "AGENTS.md"))) "`../xyx-build/rules.edn`")
           "with no folder given, the sentence names the default plan folder"))
     (testing "layers.edn is the pin's tails under the application's name, and the gate reads it"
       (let [ruleset (edn/read-string (slurp (str (fs/path app-dir "layers.edn"))))]
@@ -66,18 +66,18 @@
                ruleset))
         (is (every? #(str/starts-with? (str %) "xyx.") (keys ruleset)))))))
 
-(deftest the-agents-md-sentence-names-the-plan-folder-the-workspace-has
+(deftest the-agents-md-sentence-names-the-build-folder-the-workspace-has
   ;; Outside the markers, so no sync corrects it: a project that named its plan
-  ;; folder with `bb init --plan` read about a `<name>-plan/` that was not there.
+  ;; folder with `bb init --plan` (then its name) read about a `<name>-build/` that was not there.
   (is (str/includes? (app/agents-md "mnj" "mnj-breastconnect-plan") "`../mnj-breastconnect-plan/rules.edn`"))
   (is (not (str/includes? (app/agents-md "mnj" "mnj-breastconnect-plan") "mnj-plan")))
-  (is (str/includes? (app/agents-md "xyx") "`../xyx-plan/rules.edn`") "the default is the name's")
+  (is (str/includes? (app/agents-md "xyx") "`../xyx-build/rules.edn`") "the default is the name's")
   (let [ws (str (fs/real-path (fs/create-temp-dir)))
         app-dir (str (fs/path ws "the-site"))]
-    ((app/app-fn pin {:app-name "xyx" :plan-folder "the-plan" :git-env git-env
+    ((app/app-fn pin {:app-name "xyx" :build-folder "the-build" :git-env git-env
                       :run (generator (atom []) {"deps.edn" "{}"})})
      app-dir)
-    (is (str/includes? (slurp (str (fs/path app-dir "AGENTS.md"))) "`../the-plan/rules.edn`")
+    (is (str/includes? (slurp (str (fs/path app-dir "AGENTS.md"))) "`../the-build/rules.edn`")
         "app-fn hands the folder on")))
 
 (deftest a-local-clone-replaces-the-pin-and-the-commit-says-so
@@ -118,14 +118,14 @@
     (is (true? (:app/created? made)))
     (is (= "2" (git-out (str (fs/path ws "xyx-app")) "rev-list" "--count" "HEAD")))
     (testing "the shipped pin tells a run its four gates and its REPL; the KIT's gate by absolute path"
-      (let [cfg (edn/read-string (slurp (str (fs/path ws "xyx-plan" "loop.edn"))))]
+      (let [cfg (edn/read-string (slurp (str (fs/path ws "xyx-build" "loop.edn"))))]
         (is (= [:fmt :lint :test :deps] (mapv first (:gates cfg))))
         (is (= (str "bb --config " kit-dir "/harness/bb.edn boundary") (second (last (:gates cfg))))
             "{{kit}} became this clone's path: a worktree under work/ has no relative path to it")
         (is (= ["clojure" "-Srepro" "-M:test:nrepl"] (:nrepl/cmd cfg)))))
     (testing "the application's mirror is rendered from the plan's rules overlay, and follows it"
       (let [mirror (str (fs/path ws "xyx-app" "AGENTS.md"))
-            overlay (str (fs/path ws "xyx-plan" "rules.edn"))
+            overlay (str (fs/path ws "xyx-build" "rules.edn"))
             kit-state (fn []
                         {:status (git-out kit-dir "status" "--porcelain" "--" "harness/AGENTS.md" "harness/resources")
                          :mirror (slurp (str (fs/path kit-dir "harness" "AGENTS.md")))

@@ -442,7 +442,7 @@
   "bb bake-off-check [--workspace <dir>]: exit 1 naming each drifted bake-off."
   [& args]
   (let [ws (workspace/current-or-exit args)
-        plan (:workspace/plan ws)]
+        plan (:workspace/build ws)]
     (cond
       (nil? ws) (println "bake-off-check: not in a workspace - nothing to check")
       (not (fs/exists? (fs/path plan "bake-offs"))) (println "bake-off-check: no bake-offs under the plan - nothing to check")
@@ -544,7 +544,7 @@
   (let [[cmd arg] (:args (workspace/split-args args))]
     (try
       (case cmd
-        "new" (let [plan (or arg (:workspace/plan (workspace/current-or-exit args)))]
+        "new" (let [plan (or arg (:workspace/build (workspace/current-or-exit args)))]
                 (when-not (System/console)
                   (println "bake-off new: no terminal to ask at - write <plan>/bake-offs/<id>/bake-off.edn by hand (:role, :candidates, :judge) and `bb bake-off run` it")
                   (System/exit 2))

@@ -1,5 +1,5 @@
 ;; A WORKED EXAMPLE shipped with the KIT — not a configuration. `bb init` copies the one
-;; matching your seat (`--seat <name>`, default claude) to <name>-plan/profile.edn; edit it there.
+;; matching your seat (`--seat <name>`, default claude) to <name>-build/profile.edn; edit it there.
 ;;
 ;; SEAT :claude. Its sibling is agy-ide.edn, and the pair is instructive: they
 ;; are near mirror images. Here Anthropic writes and Google and OpenAI verify,

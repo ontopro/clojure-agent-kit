@@ -42,23 +42,23 @@
    [harness.setup.workspace :as workspace]))
 
 (def profile-file-name
-  "What `bb init` names a project's profile, in the plan folder."
+  "What `bb init` names a project's profile, in the build folder."
   "profile.edn")
 
 (defn plan-profile
-  "`<plan>/profile.edn` of the workspace `ws`, or nil: no workspace, one whose
-  `workspace.edn` names no plan, or a plan with no profile yet."
+  "`<build>/profile.edn` of the workspace `ws`, or nil: no workspace, one whose
+  `workspace.edn` names no build, or a build with no profile yet."
   [ws]
-  (when-let [plan (:workspace/plan ws)]
+  (when-let [plan (:workspace/build ws)]
     (let [path (str (fs/path plan profile-file-name))]
       (when (fs/exists? path) path))))
 
 (defn project-profile
-  "A project's OWN profile: `<plan>/profile.edn` of the workspace this command
+  "A project's OWN profile: `<build>/profile.edn` of the workspace this command
   runs in (`workspace/current`: pointed at by `--workspace` or `KIT_WORKSPACE`,
   else found by walking up from `harness/` in a workspace's clone) - or, given
   `dir`, of the workspace `dir` is in. Nil outside a workspace, in one whose
-  `workspace.edn` names no plan, or whose plan has no profile yet. `bb init`
+  `workspace.edn` names no build, or whose build has no profile yet. `bb init`
   writes it there as a copy of the seat's shipped example, and the clone
   carries nothing of it.
 
@@ -266,7 +266,7 @@
 (defn -main
   "bb profile — check a profile.
 
-  With no arguments: this project's own profile - `<plan>/profile.edn` of the
+  With no arguments: this project's own profile - `<build>/profile.edn` of the
   workspace this clone is in, or the one `--workspace <dir>` / `KIT_WORKSPACE`
   points at (`project-profile`) - if there is one, and otherwise every worked
   example the seed ships, structurally. The header says which, because

@@ -265,13 +265,13 @@
     (is (re-find #"^orchestrator\s+anthropic" (last more)))))
 
 (deftest a-projects-profile-is-the-plans-and-there-is-none-outside-a-workspace
-  ;; `bb init` writes <plan>/profile.edn; `bb profile` and `bb balance` with no argument read
+  ;; `bb init` writes <build>/profile.edn; `bb profile` and `bb balance` with no argument read
   ;; it from wherever they are run in the workspace. The KIT's own development folder is in
   ;; no workspace, so there is none there - by design, not by omission.
   (let [ws (str (fs/real-path (fs/create-temp-dir)))
-        plan (fs/path ws "xyx-plan")]
+        plan (fs/path ws "xyx-build")]
     (is (nil? (profile/project-profile ws)) "no workspace.edn: nothing")
-    (spit (str (fs/path ws "workspace.edn")) (pr-str {:workspace/app "xyx-app" :workspace/plan "xyx-plan"}))
+    (spit (str (fs/path ws "workspace.edn")) (pr-str {:workspace/app "xyx-app" :workspace/build "xyx-build"}))
     (is (nil? (profile/project-profile ws)) "a plan with no profile yet: nothing, not an error")
     (fs/create-dirs plan)
     (spit (str (fs/path plan "profile.edn")) (pr-str base))

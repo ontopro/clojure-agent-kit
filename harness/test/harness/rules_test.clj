@@ -229,12 +229,12 @@
         mirror (fn [p] (fs/create-dirs (fs/parent (fs/path ws p)))
                  (spit (str (fs/path ws p)) (str "# doc\n\n" rules/begin-marker "\n" rules/end-marker "\n"))
                  (str (fs/path ws p)))]
-    (fs/create-dirs (fs/path ws "xyx-plan"))
+    (fs/create-dirs (fs/path ws "xyx-build"))
     (spit (str (fs/path ws "workspace.edn"))
-          (pr-str {:workspace/kit "clojure-agent-kit" :workspace/app "xyx-app" :workspace/plan "xyx-plan"
+          (pr-str {:workspace/kit "clojure-agent-kit" :workspace/app "xyx-app" :workspace/build "xyx-build"
                    :workspace/rule-mirrors ["xyx-app/AGENTS.md"]
-                   :workspace/rules-overlay "xyx-plan/rules.edn"}))
-    (spit (str (fs/path ws "xyx-plan" "rules.edn"))
+                   :workspace/rules-overlay "xyx-build/rules.edn"}))
+    (spit (str (fs/path ws "xyx-build" "rules.edn"))
           (pr-str [{:id :layer-boundaries :text "Respect the boundaries of layer {{layer}}. FILLED BY THE PROJECT."}
                    {:id :ours :group :conventions :audience #{:coder :human} :title "Ours." :text "A project rule."}]))
     {:ws ws
@@ -245,7 +245,7 @@
   (let [{:keys [ws app-mirror kit-mirror]} (workspace-with-overlay!)
         found (rules/project-rules (workspace/find-workspace ws))]
     (testing "project-rules merges the overlay the workspace names"
-      (is (= (str (fs/path ws "xyx-plan" "rules.edn"))
+      (is (= (str (fs/path ws "xyx-build" "rules.edn"))
              (:workspace/rules-overlay (workspace/find-workspace ws)))
           "the overlay's path comes back absolute, like the folders")
       (is (= (conj (mapv :id (rules/shipped)) :ours) (mapv :id found)))
