@@ -42,6 +42,24 @@
         "the records' folder and their document among them: four documents said the plan held both, and init wrote neither")
     (is (= ["xyx-build"] (:repos lay)) "the application is not this part's to create")))
 
+(deftest a-brief-is-filed-as-source-md-s-first-row-and-its-appendix
+  ;; Step 0 happens before a workspace exists, so its output - the brief - had nowhere to go
+  ;; but by hand. With `:brief`, source.md is written, not copied: §1's row names it and
+  ;; Appendix A carries it verbatim; everything else the template leaves to fill is left.
+  (let [filed (init/source-with-brief (slurp (str (fs/path kit-dir "plan-template" "source.md")))
+                                      "Build me a site.\n\nFor patients." "2026-10-06")]
+    (is (str/includes? filed "| S-1 | the brief | text, Appendix A below | 2026-10-06 | the person |"))
+    (is (str/ends-with? filed "## Appendix A — The brief, as given\n\nBuild me a site.\n\nFor patients.\n"))
+    (is (not (str/includes? filed init/brief-row)) "the template's row is replaced, not kept beside")
+    (is (str/includes? filed "<what it shows>") "§2 stays the Architect's to fill"))
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no S-1 row" (init/source-with-brief "# no row" "x" "d")))
+  (let [with (init/layout (request {:brief "Build me a site." :today "2026-10-06" :plan-template ["source.md" "00-overview.md"]}))
+        without (init/layout (request {:plan-template ["source.md"]}))
+        entry (fn [lay p] (first (filter #(= p (:path %)) (:entries lay))))]
+    (is (str/includes? (:content (entry with "xyx-build/docs/source.md")) "## Appendix A") "written, with the brief")
+    (is (:copy-from (entry with "xyx-build/docs/00-overview.md")) "the other documents are still copied")
+    (is (:copy-from (entry without "xyx-build/docs/source.md")) "without a brief, source.md is copied as shipped")))
+
 (deftest an-explicit-folder-is-used-as-given-and-the-kit-may-be-elsewhere
   (let [lay (init/layout (request {:kit-dir "/tools/clojure-agent-kit" :dir "/projects/xyx"}))]
     (is (= "/projects/xyx" (:workspace/dir lay)))
@@ -287,8 +305,8 @@
          (init/parse-args ["xyx" "--seat" "agy-ide" "/w" "--dry-run"]))
       "--seat takes the next argument, wherever it sits")
   (is (= {:positional ["xyx"]} (init/parse-args ["xyx"])))
-  (is (= {:positional ["mnj"] :app "mnj-site" :build "mnj-build-docs"}
-         (init/parse-args ["mnj" "--app" "mnj-site" "--build" "mnj-build-docs"]))
+  (is (= {:positional ["mnj"] :app "mnj-site" :build "mnj-build-docs" :brief "brief.md"}
+         (init/parse-args ["mnj" "--app" "mnj-site" "--build" "mnj-build-docs" "--brief" "brief.md"]))
       "--app and --build take the next argument too"))
 
 (deftest the-repositories-folders-can-be-named-and-the-name-stays-the-namespace

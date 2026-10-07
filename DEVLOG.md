@@ -27,6 +27,24 @@ either; an entry's date is its reference.
 
 ## 2026-10-06
 
+### The brief has a place: `bb init --brief` files it as the source's first row and appendix
+
+Row 95. The method's step 0 is a conversation before a workspace exists, and its output is
+the brief; `bb init` then copied `source.md` as shipped, its §1 row still `<the brief>`, and
+the brief was pasted in by hand or left out. A reading of another project's design showed
+the defect: the plan for the skills had the scoping skill installed by `bb init`, into a
+folder `bb init` makes. Now `bb init <name> --brief <file>` writes `source.md` instead of
+copying it: §1's first row names the brief, received today from the person, and Appendix A
+carries it verbatim; §2 and the rest stay the Architect's to fill. Without the option the
+document is copied as before; a `--brief` that is not a file is refused before anything is
+written. The method's step 0 says where the brief goes.
+
+A slip on the way, recorded because the DEVLOG already records its kind: the previous commit
+was made on a gates run that reported four test failures, because the run was piped through
+`tail` and the chain read `tail`'s exit code - row 28's slip, repeated. A rerun of `bb gates`
+and of `bb test` passed with nothing changed, so which four tests failed is not known.
+From here every gates run goes to a log and its own exit code is read.
+
 ### The repository beside the application is the build, and `bb init` names it so
 
 Row 87, fixed. `bb init` made `<name>-plan`, and the KIT called it the plan throughout,

@@ -242,6 +242,24 @@
                                            :profile "profile.edn"}
                                           extra))))))
 
+(def brief-row
+  "The row of `source.md` §1 that names the brief, as the template ships it."
+  "| S-1 | <the brief> | <text / file / link> | <YYYY-MM-DD> | <who> |")
+
+(defn source-with-brief
+  "`source.md` as `bb init --brief` writes it: the template's text with §1's
+  first row naming the brief - received `today`, from the person, as Appendix A -
+  and the brief appended verbatim as that appendix. Everything else the
+  template leaves to fill is left: the appendix is the record, §2 is the
+  Architect's reading of it. Throws when the template has no such row: a
+  brief filed where nothing cites it is the thing this exists to prevent."
+  [template-text brief today]
+  (when-not (str/includes? template-text brief-row)
+    (throw (ex-info "plan-template/source.md has no S-1 row for the brief" {:init/error :no-brief-row})))
+  (str (str/replace template-text brief-row
+                    (str "| S-1 | the brief | text, Appendix A below | " today " | the person |"))
+       "\n---\n\n## Appendix A — The brief, as given\n\n" (str/trim brief) "\n"))
+
 (defn layout
   "Everything `bb init` would create, as data - nothing is touched.
 
@@ -252,6 +270,10 @@
   `<kit>/plan-template`. `:seat` names which shipped profile the build gets
   (`default-seat` when nil). `:rule-mirrors` and `:loop/defaults` come from
   whatever generates the application.
+
+  `:brief`, when given, is the brief's text, written into `source.md` as §1's
+  first row and Appendix A (`source-with-brief`), received `:today`; without it
+  `source.md` is copied as shipped, for the brief to be filed by hand.
 
   `:app` and `:build` name the two repositories' folders; nil means
   `<name>-app` and `<name>-build`. THE FOLDER IS NOT THE NAME: the name is the
@@ -265,7 +287,7 @@
   `:dir? true`, `:content string`, `:copy-from abs`, or `:app? true` (the
   application's folder: created only by an `:app-fn`). `:repos` are the folders
   that become repositories."
-  [{:keys [kit-dir dir plan-template rule-mirrors seat] project :name defaults :loop/defaults
+  [{:keys [kit-dir dir plan-template rule-mirrors seat brief today] project :name defaults :loop/defaults
     app-folder :app build-folder :build}]
   (let [ws-dir (str (fs/normalize (or dir (fs/parent kit-dir))))
         seat (or seat default-seat)
@@ -315,8 +337,11 @@
             {:path (str build "/RUNS.md") :what "the records' tables, published; bb report-check holds it to runs/"
              :content (runs-md project ws)}]
            (for [s (sort plan-template)]
-             {:path (str build "/docs/" s) :what "a plan document, from the template"
-              :copy-from (kit-path (str "plan-template/" s))})
+             (if (and brief (= s "source.md"))
+               {:path (str build "/docs/" s) :what "the source: the brief filed as §1 and Appendix A"
+                :content (source-with-brief (slurp (kit-path "plan-template/source.md")) brief today)}
+               {:path (str build "/docs/" s) :what "a plan document, from the template"
+                :copy-from (kit-path (str "plan-template/" s))}))
            [{:path app :what "the application (its own repository)" :app? true}
             {:path "work" :what "scratch, in no repository: runs/<id>/, worktrees/" :dir? true}
             {:path "work/runs" :what "one folder per run" :dir? true}]))}))
@@ -481,11 +506,11 @@
 
 (def ^:private valued-flags
   "The flags that take the next argument as their value, each to its key."
-  {"--seat" :seat "--app" :app "--build" :build})
+  {"--seat" :seat "--app" :app "--build" :build "--brief" :brief})
 
 (defn parse-args
   "`bb init`'s arguments as a map: `:positional` (name, dir), `:seat`, `:app`
-  and `:build` (the value after each flag), `:dry-run?`. The valued flags are
+  `:build` and `:brief` (the value after each flag), `:dry-run?`. The valued flags are
   parsed here and not by looking for a leading `--`."
   [args]
   (loop [[a & more] args, m {:positional []}]
@@ -496,14 +521,15 @@
       :else (recur more (update m :positional conj a)))))
 
 (defn -main
-  "bb init <name> [dir] [--seat <name>] [--app <folder>] [--build <folder>] [--dry-run]
+  "bb init <name> [dir] [--seat <name>] [--app <folder>] [--build <folder>] [--brief <file>] [--dry-run]
 
   With no `dir` the workspace is the folder the KIT's clone is in. Run from
   `harness/`, a relative `dir` is relative to `harness/`; the KIT's
   root `bb.edn` makes it absolute first, so there it means what was typed.
   `--seat` picks which shipped profile the build gets (default `claude`).
   `--app` and `--build` name the two repositories' folders (default `<name>-app`
-  and `<name>-build`); the name stays the application's namespace.
+  and `<name>-build`); the name stays the application's namespace. `--brief <file>` files
+  the brief scoping wrote (`method.md` §02, step 0) as `source.md`'s §1 row and Appendix A.
   `--dry-run` prints what would be created, and any refusal, and writes nothing.
 
   THE TWO PARTS MEET HERE AND NOWHERE ELSE: the pin's `:loop/defaults`, the
@@ -511,11 +537,14 @@
   no template. `KIT_TEMPLATE_LOCAL`, a local clone of the template, replaces the
   pinned commit for someone developing it."
   [& args]
-  (let [{:keys [positional seat dry-run?] app-folder :app build-folder :build} (parse-args args)
+  (let [{:keys [positional seat dry-run?] app-folder :app build-folder :build brief-file :brief} (parse-args args)
         [project dir] positional
         kit-dir (str (fs/parent (fs/normalize (fs/absolutize "."))))]
     (when-not project
-      (println "usage: bb init <name> [dir] [--seat <name>] [--app <folder>] [--build <folder>] [--dry-run]")
+      (println "usage: bb init <name> [dir] [--seat <name>] [--app <folder>] [--build <folder>] [--brief <file>] [--dry-run]")
+      (System/exit 1))
+    (when (and brief-file (not (fs/regular-file? brief-file)))
+      (println (str "bb init: --brief " brief-file " is not a file; nothing was written"))
       (System/exit 1))
     (let [pin (template/pin (template/load-pins))
           local-root (some-> (System/getenv "KIT_TEMPLATE_LOCAL") not-empty fs/absolutize fs/normalize str)
@@ -526,6 +555,8 @@
                :seat seat
                :app app-folder
                :build build-folder
+               :brief (some-> brief-file slurp)
+               :today (str (java.time.LocalDate/now))
                :plan-template (plan-template-files kit-dir)
                ;; THE MIRROR FOLLOWS THE FOLDER, not the name: it is a path in workspace.edn.
                :rule-mirrors [(str app-folder "/AGENTS.md")]
