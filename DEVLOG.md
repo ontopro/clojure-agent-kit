@@ -28,7 +28,10 @@ v6, the next plan's boundary is `0.7.0` - and a heading for the tag stands above
 entries here, with the one line a workspace made before it needs: what `bb doctor` run there
 will list, in a sentence. `bb init` records the version beside the commit in `workspace.edn`,
 the doctor prints both, and the root README names the current tag. Not `kit-vN`: those are
-the template fork's tags and version the template, not the KIT.
+the template fork's tags and version the template, not the KIT. Before a tag is made, `bb
+docker-gates` is run by hand on the commit it will name and is green: the gates on a clone of
+that commit inside a machine that has only the toolchain, which is the fresh-machine check
+until a workflow runs it on push.
 
 ---
 
