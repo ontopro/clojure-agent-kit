@@ -27,6 +27,26 @@ either; an entry's date is its reference.
 
 ## 2026-10-06
 
+### The stage templates: the stage plan's twelve sections, and three kinds new
+
+Row 94, the templates' half. `stages/stage-N-template.md` is the stage plan the method's
+§04 lists: twelve sections, the requirements this stage adds as §2 with their source or an
+inference mark, breadth written beside depth in §4 - what it shows, what it does not yet
+show - and the exit criteria carrying "deployed locally", the owner's walk and the stage's
+end: the lessons written, the index appended, the scope lists revised, the stage map
+re-ranked; the cap approved and recorded. Three templates are new. `stage-0-spike-template.md`
+is the spike's: the risks it proves with their pass criteria and fallbacks, the Foundation
+built inside it with the readiness checklist closed against its first packet, what runs at
+its end, what is kept - and that nothing in it is owed to stage 1. `stage-prerelease-template.md`
+takes a share of what release needs, writes the non-functional requirements as any stage
+writes its own, and rehearses the deploy path against a throwaway host. `stage-release-template.md`
+packages and deploys or publishes with the three criteria from reading a project that
+releases: the artifact started as packaged on an empty home, the previous release's data
+opened by the new one, a publish that finishes when re-run; the changelog's Upgrading
+paragraph; the rollback. The blueprint and method templates say stage plan and blueprint; the
+scaffold is adapted in stage 0. The plan check still excludes every `*-template.md` under
+`stages/`, and its fixture counts the three new ones.
+
 ### The four project-level templates follow the method: the plan commits to stage 0
 
 Rows 93 and 94, the templates' half. The method's §02 and §04 changed on 2026-10-06 and the

@@ -23,7 +23,7 @@
 
 The workflow, the scaffold it operates in, and the quality gates it runs through are **not
 a delivery stage** — they are the method and the toolchain the stages are built *with*.
-Configured once, before Stage 1 dispatches, then running continuously underneath every stage.
+Configured once, inside stage 0 before its first packet dispatches, then running continuously underneath every stage.
 
 **Core principles:** REPL-first · cheap gates before expensive ones · independent
 verification (the author of the tests is never the author of the code) · failure escalates
@@ -41,7 +41,7 @@ the loop. The constraints are the contract and are fixed; which model fills each
 | **Reviewer** | **≠ A** | yes, on green | Read-only: a diff, the slice, the gate report |
 | **Spec reviewer** | ≠ the Architect's family | yes, before every dispatch (`start` runs it) | Read-only: the spec, its context, the rules; no tools |
 | **Orchestrator** | none — it verifies nothing | software; a model for triage only, on a red gate or a note | Dispatch and triage; no code, no eval |
-| **Architect** | none | no — the seat, at the workspace root | Produces the Blueprint; no REPL |
+| **Architect** | none | no — the seat, at the workspace root | Produces the blueprint; no REPL |
 | **DevOps** | none | no — the seat | Whatever a task needs, scoped narrowly |
 | **Interactive programmer** *(off the loop)* | none | no | Full read/eval/write, by hand: harness work, modelling, the worktree an escalation left behind. No packet, no retry cap; inherits the rule source and **runs the gates itself**, since nothing else is gating it |
 
@@ -56,10 +56,10 @@ and the assembler (`harness.contract.packet`) cuts each role's from the task spe
 | Role | Receives |
 |---|---|
 | Architect | The requirement + requirements/architecture/stage docs |
-| Coder | Its Blueprint slice + read-only dependency files + a REPL connection |
+| Coder | Its blueprint slice + read-only dependency files + a REPL connection |
 | Tester | The **same slice** — **not** the Coder's implementation — + a REPL for authoring |
 | Reviewer | The diff + the slice + the green gate report (read-only) |
-| Orchestrator | Full Blueprint + task DAG + accumulated error context |
+| Orchestrator | Full blueprint + task DAG + accumulated error context |
 
 **Key invariant:** the Tester reads the *contract*, never the *code* — enforced in the packet
 assembler, not by author discipline. Upstream namespaces arrive as `:deps-sigs`, call signatures
@@ -130,7 +130,7 @@ Three sibling repositories in a plain folder - the KIT, the application, the pla
 `workspace.edn` naming which is which. Nothing of this project is written into the KIT's clone:
 the rules overlay, the profile, the loop defaults and the run records are all in `<name>-plan/`,
 and `git pull` in the clone is the upgrade. Project-specific adaptation — stripping the example
-domain, defining protocols, the datastore swap — is **Stage 1's first task**; the boundary gate is
+domain, defining protocols, the datastore swap — is **stage 0's first task**; the boundary gate is
 already live with the template's own graph in `<name>-app/layers.edn`.
 
 **Boot check:** `bb serve` in the application answers on its port - `bb health` did it once; do it
@@ -310,7 +310,7 @@ justifies the extra call, or the reason it isn't justified here>.
   through geckodriver - screenshots with measurements, an axe-core scan, and the serve-check-stop
   skeleton (`--serve`, `--health`, `--base` name this project's server); the project's own
   interaction checks are scripts in the project built on the pack's `driver.clj`; or yours>.
-  geckodriver and Firefox are hand steps, recorded in the stage document that first needs them;
+  geckodriver and Firefox are hand steps, recorded in the stage plan that first needs them;
   `bb doctor` has the row, and `bb health` starts a Firefox once because `geckodriver --version`
   passes on a machine where none can start (the permission on macOS is the terminal
   application's; a shell under a daemon is refused silently).
@@ -387,4 +387,4 @@ intention. Record them here; `method.md` §03's checklist is what they close.
    first, so `<name>-plan/runs/<id>.edn` keeps the evidence, then `teardown`. The machine is
    proved and nothing of the rehearsal is left in the application.
 
-Then Stage 1 dispatches against it.
+Then stage 0's first packet dispatches against it.

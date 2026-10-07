@@ -63,7 +63,7 @@ change. Full checklist and rationale: `method.md` §08.
 
 | # | Decision | Options considered | Status / Resolution |
 |---|---|---|---|
-| P0-1 | Scaffold | clojure-stack-lite · hand-rolled | **RESOLVED: clojure-stack-lite**, generated once in the Foundation, adapted in Stage 1. |
+| P0-1 | Scaffold | clojure-stack-lite · hand-rolled | **RESOLVED: clojure-stack-lite**, generated once in the Foundation, adapted in stage 0. |
 | P0-2 | Dedicated Tester role | yes · no | |
 | P0-3 | Model family per role | | **RESOLVED:** verifier ≠ Coder family. Specific models are dated selections. |
 | P0-4 | Workspace isolation | one REPL per worktree · shared sessions | |

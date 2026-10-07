@@ -39,8 +39,11 @@
           "04-decision-log.md" 12
           "README.md" 1
           "source.md" 11
+          "stages/stage-0-spike-template.md" 11
           "stages/stage-N-blueprint-template.md" 9
-          "stages/stage-N-template.md" 18}
+          "stages/stage-N-template.md" 25
+          "stages/stage-prerelease-template.md" 12
+          "stages/stage-release-template.md" 8}
          (plan/placeholder-counts template-dir)))
   (is (= (keys (plan/placeholder-counts template-dir)) (init/plan-template-files (str (fs/parent template-dir))))
       "what bb init lists is what is counted, source.md and the README included"))
@@ -63,7 +66,7 @@
   (is (= ["00-overview.md" "01-requirements.md" "02-architecture.md" "03-method-and-tooling.md"
           "04-decision-log.md" "source.md"]
          (plan/governing template-dir))
-      "the README explains the marks and carries one; the two stage templates are copied per stage")
+      "the README explains the marks and carries one; the stage templates are copied per stage")
   (is (plan/governing? "stages/stage-1-foundation.md") "a stage document written from the template is read")
   (is (not (plan/governing? "stages/stage-N-template.md"))))
 
@@ -185,7 +188,7 @@
              (:problems (check ws))))
       (spit (doc "source.md") (fill (slurp (doc "source.md")))))
     (testing "a stage document written from the template is read; the template itself is not"
-      (spit (doc "stages/stage-1-foundation.md") "# Stage 1\n\n> Written **just-in-time**, when the stage begins — not months ahead. Everything beyond\n")
+      (spit (doc "stages/stage-1-foundation.md") "# Stage 1\n\n> The **stage plan**: the project plan's slice for this stage. Written **just-in-time**, when\n")
       (is (= 1 (count (:problems (check ws)))))
       (is (= 7 (:documents (check ws))))
       (fs/delete (doc "stages/stage-1-foundation.md")))

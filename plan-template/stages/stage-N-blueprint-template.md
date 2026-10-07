@@ -2,7 +2,7 @@
 
 **Status:** AWAITING HUMAN GATE — no task dispatches until signed off
 **Author:** Architect (<model>) · **Date:** <YYYY-MM-DD>
-**Input:** `stage-N-<name>.md` · **Method:** `../03-method-and-tooling.md`
+**Input:** `stage-N-<name>.md`, the stage plan, approved · **Method:** `../03-method-and-tooling.md`
 
 > Produced in a fixed order: **shapes → interfaces → namespaces and dependencies →
 > dependency-ordered task packets.** This document is read twice, by two agents who never
@@ -37,7 +37,7 @@
 
 > Beside each seam, answer: **what does everything past this point get to assume?** (validated
 > once here; slugs distinct; exactly one home; …) — and put the answer in the rule source, where
-> every role reads it, not only here. A guarantee that lives in the Blueprint alone reaches no
+> every role reads it, not only here. A guarantee that lives in the blueprint alone reaches no
 > dispatched role, and each of them will object to the input it forbids.
 
 ### `app.<ns>` (`:<layer>`)
@@ -116,6 +116,6 @@ marker attributes for anything a test must find (method §06).
 
 ## 6. Risks and deliberate simplifications
 
-**Deliberately NOT designed in this Blueprint** (deferred per the stage doc §3):
+**Deliberately NOT designed in this blueprint** (deferred per the stage plan §4):
 
 **Riskiest tasks:**

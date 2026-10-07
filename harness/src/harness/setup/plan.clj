@@ -79,9 +79,9 @@
 (defn governing?
   "Is `rel` (a path under `docs/`) a document a check reads? Two kinds are
   not: the template's own `README.md`, which explains the marks and so carries
-  one, and the two stage templates under `stages/` (`*-template.md`), which are
+  one, and the stage templates under `stages/` (`*-template.md`), which are
   copied per stage with their marks standing by design. Every other document
-  - the six written in Phase A and every stage document written since - is."
+  - the six written in Phase A and every stage plan written since - is."
   [rel]
   (not (or (= rel "README.md")
            (and (str/starts-with? rel "stages/") (str/ends-with? rel "-template.md")))))
