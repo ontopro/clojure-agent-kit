@@ -41,6 +41,18 @@ difference, and nothing is migrated.
 
 ## 2026-10-07
 
+### A test fixture was red on macOS and green on Linux, by printf's exit code
+
+The first run of the KIT's gates on a Linux machine (the fresh-machine container, below) failed
+one test, the loop's "a red gate triage-routed to tooling" case: its gate command was `printf
+'FAIL in …' && false`. The gate runner tokenizes a gate command itself and runs the program
+directly, no shell, so `&&` and `false` reached printf as arguments. BSD printf exits 1 on an
+argument with no format to take it; GNU printf warns and exits 0. The gate was red on every
+macOS run for the wrong reason and green on Linux, and the test expected red. The fixture now
+runs through `sh -c`, as a gate that is a shell chain must, and says why beside itself. Nothing
+in the harness changed: a gate command that needs a shell names one, which is what the shipped
+`loop.edn` defaults do.
+
 ### A bake-off's records keep what a late cost is fetched by
 
 Row 112's residue. A completion from the router carries no price; the harness asks the

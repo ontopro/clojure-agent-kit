@@ -243,8 +243,12 @@
 (deftest a-red-gate-triage-routed-tooling-stops-and-names-the-namespace-nobody-owns
   ;; Row 61: a merged property test failed a later task's gate; no role in the run owned
   ;; it, and the loop had no route that said so.
+  ;; The gate is run through a shell ON PURPOSE: the runner tokenizes a gate command itself
+  ;; and runs the program directly, so without `sh -c` the `&&` and `false` reach printf as
+  ;; arguments - and BSD printf exits 1 on them where GNU printf warns and exits 0, which
+  ;; made this gate red on macOS and green on Linux (found by the first container run).
   (let [repo (scratch-repo)
-        rd (run-dir! repo {:gates [[:test "printf 'FAIL in scratch.util-test/clamp-above-hi-spec (util_test.clj:46)\\nexpected true\\n' && false"]]})
+        rd (run-dir! repo {:gates [[:test "sh -c \"printf 'FAIL in scratch.util-test/clamp-above-hi-spec (util_test.clj:46)\\nexpected true\\n' && false\""]]})
         asked (atom [])]
     (let [res (drive! rd {:triage (fn [trg] (swap! asked conj trg) {:route :tooling :reason "a merged property test, nobody's here"})})]
       (is (= :escalated (:status res)))
