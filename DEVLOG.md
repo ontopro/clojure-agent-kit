@@ -27,6 +27,20 @@ either; an entry's date is its reference.
 
 ## 2026-10-06
 
+### A stub-model test that fails once and passes on the rerun is watched
+
+Row 102. Two gates runs tonight, an hour apart, each reported one failing test against a local
+stub model and passed green on the rerun with nothing under test changed between: the triage
+fallback test's stub answered with another server's words, and the API runner's cost test saw
+an answer that never arrived. A spec-review stub test did the same once on 2026-09-24, kept
+then as a watch by decision with the rule that a second such failure opens a row. This is it.
+The likely cause is the ephemeral port a stub takes per test and gives back; what would close
+the row is a stub shared per namespace or one retry of a refused connection, decided when it
+fails a third kind of test or costs a commit. Until then the rule from the slip of 2026-10-06
+stands: every gates run goes to a log, its exit code is read, and a rerun is the answer to a
+failure of this shape - after reading which test failed, since the rerun is only the answer
+when nothing under test changed.
+
 ### `bb profile` says when a selection has a newer model in its line
 
 Row 101. A profile's models are dated selections, and the question of whether the catalogue
