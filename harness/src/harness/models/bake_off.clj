@@ -53,7 +53,7 @@
   here yet: their case is a whole loop run, and that runner comes with the
   third step of the tool."
   {:plan-reviewer
-   {:role :spec-reviewer
+   {:role :plan-reviewer
     :cases (fn [{:keys [plan]}] [{:id "plan" :path plan}])
     :run (fn [role {:keys [path]} {:keys [method]}] (plan-review/read! role path method))}
    :blueprint-reviewer

@@ -13,7 +13,7 @@ prints the live model behind each role there.
 |---|---|---|---|---|---|
 | Health check's runner | `bb health` | scripted | none | — | a scripted runner in every seat; no model is called |
 | The plan | Phase A, once | the seat's session | the seat (`:seat`) | the session's own; not in the profile | the six documents in order, `source.md` first, and the overlay's placeholders; the plan review's findings resolved in the overview's table |
-| Plan review | once, after the plan is filled | model read | `:spec-reviewer` | `openai/gpt-5.6-sol`, high | `bb plan-review`; the six Phase A documents and `method.md` §02's checklist, one call; findings to the plan's `reviews/`, resolved in the overview's table. Not a gate |
+| Plan review | once, after the plan is filled | model read | `:plan-reviewer` — its own role since 2026-10-06 | `openai/gpt-5.6-sol`, high — the spec reviewer's selection by default; the profile's comment says why | `bb plan-review`; the six Phase A documents and `method.md` §02's checklist, one call; findings to the plan's `reviews/`, resolved in the overview's table. Not a gate |
 | Plan check | before the first dispatch | gate, mechanical | none | — | `bb plan-check`; `start` runs it once per workspace, cached by a hash of what it reads |
 | The stage document | per stage, just in time | the seat's session | the seat (`:seat`) | the session's own; not in the profile | the goal, the risks retired, what it proves and deliberately does not, the seams, the exit criteria, the task list |
 | The Blueprint | per stage, after the stage document | the seat's session | the seat (`:seat`) | the session's own; not in the profile | shapes → interfaces → namespaces → packets; the Blueprint review's findings resolved in the stage document, then the sign-off |
@@ -39,8 +39,9 @@ in the profile and watched in the register (row 71), like the orchestrator's.
 The seat's five rows are one voice on purpose: the plan, the stage documents, the Blueprints and
 the specs are written by the same role, in the session the person works in, on whatever model that
 session was started with. The three reviews of words — the plan's, the Blueprint's, each spec's —
-are where the second voices come from, and of the three only the spec reviewer's family is held to
-differ by check.
+are where the second voices come from, and of the three the plan reviewer's and the spec
+reviewer's families are held to differ by check; the plan reviewer is its own role so that a
+project can set it apart from the spec reviewer, and the shipped example sets the two the same.
 
 How a role's model is chosen: `bb bake-off` - candidates read the same artifact once each, a judge
 that is never a candidate maps where they agree and disagree, blind, and the person marks what is

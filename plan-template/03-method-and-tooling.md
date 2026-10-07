@@ -40,6 +40,7 @@ the loop. The constraints are the contract and are fixed; which model fills each
 | **Tester** | **≠ A** | yes, every task | Eval for authoring only; never runs the full suite |
 | **Reviewer** | **≠ A** | yes, on green | Read-only: a diff, the slice, the gate report |
 | **Spec reviewer** | ≠ the Architect's family | yes, before every dispatch (`start` runs it) | Read-only: the spec, its context, the rules; no tools |
+| **Plan reviewer** | ≠ the Architect's family | yes, in every stage's plan step (`bb plan-review`) | Read-only: the plan's documents and the stage plan; no tools |
 | **Orchestrator** | none — it verifies nothing | software; a model for triage only, on a red gate or a note | Dispatch and triage; no code, no eval |
 | **Architect** | none | no — the seat, at the workspace root | Produces the blueprint; no REPL |
 | **DevOps** | none | no — the seat | Whatever a task needs, scoped narrowly |
@@ -269,6 +270,7 @@ written down — the rule source's own first rule says it outranks the others:
 | Tester | <≠ A> | | | |
 | Reviewer | <≠ A> | | | |
 | Spec reviewer | <≠ the Architect's> | | | |
+| Plan reviewer | <≠ the Architect's> | | | the spec reviewer's selection unless a bake-off on the plan says otherwise |
 | Orchestrator (triage) | <any> | | | may share family A — it verifies nothing — but say so |
 | Architect | the seat | | — | |
 

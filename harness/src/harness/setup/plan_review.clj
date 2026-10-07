@@ -2,7 +2,7 @@
   "The plan-review pass of `method.md` §02, run: `bb plan-review [<plan-dir>]`.
 
   The seven Phase A documents - `source.md`, `00`…`04` and `05-lessons.md` - read cold, as an
-  artifact, by the profile's `:spec-reviewer` role: a model that did not write
+  artifact, by the profile's `:plan-reviewer` role: a model that did not write
   them (`bb profile` holds it to a family other than the seat's), one
   completion, no tools, with §02's own checklist of the findings that recur.
   What it gives the Architect is a list, printed with what the call cost and
@@ -146,7 +146,7 @@
 
 (defn review!
   "Read the documents under `plan-dir`, send them with the checklist to the
-  `:spec-reviewer` role of `profile-path`, print the list, write
+  `:plan-reviewer` role of `profile-path`, print the list, write
   `<plan>/reviews/plan-review.edn` - the findings, their count, the model,
   the cost, the documents read, and every earlier review of this plan under
   `:reviews`. `method-path` is where the checklist is read from. Returns the
@@ -154,10 +154,12 @@
   `{:no-block? true}` - a count of zero from an answer that gave none would
   read as a clean review."
   [plan-dir profile-path method-path]
-  (let [role (get-in (profile/read-profile profile-path) [:roles :spec-reviewer])
+  (let [role (get-in (profile/read-profile profile-path) [:roles :plan-reviewer])
         _ (when-not role
-            (throw (ex-info (str "the profile " profile-path " has no :spec-reviewer role")
-                            {:plan-review/error :no-spec-reviewer :profile (str profile-path)})))
+            (throw (ex-info (str "the profile " profile-path " has no :plan-reviewer role - its own role since"
+                                 " 2026-10-06, the spec reviewer's selection by default; add the block (the shipped"
+                                 " examples under harness/resources/profiles/ have it)")
+                            {:plan-review/error :no-plan-reviewer :profile (str profile-path)})))
         {:keys [findings documents model cost] :as read} (read! role plan-dir method-path)
         out-file (fs/path plan-dir "reviews" "plan-review.edn")
         out (merge {:findings findings

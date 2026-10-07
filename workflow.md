@@ -83,7 +83,7 @@ once.
 | 0 | Scoping | the person, with an Architect session | Who is it for, what does it show or do, what material exists and which part is content, what must be proved early, what is the first thing worth seeing, what is the money? | — | the brief, in a file: the six groups' answers as given (`method.md` §02, step 0) |
 | 1 | Setup | the person | Can this machine run the KIT, and where does the project live? | `bb doctor`, `bb health`, `bb init <name> --brief <file>` | the workspace: the application (two commits), the build repository (the documents with the brief filed as `source.md`'s first row and Appendix A, the rules overlay, the profile, run defaults), `work/`, `workspace.edn` with the KIT's commit |
 | 2 | The plan, for stage 0 | the Architect's session | What are we building, from what evidence, which risks does stage 0 prove and against what criteria, and what have we deliberately not decided yet? | — | the seven documents, in order, `source.md` first and `05-lessons.md` empty: the scope lists; stage 1's requirements and no more; the candidate architecture as provisional decisions, each with a pass criterion; the stage map by kind, a cap on stage 0 alone; the overlay's three placeholders filled with the method document |
-| 3 | The plan review | `bb plan-review` | Where does the plan contradict itself, decide too early, write a requirement for a stage not pulled, or leave a risk with no owning stage? | one call to the profile's reviewer with `method.md` §02's checklist | findings in `reviews/plan-review.edn`, each resolved in the overview's findings table |
+| 3 | The plan review | `bb plan-review` | Where does the plan contradict itself, decide too early, write a requirement for a stage not pulled, or leave a risk with no owning stage? | one call to the profile's `:plan-reviewer` with `method.md` §02's checklist | findings in `reviews/plan-review.edn`, each resolved in the overview's findings table |
 | 4 | The plan check | `bb plan-check` | Is anything of the template still standing, and are the given parts intact? | mechanical | exit 0, or the list of what still stands |
 | 5 | Approval, for stage 0 | the person | Do we run the spike, and for how much? | — | stage 0 approved with its cap, recorded in `stages/stage-0-gates.edn` |
 | 6 | Stage 0 | the Architect's session | Does the machine work here, with these models, and do the foundational choices hold against their pass criteria? | the stage 0 plan from its template; `bb profile`, `bb rules-sync`, the gates; the spike's packets through the loop, the first of them the machine's proving run | Foundation built and its readiness checklist closed against a live run; every pass criterion answered, pass or fallback, in the decision log; running software; what is kept, said; stage 0's section of `05-lessons.md` |
@@ -98,15 +98,17 @@ once.
 
 ## The reviews, by the step of a stage they belong to
 
-Four readings, three reviewer roles, in every stage from 0 to the last pre-release stage; the
-release runs the first two.
+Four readings, four reviewer roles, in every stage from 0 to the last pre-release stage; the
+release runs the first two. The plan reviewer is the spec reviewer's selection in the shipped
+profiles - the two readings differ in the checklist sent, not in the kind of reader - and a role
+of its own so a project can set it apart.
 
-| Review | In the stage's step | Reads | Gate or reading |
-|---|---|---|---|
-| plan review, `bb plan-review` | plan | the stage plan and the documents it revised, cold; in stage 0 the whole set | a reading; `bb plan-check` is the gate |
-| blueprint review, `bb blueprint-review` | plan | the stage's blueprint whole, with its stage plan | a reading; the person's sign-off is the gate |
-| spec review, inside `bb run-loop start` | implement, per packet | one packet's contract, cold | a stop if a target can be read two ways |
-| code review, inside the loop | implement, per packet | the diff and the gate report of green code | a stop on rejection; triage names the owner |
+| Review | In the stage's step | Reads | Role in the profile | Gate or reading |
+|---|---|---|---|---|
+| plan review, `bb plan-review` | plan | the stage plan and the documents it revised, cold; in stage 0 the whole set | `:plan-reviewer` | a reading; `bb plan-check` is the gate |
+| blueprint review, `bb blueprint-review` | plan | the stage's blueprint whole, with its stage plan | `:blueprint-reviewer` | a reading; the person's sign-off is the gate |
+| spec review, inside `bb run-loop start` | implement, per packet | one packet's contract, cold | `:spec-reviewer` | a stop if a target can be read two ways |
+| code review, inside the loop | implement, per packet | the diff and the gate report of green code | `:reviewer` | a stop on rejection; triage names the owner |
 
 ## Three things the diagram says that prose tends to lose
 

@@ -58,7 +58,7 @@
 
 (defn- scratch-plan
   "A plan folder with five of the seven documents (no decision log, no lessons yet) and a
-  profile whose :spec-reviewer is the stub."
+  profile whose :plan-reviewer is the stub."
   [endpoint]
   (let [plan (str (fs/create-temp-dir {:prefix "plan-review-"}))]
     (fs/create-dirs (fs/path plan "docs"))
@@ -66,7 +66,7 @@
       (spit (str (fs/path plan "docs" nm)) (str "# " nm "\n\nthe text of " nm "\n")))
     (spit (str (fs/path plan "profile.edn"))
           (pr-str {:seat :claude
-                   :roles {:spec-reviewer {:family :stub :model "m" :shape :openai :endpoint endpoint
+                   :roles {:plan-reviewer {:family :stub :model "m" :shape :openai :endpoint endpoint
                                            :retry {:attempts 1 :interval-ms 1}}}}))
     plan))
 
@@ -103,7 +103,7 @@
       (with-stub "```json\n{\"findings\": []}\n```"
         (fn [endpoint]
           (spit (str (fs/path plan "profile.edn"))
-                (pr-str {:seat :claude :roles {:spec-reviewer {:family :stub :model "m" :shape :openai :endpoint endpoint}}}))
+                (pr-str {:seat :claude :roles {:plan-reviewer {:family :stub :model "m" :shape :openai :endpoint endpoint}}}))
           (with-out-str (pr/review! plan (str (fs/path plan "profile.edn")) method-path))))
       (let [again (edn/read-string (slurp (str (fs/path plan "reviews" "plan-review.edn"))))]
         (is (= 0 (:count again)))
@@ -117,10 +117,10 @@
     (is (str/includes? r "no findings block"))
     (is (not (fs/exists? (fs/path plan "reviews" "plan-review.edn"))))))
 
-(deftest a-plan-with-no-documents-and-a-profile-with-no-reviewer-are-refused-by-name
+(deftest a-plan-with-no-documents-and-a-profile-with-no-plan-reviewer-are-refused-by-name
   (let [plan (scratch-plan "http://127.0.0.1:1")]
     (spit (str (fs/path plan "no-reviewer.edn")) (pr-str {:seat :claude :roles {:coder {:family :anthropic}}}))
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no :spec-reviewer role"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no :plan-reviewer role"
                           (pr/review! plan (str (fs/path plan "no-reviewer.edn")) method-path)))
     (fs/delete-tree (fs/path plan "docs"))
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"none of the plan's documents"

@@ -118,6 +118,27 @@
                        :source "https://platform.claude.com/docs/en/about-claude/pricing"
                        :as-of "2026-10-05"}}
 
+  ;; PLAN REVIEWER — the spec reviewer's selection, block for block, as in
+  ;; claude.edn and for the reason its comment gives: the plan review and the
+  ;; spec review are the same kind of reading - cold, adversarial, one call -
+  ;; and differ in the checklist sent, not in the reader. Its own role from
+  ;; 2026-10-06 so that a project can set it apart; not the seat's family
+  ;; (Google here), and `bb profile` checks that as it does the spec reviewer's.
+  ;; One call per stage, in its plan step, by `bb plan-review`. NOT MEASURED
+  ;; IN THIS SEAT, as nothing here is.
+  :plan-reviewer {:family :anthropic
+                  :model "claude-opus-5-5"
+                  :shape :anthropic
+                  :endpoint "https://api.anthropic.com"
+                  :key-env "ANTHROPIC_API_KEY"
+                  :params {:output_config {:effort "high"}
+                           :max_tokens 16000}
+                  :pricing {:per-mtok {:in 4 :out 20
+                                       :cache-write-5m 5 :cache-write-1h 8
+                                       :cache-read 0.4}
+                            :source "https://platform.claude.com/docs/en/about-claude/pricing"
+                            :as-of "2026-10-05"}}
+
   ;; SPEC REVIEWER — the Reviewer's family, for the Reviewer's reason: not the
   ;; seat's family (Google here), and the seat is where the Architect writes
   ;; the spec this role reads cold before `start`. The Reviewer's model too,

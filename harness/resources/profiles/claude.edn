@@ -4,7 +4,7 @@
 ;; SEAT :claude. Its sibling is agy-ide.edn, and the pair is instructive: they
 ;; are near mirror images. Here Anthropic writes and Google and OpenAI verify,
 ;; every role over OpenRouter on the :openai shape; there Google writes and
-;; Anthropic verifies, its Reviewer and spec reviewer direct to Anthropic on
+;; Anthropic verifies, its Reviewer, spec reviewer and plan reviewer direct to Anthropic on
 ;; the :anthropic shape. The pair still covers both tool-call shapes, which is
 ;; why there are two rather than one — and since this file's Anthropic roles
 ;; go through OpenRouter (below, and why), the :anthropic shape's worked
@@ -181,6 +181,34 @@
              :key-env "OPENROUTER_API_KEY"
              :params {:reasoning_effort "high"
                       :provider {:only ["openai"] :allow_fallbacks false}}}
+
+  ;; PLAN REVIEWER — the spec reviewer's selection, block for block. Its own
+  ;; role from 2026-10-06; before that `bb plan-review` borrowed the spec
+  ;; reviewer's block. ONE CALL PER STAGE, IN ITS PLAN STEP, no tools: in
+  ;; stage 0 the whole plan, after that the stage plan with the documents it
+  ;; revised, read cold with method.md §02's checklist - a requirement written
+  ;; for a stage not pulled, a risk with no owning stage, a lesson the new plan
+  ;; does not answer, and the faults that recur in any plan.
+  ;;
+  ;; WHY THE SAME READER AS THE SPEC REVIEWER. The two readings share their two
+  ;; properties: cold - the reader has seen nothing of the work and gets the
+  ;; documents and the checklist in one call - and adversarial - asked for
+  ;; faults, not confirmation. What differs is the checklist, which is text
+  ;; sent with the call, not the kind of reader; so the reader that measured
+  ;; best on contracts is the default here, and the cost is what it was when
+  ;; the block was borrowed. A role of its own so that a project can set it
+  ;; apart - a cheaper reader for the plan than for a contract, or a bake-off
+  ;; on the plan alone - and so the profile says who reads the plan.
+  ;;
+  ;; NOT THE SEAT'S FAMILY, and `bb profile` checks it as it checks the spec
+  ;; reviewer: the plan and every stage plan are the seat's writing.
+  :plan-reviewer {:family :openai
+                  :model "openai/gpt-5.6-sol"
+                  :shape :openai
+                  :endpoint "https://openrouter.ai/api/v1"
+                  :key-env "OPENROUTER_API_KEY"
+                  :params {:reasoning_effort "high"
+                           :provider {:only ["openai"] :allow_fallbacks false}}}
 
   ;; SPEC REVIEWER — the same model as the Reviewer, over OpenRouter.
   ;; Dated selection 2026-09-18. ONE CALL PER SPEC, BEFORE START, no tools:

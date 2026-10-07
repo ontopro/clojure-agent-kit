@@ -370,6 +370,7 @@ Proved one seat at a time, portability being the design:
 | tester | `google` · `gemini-3.8-flash` (effort medium) · OpenRouter · `:openai` | `openai` · `gpt-5.6-sol` · OpenRouter · `:openai` |
 | reviewer | `openai` · `gpt-5.6-sol` (effort high) · OpenRouter · `:openai` | `anthropic` · `claude-fable-5-1` (effort medium, from 2026-09-18) · direct · `:anthropic` |
 | spec-reviewer | `openai` · `gpt-5.6-sol` (effort high) · OpenRouter · `:openai` | `anthropic` · `claude-fable-5-1` (effort low) · direct · `:anthropic` |
+| plan-reviewer | the spec reviewer's selection, block for block (its own role since 2026-10-06; the profile's comment says why) | the spec reviewer's selection, block for block |
 | orchestrator | `anthropic` · `anthropic/claude-fable-5.1` (effort low, from 2026-09-18; high before) · OpenRouter pinned `anthropic` · `:openai` | `google` · `gemini-3.8-flash` (effort high) · OpenRouter · `:openai` |
 
 *(The `claude` seat's Tester and Reviewer swapped on 2026-09-16, after bake-offs measured

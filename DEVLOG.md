@@ -27,6 +27,33 @@ either; an entry's date is its reference.
 
 ## 2026-10-06
 
+### The plan reviewer is a role of its own, set to the spec reviewer's selection
+
+Row 99. `bb plan-review` read the profile's `:spec-reviewer` block, by a decision that still
+holds as an economy: the plan review and the spec review are the same kind of reading - cold,
+the reader has seen nothing of the work and gets the documents and the checklist in one call;
+adversarial, asked for faults and not confirmation - and what differs is the checklist, which
+is text sent with the call. What the borrowing hid was the fact: the profile named no reader
+of the plan, `bb profile` printed none, a project could not set a cheaper reader for the plan
+than for a contract or bake off the plan's reader alone, and the roster had to say in prose
+which block the plan review took. The person decided the role for transparency and so an
+adopter can configure it apart.
+
+`:plan-reviewer` is the seventh role, in the profile shape with the other six and no fallback:
+a profile without it is refused by name, and `bb doctor` in a workspace made before this
+change lists it as the missing role - the report of what a pulled KIT expects already read
+the roles off the shape, so the line needed nothing. `bb profile` holds it to §05's family
+rule as it holds the spec reviewer, by the same route: the plan and every stage plan are the
+seat's writing, and a reader of the seat's family reads a sentence the way its author did. It
+is first in the roles' order, since a build meets it first, in stage 0's plan step. Both
+shipped examples set it to the spec reviewer's selection, block for block, with a comment
+saying why the two are the same reader by default, and a test holds the two blocks equal, so
+the cost is what it was. The bake-off's `plan-reviewer` act fills this role now rather than
+the spec reviewer's. The roles tables - the roster, the harness README, `workflow.md` (its
+reviews table has the role column back), method §05, the plan template's method document,
+`portability.md` - carry the row. Going forward only: nothing is owed to a workspace made
+before, beyond the doctor's line.
+
 ### The workflow follows the shape: scoping first, stage 0 the spike, every stage the same four steps
 
 Row 91, the workflow's half. `workflow.md` drew setup, plan, Foundation, stages, loop in a

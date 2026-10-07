@@ -262,12 +262,23 @@
   client while a reviewer runs in another is the arrangement this shape is
   built to make unrepresentable.
 
-  All six roles are required. §07 dispatches the Coder, the Tester and the
+  All seven roles are required. §07 dispatches the Coder, the Tester and the
   Reviewer on every task; the loop dispatches the Orchestrator's triage call on
   every red gate and every note it has to route; `start` sends every spec to
-  the spec reviewer before it dispatches; and `bb blueprint-review` sends each
-  stage's Blueprint to the Blueprint reviewer before the human signs it off. A
-  profile that omits one describes a build that cannot run.
+  the spec reviewer before it dispatches; `bb plan-review` sends the plan, and
+  every stage plan after it, to the plan reviewer in the stage's plan step;
+  and `bb blueprint-review` sends each stage's blueprint to the Blueprint
+  reviewer before the human signs it off. A profile that omits one describes
+  a build that cannot run.
+
+  THE PLAN REVIEWER IS ITS OWN ROLE from 2026-10-06, for transparency and so a
+  project can configure it apart from the spec reviewer; before that the plan
+  review borrowed the spec reviewer's block. The two shipped examples set it
+  to the spec reviewer's selection with a comment saying why, so the cost is
+  unchanged; §05's family rule reaches it as it reaches the spec reviewer - it
+  reads what the seat wrote - and `verifiers` lists it. No fallback to the
+  spec reviewer: a profile without it is refused, and `bb doctor` in a
+  workspace made before names the missing role.
 
   THE ORCHESTRATOR IS NOT A VERIFIER. It reads the failing gate against the
   contract and both roles' files and says who owns the failure; it writes no
@@ -288,6 +299,7 @@
             [:tester RoleProfile]
             [:reviewer RoleProfile]
             [:spec-reviewer RoleProfile]
+            [:plan-reviewer RoleProfile]
             [:blueprint-reviewer RoleProfile]
             [:orchestrator RoleProfile]]]])
 

@@ -18,6 +18,8 @@
                       :endpoint "https://example.test"}
            :spec-reviewer {:family :openai :model "m" :shape :openai
                            :endpoint "https://example.test"}
+           :plan-reviewer {:family :openai :model "m" :shape :openai
+                           :endpoint "https://example.test"}
            :blueprint-reviewer {:family :anthropic :model "m" :shape :openai
                                 :endpoint "https://example.test"}
            :orchestrator {:family :anthropic :model "m" :shape :anthropic
@@ -126,6 +128,9 @@
   (testing "the Spec reviewer: the Architect is the seat, and the seat's family is the Coder's by convention"
     (is (= [:verifier-shares-coder-family]
            (errors (assoc-in base [:roles :spec-reviewer :family] :anthropic)))))
+  (testing "the Plan reviewer, by the spec reviewer's route: the plan and every stage plan are the seat's writing"
+    (is (= [:verifier-shares-coder-family]
+           (errors (assoc-in base [:roles :plan-reviewer :family] :anthropic)))))
   (testing "both at once are two findings, named by role"
     (let [v (profile/violations (-> base
                                     (assoc-in [:roles :tester :family] :anthropic)
@@ -183,8 +188,8 @@
                             :endpoint "https://example.test"})))))
 
 (deftest every-role-is-required
-  (is (= [:blueprint-reviewer :spec-reviewer :coder :tester :reviewer :orchestrator] profile/roles)
-      "six: the Blueprint reviewer meets a build first, once per stage; the spec reviewer before every start; the Orchestrator last")
+  (is (= [:plan-reviewer :blueprint-reviewer :spec-reviewer :coder :tester :reviewer :orchestrator] profile/roles)
+      "seven: the plan reviewer meets a build first, in stage 0's plan step; the Blueprint reviewer once per stage; the spec reviewer before every start; the Orchestrator last")
   (doseq [r profile/roles]
     (is (= [:invalid] (errors (update base :roles dissoc r)))
         (str "a profile without a " (name r) " describes a build that cannot run"))))
@@ -256,13 +261,23 @@
 (deftest the-summary-puts-family-before-model
   ;; Independence is what a human is eyeballing in this output, so the column
   ;; that decides it comes first.
-  (let [[seat blueprint-reviewer spec-reviewer coder & more] (profile/summary base)]
+  (let [[seat plan-reviewer blueprint-reviewer spec-reviewer coder & more] (profile/summary base)]
     (is (= "seat  claude" seat))
-    (is (re-find #"^blueprint-reviewer\s+anthropic\s+m\s" blueprint-reviewer) "first: a build meets it before any start")
+    (is (re-find #"^plan-reviewer\s+openai\s+m\s" plan-reviewer) "first: a build meets it in stage 0's plan step")
+    (is (re-find #"^blueprint-reviewer\s+anthropic\s+m\s" blueprint-reviewer))
     (is (re-find #"^spec-reviewer\s+openai\s+m\s" spec-reviewer))
     (is (re-find #"^coder\s+anthropic\s+m\s" coder))
-    (is (= 6 (count (rest (profile/summary base)))) "one line per role, the Orchestrator's last")
+    (is (= 7 (count (rest (profile/summary base)))) "one line per role, the Orchestrator's last")
     (is (re-find #"^orchestrator\s+anthropic" (last more)))))
+
+(deftest the-shipped-plan-reviewer-is-the-spec-reviewers-selection
+  ;; Its own role from 2026-10-06, so a project can set it apart; the shipped
+  ;; examples set the two the same, block for block, and say why in the
+  ;; comment - the two readings differ in the checklist sent, not in the
+  ;; reader - so the cost is what it was when the block was borrowed.
+  (doseq [[nm p] (profile/examples)]
+    (is (= (get-in p [:roles :spec-reviewer]) (get-in p [:roles :plan-reviewer]))
+        (str nm ": the plan reviewer is the spec reviewer's block"))))
 
 (deftest a-projects-profile-is-the-plans-and-there-is-none-outside-a-workspace
   ;; `bb init` writes <build>/profile.edn; `bb profile` and `bb balance` with no argument read
