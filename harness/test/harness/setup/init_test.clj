@@ -5,6 +5,7 @@
    [clojure.edn :as edn]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [harness.contract.shapes :as shapes]
    [harness.money.report :as report]
    [harness.rules :as rules]
    [harness.setup.init :as init]
@@ -98,6 +99,8 @@
             :gates [[:deps "bb --config /tools/clojure-agent-kit/harness/bb.edn boundary"]]}
            (edn/read-string (content "xyx-build/loop.edn")))
         "{{kit}} is the KIT's absolute path, wherever the KIT is")
+    (doseq [k shapes/loop-file-keys]
+      (is (str/includes? (content "xyx-build/loop.edn") (str ";;   " k " - ")) (str "the header describes " k)))
     (is (str/includes? (content "xyx-build/loop.edn") ":architecture {:from \"arch\" :files [\"layers.edn\"]}")
         "the header says how a layers.edn entry reaches a run - the file every run directory copies is where an adopter looks")))
 

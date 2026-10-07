@@ -31,6 +31,7 @@
    [clojure.pprint :as pp]
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [harness.contract.shapes :as shapes]
    [harness.models.profile :as profile]
    [harness.rules :as rules]
    [harness.setup.app :as app]
@@ -233,8 +234,10 @@
        ";; (../work/runs/<id>/loop.edn) and set :run/id. The harness finds the application through\n"
        ";; ../workspace.edn, so :repo/root is not needed. :profile is relative to THIS folder, the build,\n"
        ";; wherever the run directory is: profile.edn beside this file is the seat's shipped example as\n"
-       ";; `bb init` copied it, and the KIT's clone holds nothing of this project's. Every key: the\n"
-       ";; docstring of harness/src/harness/loop/driver.clj.\n"
+       ";; `bb init` copied it, and the KIT's clone holds nothing of this project's.\n"
+       ";; THE KEYS, described once in harness/src/harness/contract/shapes.clj (loop-keys); a key not\n"
+       ";; there is refused by name when the run starts:\n"
+       (apply str (for [line (shapes/loop-key-lines)] (str ";;   " line "\n")))
        ";; A task that adds a namespace also adds its layers.edn entry, and no dispatched role writes that\n"
        ";; file: put the edited layers.edn in the run directory's arch/ and add\n"
        ";;   :architecture {:from \"arch\" :files [\"layers.edn\"]}\n"

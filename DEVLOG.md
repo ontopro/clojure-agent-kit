@@ -27,6 +27,31 @@ either; an entry's date is its reference.
 
 ## 2026-10-06
 
+### `loop.edn`'s keys are described once, and an unknown one is refused by name
+
+Row 97. The keys a run's `loop.edn` may hold were written in four places - the driver's
+docstring, the merge of defaults in `resolve-config`, the header `bb init` writes, the plan
+template's §13 - and held by none: the map was open, so a misspelt key was a default
+silently applied, and the spec review's default spends money (the DEVLOG of 2026-09-18 has
+two live calls bought by a fixture that lacked the key). The harness README had made the
+argument itself about `AgentResult`. A reading of another project's design, which
+describes each setting once and derives its form, its parser and its schema from the
+description, named the shape to take.
+
+`shapes/loop-keys` is the one description: every key with its type, its default - literal,
+computed, or none for a required key - what it is for, and the namespace that reads it;
+the three keys `resolve-config` derives from the workspace are there too, marked derived,
+so a resolved config is described as well. `resolve-config` merges the literal defaults
+from the table, fills the computed ones as before, and refuses a key the table does not
+know - by name, with the known keys listed and where they are explained. `bb init` renders
+the file's header from the table, one line per key, and a test holds the plan template's
+§13 to it: a key it names that the table lacks fails the gates. The four bare keys are
+named by what they configure, as the rest already were - `:spec-review/run?` beside
+`:spec-review/max`, `:plan-check/run?`, `:notes/pause?`, `:repo/allow-dirty?` beside
+`:repo/root` - and `:architecture`, a map with keys of its own, is the one bare key left,
+said so in the table. A `loop.edn` written with an old spelling is refused at `start` with
+the new spelling in the list, which is the test's example.
+
 ### `bb doctor` in a workspace says what a pulled KIT expects that the workspace lacks
 
 Row 96. The root README said the clone is upgraded with `git pull`, and the DEVLOG recorded,

@@ -20,7 +20,7 @@
                       :project/subdir \"sandbox\"            ; optional
                       :architecture {:from \"arch\" :files [\"layers.edn\"]} ; optional
                       :worktrees/dir \"/tmp/...\"            ; optional
-                      :allow-dirty true                     ; optional - see `dirty-files`
+                      :repo/allow-dirty? true                     ; optional - see `dirty-files`
                       :gates [[:fmt \"bb fmt-check\"] ...]   ; optional
                       :nrepl/cmd [\"clojure\" \"-Srepro\" \"-M:nrepl\"]}  ; optional
     state.edn        written by the commands; the run so far
@@ -179,13 +179,17 @@
         profile (str (if-let [plan (:workspace/build ws)]
                        (fs/normalize (fs/path plan (:profile cfg)))
                        (fs/absolutize (:profile cfg))))]
-    (cond-> (merge {:project/subdir nil
-                    :pause-on-notes? true
-                    :spec-review? true
-                    :plan-check? true
-                    :spec-review/max 2
-                    :gates gates/default-gate-seq
-                    :nrepl/cmd ["clojure" "-Srepro" "-M:nrepl"]
+    ;; THE KEYS ARE DESCRIBED ONCE, in `shapes/loop-keys`: the literal defaults come from
+    ;; there, the computed ones are filled here, and a key the table does not know is refused
+    ;; by name - before this, a misspelt key was a default silently applied, and one of the
+    ;; defaults spends money.
+    (when-let [unknown (seq (shapes/unknown-loop-keys cfg))]
+      (throw (ex-info (str "loop.edn has " (str/join ", " unknown) " - not a key the loop reads. The keys: "
+                           (str/join ", " (sort (map str shapes/loop-file-keys)))
+                           " (harness.contract.shapes/loop-keys says what each is for)")
+                      {:run-loop/error :unknown-config :keys (vec unknown) :run-dir run-dir})))
+    (cond-> (merge (shapes/loop-defaults)
+                   {:gates gates/default-gate-seq
                     :worktrees/dir (str (if-let [work (:workspace/work ws)]
                                           (fs/path work "worktrees" (:run/id cfg))
                                           (fs/path (fs/temp-dir) "run-loop" (:run/id cfg))))}
@@ -296,9 +300,9 @@
   the contract that someone must decide on, and the next dispatch builds on the
   contract as it stands. So the run stops, prints the notes, and waits: `continue`
   to carry on, or `amend` and `retry` first. On unless `loop.edn` says
-  `:pause-on-notes? false`."
+  `:notes/pause? false`."
   [cfg result]
-  (boolean (and (not (false? (:pause-on-notes? cfg)))
+  (boolean (and (not (false? (:notes/pause? cfg)))
                 (seq (:notes result)))))
 
 (defn next-step
@@ -952,7 +956,7 @@
   half written - is invisible to every role and every gate of the run, and
   the difference surfaces later, as a red gate on a file nobody in the run
   touched or as a merge that carries the committed version over it. `start`
-  warns, and `:allow-dirty true` in loop.edn silences it - warns, not refuses,
+  warns, and `:repo/allow-dirty? true` in loop.edn silences it - warns, not refuses,
   because a person may mean it. The run's own directory and the
   worktrees folder are excluded when they sit inside the repository: they are
   the loop's, not the application's."
@@ -980,14 +984,14 @@
         dirty (dirty-files (:repo/root cfg) [(:run-dir ctx) (:worktrees/dir cfg)])]
     (when (seq dirty)
       (event! ctx {:event/kind :dirty-tree :count (count dirty) :files (vec (take 20 dirty))
-                   :allowed? (boolean (:allow-dirty cfg))})
-      (when-not (:allow-dirty cfg)
+                   :allowed? (boolean (:repo/allow-dirty? cfg))})
+      (when-not (:repo/allow-dirty? cfg)
         (println (str "\n  WARNING: the worktrees are cut from the last commit of " (:repo/root cfg) "; "
                       (count dirty) " file" (when (> (count dirty) 1) "s") " there "
                       (if (> (count dirty) 1) "are" "is") " not in it:"))
         (doseq [line (take 20 dirty)] (println (str "    " line)))
         (when (> (count dirty) 20) (println (str "    … and " (- (count dirty) 20) " more")))
-        (println "  commit or stash them first, or `:allow-dirty true` in loop.edn to say you mean it")))))
+        (println "  commit or stash them first, or `:repo/allow-dirty? true` in loop.edn to say you mean it")))))
 
 (defn plan-check!
   "THE PLAN IS READ ONCE PER WORKSPACE, before its first dispatch. `plan/check`
@@ -998,12 +1002,12 @@
   reads, kept at `<work>/plan-check.edn`: a plan that has not changed is not
   read again, and one that has is. Skipped, and nothing said, outside a
   workspace or in one with no plan (the health check's selfcheck), and with
-  `:plan-check? false` in loop.edn - the health check's generated application
+  `:plan-check/run? false` in loop.edn - the health check's generated application
   runs the shipped template unfilled on purpose. Returns what it printed about."
   [ctx]
   (let [cfg (:config ctx)
         ws (or workspace/*of-run* (workspace/find-workspace (:run-dir ctx)))]
-    (when (and (:plan-check? cfg true) (:workspace/build ws) (:workspace/work ws))
+    (when (and (:plan-check/run? cfg true) (:workspace/build ws) (:workspace/work ws))
       (let [cache (fs/path (:workspace/work ws) "plan-check.edn")
             h (plan/inputs-hash (:workspace/build ws) ws)
             cached (when (fs/exists? cache) (edn/read-string (slurp (str cache))))]
@@ -1063,10 +1067,10 @@
     ;; THE SPEC IS REVIEWED BEFORE IT IS DISPATCHED, by the loop, not by a habit. When no
     ;; review of THIS spec.edn sits beside it, `start` runs one, prints the list and stops
     ;; here for the Architect: fix the contract or not, then `start` again. An amended spec
-    ;; is a different spec and is reviewed again. `:spec-review? false` in loop.edn skips it
+    ;; is a different spec and is reviewed again. `:spec-review/run? false` in loop.edn skips it
     ;; — for the seed's own tests and for a run that is deliberately re-dispatching a
     ;; reviewed contract.
-    (when (and (:spec-review? cfg true) (not (spec-review/current? (:run-dir ctx) raw)))
+    (when (and (:spec-review/run? cfg true) (not (spec-review/current? (:run-dir ctx) raw)))
       ;; A CONTRACT THAT KEEPS DRAWING FINDINGS IS A PERSON'S PROBLEM. Two reviews — the
       ;; spec as written and once amended — are the Architect's to act on alone; a
       ;; third means the amendments are not finding what the reviewer sees.

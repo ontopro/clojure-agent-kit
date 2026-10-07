@@ -82,7 +82,7 @@
                           :gates (or gates [[:ok "true"]])
                           :nrepl/cmd stub-nrepl
                           ;; the loop reviews a spec before start; these tests are about what follows
-                          :spec-review? false
+                          :spec-review/run? false
                           :worktrees/dir "wt"}
                          config)))
     (str d)))
@@ -201,7 +201,7 @@
     (spit (str (fs/path rd "spec.edn")) (pr-str spec))
     (spit (str (fs/path rd "loop.edn"))
           (pr-str {:run/id "ws-test" :profile "resources/profiles/claude.edn"
-                   :gates [[:ok "true"]] :nrepl/cmd stub-nrepl :spec-review? false}))
+                   :gates [[:ok "true"]] :nrepl/cmd stub-nrepl :spec-review/run? false}))
     (let [res (drive! (str rd) {})
           cfg (:config (edn/read-string (slurp (str (fs/path rd "state.edn")))))]
       (is (= :reviewed (:stop/kind res)) "the whole loop, to the merge stop")
@@ -1108,7 +1108,7 @@
 (deftest start-warns-when-the-checkout-holds-what-the-worktrees-will-not-see
   ;; The worktrees are cut from the last commit: an edit sitting in the checkout
   ;; is invisible to every role and gate of the run. Warned, not refused;
-  ;; `:allow-dirty` silences.
+  ;; `:repo/allow-dirty?` silences.
   (let [start-out (fn [config]
                     (let [repo (scratch-repo)
                           rd (run-dir! repo {:config config})]
@@ -1127,7 +1127,7 @@
       (is (not (str/includes? out "?? run/")) "the run directory and its worktrees are the loop's, not counted")
       (is (= {:count 2 :files [" M README.md" "?? notes.txt"] :allowed? false} (dissoc e :event/kind :event/at-ms :at))
           "and the record keeps it"))
-    (let [[out e] (start-out {:allow-dirty true})]
+    (let [[out e] (start-out {:repo/allow-dirty? true})]
       (is (not (str/includes? out "WARNING")) "said you mean it: silent")
       (is (true? (:allowed? e)) "but still on the record"))))
 

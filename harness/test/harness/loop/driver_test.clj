@@ -45,6 +45,9 @@
                (:profile (loop/resolve-config run-dir "/repo" {:run/id "r" :profile "resources/profiles/claude.edn"}
                                               (dissoc ws :workspace/build))))
             "a workspace without a plan (the health check's selfcheck) resolves as outside one")))
+    (testing "a key the loop does not read is refused by name - the old spelling of one, for instance"
+      (is (thrown-with-msg? Exception #"loop.edn has :spec-review\? - not a key the loop reads"
+                            (loop/resolve-config run-dir "/repo" {:run/id "x" :profile "p" :spec-review? false}))))
     (testing "a missing run id or profile is refused, not invented"
       (is (thrown-with-msg? Exception #":run/id" (loop/resolve-config run-dir "/repo" {:profile "p"})))
       (is (thrown-with-msg? Exception #":profile" (loop/resolve-config run-dir "/repo" {:run/id "x"}))))))
@@ -453,8 +456,8 @@
   (is (true? (loop/pause? {} {:notes ["the contract breaks property_test.clj"]})))
   (is (false? (loop/pause? {} {:notes []})) "no notes, no pause")
   (is (false? (loop/pause? {} {})))
-  (is (false? (loop/pause? {:pause-on-notes? false} {:notes ["n"]})) "switched off in loop.edn")
-  (is (true? (:pause-on-notes? (loop/resolve-config (str (fs/create-temp-dir)) "/r" {:run/id "x" :profile "p"})))
+  (is (false? (loop/pause? {:notes/pause? false} {:notes ["n"]})) "switched off in loop.edn")
+  (is (true? (:notes/pause? (loop/resolve-config (str (fs/create-temp-dir)) "/r" {:run/id "x" :profile "p"})))
       "on by default")
   (is (= :tester (loop/next-step :coder)))
   (is (= :check (loop/next-step :tester))))
@@ -541,7 +544,7 @@
         (is (zero? (:checked r)))
         (is (= {:after :tester :next :check} (get-in r [:state :paused])))))
     (testing "switched off, notes do not stop anything"
-      (let [r (flow {:pause-on-notes? false} noted #(proceed % :coder (noted :coder)))]
+      (let [r (flow {:notes/pause? false} noted #(proceed % :coder (noted :coder)))]
         (is (= [:tester] (:dispatched r)))
         (is (= 1 (:checked r)))))
     (testing "continue on a run that is not paused is refused"
@@ -575,9 +578,9 @@
          _ (spit (str (fs/path run-dir "spec.edn")) (pr-str spec))
          cfg {:run/id "t" :profile "resources/profiles/claude.edn" :repo/root "/r"
               :worktrees/dir (str (fs/create-temp-dir)) :project/subdir nil
-              :nrepl/cmd ["x"] :gates [] :pause-on-notes? true
+              :nrepl/cmd ["x"] :gates [] :notes/pause? true
               ;; the loop reviews a spec with a model before start; not here
-              :spec-review? false}
+              :spec-review/run? false}
          ctx {:run-dir run-dir :config cfg :state (atom nil)}
          fakes (merge {#'harness.loop.provision/provision!
                        (fn [o] (swap! calls conj [:provision (:task/role o)])

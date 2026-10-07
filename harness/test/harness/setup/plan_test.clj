@@ -235,7 +235,7 @@
   (let [rd (str (fs/path ws "work" "runs" "r1"))]
     (fs/create-dirs rd)
     (spit (str (fs/path rd "spec.edn")) (pr-str {:task/id "t" :blueprint/slice {} :files/impl ["src/xyx/a.clj"]}))
-    {:run-dir rd :config (merge {:plan-check? true} cfg) :state (atom nil)}))
+    {:run-dir rd :config (merge {:plan-check/run? true} cfg) :state (atom nil)}))
 
 (deftest start-holds-a-workspace-to-its-plan-once-and-stops-before-anything-is-paid-for
   (testing "as init left it: the stop, with the list, and nothing started"
@@ -261,7 +261,7 @@
       (spit (str (fs/path ws "xyx-build" "docs" "source.md")) "# revised\n")
       (is (= :cached (:plan/checked (driver/plan-check! ctx))) "a failure did not move the cache on")))
   (testing "off by loop.edn, and outside a workspace with a plan: nothing, and nothing said"
-    (is (nil? (driver/plan-check! (run-ctx (workspace {}) {:plan-check? false}))))
+    (is (nil? (driver/plan-check! (run-ctx (workspace {}) {:plan-check/run? false}))))
     (let [dir (str (fs/create-temp-dir))]
       (fs/create-dirs (fs/path dir "runs" "r1"))
       (is (nil? (driver/plan-check! {:run-dir (str (fs/path dir "runs" "r1")) :config {} :state (atom nil)}))))))

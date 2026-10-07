@@ -486,3 +486,87 @@
 (defn explain-profile
   [profile]
   (some-> (m/explain Profile profile) me/humanize))
+
+;; ---------------------------------------------------------------------------
+;; The loop's configuration: loop.edn, described once
+;; ---------------------------------------------------------------------------
+
+(def loop-keys
+  "Every key `loop.edn` may hold, described once: its type, its default, what it
+  is for, and the namespace that reads it. `bb init` renders the file's header
+  from this; `resolve-config` fills the defaults from it and refuses a key not
+  in it by name; the plan template's §13 names only keys that are here. A key's
+  namespace names the thing it configures (`:spec-review/max` beside
+  `:spec-review/run?`), which is also what reads it; `:architecture`, a map
+  with keys of its own, is the one bare key and keeps its name.
+
+  `:derived` keys are set by `resolve-config` from the workspace and are never
+  written in the file; they are here so a resolved config is described too.
+  A `:computed` default depends on the run or the workspace and is filled in
+  `resolve-config`; the doc says from what. Before this table the defaults
+  lived in `resolve-config`'s merge, the keys were documented in the driver's
+  docstring, the header `bb init` writes and the plan template's §13, and a
+  key misspelt in `loop.edn` was a default silently applied - one of them,
+  the spec review, spends money."
+  [{:key :run/id :type :string :required true :reader 'harness.loop.driver
+    :doc "this run's identity: its branches, worktrees and record are named by it"}
+   {:key :profile :type :string :required true :reader 'harness.loop.driver
+    :doc "the profile to dispatch with, a path: relative to the build repository in a workspace, else to the working directory"}
+   {:key :repo/root :type :string :default :computed :reader 'harness.loop.driver
+    :doc "the application's repository; absent, the workspace's application, else the repository the run directory is in"}
+   {:key :repo/allow-dirty? :type :boolean :default false :reader 'harness.loop.driver
+    :doc "start with uncommitted changes in the base checkout; off, start warns and names the files"}
+   {:key :project/subdir :type :string :default nil :reader 'harness.loop.provision
+    :doc "the project's folder inside the repository, when it is not the root"}
+   {:key :gates :type :vector :default :computed :reader 'harness.gates.run
+    :doc "the gate sequence, [[key \"command\"] ...], cheap first; absent, the harness's own (harness.gates.run/default-gate-seq)"}
+   {:key :nrepl/cmd :type :vector :default ["clojure" "-Srepro" "-M:nrepl"] :reader 'harness.loop.provision
+    :doc "the command that starts a role's nREPL in its worktree"}
+   {:key :worktrees/dir :type :string :default :computed :reader 'harness.loop.provision
+    :doc "where the roles' worktrees go: the workspace's work/worktrees/<run-id>, else the system's temp folder"}
+   {:key :architecture :type :map :default nil :reader 'harness.loop.provision
+    :doc "{:from \"arch\" :files [\"layers.edn\"]}: files assembly copies into the gate worktree beside the roles' - a task that adds a namespace adds its layers.edn entry this way, since no dispatched role writes that file"}
+   {:key :spec-review/run? :type :boolean :default true :reader 'harness.loop.driver
+    :doc "read the spec cold before the first dispatch; off only where the spec was reviewed another way (the health check)"}
+   {:key :spec-review/max :type :int :default 2 :reader 'harness.loop.driver
+    :doc "spec reviews that found something before a person reads them"}
+   {:key :plan-check/run? :type :boolean :default true :reader 'harness.setup.plan
+    :doc "check the plan once per workspace before the first dispatch; off only where there is no plan (the health check)"}
+   {:key :notes/pause? :type :boolean :default true :reader 'harness.loop.driver
+    :doc "stop after a dispatch that left a note for the Architect, before the gates run"}
+   {:key :records/dir :derived true :reader 'harness.loop.driver
+    :doc "where record copies run.edn: the workspace's records folder"}
+   {:key :plan/root :derived true :reader 'harness.loop.driver
+    :doc "the build repository, for the commits a record names"}
+   {:key :kit/root :derived true :reader 'harness.loop.driver
+    :doc "the KIT's clone, for the commits a record names"}])
+
+(def loop-file-keys
+  "The keys `loop.edn` may hold: every described key that is not derived."
+  (into #{} (comp (remove :derived) (map :key)) loop-keys))
+
+(def loop-known-keys
+  "Every described key, derived ones included: what a resolved config may hold."
+  (into #{} (map :key) loop-keys))
+
+(defn loop-defaults
+  "The literal defaults as a map - what `resolve-config` merges under the file
+  before the computed ones. A required key has no default and is not here."
+  []
+  (into {} (for [{:keys [key default derived required]} loop-keys
+                 :when (and (not derived) (not required) (not= :computed default))]
+             [key default])))
+
+(defn unknown-loop-keys
+  "The keys of `cfg` that no entry of `loop-keys` describes, in the file's order."
+  [cfg]
+  (vec (remove loop-known-keys (keys cfg))))
+
+(defn loop-key-lines
+  "One line per file key, for a header: the key, what it is for, and its default
+  or that it is required."
+  []
+  (for [{:keys [key default required doc derived]} loop-keys :when (not derived)]
+    (str key " - " doc (cond required " (required)"
+                             (= :computed default) ""
+                             :else (str " (default " (pr-str default) ")")))))

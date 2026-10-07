@@ -154,7 +154,7 @@
             (is (not (sr/current? (:run-dir ctx) (edn/read-string (slurp spec-file))))))
           (testing "loop.edn can switch it off, for a deliberate re-dispatch or a test of what follows"
             (spit spec-file (pr-str (assoc spec :property-targets ["something else"])))
-            (let [e (try (driver/start! (assoc-in ctx [:config :spec-review?] false)) nil
+            (let [e (try (driver/start! (assoc-in ctx [:config :spec-review/run?] false)) nil
                          (catch Exception e e))]
               (is (not= :spec-reviewed (:run-loop/error (ex-data e)))
                   "whatever start fails on next, it is not the review"))))))))

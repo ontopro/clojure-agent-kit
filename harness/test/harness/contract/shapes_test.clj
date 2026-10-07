@@ -1,7 +1,34 @@
 (ns harness.contract.shapes-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [harness.contract.shapes :as shapes]))
+
+(deftest the-loop-s-keys-are-described-once-and-the-documents-hold-to-them
+  (testing "every entry says its key, what it is for and who reads it; a file key says its type"
+    (doseq [{:keys [key doc reader type derived]} shapes/loop-keys]
+      (is (keyword? key))
+      (is (and (string? doc) (seq doc)) (str key))
+      (is (symbol? reader) (str key))
+      (when-not derived (is (keyword? type) (str key)))))
+  (testing "the defaults are the literal ones only, and a required key has none"
+    (let [d (shapes/loop-defaults)]
+      (is (= {:repo/allow-dirty? false :project/subdir nil :nrepl/cmd ["clojure" "-Srepro" "-M:nrepl"]
+              :architecture nil :spec-review/run? true :spec-review/max 2 :plan-check/run? true :notes/pause? true}
+             d))
+      (is (not (contains? d :run/id)))
+      (is (not (contains? d :gates)) "computed in resolve-config")))
+  (testing "an unknown key is found by name, a derived one is known"
+    (is (= [:spec-review?] (shapes/unknown-loop-keys {:run/id "x" :spec-review? true :records/dir "r"}))))
+  (testing "the plan template's §13 names only keys the table describes"
+    (let [text (slurp "../plan-template/03-method-and-tooling.md")
+          named (map #(keyword (subs (second %) 1)) (re-seq #"`(:[a-z/?-]+)` in `loop.edn`" text))]
+      (is (seq named) "§13 names at least one loop.edn key")
+      (doseq [k named] (is (contains? shapes/loop-file-keys k) (str k)))))
+  (testing "the header lines name every file key"
+    (let [lines (shapes/loop-key-lines)]
+      (is (= (count shapes/loop-file-keys) (count lines)))
+      (doseq [k shapes/loop-file-keys] (is (some #(str/starts-with? % (str k " - ")) lines) (str k))))))
 
 (deftest example-packet-is-valid
   (testing "the packet the method doc quotes actually validates"
