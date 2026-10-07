@@ -109,7 +109,10 @@ N. **Containerize / CI** — <woven in here, not held for an infrastructure phas
 
 **Cap:** <$ for this stage>, approved by the person on <YYYY-MM-DD>; the stop: <what stops the
 stage early - a figure, a stop named with the stage>. Recorded in `stage-N-gates.edn` beside
-this plan, as `bb next` reads it.
+this plan, as `bb next` reads it. The stage's figures - money by role, rounds, stops by owner, retries
+and rejections, the readings - against this cap and the stage before are `bb stage-report`'s: it
+renders them into this section from the run records as a block, and `--check` holds the block
+to the records, so the figures here are never typed by hand.
 
 - <a concrete user-visible behaviour>
 - <a concrete data behaviour, e.g. load v2, time-travel returns v1, diff lists changes>

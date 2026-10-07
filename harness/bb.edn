@@ -84,6 +84,14 @@
                :requires ([harness.setup.skills :as skills])
                :task (apply skills/-main *command-line-args*)}
 
+  ;; A stage's figures from its records - money by role, rounds, stops by owner, rework - beside
+  ;; its cap and the stage before, rendered into the stage plan's exit-criteria section and held
+  ;; to the records by --check, which `gates` runs in a workspace's clone. Said, not counted: the
+  ;; cap stays the person's stop.
+  stage-report {:doc "bb stage-report <stage-plan.md> | --check [--workspace <dir>]: a stage's roll-up over the run records of its blueprint's packets and its readings - money by role, rounds, stops by owner, retries and rejections - beside its cap and the stage before, rendered into the stage plan's exit-criteria section; --check holds every published block to the records (nothing to check outside a workspace)"
+                :requires ([harness.money.stage-report :as stage-report])
+                :task (apply stage-report/-main *command-line-args*)}
+
   ;; The workflow's next step, read off the build's files - the loop's `next-action` one level
   ;; up, so the hand-off between steps lives in no skill. Information: exit 0 always.
   next {:doc "bb next [--workspace <dir>]: the workflow's next step, its owner and the command or skill to run, from five facts that are files - a workspace, the plan check, the stage's gates record, its blueprint's review and sign-off, its packets' merged records; scoping before a workspace exists"
@@ -174,6 +182,7 @@
                    (shell "bb" "skills-sync" "--check")
                    (shell "bb" "health-sync" "--check")
                    (shell "bb" "report-check")
+                   (shell "bb" "stage-report" "--check")
                    (shell "bb" "bake-off-check")
                    (run 'test))}
 

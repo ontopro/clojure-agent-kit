@@ -27,6 +27,34 @@ either; an entry's date is its reference.
 
 ## 2026-10-07
 
+### `bb stage-report` rolls a stage's records up beside its cap
+
+Row 105, and the hand-kept figures of rows 82, 23 and 86. The method makes the stage the unit
+of money - approved with a cap, closed with its cost and its runs in the lessons document - and
+the harness rendered one run at a time. What a stage cost was a rounds table, a ledger and a
+spend sheet beside the first real project's plan, each re-added after a merge and re-derivable
+by nobody. A reading of another project's design, which renders a stage's figures from its
+records, named the thing to build.
+
+`bb stage-report <stage-plan.md>` reads the stage's packets off its blueprint, the run records
+that name those tasks under the build's `runs/`, and the stage's readings - the plan review's
+and the blueprint review's records under `reviews/<stage>/` with their histories, the spec
+reviews inside each run - and renders: money by role, with the readings beside the dispatch
+money; rounds, one plus the triage events as the run report counts them; the retries' cost
+and its share of the dispatch money, a second triage among them; the reviews rejected; the
+stops by owner, through the loop's own `owner`, and by kind; each packet's status, a packet
+without a record said. The first line sets the total against the cap from the gates record
+and against the stage before, one line of it. The block goes into the stage plan's
+exit-criteria section, before the heading that follows it, and names itself on its first line
+as a run report does, so `--check` finds it without a marker: every stage plan whose packets
+have records is held to a re-render, both directions, in `bb gates` in a workspace's clone.
+Said, not counted: nothing here stops a run or a merge; the cap stays the person's stop. The
+stage plan template says the section's figures are never typed by hand, the lessons template
+takes its cost and runs from the block's first line, and the `stage-end` skill runs it.
+Rendered read-only against the first real project's records the day it landed, it said of its
+second stage what the spend sheet had said by hand, and the check named both of its stage
+plans as publishing no block - which is what a workspace from before this should hear.
+
 ### `bb next` says the workflow's next step from the build's files
 
 Row 104. The loop has answered "what happens now?" for a run since it was rebuilt:

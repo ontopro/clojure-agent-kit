@@ -16,7 +16,7 @@
 
 ## Stage 0 — <name>
 
-**Closed:** <YYYY-MM-DD> · **Cost:** <$ of its cap> · **Runs:** <n, m merged>
+**Closed:** <YYYY-MM-DD> · **Cost:** <$ of its cap> · **Runs:** <n, m merged> - from `bb stage-report`'s first line
 
 | # | Lesson | Ends as | Where |
 |---|---|---|---|
@@ -25,7 +25,7 @@
 
 ## Stage <N> — <name>
 
-**Closed:** <YYYY-MM-DD> · **Cost:** <$ of its cap> · **Runs:** <n, m merged>
+**Closed:** <YYYY-MM-DD> · **Cost:** <$ of its cap> · **Runs:** <n, m merged> - from `bb stage-report`'s first line
 
 | # | Lesson | Ends as | Where |
 |---|---|---|---|

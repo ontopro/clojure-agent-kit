@@ -62,7 +62,9 @@ criteria answered, pass or fallback. Then the scope lists against the source (`b
 prints the observations nothing cites) and the stage map re-ranked by what remains; the next
 stage pulled by kind - an increment, a pre-release stage, or the release - and, at the first
 boundary where "could we ship after this one?" is yes, the MVP named. Finally the cap: what
-the stage cost against what was approved (the run records; `bb stage-report` when it exists).
+the stage cost against what was approved: run `bb stage-report docs/stages/stage-N-<name>.md`, which renders the
+stage's figures into §11 from the run records, and read it with the person; the lessons section's
+cost and runs are its first line.
 
 ## Writes
 
