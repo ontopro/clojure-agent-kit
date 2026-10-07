@@ -69,8 +69,8 @@
 (deftest the-agents-md-sentence-names-the-build-folder-the-workspace-has
   ;; Outside the markers, so no sync corrects it: a project that named its plan
   ;; folder with `bb init --plan` (then its name) read about a `<name>-build/` that was not there.
-  (is (str/includes? (app/agents-md "mnj" "mnj-breastconnect-plan") "`../mnj-breastconnect-plan/rules.edn`"))
-  (is (not (str/includes? (app/agents-md "mnj" "mnj-breastconnect-plan") "mnj-plan")))
+  (is (str/includes? (app/agents-md "xyx" "xyx-shop-plan") "`../xyx-shop-plan/rules.edn`"))
+  (is (not (str/includes? (app/agents-md "xyx" "xyx-shop-plan") "xyx-plan")))
   (is (str/includes? (app/agents-md "xyx") "`../xyx-build/rules.edn`") "the default is the name's")
   (let [ws (str (fs/real-path (fs/create-temp-dir)))
         app-dir (str (fs/path ws "the-site"))]

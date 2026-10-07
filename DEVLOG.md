@@ -41,6 +41,17 @@ difference, and nothing is migrated.
 
 ## 2026-10-07
 
+### Two test fixtures named a project; they name the README's placeholder now
+
+A search of `main` before the `0.6.0` push, for anything the scrub rule says is absent -
+a project's name, an experiment's folder, a secret's shape, a home path - found one thing, and
+it was already public: the `bb init` layout tests and the application-mirror test used a real
+project's two folder names as their fixture values, twenty-two lines across two files. The rule
+is that no code, test or document here names a project; the fixtures now use `xyx`, the name
+the root README's quick start uses, with `xyx-shop-site` and `xyx-shop-plan` where the test
+needs folder names that are not the defaults. Nothing under test changed. Everything else the
+search looked for was absent.
+
 ### The fresh-machine check is a container: the toolchain alone, a clone of HEAD inside
 
 Row 113. Until today every gates run and the one health record were one macOS machine's, where
