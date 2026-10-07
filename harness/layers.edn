@@ -1,0 +1,81 @@
+;; The harness under its own boundary gate - method §09's gate 4, run on the KIT's own source:
+;; `bb boundary` here, in `bb gates`. Each namespace maps to the set of harness namespaces it
+;; may require; a require not listed is a violation, a namespace under src/ with no entry is
+;; one, an entry with no file is one. The declaration is the graph as it is, each namespace
+;; allowed exactly what it requires, so that a new upward require is a conversation before it
+;; is a dependency.
+;;
+;; FOLDERS SAY TOPIC; LAYERS SAY DEPENDENCY ORDER. The tree groups namespaces by what they are
+;; about - setup, loop, contract, gates, models, money - and that is the right axis for a
+;; reader looking for a thing. It is not the dependency axis: `setup.doctor` and
+;; `setup.workspace` are leaves everything stands on, `setup.health` is the root that requires
+;; nearly everything, and both live in the same folder. This file is the other axis, held by
+;; the gate; the README's inventory shows each namespace's layer, computed from these entries
+;; as one more than the deepest layer of what it may require. Nothing here moves a file.
+;;
+;; The entries are ordered bottom-up: leaves that require nothing of the harness; the
+;; foundations on them; models and money; the plan and the readings; the loop; the roots that
+;; nothing requires.
+
+{;; leaves
+ harness.contract.shapes    #{}
+ harness.contract.stub      #{}
+ harness.contract.targets   #{}
+ harness.gates.boundary     #{}
+ harness.gates.forms        #{}
+ harness.gates.run          #{}
+ harness.loop.log           #{}
+ harness.models.adapter     #{}
+ harness.models.catalogue   #{}
+ harness.models.provenance  #{}
+ harness.setup.doctor       #{}
+ harness.setup.template     #{}
+ harness.setup.workspace    #{}
+
+ ;; foundations
+ harness.rules              #{harness.setup.workspace}
+ harness.gates.repair       #{harness.setup.doctor}
+ harness.models.tools       #{harness.gates.forms harness.gates.repair harness.setup.doctor}
+ harness.models.profile     #{harness.contract.shapes harness.models.catalogue harness.setup.doctor harness.setup.workspace}
+ harness.money.report       #{harness.contract.shapes harness.setup.workspace}
+ harness.contract.packet    #{harness.contract.shapes}
+ harness.contract.sigs      #{harness.setup.doctor}
+ harness.contract.blueprint #{harness.contract.shapes harness.contract.sigs harness.contract.stub}
+ harness.loop.provision     #{harness.gates.repair}
+ harness.setup.skills       #{harness.setup.workspace}
+ harness.setup.inventory    #{harness.rules}
+
+ ;; models and money
+ harness.models.agent        #{harness.models.adapter harness.models.provenance harness.models.tools}
+ harness.models.runner       #{harness.gates.repair harness.models.agent harness.models.tools harness.rules}
+ harness.models.runner-check #{harness.contract.shapes harness.models.runner}
+ harness.money.balance       #{harness.models.profile}
+ harness.money.reprice       #{harness.models.profile harness.models.provenance harness.money.report}
+
+ ;; the plan and the readings
+ harness.setup.plan             #{harness.gates.boundary harness.gates.run harness.rules harness.setup.template harness.setup.workspace}
+ harness.setup.app              #{harness.gates.boundary harness.rules harness.setup.template}
+ harness.contract.spec-review   #{harness.models.agent harness.models.profile harness.rules}
+ harness.setup.plan-review      #{harness.models.agent harness.models.profile harness.setup.plan harness.setup.workspace}
+ harness.setup.blueprint-review #{harness.models.agent harness.models.profile harness.setup.plan harness.setup.plan-review harness.setup.workspace}
+
+ ;; the loop
+ harness.loop.driver      #{harness.contract.packet harness.contract.shapes harness.contract.sigs harness.contract.spec-review
+                            harness.contract.stub harness.contract.targets harness.gates.repair harness.gates.run harness.loop.log
+                            harness.loop.provision harness.models.profile harness.models.runner harness.money.balance
+                            harness.money.report harness.money.reprice harness.rules harness.setup.plan harness.setup.workspace}
+ harness.loop.triage      #{harness.contract.packet harness.loop.driver harness.models.agent harness.rules}
+ harness.loop.orchestrate #{harness.loop.driver harness.loop.log harness.loop.triage harness.models.profile harness.money.balance
+                            harness.money.report harness.setup.workspace}
+
+ ;; the roots - nothing requires them
+ harness.setup.init         #{harness.contract.shapes harness.models.profile harness.rules harness.setup.app harness.setup.doctor
+                              harness.setup.skills harness.setup.template harness.setup.workspace}
+ harness.setup.upgrade      #{harness.models.profile harness.rules harness.setup.doctor harness.setup.skills harness.setup.workspace}
+ harness.setup.next         #{harness.contract.blueprint harness.setup.plan harness.setup.workspace}
+ harness.models.bake-off    #{harness.contract.spec-review harness.loop.driver harness.models.agent harness.models.catalogue
+                              harness.setup.blueprint-review harness.setup.plan harness.setup.plan-review harness.setup.workspace}
+ harness.money.stage-report #{harness.contract.blueprint harness.loop.log harness.setup.workspace}
+ harness.setup.health       #{harness.gates.boundary harness.gates.run harness.loop.driver harness.loop.orchestrate harness.models.runner
+                              harness.rules harness.setup.app harness.setup.doctor harness.setup.init harness.setup.skills
+                              harness.setup.template harness.setup.workspace}}

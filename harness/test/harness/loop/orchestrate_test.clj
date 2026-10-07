@@ -1102,7 +1102,7 @@
                                  [:dispatch-failed :human :person]
                                  [:tester-leak :tester :person]
                                  [:merged :human :person]]]
-    (is (= expected (orch/owner {:stop/kind kind :route route}))
+    (is (= expected (log/owner {:stop/kind kind :route route}))
         (str (name kind) " routed " (some-> route name)))))
 
 (deftest start-warns-when-the-checkout-holds-what-the-worktrees-will-not-see

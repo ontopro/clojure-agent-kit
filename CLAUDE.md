@@ -33,7 +33,7 @@ benefit. It is also a product artifact, and also not addressed to you.
 ## Working rules
 
 - **Run `bb repair && bb gates` in `harness/` before committing.** `repair` is gate 0
-  over the Clojure files you changed; `gates` is doctor → format → lint → rules → health block → test. Fast,
+  over the Clojure files you changed; `gates` is doctor → format → lint → the harness's own boundary gate → rules → skills → inventory → health block → the records → test. Fast,
   and the only thing checking this repo — there is no CI.
 - **A finding is not finished until a document carries it.** Anything still open goes in
   `NOTES.md`'s register; what changed and why goes in `DEVLOG.md`; a health run that

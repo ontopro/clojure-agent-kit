@@ -27,6 +27,37 @@ either; an entry's date is its reference.
 
 ## 2026-10-07
 
+### The harness is under its own boundary gate: folders say topic, layers say dependency order
+
+Row 107, and row 106 extended. Gate 4 - a project's `layers.edn` against its `src/` - ships
+with the KIT and runs in every generated application's gates, and the harness never ran it on
+itself. Its forty-three namespaces depended on each other as they happened to: item 2 met a
+dependency cycle at load time, and the stage report, a day old, required the loop's
+orchestrator for one function. A reading of a project whose every piece declares its layer
+named the thing to do, and the person's point settled the how: clean, well-defined layers are
+an asset, so fix the upward edges rather than declare them.
+
+The attempt came first, as the plan asked, and it showed less spaghetti than the folder names
+suggested. Placed by what they require, the namespaces already form layers - leaves that
+require nothing of the harness; foundations on them; models and money; the plan and the
+readings; the loop; the roots nothing requires - with one upward edge, the stage report's,
+whose `owner` now lives in the event log beside the stops it reads, where both the loop and
+the report can require it. The rest of what looked upward was namespaces filed under the
+wrong folder: `setup.doctor` and `setup.workspace` are leaves, `contract.spec-review` is a
+reading, `models.bake-off` is a root. `harness/layers.edn` declares, per namespace, exactly
+what it requires today, ordered bottom-up with the principle in its header, and `bb boundary`
+runs in `bb gates`: a new upward require fails with the namespace named, a conversation before
+a dependency.
+
+The principle the person asked to be highlighted is in the README's layers section: **folders
+say topic; layers say dependency order.** The tree groups by what a namespace is about, which
+is the axis a reader looking for a thing wants; the ruleset is the other axis, held by the
+gate; and the inventory block shows both, its new layer column computed as one more than the
+deepest layer of what a namespace may require - never typed. Nothing moves a file for this;
+the tree is one axis and the code has two. The gate's count also caught the inventory's own
+miss on the day: its glob matched files in subfolders only, so `harness.rules` was never in
+the block, forty-two where the gate counted forty-three.
+
 ### The harness inventory is rendered from the source, not counted by hand
 
 Row 106. The harness README opened its inventory with "thirty-seven namespaces in six groups",

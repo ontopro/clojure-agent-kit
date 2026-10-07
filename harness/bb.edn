@@ -185,6 +185,8 @@
   ;; machine without one must still be able to run them (`bb doctor` alone judges the loop tier).
   gates {:doc "Quality gates, cheap first: doctor -> format -> lint -> rules -> skills -> health block -> reports and bake-offs (a workspace's) -> test"
          :task (do (shell "bb" "doctor" "--tier" "gates") (run 'fmt-check) (run 'lint)
+                   ;; the harness under its own gate 4: layers.edn here, against src/
+                   (shell "bb" "boundary")
                    (run 'rules-check)
                    (shell "bb" "skills-sync" "--check")
                    (shell "bb" "inventory-sync" "--check")

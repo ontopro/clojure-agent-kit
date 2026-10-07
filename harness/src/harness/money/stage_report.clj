@@ -24,7 +24,7 @@
    [clojure.edn :as edn]
    [clojure.string :as str]
    [harness.contract.blueprint :as blueprint]
-   [harness.loop.orchestrate :as orchestrate]
+   [harness.loop.log :as log]
    [harness.setup.workspace :as workspace]))
 
 ;; ---------------------------------------------------------------------------
@@ -51,7 +51,7 @@
   "One record as the stage counts it: its id, task and status; its cost and
   the cost by role (dispatch steps with a cost); its rounds (one plus the
   triage events, as the run report counts them); the cost of its retries;
-  the reviews rejected; its stops by owner (`orchestrate/owner` over each
+  the reviews rejected; its stops by owner (`log/owner` over each
   `:stopped` event); the spec readings it carried and their cost."
   [{:run/keys [status steps events] :as record}]
   (let [dispatches (filter #(and (= :dispatch (:step/kind %)) (:step/cost %)) steps)
@@ -70,7 +70,7 @@
      :rejections (count (filter #(and (= :dispatch (:event/kind %)) (= :reviewer (:role %))
                                       (= :reject (get-in % [:verdict :verdict])))
                                 events))
-     :stops (frequencies (map orchestrate/owner stops))
+     :stops (frequencies (map log/owner stops))
      :stop-kinds (frequencies (keep :stop/kind stops))
      :spec-reviews (count reviews)
      :spec-review-cost (reduce + 0 (keep :cost reviews))}))

@@ -40,3 +40,18 @@
     (with-open [r (io/reader (str path))]
       (mapv #(edn/read-string {:default tagged-literal} %) (line-seq r)))
     []))
+
+(defn owner
+  "Who a stop is for, read off a stop as the log records it (`:stop/kind`,
+  `:route`). THE ARCHITECT'S: a stop whose answer is an amendment to the
+  contract - the spec review's list, and any stop triage routed `architect`.
+  The Architect is the seat, so a session driving the loop handles these
+  itself: read, `amend` (before and after are recorded) or leave it, carry
+  on. THE PERSON'S: everything else - the cap, a missing verdict, a merge, a
+  `human` route, a dead REPL, a refused provider, a spec that keeps drawing
+  findings. The line between them is what lets a run be automated without a
+  person reading every stop, and still stop for the ones only a person should
+  decide. Here, beside the events, because the loop decides it and the stage
+  report reads it back: the one place both can require."
+  [{:keys [stop/kind route]}]
+  (if (or (= :architect route) (= :spec-reviewed kind)) :architect :person))

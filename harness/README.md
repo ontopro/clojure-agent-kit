@@ -47,54 +47,70 @@ the source by name: a namespace the source has that the table never mentions fai
 
 <!-- harness-inventory:begin -->
 
-42 namespaces, rendered from `src/harness/` by `bb inventory-sync` (`--check` in `bb gates`): `harness.setup` (13: the machine and the workspace), `harness.loop` (5: the steps and the loop), `harness.contract` (7: the packet, the shapes, the checks on a spec), `harness.gates` (4: the runner, gate 0, the boundary gate), `harness.models` (9: runners, adapters, profiles, provenance), `harness.money` (4: balance, the reports, repricing).
+43 namespaces, rendered from `src/harness/` by `bb inventory-sync` (`--check` in `bb gates`): `harness.setup` (13: the machine and the workspace), `harness.loop` (5: the steps and the loop), `harness.contract` (7: the packet, the shapes, the checks on a spec), `harness.gates` (4: the runner, gate 0, the boundary gate), `harness.models` (9: runners, adapters, profiles, provenance), `harness.money` (4: balance, the reports, repricing), and `harness.rules` on its own. The group is the folder, what a namespace is about; the layer is its place in the dependency order `layers.edn` declares and `bb boundary` holds - 0 requires nothing of the harness, 8 is the top - computed as one more than the deepest layer of what it may require.
 
-| Namespace | Group | The first line of its docstring |
-|---|---|---|
-| `harness.setup.app` | setup | The second part of `bb init`: generate the application from the pinned |
-| `harness.setup.blueprint-review` | setup | A stage's Blueprint, read cold before sign-off: `bb blueprint-review <blueprint.md>`. |
-| `harness.setup.doctor` | setup | Toolchain doctor: what this stack needs, whether it is here, and what it does. |
-| `harness.setup.health` | setup | `bb health` - the KIT's health check: does this KIT, on this machine, with the |
-| `harness.setup.init` | setup | `bb init <name> [dir]` - create the workspace a project is built in. |
-| `harness.setup.inventory` | setup | The harness's namespaces, rendered into its README from the source: |
-| `harness.setup.next` | setup | What comes next in the workflow, read off the build's files: `bb next`. |
-| `harness.setup.plan` | setup | What the harness knows about a plan's documents: the template the KIT ships |
-| `harness.setup.plan-review` | setup | The plan-review pass of `method.md` §02, run: `bb plan-review [<plan-dir> | <stage-plan.md>]`. |
-| `harness.setup.skills` | setup | The KIT's fifth part, `skills/`, and the two places it is rendered to: |
-| `harness.setup.template` | setup | The template the KIT brings with it: read the pin, and build the command that |
-| `harness.setup.upgrade` | setup | What a pulled KIT expects that this workspace lacks - a report, never a |
-| `harness.setup.workspace` | setup | Where things are: the workspace a path is in, and what its `workspace.edn` says. |
-| `harness.loop.driver` | loop | `bb run-loop <command> <run-dir> [args]` — the loop's steps as commands, with a |
-| `harness.loop.log` | loop | The run's append-only event log. One EDN map per line; never rewritten. |
-| `harness.loop.orchestrate` | loop | The loop: `bb run-loop run <run-dir>` drives one task to its next stop. |
-| `harness.loop.provision` | loop | Workspaces: a git worktree and its own nREPL, one per (task, role). |
-| `harness.loop.triage` | loop | Who owns a failure: one model call — on a red gate, a note, or a review |
-| `harness.contract.blueprint` | contract | A task's `spec.edn`, pulled out of a Blueprint written to the template. |
-| `harness.contract.packet` | contract | Task-packet assembly. |
-| `harness.contract.shapes` | contract | Malli schemas for the loop: the task packet, what a runner returns, |
-| `harness.contract.sigs` | contract | The Blueprint's `:deps-sigs`, checked against the source it describes. |
-| `harness.contract.spec-review` | contract | A review of the CONTRACT before anyone works from it: `bb run-loop spec-review <run-dir>`. |
-| `harness.contract.stub` | contract | The contract, as code the Tester can load. |
-| `harness.contract.targets` | contract | The spec's `:property-targets`, checked against the tests the Tester wrote. |
-| `harness.gates.boundary` | gates | Gate 4: the architecture-boundary check (method §09), against a project's |
-| `harness.gates.forms` | gates | The top-level forms of a Clojure file, as a table: kind, name, line range, |
-| `harness.gates.repair` | gates | Gate 0: mechanical repair, before the gates run. |
-| `harness.gates.run` | gates | The gate runner. |
-| `harness.models.adapter` | models | One request shape per model family, and one parsed shape out. |
-| `harness.models.agent` | models | One model, one conversation, the tools it may call. |
-| `harness.models.bake-off` | models | Candidates for a role, read against the same artifact, compared: `bb bake-off`. |
-| `harness.models.catalogue` | models | The models a route can reach, from OpenRouter's public listing: `bb models <query>`. |
-| `harness.models.profile` | models | Which model answers for which role, and the one client the human works in. |
-| `harness.models.provenance` | models | Who actually answered, what it actually cost. |
-| `harness.models.runner` | models | The AgentRunner seam. |
-| `harness.models.runner-check` | models | A conformance check for AgentRunner implementations. |
-| `harness.models.tools` | models | The four things a dispatched agent may do in its workspace. |
-| `harness.money.balance` | money | What the money looks like before and after a run: `bb balance`, and the two |
-| `harness.money.report` | money | The per-run report: what each step cost in time and money, and which model |
-| `harness.money.reprice` | money | `bb reprice <run.edn>`: fill the cost of every dispatch step a record left |
-| `harness.money.stage-report` | money | A stage's figures from its records: `bb stage-report <stage-plan.md>`. |
+| Namespace | Group | Layer | The first line of its docstring |
+|---|---|---|---|
+| `harness.rules` | — | 1 | The agent-rule source and its two renderings. |
+| `harness.setup.app` | setup | 2 | The second part of `bb init`: generate the application from the pinned |
+| `harness.setup.blueprint-review` | setup | 5 | A stage's Blueprint, read cold before sign-off: `bb blueprint-review <blueprint.md>`. |
+| `harness.setup.doctor` | setup | 0 | Toolchain doctor: what this stack needs, whether it is here, and what it does. |
+| `harness.setup.health` | setup | 8 | `bb health` - the KIT's health check: does this KIT, on this machine, with the |
+| `harness.setup.init` | setup | 3 | `bb init <name> [dir]` - create the workspace a project is built in. |
+| `harness.setup.inventory` | setup | 2 | The harness's namespaces, rendered into its README from the source: |
+| `harness.setup.next` | setup | 3 | What comes next in the workflow, read off the build's files: `bb next`. |
+| `harness.setup.plan` | setup | 2 | What the harness knows about a plan's documents: the template the KIT ships |
+| `harness.setup.plan-review` | setup | 4 | The plan-review pass of `method.md` §02, run: `bb plan-review [<plan-dir> | <stage-plan.md>]`. |
+| `harness.setup.skills` | setup | 1 | The KIT's fifth part, `skills/`, and the two places it is rendered to: |
+| `harness.setup.template` | setup | 0 | The template the KIT brings with it: read the pin, and build the command that |
+| `harness.setup.upgrade` | setup | 2 | What a pulled KIT expects that this workspace lacks - a report, never a |
+| `harness.setup.workspace` | setup | 0 | Where things are: the workspace a path is in, and what its `workspace.edn` says. |
+| `harness.loop.driver` | loop | 5 | `bb run-loop <command> <run-dir> [args]` — the loop's steps as commands, with a |
+| `harness.loop.log` | loop | 0 | The run's append-only event log. One EDN map per line; never rewritten. |
+| `harness.loop.orchestrate` | loop | 7 | The loop: `bb run-loop run <run-dir>` drives one task to its next stop. |
+| `harness.loop.provision` | loop | 2 | Workspaces: a git worktree and its own nREPL, one per (task, role). |
+| `harness.loop.triage` | loop | 6 | Who owns a failure: one model call — on a red gate, a note, or a review |
+| `harness.contract.blueprint` | contract | 2 | A task's `spec.edn`, pulled out of a Blueprint written to the template. |
+| `harness.contract.packet` | contract | 1 | Task-packet assembly. |
+| `harness.contract.shapes` | contract | 0 | Malli schemas for the loop: the task packet, what a runner returns, |
+| `harness.contract.sigs` | contract | 1 | The Blueprint's `:deps-sigs`, checked against the source it describes. |
+| `harness.contract.spec-review` | contract | 4 | A review of the CONTRACT before anyone works from it: `bb run-loop spec-review <run-dir>`. |
+| `harness.contract.stub` | contract | 0 | The contract, as code the Tester can load. |
+| `harness.contract.targets` | contract | 0 | The spec's `:property-targets`, checked against the tests the Tester wrote. |
+| `harness.gates.boundary` | gates | 0 | Gate 4: the architecture-boundary check (method §09), against a project's |
+| `harness.gates.forms` | gates | 0 | The top-level forms of a Clojure file, as a table: kind, name, line range, |
+| `harness.gates.repair` | gates | 1 | Gate 0: mechanical repair, before the gates run. |
+| `harness.gates.run` | gates | 0 | The gate runner. |
+| `harness.models.adapter` | models | 0 | One request shape per model family, and one parsed shape out. |
+| `harness.models.agent` | models | 3 | One model, one conversation, the tools it may call. |
+| `harness.models.bake-off` | models | 6 | Candidates for a role, read against the same artifact, compared: `bb bake-off`. |
+| `harness.models.catalogue` | models | 0 | The models a route can reach, from OpenRouter's public listing: `bb models <query>`. |
+| `harness.models.profile` | models | 1 | Which model answers for which role, and the one client the human works in. |
+| `harness.models.provenance` | models | 0 | Who actually answered, what it actually cost. |
+| `harness.models.runner` | models | 4 | The AgentRunner seam. |
+| `harness.models.runner-check` | models | 5 | A conformance check for AgentRunner implementations. |
+| `harness.models.tools` | models | 2 | The four things a dispatched agent may do in its workspace. |
+| `harness.money.balance` | money | 2 | What the money looks like before and after a run: `bb balance`, and the two |
+| `harness.money.report` | money | 1 | The per-run report: what each step cost in time and money, and which model |
+| `harness.money.reprice` | money | 2 | `bb reprice <run.edn>`: fill the cost of every dispatch step a record left |
+| `harness.money.stage-report` | money | 3 | A stage's figures from its records: `bb stage-report <stage-plan.md>`. |
 
 <!-- harness-inventory:end -->
+
+### The layers
+
+**Folders say topic; layers say dependency order.** The tree groups the namespaces by what they
+are about - `setup`, `loop`, `contract`, `gates`, `models`, `money` - and that is the axis a reader
+looking for a thing wants. It is not the axis the code depends along: `setup.doctor` and
+`setup.workspace` are leaves everything stands on, `setup.health` is the root that requires
+nearly everything, and all three live in the same folder. The second axis is `layers.edn`, the
+harness's own ruleset for the boundary gate it ships to every project: each namespace maps to the
+set it may require, exactly what it requires today, ordered bottom-up - leaves, foundations, models
+and money, the plan and the readings, the loop, the roots. `bb boundary` here, in `bb gates`, holds
+it: a new upward require fails with the namespace named, so it is a conversation before it is a
+dependency. The layer column above is computed from the ruleset, one more than the deepest layer
+of what a namespace may require, and never typed. Nothing moves a file for this; the tree keeps
+saying topic, the ruleset says order, and the inventory shows both.
 
 Who acts on them — every review, gate and dispatch in a build, the profile role behind each and
 the model as shipped — is [`roster.md`](roster.md).

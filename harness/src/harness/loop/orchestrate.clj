@@ -39,6 +39,7 @@
   (:require
    [clojure.string :as str]
    [harness.loop.driver :as driver]
+   [harness.loop.log :as log]
    [harness.loop.triage :as triage]
    [harness.models.profile :as profile]
    [harness.money.balance :as balance]
@@ -260,18 +261,6 @@
                 "bb run-loop run <run-dir>                         ; after either"]
    :merged ["nothing: the record is run.edn, the worktrees and the task branches are gone, the merge commit holds the work"]})
 
-(defn owner
-  "Who a stop is for. THE ARCHITECT'S: a stop whose answer is an amendment to the
-  contract — the spec review's list, and any stop triage routed `architect`. The
-  Architect is the seat, so a session driving the loop handles these itself: read,
-  `amend` (before and after are recorded) or leave it, carry on. THE PERSON'S:
-  everything else — the cap, a missing verdict, a merge, a `human` route, a dead
-  REPL, a refused provider, a spec that keeps drawing findings. The line between
-  them is what lets a run be automated without a person reading every stop, and
-  still stop for the ones only a person should decide."
-  [{:keys [stop/kind route]}]
-  (if (or (= :architect route) (= :spec-reviewed kind)) :architect :person))
-
 (defn cut-off-writers
   "The Coder's and the Tester's LATEST dispatches that ended at the iteration
   cap having written their file: `[{:step kw :files [...] :iterations n}]`.
@@ -314,7 +303,7 @@
 (defn- announce! [{:keys [stop/kind route reason] :as action} run-dir {:keys [events steps]}]
   (println (str "\n  ══ STOP · " (name kind) " ══"))
   (println (str "  " reason))
-  (println (str "  whose: " (name route) " · owner: " (name (owner action))))
+  (println (str "  whose: " (name route) " · owner: " (name (log/owner action))))
   (let [{:keys [count cost cost-known]} (reviews-bought events steps)]
     (when (pos? count)
       (println (str "  reviews this run has bought: " count
@@ -476,7 +465,7 @@
                      (announce! action run-dir state)
                      {:status (:run/status action)
                       :stop/kind (:stop/kind action)
-                      :owner (owner action)
+                      :owner (log/owner action)
                       :route (:route action)
                       :reason (:reason action)
                       :attempts (driver/rounds state)
