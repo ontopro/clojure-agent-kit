@@ -20,8 +20,10 @@ something narrower each time:
 
 > **Clone it and build beside it.** The KIT is what a project adopts: its clone sits in the
 > project's workspace next to the application it generates from a pinned template, upgraded
-> with `git pull`, and nothing of the project is written into it. There is no library to
-> require; there is one commit of one template that a dated health check certifies with it.
+> with `git pull`, and nothing of the project is written into it; `bb doctor` run in the
+> workspace then says what the pulled KIT expects that the workspace, made at an earlier commit,
+> lacks. There is no library to require; there is one commit of one template that a dated health
+> check certifies with it.
 
 ## Four parts
 

@@ -527,8 +527,13 @@
   [args flag]
   (second (drop-while #(not= flag %) args)))
 
-(defn -main
-  "bb doctor [--edn] [--dir PATH] [--tier gates|loop]
+(defn main
+  "`-main`'s body, returning the exit code instead of exiting, so that a task
+  can print something after the table and exit with the doctor's verdict:
+  `harness.setup.upgrade/doctor-main` does, and this namespace cannot require
+  that one (it requires the profile, which requires this).
+
+  bb doctor [--edn] [--dir PATH] [--tier gates|loop]
 
   `--dir` reads another project's mise pins instead of the current directory's.
   The toolchain itself is machine-wide, so only the pin comparison is
@@ -542,16 +547,22 @@
     ;; A missing directory must fail rather than fall through: mise-file walks
     ;; UP from where it starts, so a typo'd path would silently find some
     ;; ancestor's pins and report them as this project's.
-    (when-not (fs/directory? dir)
-      (println (str "doctor: --dir " dir " is not a directory"))
-      (System/exit 1))
-    (when-not (#{:gates :loop} tier)
-      (println (str "doctor: --tier must be gates or loop, got " (name tier)))
-      (System/exit 1))
-    (let [good (known-good)
-          results (report toolchain (mise-pins dir) (:tools good))]
-      (if (some #{"--edn"} args)
-        (prn (render-edn results))
-        (println (render-table results good (some-> (mise-file dir) fs/canonicalize str))))
-      (when-not (ok? results tier)
-        (System/exit 1)))))
+    (cond
+      (not (fs/directory? dir))
+      (do (println (str "doctor: --dir " dir " is not a directory")) 1)
+
+      (not (#{:gates :loop} tier))
+      (do (println (str "doctor: --tier must be gates or loop, got " (name tier))) 1)
+
+      :else
+      (let [good (known-good)
+            results (report toolchain (mise-pins dir) (:tools good))]
+        (if (some #{"--edn"} args)
+          (prn (render-edn results))
+          (println (render-table results good (some-> (mise-file dir) fs/canonicalize str))))
+        (if (ok? results tier) 0 1)))))
+
+(defn -main
+  "bb doctor [--edn] [--dir PATH] [--tier gates|loop] - `main`, then exit with its code."
+  [& args]
+  (System/exit (apply main args)))

@@ -15,7 +15,7 @@
  {:init (defn harness [& args]
           (apply shell {:dir "harness"} "bb" args))
 
-  doctor {:doc "Is this machine ready? The toolchain: tool, version, status, what it is for (--edn for a pins map)"
+  doctor {:doc "Is this machine ready? The toolchain: tool, version, status, what it is for (--edn for a pins map); in a workspace, what a pulled KIT expects that the workspace lacks"
           :task (apply harness "doctor" *command-line-args*)}
 
   init {:doc "bb init <name> [dir] [--seat <name>] [--app <folder>] [--build <folder>] [--brief <file>] [--dry-run]: create the workspace a project is built in. Default dir: the folder this clone is in; default seat claude; default folders <name>-app and <name>-plan. Never overwrites"

@@ -27,6 +27,39 @@ either; an entry's date is its reference.
 
 ## 2026-10-06
 
+### `bb doctor` in a workspace says what a pulled KIT expects that the workspace lacks
+
+Row 96. The root README said the clone is upgraded with `git pull`, and the DEVLOG recorded,
+one entry at a time, what that sentence left out: a `workspace.edn` from before two keys
+got no copy until the lines were added; a sentence to edit by hand, once; a project pulls
+and runs `bb rules-sync`; a placeholder whose guidance improved after a project had filled
+it, unseen because the overlay replaces the text. This change adds four more of the same
+kind in one release - a profile role, skills to install, a renamed key, documents rewritten
+under copied ones. A reading of another project's design, which opens every earlier version's
+data and carries old configuration over, showed the half the KIT can have without a
+migration: the list.
+
+`bb init` now records the KIT's commit in `workspace.edn` (`:workspace/kit-commit`), and `bb
+doctor` run in a workspace prints, after its table, what this KIT expects that the
+workspace lacks: the recorded commit against HEAD and how many commits later; `workspace.edn`
+keys missing, or renamed (`:workspace/plan` is `:workspace/build` now); plan-template files
+changed since; placeholder rules whose shipped guidance changed since the overlay filled
+them; a rule mirror that does not match the source; a role the profile shape names that the
+profile lacks. Each line carries the command that shows the difference. It changes no
+verdict and rewrites nothing: a workspace's copies are its decisions. `harness.setup.upgrade`
+is pure over facts, so every line is tested without git; the facts are read from the
+workspace and asked of git in the clone, and one test reads them against this clone at its
+own HEAD. A workspace with no recorded commit gets the lines that need none and one saying
+how to add it.
+
+The harness met a dependency cycle a third time on the way: the doctor required the new
+namespace, which requires the profile, which requires the doctor for its probe. The doctor
+stays free of it - its main returns the exit code instead of exiting - and the composition
+lives in the new namespace, which the `doctor` task calls. A second slip cost an hour: the
+body was first named `run`, the name of the doctor's probe runner, and every probe then ran
+the whole doctor again. The harness has no boundary gate of its own; that is a commit beside
+this plan's list, and this is its second argument.
+
 ### The brief has a place: `bb init --brief` files it as the source's first row and appendix
 
 Row 95. The method's step 0 is a conversation before a workspace exists, and its output is

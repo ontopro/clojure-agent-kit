@@ -59,7 +59,7 @@
     (str (fs/relativize (fs/normalize ws-dir) (fs/normalize kit-dir)))
     (str (fs/normalize kit-dir))))
 
-(defn- workspace-edn [{:workspace/keys [kit app build work rule-mirrors rules-overlay records run-tables]}]
+(defn- workspace-edn [{:workspace/keys [kit app build work rule-mirrors rules-overlay records run-tables kit-commit]}]
   (str ";; Which folder is which, for the KIT's harness (`harness.setup.workspace` reads it). Written by\n"
        ";; `bb init`. A relative path is relative to this file. In no repository: if it is lost, write it again.\n"
        "{:workspace/kit " (pr-str kit) "\n"
@@ -73,7 +73,10 @@
        " ;; where `record` copies every run's run.edn, and the document that publishes their tables -\n"
        " ;; held to each other by the KIT's `bb report-check`\n"
        " :workspace/records " (pr-str records) "\n"
-       " :workspace/run-tables " (pr-str run-tables) "}\n"))
+       " :workspace/run-tables " (pr-str run-tables) "\n"
+       " ;; the KIT commit this workspace was made at: `bb doctor` run here says what a later KIT expects\n"
+       " ;; that this workspace lacks (harness.setup.upgrade); never rewritten by a pull\n"
+       " :workspace/kit-commit " (pr-str kit-commit) "}\n"))
 
 (defn- rules-overlay-edn
   "`<build>/rules.edn` as `bb init` writes it: the rule source's placeholder rules,
@@ -271,7 +274,9 @@
   (`default-seat` when nil). `:rule-mirrors` and `:loop/defaults` come from
   whatever generates the application.
 
-  `:brief`, when given, is the brief's text, written into `source.md` as §1's
+  `:kit-commit`, when given, is the KIT's commit, recorded in `workspace.edn` so
+  that `bb doctor` run in the workspace can say what a later KIT expects of it
+  (`harness.setup.upgrade`). `:brief`, when given, is the brief's text, written into `source.md` as §1's
   first row and Appendix A (`source-with-brief`), received `:today`; without it
   `source.md` is copied as shipped, for the brief to be filed by hand.
 
@@ -287,20 +292,21 @@
   `:dir? true`, `:content string`, `:copy-from abs`, or `:app? true` (the
   application's folder: created only by an `:app-fn`). `:repos` are the folders
   that become repositories."
-  [{:keys [kit-dir dir plan-template rule-mirrors seat brief today] project :name defaults :loop/defaults
+  [{:keys [kit-dir dir plan-template rule-mirrors seat brief today kit-commit] project :name defaults :loop/defaults
     app-folder :app build-folder :build}]
   (let [ws-dir (str (fs/normalize (or dir (fs/parent kit-dir))))
         seat (or seat default-seat)
         app (or app-folder (str project "-app"))
         build (or build-folder (str project "-build"))
-        ws {:workspace/kit (kit-ref ws-dir kit-dir)
-            :workspace/app app
-            :workspace/build build
-            :workspace/work "work"
-            :workspace/rule-mirrors (vec rule-mirrors)
-            :workspace/rules-overlay (str build "/rules.edn")
-            :workspace/records (str build "/runs")
-            :workspace/run-tables (str build "/RUNS.md")}
+        ws (cond-> {:workspace/kit (kit-ref ws-dir kit-dir)
+                    :workspace/app app
+                    :workspace/build build
+                    :workspace/work "work"
+                    :workspace/rule-mirrors (vec rule-mirrors)
+                    :workspace/rules-overlay (str build "/rules.edn")
+                    :workspace/records (str build "/runs")
+                    :workspace/run-tables (str build "/RUNS.md")}
+             kit-commit (assoc :workspace/kit-commit kit-commit))
         kit-path #(str (fs/path kit-dir %))]
     {:workspace/dir ws-dir
      :default? (nil? dir)
@@ -457,6 +463,14 @@
             (if (fs/directory? dir) (vec (keys (profile/examples (str dir)))) []))
    :doctor/ok? (doctor-ok?)})
 
+(defn kit-commit
+  "The KIT clone's commit, or nil where `kit-dir` is not a repository (a test's
+  scratch copy): `workspace.edn` then records none, and the doctor says so."
+  [kit-dir]
+  (let [{:keys [exit out]} (p/shell {:dir (str kit-dir) :out :string :err :string :continue true}
+                                    "git" "rev-parse" "HEAD")]
+    (when (zero? exit) (str/trim out))))
+
 (defn- git! [dir env & args]
   (let [{:keys [exit err]} (apply p/shell {:dir (str dir) :out :string :err :string
                                            :continue true :extra-env env}
@@ -557,6 +571,7 @@
                :build build-folder
                :brief (some-> brief-file slurp)
                :today (str (java.time.LocalDate/now))
+               :kit-commit (kit-commit kit-dir)
                :plan-template (plan-template-files kit-dir)
                ;; THE MIRROR FOLLOWS THE FOLDER, not the name: it is a path in workspace.edn.
                :rule-mirrors [(str app-folder "/AGENTS.md")]
