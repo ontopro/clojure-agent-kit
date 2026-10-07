@@ -103,6 +103,7 @@ disagree. The date is the claim; nothing here says it still holds today.
 
 | Platform | Run on | KIT commit | Template | Checks | Time |
 |---|---|---|---|---|---|
+| Linux Ubuntu 24.04.5 LTS arm64 | 2026-10-07 | `65aa152` | `kit-v1` (`a2c0eaa`) | 8 of 8 ok: selfcheck gates, selfcheck red, selfcheck loop, app gates, app red, app loop, app serve, app browser | 71s |
 | macOS 27.0.1 arm64 | 2026-10-05 | `1ba8f18` | `kit-v1` (`a2c0eaa`) | 8 of 8 ok: selfcheck gates, selfcheck red, selfcheck loop, app gates, app red, app loop, app serve, app browser | 63s |
 
 One record per platform actually run, the latest run on it; a platform not in the table has none. `bb health --record` on such a machine writes one - commit it, and `bb health-sync`.

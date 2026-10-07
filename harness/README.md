@@ -38,6 +38,12 @@ JVM; JDK 21, the Clojure CLI and `clj-nrepl-eval` as well for a loop. `bb doctor
 verdict per tier - run it first, and `bb doctor --tier gates` is what `bb gates` runs.
 The first `bb test` fetches malli into `~/.m2`; everything after that is offline.
 
+The same list, installed and nothing else, is the `Dockerfile` at the root of the clone: a
+Linux container with the toolchain alone, every version a build argument read from the
+known-good set, in which `bb docker-gates` and `bb docker-health` (root tasks) clone HEAD from
+a read-only mount and run the gates and the health check as a fresh machine would. Firefox ESR
+and geckodriver are in it too, for the health check's browser check.
+
 ## The pieces
 
 The inventory is rendered from the source between the markers, so the count and the list are never
@@ -295,6 +301,9 @@ the JDK, held at major 21 by the doctor itself (XTDB v2's early releases failed 
 newer JDKs); a `.mise.toml` pinning another major is told *change the pin, not the JDK*. Beside
 the machine's versions the doctor shows the KIT's known-good set, `resources/known-good.edn`,
 written by `bb health --record` from a run that passed - *newer than tested* is information.
+The known-good set is also what the fresh-machine container is built from: `bb docker-gates`
+reads each version out of it into the `Dockerfile`'s build arguments, so a recorded health run
+moves the container with it, and there is no second list to keep.
 
 It also warns when `JAVA_HOME` is on a different major than the `java` on PATH. A pin that
 only checks PATH is defeated by any launcher that honours `JAVA_HOME`, and the two

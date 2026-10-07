@@ -11,9 +11,69 @@
 ;; inside `harness/` and mean a different file, so a task offered here either takes no path
 ;; or - `init` - makes it absolute before delegating. The rest of the harness's tasks
 ;; (`bb run-loop`, `bb balance`, `bb report` …) are run from `harness/`, as its README says.
+;;
+;; Two tasks live HERE and not in `harness/`, because they are about this clone as a whole:
+;;
+;;   bb docker-gates    the fresh-machine check: `bb gates` on a clone of HEAD inside a Linux
+;;                      container that has only the toolchain (the `Dockerfile` beside this file,
+;;                      every version from harness/resources/known-good.edn)
+;;   bb docker-health   the same container running `bb health --record`; its platform's record
+;;                      is copied out to harness/health/records/ for `bb health-sync`
+;;
+;; Both log to .local/gates/, both mount the repository READ-ONLY and clone inside, so what is
+;; checked is what is committed and nothing the container writes reaches this tree.
 {:tasks
- {:init (defn harness [& args]
-          (apply shell {:dir "harness"} "bb" args))
+ {:requires ([babashka.fs :as fs]
+             [clojure.edn :as edn]
+             [clojure.string :as str])
+  :init (do (defn harness [& args]
+              (apply shell {:dir "harness"} "bb" args))
+
+            ;; The fresh-machine container. `docker-image!` builds the toolchain image, tagged by
+            ;; known-good's date, each ARG from that file; `in-container!` clones HEAD from the
+            ;; read-only mount and runs one script, everything to a log under .local/gates/ and
+            ;; to the terminal, and the script's exit is the task's.
+            (def known-good-file "harness/resources/known-good.edn")
+            (def build-args
+              {:java "JAVA_VERSION" :bb "BB_VERSION" :clojure "CLOJURE_VERSION"
+               :clj-kondo "CLJ_KONDO_VERSION" :cljfmt "CLJFMT_VERSION" :git "GIT_VERSION"
+               :clj-nrepl-eval "MCP_LIGHT_SHA"})
+            (defn docker-image! []
+              (let [{:keys [as-of tools]} (edn/read-string (slurp known-good-file))
+                    tag (str "clojure-agent-kit-toolchain:" as-of)
+                    args (mapcat (fn [[tool arg]]
+                                   (when-let [v (get tools tool)]
+                                     ["--build-arg" (str arg "=" v)]))
+                                 build-args)]
+                (println "image" tag "- the toolchain of" known-good-file)
+                (apply shell "docker" "build" "-t" tag (concat args ["."]))
+                tag))
+            (defn sh-quote [s]
+              (str "'" (str/replace s "'" "'\\''") "'"))
+            (defn in-container! [log-name script & mounts]
+              (let [root (str (fs/absolutize "."))
+                    log (str ".local/gates/" log-name ".log")
+                    tag (docker-image!)
+                    docker (str/join " " (concat ["docker run --rm" (str "-v " root ":/src:ro")]
+                                                 mounts
+                                                 [tag "bash -c" (sh-quote script)]))]
+                (fs/create-dirs ".local/gates")
+                (println "log:" log)
+                (shell "bash" "-o" "pipefail" "-c" (str docker " 2>&1 | tee " log))))
+
+            (def clone-head
+              (str "set -eu\n"
+                   "git clone -q --no-hardlinks /src /work/kit\n"
+                   "cd /work/kit\n"
+                   "echo \"KIT $(git rev-parse --short HEAD) on $(uname -sm), $(. /etc/os-release && echo $PRETTY_NAME)\"\n"))
+            ;; the tree after the run, shown and then required empty - a gate that rewrote a file
+            ;; or a run that left one behind fails here
+            (defn tree-clean [& exclude]
+              (let [spec (str/join " " (cons "." (map (fn [p] (str "\":(exclude)" p "\"")) exclude)))]
+                (str "cd /work/kit\n"
+                     "echo; echo \"the tree after the run (nothing expected):\"\n"
+                     "git status --porcelain -- " spec "\n"
+                     "[ -z \"$(git status --porcelain -- " spec ")\" ]\n"))))
 
   doctor {:doc "Is this machine ready? The toolchain: tool, version, status, what it is for (--edn for a pins map); in a workspace, what a pulled KIT expects that the workspace lacks"
           :task (apply harness "doctor" *command-line-args*)}
@@ -37,4 +97,28 @@
           :task (apply harness "health" *command-line-args*)}
 
   gates {:doc "The KIT's own quality gates, cheap first: doctor -> format -> lint -> rules -> reports -> test"
-         :task (harness "gates")}}}
+         :task (harness "gates")}
+
+  docker-gates {:doc "The fresh-machine check: build the toolchain image from the Dockerfile (every version from harness/resources/known-good.edn), clone HEAD inside from a read-only mount, run bb gates there, require a clean tree after. Log: .local/gates/docker-gates.log. Needs Docker running"
+                :task (in-container! "docker-gates"
+                                     (str clone-head
+                                          "cd /work/kit/harness\n"
+                                          "bb doctor --tier gates\n"
+                                          "bb gates\n"
+                                          (tree-clean)))}
+
+  docker-health {:doc "bb health --record in the same container; the container platform's record is copied out to harness/health/records/ for `bb health-sync` (the known-good set stays the host run's). Log: .local/gates/docker-health.log. Minutes; needs Docker running"
+                 :task (let [out (str (fs/absolutize ".local/docker/out"))]
+                         (fs/create-dirs out)
+                         (in-container! "docker-health"
+                                        (str clone-head
+                                             "cd /work/kit/harness\n"
+                                             "bb doctor --tier loop\n"
+                                             "bb health --record\n"
+                                             (tree-clean "harness/health/records" "harness/resources/known-good.edn")
+                                             "cp $(git ls-files --others --modified -- harness/health/records) /out/\n")
+                                        (str "-v " out ":/out"))
+                         (doseq [f (fs/glob out "*.edn")]
+                           (let [dest (fs/path "harness/health/records" (fs/file-name f))]
+                             (fs/move f dest {:replace-existing true})
+                             (println "recorded:" (str dest) "- commit it, then `bb health-sync` renders the README block"))))}}}

@@ -1,0 +1,4 @@
+# The build context is EMPTY on purpose: the image is the toolchain alone, and the KIT reaches
+# it by `git clone` from a read-only mount at run time, never by COPY. BuildKit still sends the
+# Dockerfile itself.
+*

@@ -41,6 +41,40 @@ difference, and nothing is migrated.
 
 ## 2026-10-07
 
+### The fresh-machine check is a container: the toolchain alone, a clone of HEAD inside
+
+Row 113. Until today every gates run and the one health record were one macOS machine's, where
+the toolchain had grown with the KIT, and "no CI" meant nobody had asked whether the gates pass
+on a machine that has only what the harness README's prerequisites name. Decided with the
+person: the fresh machine first, as a Docker container, and the GitHub workflow later on the
+same image, so the two halves of "no CI" share one definition of the machine.
+
+The `Dockerfile` at the root is the toolchain and nothing of the KIT: Ubuntu 24.04 with Temurin
+21 from Adoptium's own image, the Clojure CLI, Babashka, git built from source at its known-good
+version (the distribution's is older), bbin with the three clojure-mcp-light tools by the
+doctor's own install command and held to the commit known-good records, cljfmt, clj-kondo,
+Firefox ESR from Mozilla's repository and geckodriver. Every version is a build argument, and
+the two root tasks read each value out of `harness/resources/known-good.edn`, so the container
+is the known-good set and a recorded health run moves it - there is no second list. Three
+things that file does not carry are pinned in the Dockerfile alone and said in its header:
+Temurin's build number, geckodriver's version, and Firefox ESR, which the repository serves as
+its current ESR. The build context is empty by `.dockerignore`: the KIT reaches the container
+by `git clone` from a read-only mount of the repository, never by a copy or a mount of the
+working tree, so what is checked is what is committed and nothing the container writes reaches
+the tree. `bb docker-gates` runs the doctor and the gates there and requires `git status` empty
+after; `bb docker-health` runs `bb health --record`, copies the container platform's record out
+through a second mount into `harness/health/records/`, and leaves the known-good set the host
+run's. Both log to `.local/gates/`.
+
+The first run found two things that had passed on one machine for the wrong reason, each fixed
+in its own commit and entry above: a test fixture that was red only by BSD printf's exit code,
+and the platform label that on Linux named the kernel. Then the doctor in the container showed
+every row at known-good exactly, the gates passed, and the health check passed all eight checks
+with Firefox opening the page; its record is the README's second platform row. Two lessons
+beside the list: git 2.56 builds its Rust parts by default and wants cargo, so the build says
+`NO_RUST=1`, optional until git 3.0; and a background shell's exit code is the wrapper's, not
+the command's - the run's exit is read from its log, where the task writes it.
+
 ### A health record's platform label names the Linux distribution, not the kernel
 
 The first Linux health record (the container's, below) labelled its platform "Linux
