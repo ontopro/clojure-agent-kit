@@ -1,0 +1,208 @@
+(ns harness.setup.skills
+  "The KIT's fifth part, `skills/`, and the two places it is rendered to:
+  `bb skills-sync [--check]`.
+
+  A skill is one conversational step of the workflow - scoping, the plan, a
+  stage's plan, a stage's end - as Claude Code loads it: `.claude/skills/<name>/
+  SKILL.md`. The source is `<kit>/skills/<name>/SKILL.md`; what Claude Code
+  reads is a RENDERING of it, in two places, each held to the source the way
+  the rule mirror is held to the rule source:
+
+    - the clone's own `.claude/skills/`, committed, so a session opened in the
+      clone has `scoping` before any workspace exists (step 0 before step 1);
+    - a workspace's `.claude/skills/`, written by `bb init` and updated by this
+      command after a `git pull`, each copy saying it is generated and from
+      which KIT commit.
+
+  A rendering is the source with one generated note after its frontmatter;
+  `--check` compares everything but the note's commit, so the clone's own copy
+  does not drift at every commit. A folder under the target that is not a
+  shipped skill is a project's own and is never touched.
+
+  THE METHOD IS THE SOURCE of a skill's substance, and a skill cites the
+  headings it reads in its *Reads* table. `citation-problems` holds every cited
+  heading to the file it names, in the gates: the method can be renamed, but
+  not out from under a skill.
+
+  The pure parts are `citations`, `split-frontmatter`, `render`, `normalize`
+  and `generated?`; `sync!` and `-main` are the commands."
+  (:require
+   [babashka.fs :as fs]
+   [babashka.process :as p]
+   [clojure.string :as str]
+   [harness.setup.workspace :as workspace]))
+
+(def source-dir "skills")
+(def target-dir ".claude/skills")
+(def file-name "SKILL.md")
+
+(defn shipped
+  "The skills the KIT at `kit-dir` ships: every folder under `skills/` with a
+  `SKILL.md`, sorted."
+  [kit-dir]
+  (let [d (fs/path kit-dir source-dir)]
+    (vec (sort (for [f (when (fs/directory? d) (fs/list-dir d))
+                     :when (fs/exists? (fs/path f file-name))]
+                 (fs/file-name f))))))
+
+(defn source-path [kit-dir nm] (str (fs/path kit-dir source-dir nm file-name)))
+
+(defn sources
+  "`[[name source-text] …]` for every shipped skill, sorted - what `bb init`'s
+  layout renders, read once here so the layout stays data over its request."
+  [kit-dir]
+  (vec (for [nm (shipped kit-dir)] [nm (slurp (source-path kit-dir nm))])))
+
+;; ---------------------------------------------------------------------------
+;; citations: the headings a skill reads, held to the file
+;; ---------------------------------------------------------------------------
+
+(defn- cells [line]
+  (mapv str/trim (str/split (str/replace (str/trim line) #"^\||\|$" "") #"\|" -1)))
+
+(defn- table-line? [line] (str/starts-with? (str/trim line) "|"))
+
+(defn citations
+  "`[[file heading] …]` from every table of `text` whose header is `File |
+  Heading`: the skill's *Reads* table, backticks stripped."
+  [text]
+  (->> (str/split-lines text)
+       (partition-by table-line?)
+       (filter #(table-line? (first %)))
+       (mapcat (fn [[header & rows]]
+                 (when (= ["File" "Heading"] (cells header))
+                   (for [r rows
+                         :let [[f h] (map #(str/replace % #"^`|`$" "") (cells r))]
+                         :when (and (seq f) (seq h) (not (re-matches #"-+" f)))]
+                     [f h]))))
+       vec))
+
+(defn heading?
+  "Does `text` carry `heading` as a Markdown heading line, at any level?"
+  [text heading]
+  (boolean (some #(re-matches (re-pattern (str "#{1,6} " (java.util.regex.Pattern/quote heading) "\\s*")) %)
+                 (str/split-lines text))))
+
+(defn citation-problems
+  "The citations of the skill `nm` (its source `text`) that do not hold in the
+  KIT at `kit-dir`: a file that is not there, or a heading the file does not
+  carry - one sentence each."
+  [kit-dir nm text]
+  (vec (for [[f h] (citations text)
+             :let [path (fs/path kit-dir f)
+                   problem (cond
+                             (not (fs/exists? path)) (str "cites " f ", which is not in the KIT")
+                             (not (heading? (slurp (str path)) h)) (str "cites the heading \"" h "\" of " f
+                                                                        ", which the file no longer carries"))]
+             :when problem]
+         (str "skills/" nm "/" file-name " " problem))))
+
+;; ---------------------------------------------------------------------------
+;; rendering: the source with a generated note after its frontmatter
+;; ---------------------------------------------------------------------------
+
+(defn split-frontmatter
+  "`[frontmatter body]`: the leading `---` block, closing fence included and a
+  newline after it, and the rest. A text with no frontmatter is `[\"\" text]`."
+  [text]
+  (if-let [[_ fm body] (re-find #"(?s)^(---\n.*?\n---\n)(.*)$" text)]
+    [fm body]
+    ["" text]))
+
+(def ^:private note-re #"(?m)^<!-- GENERATED by bb skills-sync .*? -->\n")
+
+(defn generated-note
+  "The one line a rendering adds: where it came from, that it is not edited
+  here, and the KIT commit - the clone's own HEAD when `commit` is nil."
+  [nm commit]
+  (str "<!-- GENERATED by bb skills-sync from the KIT's skills/" nm "/" file-name
+       " - edit it there, never here. KIT commit: " (or commit "HEAD, this clone's own") " -->\n"))
+
+(defn render
+  "The rendering of the skill `nm` from its `source-text`, at `commit`: the
+  frontmatter, the note, the body as written."
+  [nm source-text commit]
+  (let [[fm body] (split-frontmatter source-text)]
+    (str fm (generated-note nm commit) body)))
+
+(defn generated? [text] (boolean (re-find note-re text)))
+
+(defn normalize
+  "`text` without its generated note, for a comparison that ignores the
+  commit the note names."
+  [text]
+  (str/replace text note-re ""))
+
+(defn current?
+  "Is `existing` the rendering of `source-text`, whatever commit its note names?"
+  [existing source-text]
+  (and (generated? existing)
+       (= (normalize existing) (normalize (render "x" source-text nil)))))
+
+;; ---------------------------------------------------------------------------
+;; the sync
+;; ---------------------------------------------------------------------------
+
+(defn git-head
+  "The KIT's HEAD commit at `kit-dir`, or nil when git cannot say."
+  [kit-dir]
+  (let [{:keys [exit out]} (p/shell {:dir (str kit-dir) :out :string :err :string :continue true}
+                                    "git" "rev-parse" "HEAD")]
+    (when (zero? exit) (str/trim out))))
+
+(defn sync!
+  "Every shipped skill of `kit-dir` rendered under `target-root/.claude/skills/`
+  - written, or with `:check? true` only compared. `:commit` is what the note
+  names (nil: the clone's own HEAD, for the clone's own copy). Returns one map
+  per skill: `:name`, `:path`, `:existed?`, `:changed?` (not current before
+  the call). Folders under the target that are not shipped skills are left
+  alone."
+  [kit-dir target-root & {:keys [check? commit]}]
+  (vec (for [nm (shipped kit-dir)
+             :let [source (slurp (source-path kit-dir nm))
+                   path (fs/path target-root target-dir nm file-name)
+                   existed? (fs/exists? path)
+                   changed? (not (and existed? (current? (slurp (str path)) source)))]]
+         (do (when (and changed? (not check?))
+               (fs/create-dirs (fs/parent path))
+               (spit (str path) (render nm source commit)))
+             {:name nm :path (str path) :existed? existed? :changed? changed?}))))
+
+(defn kit-dir-of
+  "The KIT's clone: the workspace's, or the parent of `harness/`, where every
+  `bb` task runs."
+  [ws]
+  (or (:workspace/kit ws) (str (fs/parent (fs/normalize (fs/absolutize "."))))))
+
+(defn -main
+  "bb skills-sync [--check] [--workspace <dir>]
+
+  First the citations of every shipped skill, held to the files they name -
+  a failure in both modes. Then the clone's own `.claude/skills/`, and the
+  workspace's when this runs in one (or `--workspace` / `KIT_WORKSPACE` names
+  one): written, or with `--check` compared, drift being exit 1."
+  [& args]
+  (let [ws (workspace/current-or-exit args)
+        {:keys [args]} (workspace/split-args args)
+        check? (boolean (some #{"--check"} args))
+        kit-dir (kit-dir-of ws)
+        problems (vec (mapcat #(citation-problems kit-dir % (slurp (source-path kit-dir %))) (shipped kit-dir)))]
+    (when (seq problems)
+      (doseq [l problems] (println (str "skills: " l)))
+      (println "skills: a skill cites a heading its file no longer carries - rename it in the skill, or put the heading back")
+      (System/exit 1))
+    (let [targets (cond-> [[kit-dir nil "the clone's own"]]
+                    (:workspace/dir ws) (conj [(:workspace/dir ws) (git-head kit-dir) "the workspace's"]))
+          results (vec (for [[root commit label] targets
+                             r (sync! kit-dir root :check? check? :commit commit)]
+                         (assoc r :label label)))
+          drifted (filter :changed? results)]
+      (doseq [{:keys [path changed? existed? label]} results]
+        (println (str "skills " (cond (and check? changed? (not existed?)) "missing: "
+                                      (and check? changed?) "drift: "
+                                      changed? "synced: "
+                                      :else "in sync: ")
+                      path " (" label ")")))
+      (when (and check? (seq drifted))
+        (println "skills: a rendering does not match skills/ - run `bb skills-sync` in the KIT's harness/")
+        (System/exit 1)))))

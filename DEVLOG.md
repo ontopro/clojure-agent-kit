@@ -25,6 +25,40 @@ either; an entry's date is its reference.
 
 ---
 
+## 2026-10-07
+
+### The four conversational steps are skills: the KIT's fifth part, held to the method
+
+Row 103. Four of the workflow's steps are conversations with a person that end in documents -
+scoping, the plan for stage 0, a stage's plan, a stage's end - and the method says what each
+asks and writes. Nothing ran them: a session read the method whole, or remembered the last
+time. A reading of a skills-only project showed the shape a conversational step takes when it
+is packaged - what it reads without asking, when it refuses to start, what it writes, how the
+person knows it finished - and that the zero-setup step ships where the person opens first;
+and it found a defect in this plan as first written, the scoping skill installed by `bb init`
+into a folder `bb init` makes.
+
+`skills/` holds four, one `SKILL.md` each, in one anatomy and one order: when it runs, reads,
+refuses when, asks, writes, done when. Each is a thin layer: its Reads table cites the headings
+of `method.md` and the templates it works from, and it asks the questions written there rather
+than restating them; it reads its inputs from files, never from the conversation, so a stage's
+plan can be written in a fresh session from what the stage's end wrote; it refuses by name
+before anything is spent - `stage-plan` with the previous stage's gates record not closed,
+`plan` with no brief; and it ends by naming the next command, `bb next` among them, since the
+hand-offs are not inside the skills. Claude Code loads a skill from `.claude/skills/`, so the
+folder is rendered twice: the clone's own copy, committed, so that `scoping` runs in a session
+opened in the clone before any workspace exists; and a workspace's, written by `bb init` beside
+the agent file and re-rendered by `bb skills-sync` after a pull. A rendering is the source with
+one generated note after its frontmatter naming the KIT commit; `bb skills-sync --check`, in
+the gates, compares everything but the commit - so the clone's copy does not drift at every
+commit - and holds every cited heading to the file it names, so the method can be renamed but
+not out from under a skill. `bb doctor`'s workspace report says when a copy is missing or
+edited. A folder under `.claude/skills/` that is not a shipped skill is a project's own and is
+never touched; the harness README's adapting section now ends with one list of what is open
+and what is closed. The other four seats follow the same sections by hand, which
+`portability.md` says in its seats table; the skills are the Architect's session's and never a
+dispatched role's. The README names the fifth part.
+
 ## 2026-10-06
 
 ### A stub-model test that fails once and passes on the rerun is watched

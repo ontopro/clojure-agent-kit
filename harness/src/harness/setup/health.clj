@@ -59,6 +59,7 @@
    [harness.setup.app :as app]
    [harness.setup.doctor :as doctor]
    [harness.setup.init :as init]
+   [harness.setup.skills :as skills]
    [harness.setup.template :as template]
    [harness.setup.workspace :as workspace]))
 
@@ -500,6 +501,7 @@
         ws (str (fs/path (fs/create-temp-dir {:prefix "kit-health"}) app-name))
         req {:name app-name :kit-dir kit :dir ws
              :plan-template (init/plan-template-files kit)
+             :skills (skills/sources kit)
              :rule-mirrors [(str app-name "-app/AGENTS.md")]
              :loop/defaults (:loop/defaults pin)}
         lay (init/layout req)

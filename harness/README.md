@@ -21,6 +21,7 @@ bb health     # the KIT, this machine, the pinned template - certified together 
 bb init xyx   # the workspace: the application generated from the pin, the build, work/
 bb plan-check  # the filled plan, before Foundation: no mark, no instruction, the overlay filled, the given parts intact
 bb plan-review # method.md §02's review pass, run: the plan read cold by the :plan-reviewer; a reading, not a gate
+bb skills-sync # the fifth part, skills/, rendered to the clone's own .claude/skills/ and a workspace's; --check holds both to the source and every cited heading to the method (in gates)
 bb spec-from-blueprint <blueprint.md> <task-id> [<out.edn>]  # a task's spec.edn out of the Blueprint, its named shapes inlined from §1; pipes into bb sigs
 bb gates      # the KIT's own gates: doctor -> format -> lint -> rules -> reports -> health block -> test
 bb repair     # gate 0 over the Clojure files you changed (run before bb gates)
@@ -60,6 +61,7 @@ the model as shipped — is [`roster.md`](roster.md).
 | `harness.setup.plan` + `harness.setup.plan-review` | `bb plan-check`: what a filled plan still carries - every mark, every line of the template's instructions still standing, every requirement that cites no observation of `source.md` and is not marked inferred, the overlay's placeholders - and whether its given parts are intact (the KIT's rules unedited, `layers.edn` not loosened against the pin's layers, the gate keys in the KIT's order); exit 1 with the list, and `start` runs it once per workspace, known by a hash of what it read. `bb plan-review`: `method.md` §02's pass, run - the plan's documents and §02's checklist, read from the method at the call, to the profile's `:plan-reviewer`, one completion; findings printed with the cost and written to `<plan>/reviews/` | The plan is the Architect's session's to fill, and nothing read it: a mark left standing reached the next reader as literal text, the rule source's failure one level up; and two projects ran the review pass as a throwaway script each with the checklist pasted in by hand. The check is the gate and is free; the reading is not a gate, because a review that found nothing proves nothing |
 | `harness.setup.blueprint-review` | `bb blueprint-review <blueprint.md>`: a stage's Blueprint and the stage document it names, read whole by the profile's `:blueprint-reviewer` against `method.md` §07 step 2 (is it over-engineered?) and §06's rules for shapes and targets, both read from the method at the call; one completion, no tools; the findings printed with the cost and written to `<plan>/reviews/<stage>/blueprint-review.edn`, for the Architect to resolve in the stage document before the sign-off | The method promised this read and nothing ran it: the harness's orchestrator is triage, and a Blueprint's packets met a model one at a time in the spec review, which cannot see a layer with one use or a shape nothing needs. Two projects wrote the read as a throwaway script; the third measured which family reads a Blueprint best, and the answer set the role |
 | `harness.setup.doctor` | Toolchain probe and report | A missing small binary doesn't fail the loop — it quietly spends the Coder's retry budget on parens. Check the toolchain; don't assume it. |
+| `harness.setup.skills` | `bb skills-sync [--check]`: the KIT's `skills/` - one skill per conversational step of the workflow - rendered to the clone's own `.claude/skills/` and a workspace's, each copy noting the KIT commit; the check compares everything but the commit, and holds every heading a skill's Reads table cites to the file it names. A project's own skill under another name is never touched | The method is the source: a skill that restated its section would drift, so each cites its headings and the gates hold them; and a workspace's copy of a skill was nobody's to update until the doctor and this check said so |
 | `harness.contract.shapes` | Malli schemas: packet, result, gate result, run record | A result contract that isn't enforced isn't a contract. `AgentResult` is **closed**. |
 | `harness.contract.packet` | Cuts a role-specific packet from a task spec | The Tester's context excludes the Coder's impl — **mechanically**, not by asking a Blueprint author to remember. |
 | `harness.gates.run` + `harness.gates.repair` | Ordered, short-circuiting gate runner; gate 0 | Cheap before expensive; a failing gate returns *what it said*, not just which one; a broken gate config fails the gate, not the run. |
@@ -336,6 +338,18 @@ of a project is written into it - which is why the list below is short.
   `check-runner`. For testing one, the technique that works is a generated
   executable stub script that records its argv — make the executable name an
   option so tests point at the stub and only the live run spends quota.
+- **The skills.** `bb init` renders the KIT's `skills/` into the workspace's `.claude/skills/`,
+  each copy noting the KIT commit; `bb skills-sync` here re-renders them after a `git pull`, and
+  `bb skills-sync --check` (in `bb gates`) and `bb doctor`'s workspace report say when a copy
+  no longer matches. A skill of the project's own goes beside them under another name and is
+  never touched.
+- **What is open, and what is closed.** Open - the project's, written in its workspace: the
+  rules overlay's placeholders and its own rules; the profile's models; `loop.edn`'s values
+  within the keys the shape names; the gates after the KIT's four, in order; a skill of its
+  own; the plan's documents past their given parts; `layers.edn`'s added layers. Closed - the
+  KIT's, upgraded by `git pull` and never edited in the clone: the rule source's text; the gate
+  keys and their order; the profile shape and the family rule; `loop.edn`'s key set; the
+  template's layers; the given parts of the plan; the shipped skills; the method.
 
 ## Deliberately left out
 

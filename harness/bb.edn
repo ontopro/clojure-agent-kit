@@ -77,6 +77,13 @@
                :requires ([harness.rules :as rules])
                :task (apply rules/-main "--check" *command-line-args*)}
 
+  ;; The fifth part, skills/, rendered to the clone's own .claude/skills/ and a workspace's - each
+  ;; copy a rendering held to its source, as the rule mirrors are; and every skill's cited headings
+  ;; held to the method. `gates` runs the check.
+  skills-sync {:doc "bb skills-sync [--check] [--workspace <dir>]: hold every skill's cited headings to the files they name, then render skills/ into the clone's own .claude/skills/ and the workspace's (where this runs in one), each copy noting the KIT commit; --check only compares, drift is exit 1"
+               :requires ([harness.setup.skills :as skills])
+               :task (apply skills/-main *command-line-args*)}
+
   rules-prompt {:doc "Render the rules for one audience as a system-prompt block: --audience <name> [--out FILE] [--<key> <value>]..."
                 :requires ([harness.rules :as rules])
                 :task (apply rules/prompt-main *command-line-args*)}
@@ -155,9 +162,10 @@
 
   ;; The doctor decides on the GATES tier here: the KIT's own gates need no JVM, and a
   ;; machine without one must still be able to run them (`bb doctor` alone judges the loop tier).
-  gates {:doc "Quality gates, cheap first: doctor -> format -> lint -> rules -> health block -> reports and bake-offs (a workspace's) -> test"
+  gates {:doc "Quality gates, cheap first: doctor -> format -> lint -> rules -> skills -> health block -> reports and bake-offs (a workspace's) -> test"
          :task (do (shell "bb" "doctor" "--tier" "gates") (run 'fmt-check) (run 'lint)
                    (run 'rules-check)
+                   (shell "bb" "skills-sync" "--check")
                    (shell "bb" "health-sync" "--check")
                    (shell "bb" "report-check")
                    (shell "bb" "bake-off-check")

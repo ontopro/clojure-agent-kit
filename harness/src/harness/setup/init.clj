@@ -36,6 +36,7 @@
    [harness.rules :as rules]
    [harness.setup.app :as app]
    [harness.setup.doctor :as doctor]
+   [harness.setup.skills :as skills]
    [harness.setup.template :as template]
    [harness.setup.workspace :as workspace]))
 
@@ -296,7 +297,7 @@
   `:dir? true`, `:content string`, `:copy-from abs`, or `:app? true` (the
   application's folder: created only by an `:app-fn`). `:repos` are the folders
   that become repositories."
-  [{:keys [kit-dir dir plan-template rule-mirrors seat brief today kit-commit] project :name defaults :loop/defaults
+  [{:keys [kit-dir dir plan-template skills rule-mirrors seat brief today kit-commit] project :name defaults :loop/defaults
     app-folder :app build-folder :build}]
   (let [ws-dir (str (fs/normalize (or dir (fs/parent kit-dir))))
         seat (or seat default-seat)
@@ -328,8 +329,17 @@
              :content (workspace-claude-md project ws)}
             {:path ".claude/agents/interactive-programmer.md"
              :what "the off-loop role, copied from the KIT"
-             :copy-from (kit-path "harness/agents/interactive-programmer.md")}
-            {:path build :what "the build (its own repository): the plan's docs/ from the KIT's template, the settings, the records" :dir? true}
+             :copy-from (kit-path "harness/agents/interactive-programmer.md")}]
+           ;; THE SKILLS, RENDERED: the fifth part's four conversational steps as Claude Code
+           ;; loads them, each copy a rendering of `<kit>/skills/<name>/SKILL.md` noting the
+           ;; KIT commit, held to its source by `bb skills-sync --check` and reported by the
+           ;; doctor when a pulled KIT's differ. `scoping` ran before this folder existed, from
+           ;; the clone's own copy; it is here so the workspace's session has the same set.
+           (for [[nm text] skills]
+             {:path (str skills/target-dir "/" nm "/" skills/file-name)
+              :what (str "the " nm " skill, rendered from the KIT's skills/")
+              :content (skills/render nm text kit-commit)})
+           [{:path build :what "the build (its own repository): the plan's docs/ from the KIT's template, the settings, the records" :dir? true}
             {:path (str build "/README.md") :what "what the build repository is"
              :content (plan-readme project ws)}
             {:path (str build "/rules.edn") :what "this project's rules over the KIT's rule source: the placeholders, to fill"
@@ -577,6 +587,7 @@
                :today (str (java.time.LocalDate/now))
                :kit-commit (kit-commit kit-dir)
                :plan-template (plan-template-files kit-dir)
+               :skills (skills/sources kit-dir)
                ;; THE MIRROR FOLLOWS THE FOLDER, not the name: it is a path in workspace.edn.
                :rule-mirrors [(str app-folder "/AGENTS.md")]
                :loop/defaults (:loop/defaults pin)}

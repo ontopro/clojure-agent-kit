@@ -5,7 +5,7 @@ kit is (`README.md`), not the method it teaches (`method.md`), not its current
 limitations (`NOTES.md`) — those are linked where you need them.
 
 A reusable build method for developing Clojure software with a small team of AI agents:
-`method.md` (the method), `plan-template/` (the plan template), `harness/` (runnable
+`method.md` (the method), `plan-template/` (the plan template), `skills/` (the conversational steps), `harness/` (runnable
 code). Public, MIT, at `github.com/ontopro/clojure-agent-kit`.
 
 ## You are working ON this repo, not through its loop

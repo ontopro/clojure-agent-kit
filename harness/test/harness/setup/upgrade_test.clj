@@ -6,6 +6,7 @@
    [babashka.process :as p]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [harness.setup.skills :as skills]
    [harness.setup.upgrade :as upgrade]
    [harness.setup.workspace :as workspace]))
 
@@ -51,6 +52,10 @@
       (is (some #(str/includes? % "has no :workspace/records") lines))
       (is (some #(str/includes? % "/w/xyx-app/AGENTS.md does not match the rule source: run `bb rules-sync`") lines))
       (is (some #(str/includes? % "/w/xyx-build/profile.edn has no :plan-reviewer") lines))))
+  (testing "a skill the workspace lacks, and one it edited"
+    (let [lines (upgrade/expectations (assoc complete :skills-missing ["scoping" "plan"] :skills-drifted ["stage-end"]))]
+      (is (some #(str/includes? % ".claude/skills/ lacks the KIT's scoping, plan skills (bb init writes them since 2026-10-07): run `bb skills-sync`") lines))
+      (is (some #(str/includes? % ".claude/skills/stage-end/SKILL.md is not the rendering of the KIT's skills/stage-end/SKILL.md: run `bb skills-sync`") lines))))
   (testing "nothing missing renders as such"
     (is (str/includes? (upgrade/render (assoc complete :made-at nil :behind nil
                                               :keys-present (remove #{:workspace/kit-commit} upgrade/expected-keys)))
@@ -90,4 +95,13 @@
       (let [f (upgrade/facts (workspace/find-workspace ws) kit-dir)]
         (is (str/ends-with? (:profile f) "profile.edn"))
         (is (= [] (:profile-missing f)))
-        (is (= ["made at KIT commit "] (map #(subs % 0 19) (upgrade/expectations f))) "one line: at the KIT's commit")))))
+        (is (= (skills/shipped kit-dir) (:skills-missing f)) "no .claude/skills/ yet: every shipped skill is missing")
+        (is (some #(str/includes? % ".claude/skills/ lacks the KIT's") (upgrade/expectations f))))
+      (testing "with the skills rendered, one line: at the KIT's commit"
+        (skills/sync! kit-dir ws :commit head)
+        (let [f (upgrade/facts (workspace/find-workspace ws) kit-dir)]
+          (is (= [] (:skills-missing f)))
+          (is (= [] (:skills-drifted f)))
+          (is (= ["made at KIT commit "] (map #(subs % 0 19) (upgrade/expectations f))))
+          (spit (str (fs/path ws ".claude" "skills" "plan" "SKILL.md")) "edited\n")
+          (is (= ["plan"] (:skills-drifted (upgrade/facts (workspace/find-workspace ws) kit-dir))) "an edited copy drifts"))))))

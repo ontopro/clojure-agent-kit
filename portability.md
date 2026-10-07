@@ -58,6 +58,7 @@ conformance check any further runner has to pass.
 | Per-role permissions | presets | ordered `{action, resource, effect}` | `--tools` / `--exclude-tools` | `tools:` |
 | Headless + JSON | **none** — an IDE launcher | `run --format json`; `serve` + SDK | `-p --mode json\|rpc` | `-p --output-format json` |
 | Write-time hooks | `PreToolUse`/`PostToolUse` + `matcher` | plugin `setup()` + `ctx.tool.hook` | TS extension | `PreToolUse`/`PostToolUse` |
+| The KIT's skills (`skills/`) | by hand, from the method section each skill cites | by hand | by hand | `.claude/skills/<name>/SKILL.md`, rendered by `bb init` and `bb skills-sync` |
 
 Three of four read `AGENTS.md`, which is why one generated mirror covers them all. All four
 support write-time hooks.

@@ -24,6 +24,7 @@
    [harness.models.profile :as profile]
    [harness.rules :as rules]
    [harness.setup.doctor :as doctor]
+   [harness.setup.skills :as skills]
    [harness.setup.workspace :as workspace]))
 
 (def expected-keys
@@ -59,11 +60,13 @@
     :mirrors-drifted  rule mirrors that do not match the source now
     :profile          the project's profile path, or nil
     :profile-missing  roles the KIT's profile shape names and the profile lacks
+    :skills-missing   skills the KIT ships that the workspace's `.claude/skills/` lacks
+    :skills-drifted   skills whose workspace copy is not the rendering of the KIT's
 
   Each line names what is expected, what is here, and the command that shows
   the difference. An empty vector means nothing is missing."
   [{:keys [kit keys-present made-at head behind template-changed guidance-changed
-           mirrors-drifted profile profile-missing]}]
+           mirrors-drifted profile profile-missing skills-missing skills-drifted]}]
   (let [present (set keys-present)]
     (cond-> []
       (and made-at (nil? behind))
@@ -111,7 +114,17 @@
 
       (and profile (seq profile-missing))
       (into (for [r profile-missing]
-              (str profile " has no " r ": the KIT's profile shape names it, and `bb profile` refuses without it"))))))
+              (str profile " has no " r ": the KIT's profile shape names it, and `bb profile` refuses without it")))
+
+      (seq skills-missing)
+      (conj (str ".claude/skills/ lacks the KIT's " (str/join ", " skills-missing)
+                 " skill" (when (not= 1 (count skills-missing)) "s")
+                 " (bb init writes them since 2026-10-07): run `bb skills-sync` in the KIT's harness/"))
+
+      (seq skills-drifted)
+      (into (for [s skills-drifted]
+              (str ".claude/skills/" s "/SKILL.md is not the rendering of the KIT's skills/" s
+                   "/SKILL.md: run `bb skills-sync` in the KIT's harness/ (a project's own skill under another name is never touched)"))))))
 
 (defn render
   "The report as `bb doctor` prints it."
@@ -198,7 +211,9 @@
      :guidance-changed (if known? (guidance-changed ws kit-dir made-at) [])
      :mirrors-drifted (mirrors-drifted ws)
      :profile profile-path
-     :profile-missing (profile-missing profile-path)}))
+     :profile-missing (profile-missing profile-path)
+     :skills-missing (vec (for [r (skills/sync! kit-dir (:workspace/dir ws) :check? true) :when (not (:existed? r))] (:name r)))
+     :skills-drifted (vec (for [r (skills/sync! kit-dir (:workspace/dir ws) :check? true) :when (and (:existed? r) (:changed? r))] (:name r)))}))
 
 (defn report
   "The report for the workspace a command runs in, or nil outside one. `kit-dir`
