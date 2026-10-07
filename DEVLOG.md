@@ -27,6 +27,25 @@ either; an entry's date is its reference.
 
 ## 2026-10-06
 
+### The four project-level templates follow the method: the plan commits to stage 0
+
+Rows 93 and 94, the templates' half. The method's §02 and §04 changed on 2026-10-06 and the
+templates still asked for what they had asked before: every requirement in one document,
+three lists headed MVP, post-MVP and non-goals, a stage map with the MVP marked in advance
+and Foundation before stage 1, spikes that run in stage 1. Now `source.md` says where the
+brief goes - its first row and Appendix A, as `bb init --brief` files it - and names the
+content apart from the rest. `01-requirements.md` holds stage 1's requirements, each with
+its source observation or marked as the Architect's inference, and an index of every
+requirement by the stage that wrote it, since a later stage writes its own in its stage
+plan; its scope is three lists - ships first, deferred with the stage that takes it, out of
+scope with its reason and the decision it is - revised at every stage's end against the
+source, and the MVP is named afterwards. `00-overview.md`'s stage map is by kind, stage 0
+the spike with Foundation inside it, with a cap on the stage in progress alone; its document
+map names the stage plan, the blueprint and `05-lessons.md`; its review findings say the pass
+runs in every stage's plan step. `04-decision-log.md`'s provisional entries carry the pass
+criterion stage 0 applies, and its spikes run in stage 0. The placeholder counts the plan
+check is held to moved with them. The stage templates and the lessons document follow.
+
 ### `loop.edn`'s keys are described once, and an unknown one is refused by name
 
 Row 97. The keys a run's `loop.edn` may hold were written in four places - the driver's

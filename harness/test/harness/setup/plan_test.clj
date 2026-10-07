@@ -32,13 +32,13 @@
 
 (deftest the-shipped-template-carries-exactly-these-marks
   ;; The fixture. `bb init` copies every one of these into `<name>-build/docs/`.
-  (is (= {"00-overview.md" 18
-          "01-requirements.md" 12
+  (is (= {"00-overview.md" 19
+          "01-requirements.md" 14
           "02-architecture.md" 23
           "03-method-and-tooling.md" 41
-          "04-decision-log.md" 11
+          "04-decision-log.md" 12
           "README.md" 1
-          "source.md" 10
+          "source.md" 11
           "stages/stage-N-blueprint-template.md" 9
           "stages/stage-N-template.md" 18}
          (plan/placeholder-counts template-dir)))
@@ -164,7 +164,7 @@
     (is (= 6 documents))
     (doseq [doc (plan/governing template-dir)]
       (is (= 2 (count (by-doc doc))) (str doc ": its marks and its instructions, one sentence each")))
-    (is (some #(str/includes? % "docs/00-overview.md: 18 marks") problems) "the fixture's count, by name")
+    (is (some #(str/includes? % "docs/00-overview.md: 19 marks") problems) "the fixture's count, by name")
     (is (= 3 (count (filter #(str/starts-with? % "rules.edn:") problems))) "the overlay's three placeholders")
     (is (not-any? #(str/starts-with? % "layers.edn") problems) "the given parts are intact as generated")
     (is (not-any? #(str/starts-with? % "loop.edn") problems))

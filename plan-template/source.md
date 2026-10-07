@@ -16,7 +16,11 @@
 
 > Each thing, as received: the brief verbatim or by link, the file names, the date, who from.
 > A picture is described here in words precise enough that a reader without the picture could
-> check a requirement against the description.
+> check a requirement against the description. The brief is the first row, and its text is
+> Appendix A at the end of this document: `bb init <name> --brief <file>` files it that way,
+> and a brief filed by hand goes the same way. Name the CONTENT apart from the rest - the items
+> the product will show (pages, data, pictures) against the material that only informs it (an
+> analysis, a design, a conversation). A site has content; a library has none.
 
 | # | Item | Form | Received | From |
 |---|---|---|---|---|

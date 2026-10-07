@@ -7,11 +7,13 @@
 
 - **RESOLVED** — decided; reversal would be a new decision, not an edit to this one.
 - **PROVISIONAL** — a working selection the build proceeds on, **gated** by a named
-  spike/stage; the fallback is documented and kept viable.
+  spike/stage with a pass criterion written before it runs; the fallback is documented and
+  kept viable. The candidate architecture enters as PROVISIONAL entries gated by stage 0, and
+  stage 0 answers each - pass, or the fallback - as what it owes (`method.md` §04).
 - **OPEN** — not yet decided; **owned** by the stage that first needs it.
 
 This log is the mechanism by which the architecture evolves across stages: the
-architecture and stage documents reference these IDs instead of carrying decision churn
+architecture and stage plans reference these IDs instead of carrying decision churn
 in prose.
 
 **ID families:** **D** = architecture · **S** = schema/data model · **P0** = method &
@@ -48,7 +50,7 @@ change. Full checklist and rationale: `method.md` §08.
 
 | # | Decision | Options considered | Status / Resolution | Impact analysis |
 |---|---|---|---|---|
-| D1 | <e.g. primary datastore> | <a · b · c> | **PROVISIONAL: <a>** — <rationale>. **Gate:** <spike ID, stage>. **Fallback:** <b> behind `<Protocol>`. | — (initial) |
+| D1 | <e.g. primary datastore> | <a · b · c> | **PROVISIONAL: <a>** — <rationale>. **Gate:** <spike ID>, stage 0. **Pass criterion:** <what stage 0 must show>. **Fallback:** <b> behind `<Protocol>`. | — (initial) |
 | D2 | | | **OPEN** — owner: <stage that first needs it> | — |
 
 ## 3. Schema / data-model decisions (S)
@@ -76,4 +78,4 @@ change. Full checklist and rationale: `method.md` §08.
 
 | # | Spike | Gates decision | Runs in | Pass criterion | On failure |
 |---|---|---|---|---|---|
-| R1 | | D1 | Stage 1 | | Execute D1's fallback; re-run stage exit criteria |
+| R1 | | D1 | Stage 0 | | Execute D1's fallback; re-run stage exit criteria |

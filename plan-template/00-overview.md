@@ -40,11 +40,13 @@ Full requirements: `01-requirements.md`.
 |---|---|---|
 | `source.md` | What the plan derives from: the brief, the material handed over, what was read from it, numbered | A record: appended to, never revised |
 | `00-overview.md` (this doc) | Mission, governing decisions, stage map, review findings | Updated at stage boundaries |
-| `01-requirements.md` | Users, use cases, FRs + NFRs, constraints, assumptions, **MVP / post-MVP / non-goals scope** | Slow-moving, but not frozen — the scope split shifts as stages teach you; revise via review |
+| `01-requirements.md` | Users, use cases, constraints, assumptions, **the three scope lists**, success criteria; stage 1's requirements, and the index of every requirement by the stage that wrote it | The scope lists and the index revised at every stage's end; the rest slow-moving, via review |
 | `02-architecture.md` | Layers, storage, cross-cutting concerns; provisional parts marked | Evolves; decisions referenced by ID |
 | `03-method-and-tooling.md` | The build method: roles, protocols, quality gates, scaffold, harness | Stable once ready; runs under every stage |
 | `04-decision-log.md` | **Every** decision with status: RESOLVED / PROVISIONAL (+ gating spike) / OPEN (+ owning stage) | **Living** |
-| `stages/stage-N-*.md` | One doc per stage: goal, scope, task list, exit criteria | Created **just-in-time** |
+| `05-lessons.md` | One section per stage, written at its end: what the roles did, what the person did by hand, what the next stage changes - each lesson ending as a rule, a line in the next stage plan, or a decision | Appended at every stage's end; read first when the next stage plan is written |
+| `stages/stage-N-*.md` | One **stage plan** per stage: goal and kind, the requirements it adds, the decisions it exercises, what it proves and does not, its seams, its task list, its exit criteria and its cap | Created **just-in-time**, when the stage is pulled; approved by the person with its cap |
+| `stages/stage-N-blueprint.md` | The stage's **blueprint**: shapes, signatures, namespaces, the task packets in dependency order; exactly one per stage | Written from the approved stage plan; signed off by the person |
 
 **The decision log is how the iterative method and the architecture reconcile.** An aspect
 under test lives as a PROVISIONAL entry naming the spike that confirms or reverses it; an
@@ -55,18 +57,30 @@ architecture doc stays readable because decision churn lives in the log, not the
 
 ## 4. Stage map
 
-The **Foundation** (`03-method-and-tooling.md`) is not a stage: it is configured before
-Stage 1 dispatches and runs continuously underneath every stage. Infrastructure and
-operations work is **woven into stages**, not held in a phase of its own.
+Stages are numbered through, and each has a kind (`method.md` §04): stage 0 the **spike**,
+stage 1 the **walking skeleton**, stages 2 to N the **increments**, then **pre-release** stages
+and **release**. The **Foundation** (`03-method-and-tooling.md`) is built inside stage 0, before
+its first packet dispatches, and runs continuously underneath every stage. Infrastructure and
+operations work is **woven into stages**, not held in a phase of its own; what release needs
+lands in the pre-release stages.
 
-| Stage | Name | Delivers | Risk it retires | Key decisions it closes | MVP? | Status |
-|---|---|---|---|---|---|---|
-| — | **Foundation** | Workflow, scaffold, quality gates, dispatch loop | — | P0-* | — | <NOT STARTED> |
-| **1** | **Vertical slice (<smallest realistic input>)** | Full-depth slice: <ingest → model → store → service → surfaces>; seams established | R1, R2 | First validation of the provisional datastore(s) | — | PLANNED |
-| **2** | <name> | <deliverable> | <R-n> | <decision IDs> | **◀ MVP** | NOT STARTED — doc written at stage start |
-| **3** | <name> | <deliverable> | <R-n> | <decision IDs> | post | NOT STARTED |
+**Only the stage in progress has a cap.** The plan commits to stage 0 and nothing after it; each
+later stage is approved with its own cap at its stage plan, and the rows below it are
+indicative, re-ranked by the risks at every stage's end.
 
-The **◀ MVP** marker names the stage that completes the minimum shippable set (scoped in `01-requirements.md` §10); everything after it is post-MVP by construction. Stages are **pulled when capacity frees, not scheduled** — there is no timebox anywhere in this method.
+| Stage | Kind | Name | Delivers | Risk it retires | Key decisions it closes | Cap | Status |
+|---|---|---|---|---|---|---|---|
+| **0** | spike | <name> | Foundation built; the top risks proved against their pass criteria; running software, owed nothing - decisions confirmed or reversed | R1, R2 | <D-n …>, each pass or fallback | <$> | PLANNED |
+| **1** | walking skeleton | <name> | <one small function end to end through every layer, on the smallest input a person can walk>; the seams established; the first owner's walk | <R-n> | <decision IDs> | — | NOT STARTED — plan written when pulled |
+| **2** | increment | <name> | <deliverable> | <R-n> | <decision IDs> | — | NOT STARTED |
+| **…** | increment | | | | | — | |
+| **N** | pre-release | <name> | <host, publish, backup, restore, metrics, logging, auditing, the pre-publish gate - what of it this stage takes> | <R-n> | | — | NOT STARTED |
+| **N+1** | release | <name> | packaged; deployed on the server or published for download | | | — | NOT STARTED |
+
+**The MVP is named afterwards.** At every stage boundary ask "could we ship after this one?";
+the first boundary where the answer is yes is the MVP - mark it in the Status column when it
+comes, never before stage 0. Stages are **pulled when capacity frees, not scheduled** — there is
+no timebox anywhere in this method.
 
 Stage boundaries are **gates, not dates**: a stage closes when its exit criteria pass *and*
 its decisions are recorded in the log. A gate can **loop back** — if a spike fails, the
@@ -87,15 +101,17 @@ Stage content beyond the next stage is indicative and will be re-planned.
 
 | # | Risk | What it would cost | Prototype / spike that retires it | Runs in | Status |
 |---|---|---|---|---|---|
-| R1 | <the thing most likely to kill this> | <rewrite? relaunch? missed bar?> | <spike ID, and its pass criterion> | Stage 1 | OPEN |
+| R1 | <the thing most likely to kill this> | <rewrite? relaunch? missed bar?> | <spike ID, and its pass criterion> | Stage 0 | OPEN |
 | R2 | | | | | |
 
 ## 5. Review findings
 
-> Filled by the plan-review pass (`method.md` §02) — run this before Foundation
-> starts, ideally with a different model or person from whoever wrote the plan; `bb plan-review`
-> in the KIT's `harness/` is that pass, and writes its raw output to `../reviews/`. Requirement-
-> level additions land in `01-requirements.md`; decision-level items in `04-decision-log.md`.
+> Filled by the plan-review pass (`method.md` §02), which runs in every stage's plan step: for
+> stage 0 over the whole set, before Foundation; for every stage after, over the stage plan and
+> the documents it revised, before the blueprint is cut. A different model or person from
+> whoever wrote the plan; `bb plan-review` in the KIT's `harness/` is that pass, and writes its
+> raw output to `../reviews/`. Requirement-level additions land in the stage plan that owns
+> them and the index in `01-requirements.md`; decision-level items in `04-decision-log.md`.
 
 | # | Finding | Resolution |
 |---|---|---|
