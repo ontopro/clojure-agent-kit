@@ -140,7 +140,7 @@
                   :requires ([harness.models.bake-off :as bake-off])
                   :task (apply bake-off/check-main *command-line-args*)}
 
-  profile {:doc "Check a profile: shape, verifier independence, seat, key variables ([--seat NAME] [--file F] [--probe] [--workspace <dir>])"
+  profile {:doc "Check a profile: shape, verifier independence, seat, key variables; then, as information, a line per role whose model has a newer model in its line in the catalogue - measure before changing ([--seat NAME] [--file F] [--probe] [--offline] [--workspace <dir>])"
            :requires ([harness.models.profile :as profile])
            :task (apply profile/-main *command-line-args*)}
 

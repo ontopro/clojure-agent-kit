@@ -116,6 +116,67 @@
   [matches]
   (first matches))
 
+;; ---------------------------------------------------------------------------
+;; a model's line: the same name with a later version
+;; ---------------------------------------------------------------------------
+
+(defn- name-segments
+  "The slug's name without its family prefix and any `:variant` suffix, split
+  on `-`: `openai/gpt-5.6-sol` → `[\"gpt\" \"5.6\" \"sol\"]`."
+  [slug]
+  (-> (str slug) (str/replace #"^[^/]+/" "") (str/replace #":.*$" "") (str/split #"-")))
+
+(def ^:private version-segment #"\d+(\.\d+)*")
+
+(defn line-of
+  "The line a model belongs to: its name with every version segment removed -
+  `openai/gpt-5.6-sol` → `gpt-sol`, `anthropic/claude-opus-5.5` and the direct
+  name `claude-opus-5-5` → `claude-opus`, `x-ai/grok-4.7` → `grok`. The
+  family is not in it; `newer-in-line` holds that apart."
+  [slug]
+  (str/join "-" (remove #(re-matches version-segment %) (name-segments slug))))
+
+(defn version-of
+  "The version a slug carries, as a vector of integers from every numeric
+  segment: `gpt-5.6-sol` → `[5 6]`, `claude-opus-5-5` and `claude-opus-5.5` →
+  `[5 5]`, `gpt-6-sol` → `[6]`; `[]` for a slug with none, which no model is
+  newer than."
+  [slug]
+  (vec (for [seg (filter #(re-matches version-segment %) (name-segments slug))
+             n (str/split seg #"\.")]
+         (parse-long n))))
+
+(defn- version-after?
+  "Is version `a` later than `b`? Padded with zeros to the same length, so
+  `[6]` is after `[5 6]` and `[6 1]` after `[6]`."
+  [a b]
+  (let [n (max (count a) (count b))
+        pad #(vec (take n (concat % (repeat 0))))]
+    (pos? (compare (pad a) (pad b)))))
+
+(defn newer-in-line
+  "The models of `listing` in the same line as `slug` with a later version,
+  newest version first, as `model-row`s - what a profile's selection has
+  behind it in the catalogue. The family must match when the slug names one;
+  a direct name (`claude-opus-5-5`) matches by line alone. A `:variant` of a
+  model (`:batch`, half price and no completion within a dispatch's wait;
+  `:thinking`) is not a model in the line and is left out, as the aliases
+  are. Empty for a slug with no version: nothing is in its line by number."
+  [listing slug]
+  (let [line (line-of slug)
+        version (version-of slug)
+        family (family-of slug)]
+    (if (empty? version)
+      []
+      (->> listing
+           (remove #(or (alias? (:id %)) (str/includes? (str (:id %)) ":")))
+           (map model-row)
+           (filter #(and (= line (line-of (:id %)))
+                         (or (nil? family) (= family (:family %)))
+                         (version-after? (version-of (:id %)) version)))
+           (sort-by (comp version-of :id) #(if (version-after? %1 %2) -1 (if (= %1 %2) 0 1)))
+           vec))))
+
 (defn endpoint-row
   "One serving endpoint of a model as a row: provider, tag, quantization, prices."
   [{:keys [provider_name tag quantization pricing supported_parameters]}]

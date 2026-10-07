@@ -27,6 +27,31 @@ either; an entry's date is its reference.
 
 ## 2026-10-06
 
+### `bb profile` says when a selection has a newer model in its line
+
+Row 101. A profile's models are dated selections, and the question of whether the catalogue
+had listed a newer model of the same line since the date was answered by hand: `bb models`
+read for each role, the answer written into a plan. The KIT's own plan did it once for the
+five selections of the shipped example, and a reading of another project's design, which
+carries a table of model advice updated by copying, named the smaller thing worth taking: the
+age of a selection said by a command, on the machine that runs the profile.
+
+A model's LINE is its name with every version segment removed - `openai/gpt-5.6-sol` and
+`openai/gpt-6.1-sol` are `gpt-sol`, `anthropic/claude-opus-5.5` and the direct name
+`claude-opus-5-5` are `claude-opus` - and its VERSION is the numeric segments as a vector,
+compared padded, so `6` is after `5.6` and `6.1` after `6`, whatever the listing's dates say.
+Newer in the line means the same line, the same family where the slug names one, a later
+version; a `:batch` or `:thinking` variant is not a model in the line and is left out, as
+the aliases are, and a slug with no version has nothing newer by number. `bb profile`
+prints one line per role with any, after its checks, worded as the doctor words *newer than
+tested*: information, never a violation, ending in "measure before changing (bb bake-off)",
+since the listing says nothing about whether the newer model reads a contract better.
+`--offline` skips the listing, and the examples-only fallback - what runs with no profile of
+its own - never fetches it, so the gates run on a plane. Run on the shipped `claude` example
+the day it landed, it said what the KIT's plan had found by hand that morning: the OpenAI
+reader's three roles have `gpt-6.1-sol` and `gpt-6-sol` behind them, and the other three
+selections nothing.
+
 ### `bb plan-check` holds the citations in two directions
 
 Row 100. The template has asked since the morning that every requirement name the observation

@@ -52,6 +52,34 @@
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no route is written for the family :mistralai"
                           (cat/route r :mistralai)))))
 
+(deftest a-models-line-is-its-name-without-the-version
+  (is (= "gpt-sol" (cat/line-of "openai/gpt-5.6-sol")))
+  (is (= "gpt-sol" (cat/line-of "openai/gpt-6.1-sol")))
+  (is (= "claude-opus" (cat/line-of "anthropic/claude-opus-5.5")))
+  (is (= "claude-opus" (cat/line-of "claude-opus-5-5")) "a direct name, versioned with dashes")
+  (is (= "grok" (cat/line-of "x-ai/grok-4.7")))
+  (is (= "gemini-flash" (cat/line-of "google/gemini-3.8-flash")))
+  (is (= "gpt-luna" (cat/line-of "openai/gpt-6-luna")) "a different tier is a different line")
+  (is (= "claude-opus" (cat/line-of "anthropic/claude-opus-5.5:thinking")) "a variant suffix is not a version")
+  (is (= [5 6] (cat/version-of "openai/gpt-5.6-sol")))
+  (is (= [6] (cat/version-of "openai/gpt-6-sol")))
+  (is (= [5 5] (cat/version-of "claude-opus-5-5")))
+  (is (= [5 5] (cat/version-of "anthropic/claude-opus-5.5")))
+  (is (= [] (cat/version-of "mistralai/mistral-large")) "no version: nothing is newer by number"))
+
+(deftest a-newer-model-in-the-same-line-is-found-by-version-not-by-date
+  (is (= ["x-ai/grok-4.7"] (mapv :id (cat/newer-in-line listing "x-ai/grok-4.6"))))
+  (is (= [] (cat/newer-in-line listing "x-ai/grok-4.7")) "the newest has nothing after it")
+  (is (= ["anthropic/claude-opus-5.5"] (mapv :id (cat/newer-in-line listing "claude-opus-4-1")))
+      "a direct name matches its line in the listing")
+  (is (= [] (cat/newer-in-line listing "openai/grok-4.6")) "the same line under another family is not it")
+  (is (= [] (cat/newer-in-line listing "mistralai/mistral-large")) "no version, no answer")
+  (let [sol [{:id "openai/gpt-5.6-sol" :created 1} {:id "openai/gpt-6-sol" :created 3} {:id "openai/gpt-6.1-sol" :created 2}
+             {:id "openai/gpt-6-luna" :created 4} {:id "~openai/gpt-latest" :created 5} {:id "openai/gpt-6-sol:batch" :created 3}]]
+    (is (= ["openai/gpt-6.1-sol" "openai/gpt-6-sol"] (mapv :id (cat/newer-in-line sol "openai/gpt-5.6-sol")))
+        "newest version first: 6.1 after 6, whatever the listing dates say; the other tier, the alias and the :batch variant left out")
+    (is (= ["openai/gpt-6.1-sol"] (mapv :id (cat/newer-in-line sol "openai/gpt-6-sol"))) "[6 1] is after [6]")))
+
 (deftest prices-are-per-million-from-the-listings-per-token-figures
   (is (= 1.6 (cat/per-million "0.0000016")))
   (is (= 2.0 (cat/per-million 0.000002)))

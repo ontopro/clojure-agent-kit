@@ -38,6 +38,7 @@
    [clojure.edn :as edn]
    [clojure.string :as str]
    [harness.contract.shapes :as shapes]
+   [harness.models.catalogue :as catalogue]
    [harness.setup.doctor :as doctor]
    [harness.setup.workspace :as workspace]))
 
@@ -257,6 +258,30 @@
               :let [{:keys [family model endpoint]} (get role-map r)]]
           (format "%-19s %-11s %-34s %s" (name r) (name family) model endpoint))))
 
+(defn newer-models
+  "Per role of `profile`, what `listing` (the catalogue's `:data`) carries in
+  the same line as the role's model with a later version - `[{:role _ :model
+  _ :newer [rows]} …]`, newest first, roles with none left out. The age of a
+  selection, said by a command: every brief checked it by hand against the
+  same listing."
+  [profile listing]
+  (vec (for [r roles
+             :let [m (get-in profile [:roles r :model])
+                   newer (catalogue/newer-in-line listing m)]
+             :when (seq newer)]
+         {:role r :model m :newer newer})))
+
+(defn newer-lines
+  "`newer-models` as the lines `bb profile` prints: information, worded as
+  the doctor words *newer than tested*, and never a violation - the listing
+  says nothing about whether the newer model does the role's job better.
+  A selection is measured before it changes."
+  [profile listing]
+  (vec (for [{:keys [role model newer]} (newer-models profile listing)]
+         (str (name role) "  " model ": newer in its line - "
+              (str/join ", " (for [{:keys [id date]} newer] (str id " (listed " date ")")))
+              " - information, not a fault; measure before changing (bb bake-off)"))))
+
 (defn examples
   "Every worked example the seed ships, as `{seat-name profile}`.
 
@@ -283,7 +308,13 @@
   `--seat <name>` picks one shipped example and adds the environment checks;
   `--file <path>` takes any profile; `--probe` adds one request per endpoint.
   Exits non-zero on any violation, so it composes into a shell the way the
-  gates do."
+  gates do.
+
+  After the violations, one line per role whose model has a newer model in
+  its line in the catalogue (`newer-lines`, over OpenRouter's public listing,
+  no key sent): information, never a violation. `--offline` skips the
+  listing; the examples-only fallback never fetches it, so `bb gates` can
+  run on a plane."
   [& args]
   (let [ws (workspace/current-or-exit args)
         {:keys [args]} (workspace/split-args args)
@@ -291,6 +322,11 @@
         arg (fn [f] (second (drop-while #(not= f %) args)))
         project-profile (fn [] (plan-profile ws))
         opts {:env? true :probe? (contains? flags "--probe")}
+        listing (delay (try (catalogue/fetch-listing)
+                            (catch Exception e
+                              (println (str "  the model listing did not answer (" (ex-message e)
+                                            "); newer models not checked"))
+                              nil)))
         report (fn [label profile opts]
                  (println (str "  " label))
                  (doseq [l (summary profile)] (println (str "  " l)))
@@ -298,6 +334,9 @@
                  (let [v (violations profile opts)]
                    (doseq [{:keys [profile/error detail]} v]
                      (println (str "  " (name error) " — " detail)))
+                   (when-not (contains? flags "--offline")
+                     (when-let [l @listing]
+                       (doseq [line (newer-lines profile l)] (println (str "  " line)))))
                    v))]
     (cond
       (arg "--file")

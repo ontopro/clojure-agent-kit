@@ -279,6 +279,25 @@
     (is (= (get-in p [:roles :spec-reviewer]) (get-in p [:roles :plan-reviewer]))
         (str nm ": the plan reviewer is the spec reviewer's block"))))
 
+(deftest a-newer-model-in-a-roles-line-is-a-line-of-information-not-a-violation
+  ;; The age of a selection, said by a command: every brief checked the
+  ;; listing by hand for each role. Worded as the doctor words "newer than
+  ;; tested" - the listing says nothing about whether the newer model does
+  ;; the role's job better, so the line ends in "measure before changing".
+  (let [listing [{:id "openai/gpt-5.6-sol" :created 1700000000} {:id "openai/gpt-6-sol" :created 1790035200}
+                 {:id "openai/gpt-6.1-sol" :created 1790640000} {:id "x-ai/grok-4.7" :created 1790007541}]
+        p (-> base
+              (assoc-in [:roles :spec-reviewer :model] "openai/gpt-5.6-sol")
+              (assoc-in [:roles :plan-reviewer :model] "openai/gpt-5.6-sol")
+              (assoc-in [:roles :tester :model] "x-ai/grok-4.7"))
+        found (profile/newer-models p listing)]
+    (is (= [:plan-reviewer :spec-reviewer] (mapv :role found)) "in the roles' order; the tester is on the newest and the rest have no version")
+    (is (= ["openai/gpt-6.1-sol" "openai/gpt-6-sol"] (mapv :id (:newer (first found)))))
+    (is (= ["plan-reviewer  openai/gpt-5.6-sol: newer in its line - openai/gpt-6.1-sol (listed 2026-09-29), openai/gpt-6-sol (listed 2026-09-22) - information, not a fault; measure before changing (bb bake-off)"]
+           (take 1 (profile/newer-lines p listing))))
+    (is (= [] (profile/violations p)) "never a violation")
+    (is (= [] (profile/newer-lines base listing)) "models with no version say nothing")))
+
 (deftest a-projects-profile-is-the-plans-and-there-is-none-outside-a-workspace
   ;; `bb init` writes <build>/profile.edn; `bb profile` and `bb balance` with no argument read
   ;; it from wherever they are run in the workspace. The KIT's own development folder is in
