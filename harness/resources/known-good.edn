@@ -2,7 +2,7 @@
 ;; actually run together through the KIT's gates, `bb init`, the loop and the generated
 ;; application's gates. `bb doctor` shows it beside what is installed; newer is 'newer than
 ;; tested', information and never a fault. Versions are floors except the JDK's major.
-{:as-of "2026-10-05",
+{:as-of "2026-10-07",
  :platform "macOS 27.0.1 arm64",
  :tools
  {:bb "1.13.225",
