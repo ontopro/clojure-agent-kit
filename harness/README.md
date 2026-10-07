@@ -99,18 +99,27 @@ the source by name: a namespace the source has that the table never mentions fai
 
 ### The layers
 
-**Folders say topic; layers say dependency order.** The tree groups the namespaces by what they
-are about - `setup`, `loop`, `contract`, `gates`, `models`, `money` - and that is the axis a reader
-looking for a thing wants. It is not the axis the code depends along: `setup.doctor` and
-`setup.workspace` are leaves everything stands on, `setup.health` is the root that requires
-nearly everything, and all three live in the same folder. The second axis is `layers.edn`, the
-harness's own ruleset for the boundary gate it ships to every project: each namespace maps to the
-set it may require, exactly what it requires today, ordered bottom-up - leaves, foundations, models
-and money, the plan and the readings, the loop, the roots. `bb boundary` here, in `bb gates`, holds
-it: a new upward require fails with the namespace named, so it is a conversation before it is a
-dependency. The layer column above is computed from the ruleset, one more than the deepest layer
-of what a namespace may require, and never typed. Nothing moves a file for this; the tree keeps
-saying topic, the ruleset says order, and the inventory shows both.
+> [!NOTE]
+> **Folders say topic; layers say dependency order.**
+
+The code has two axes, and a tree can show only one.
+
+- **The folders are the topic axis.** `setup`, `loop`, `contract`, `gates`, `models`, `money`
+  group the namespaces by what they are about, which is what a reader looking for a thing wants.
+  It says nothing about who depends on whom: `setup.doctor` and `setup.workspace` are leaves
+  everything stands on, `setup.health` is the root that requires nearly everything, and all three
+  share a folder.
+- **`layers.edn` is the dependency axis.** The harness's own ruleset for the boundary gate it
+  ships to every project: each namespace maps to the set it may require - exactly what it requires
+  today - ordered bottom-up: leaves, foundations, models and money, the plan and the readings, the
+  loop, the roots.
+- **`bb boundary` holds it, in `bb gates`.** A new upward require fails with the namespace named,
+  so it is a conversation before it is a dependency.
+- **The inventory shows both.** Its layer column is computed from the ruleset - one more than the
+  deepest layer of what a namespace may require - and never typed.
+
+Nothing moves a file for this. The tree keeps saying topic, the ruleset says order, and the
+inventory shows both.
 
 Who acts on them — every review, gate and dispatch in a build, the profile role behind each and
 the model as shipped — is [`roster.md`](roster.md).

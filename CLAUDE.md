@@ -77,6 +77,15 @@ benefit. It is also a product artifact, and also not addressed to you.
   not have would fail `bb doctor` on an unrelated machine. `bb health` is never in `bb gates`.
 - **`PROVENANCE.md` divergences are fixes, not drift.** This is a fork of a private harness,
   not a mirror; "sync with upstream" is not a supported operation.
+- **Pull the important point of a section into a callout.** GitHub's five alert blockquotes,
+  each for one kind of thing, so a reader skimming sees what matters:
+  `> [!NOTE]` useful information to know even when skimming; `> [!TIP]` advice or a shortcut;
+  `> [!IMPORTANT]` a core concept or a fact a reader needs to succeed; `> [!WARNING]` content
+  demanding attention to avoid an error; `> [!CAUTION]` a destructive outcome to avoid. One
+  callout per point, the point in a sentence, the rest of the section as prose or a list under
+  it - a section that is all callouts has none. The first is the harness README's
+  "Folders say topic; layers say dependency order." Not inside `plan-template/`: the plan check
+  reads every blockquote line there as a template instruction the project deletes.
 - Vocabulary: this repo says **rule source**, never "corpus". And it says **the KIT** — short for
   *the Clojure Agent Kit*, a name and not an acronym — for itself. Lowercase `kit` is left to the
   three machine-facing things the root `README.md` lists: a workspace's `clojure-agent-kit/` folder, the `kit`

@@ -58,6 +58,12 @@ the tree is one axis and the code has two. The gate's count also caught the inve
 miss on the day: its glob matched files in subfolders only, so `harness.rules` was never in
 the block, forty-two where the gate counted forty-three.
 
+The person then pulled the principle out of the README's layers section into a GitHub callout
+(`> [!NOTE]`) and the paragraph under it became a list, one axis per item. The convention is a
+working rule in `CLAUDE.md` now: the important point of a section in one of the five callouts,
+each for one kind of thing, the rest as prose or a list beneath - and never inside
+`plan-template/`, where the plan check reads every blockquote line as an instruction to delete.
+
 ### The harness inventory is rendered from the source, not counted by hand
 
 Row 106. The harness README opened its inventory with "thirty-seven namespaces in six groups",
