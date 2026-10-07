@@ -38,6 +38,7 @@
    [harness.loop.driver :as driver]
    [harness.models.agent :as agent]
    [harness.models.catalogue :as catalogue]
+   [harness.money.reprice :as reprice]
    [harness.setup.blueprint-review :as blueprint-review]
    [harness.setup.plan :as plan]
    [harness.setup.plan-review :as plan-review]
@@ -308,11 +309,13 @@
                  (assoc old :reused? true)
                  (let [rec (try
                              (let [r (run (:profile cand) c ctx)]
-                               {:case (:id c) :candidate (:id cand) :model-named (:model cand)
-                                :model (:model r) :cost (:cost r) :ms (:ms r)
-                                :findings (:findings r) :count (count (:findings r))
-                                :no-block? (nil? (:findings r)) :input (:input r)
-                                :at (str (java.time.Instant/now))})
+                               (merge {:case (:id c) :candidate (:id cand) :model-named (:model cand)
+                                       :model (:model r) :cost (:cost r) :ms (:ms r)
+                                       :findings (:findings r) :count (count (:findings r))
+                                       :no-block? (nil? (:findings r)) :input (:input r)
+                                       :at (str (java.time.Instant/now))}
+                                      ;; what a late cost is fetched by: the ids, the endpoint, the key's NAME
+                                      (select-keys r [:generation-ids :endpoint :key-env])))
                              (catch clojure.lang.ExceptionInfo e
                                {:case (:id c) :candidate (:id cand) :model-named (:model cand)
                                 :failed (ex-message e) :at (str (java.time.Instant/now))}))]
@@ -348,14 +351,17 @@
             (agent/converse! (:profile judge) judge-system-prompt text {:dir dir} {:max-iterations 1 :tools #{}})
             {:status :failed :error {:harness/error :nothing-to-judge}})
         rows (when (= :done (:status r)) (parse-rows (:text r)))
-        rec {:case case-id :judge? true :judge (:model judge) :model (some :model (reverse (:steps r)))
-             :order lettered-ids :seed seed
-             :rows (when rows (mapv (fn [row] (update row :raised_by #(mapv lettered-ids %))) rows))
-             :cost (let [cs (keep :cost (:steps r))] (when (seq cs) (reduce + cs)))
-             :ms (- (System/currentTimeMillis) t0)
-             :failed (when (= :failed (:status r)) (pr-str (select-keys (:error r) [:harness/error :status])))
-             :no-block? (and (= :done (:status r)) (nil? rows))
-             :at (str (java.time.Instant/now))}]
+        ;; what a late cost is fetched by, as a reading keeps it: the ids, the endpoint, the key's NAME
+        fetch-by (select-keys (agent/call-record r (:profile judge)) [:generation-ids :endpoint :key-env])
+        rec (merge {:case case-id :judge? true :judge (:model judge) :model (some :model (reverse (:steps r)))
+                    :order lettered-ids :seed seed
+                    :rows (when rows (mapv (fn [row] (update row :raised_by #(mapv lettered-ids %))) rows))
+                    :cost (let [cs (keep :cost (:steps r))] (when (seq cs) (reduce + cs)))
+                    :ms (- (System/currentTimeMillis) t0)
+                    :failed (when (= :failed (:status r)) (pr-str (select-keys (:error r) [:harness/error :status])))
+                    :no-block? (and (= :done (:status r)) (nil? rows))
+                    :at (str (java.time.Instant/now))}
+                   fetch-by)]
     (write-edn! (record-path dir case-id "judge") rec)
     (println (format "  %-14s %-28s %s" case-id "judge"
                      (cond (:failed rec) (str "FAILED: " (:failed rec))
@@ -593,10 +599,32 @@
 ;; the command
 ;; ---------------------------------------------------------------------------
 
+(defn reprice!
+  "Fill the cost of every record under `<dir>/records/` the generation record
+  had not answered when it was written - a candidate's or the judge's, each
+  keeping its ids, endpoint and key variable as a reading does - through
+  `reprice/reprice-reading`, rewrite what changed, and re-render `TABLE.md`,
+  so real findings per dollar come from fetched costs and not from a balance
+  read by hand. Returns `{:changed n :lines [...]}`; a record from before the
+  ids were kept says so and stays."
+  ([dir] (reprice! dir {}))
+  ([dir opts]
+   (let [rd (fs/path dir "records")
+         results (for [f (sort (when (fs/exists? rd) (fs/glob rd "*.edn")))
+                       :let [{:keys [reading changed? line]} (reprice/reprice-reading (read-edn f) opts)]]
+                   (do (when changed? (write-edn! f reading))
+                       {:file (fs/file-name f) :changed? changed? :line line}))
+         results (vec results)]
+     (when (some :changed? results) (table! dir))
+     {:changed (count (filter :changed? results))
+      :lines (vec (for [{:keys [file changed? line]} results :when (or changed? line)]
+                    (str "  " file ": " (or line "priced"))))})))
+
 (def usage
-  "bb bake-off new [<plan-dir>] | run <bake-off.edn> | table <dir> | check
+  "bb bake-off new [<plan-dir>] | run <bake-off.edn> | table <dir> | reprice <dir> | check
   A bake-off's folder is <plan>/bake-offs/<id>/ with bake-off.edn in it (three lines: :role, :candidates, :judge).
-  `new` asks for them at a terminal; `run` expands and runs a file written by hand or by `new`.")
+  `new` asks for them at a terminal; `run` expands and runs a file written by hand or by `new`;
+  `reprice` fetches the costs the generation records had not answered at the run and re-renders the table.")
 
 (defn -main [& args]
   (let [[cmd arg] (:args (workspace/split-args args))]
@@ -609,6 +637,13 @@
                 (new! (str plan) {:ask (fn [prompt] (print prompt) (flush) (read-line))}))
         "run" (if arg (run-bake-off! arg {}) (do (println usage) (System/exit 2)))
         "table" (if arg (do (table! arg) (println (str "written: " (fs/path arg "TABLE.md")))) (do (println usage) (System/exit 2)))
+        "reprice" (if arg
+                    (let [{:keys [changed lines]} (reprice! arg)]
+                      (doseq [l lines] (println l))
+                      (println (if (pos? changed)
+                                 (str "bake-off reprice: " changed " record" (when (not= 1 changed) "s") " priced; " (fs/path arg "TABLE.md") " re-rendered")
+                                 "bake-off reprice: nothing changed")))
+                    (do (println usage) (System/exit 2)))
         "check" (apply check-main args)
         (do (println usage) (System/exit 2)))
       (catch clojure.lang.ExceptionInfo e

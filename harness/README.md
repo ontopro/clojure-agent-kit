@@ -365,7 +365,8 @@ of a project is written into it - which is why the list below is short.
   `<name>-build/bake-offs/<id>/bake-off.edn`; `bb bake-off run` reads every case on disk for the act
   with each candidate once, has the judge map where they agree and disagree, blind, and renders
   `TABLE.md`; you mark the rows real or not in `marks.edn` and `bb bake-off table` re-renders.
-  The winner's block is pasted into `profile.edn` as it is. `bb gates` here holds the table to the
+  The winner's block is pasted into `profile.edn` as it is. A record whose cost had not arrived when it was written
+  keeps its generation ids, and `bb bake-off reprice <dir>` fetches the costs later and re-renders the table. `bb gates` here holds the table to the
   records.
 - **A KIT kept outside its workspace is pointed at it.** Every command here finds the workspace by
   walking up from `harness/`, which from a clone kept elsewhere (`bb init <name> <dir>`, or one

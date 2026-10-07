@@ -257,3 +257,50 @@
       (is (not (str/includes? first-out "reused")))
       (is (= 3 (count (re-seq #"\(reused from the last run\)" second-out))) "both readings and the judge")
       (is (str/includes? second-out "written:") "the table is rendered again from the records"))))
+
+(deftest a-records-cost-can-be-fetched-later-and-the-table-re-rendered
+  ;; A generation record lags the call; the run writes :cost nil and keeps what
+  ;; a late fetch needs - the ids, the endpoint, the key's NAME - as a reading
+  ;; does, and `bb bake-off reprice` fills it and re-renders the table.
+  (let [seen (atom [])
+        stop (srv/run-server
+              (fn [req]
+                (let [id (second (re-find #"id=([^&]+)" (str (:query-string req))))]
+                  (swap! seen conj id)
+                  {:status 200 :headers {"Content-Type" "application/json" "Connection" "close"}
+                   :body (json/generate-string {:data {:id id :total_cost (if (= id "gen-j") 0.5 0.125)}})}))
+              {:port 0 :legacy-return-value? false})
+        endpoint (str "http://127.0.0.1:" (srv/server-port stop) "/api/v1") ; the generation endpoint is keyed off the OpenRouter path
+        dir (str (fs/create-temp-dir {:prefix "bake-off-reprice-"}))
+        opts {:fetch-opts {:attempts 1 :interval-ms 1 :timeout-ms 2000} :getenv {"BAKE_OFF_TEST_KEY" "sk-test"}}
+        rec (fn [who extra] (merge {:case "c1" :candidate who :model "m" :cost nil :findings [] :count 0 :input "i" :act :spec-reviewer
+                                    :generation-ids [(str "gen-" who)] :endpoint endpoint :key-env "BAKE_OFF_TEST_KEY"}
+                                   extra))]
+    (try
+      (fs/create-dirs (fs/path dir "records"))
+      (spit (str (fs/path dir "records" "c1--a.edn")) (pr-str (rec "a" {})))
+      (spit (str (fs/path dir "records" "c1--b.edn")) (pr-str (rec "b" {:cost 0.25})))
+      (spit (str (fs/path dir "records" "c1--judge.edn")) (pr-str (rec "j" {:judge? true :judge "m" :rows [] :order {} :seed 1 :generation-ids ["gen-j"]})))
+      (spit (str (fs/path dir "records" "c1--old.edn")) (pr-str (dissoc (rec "old" {}) :generation-ids :endpoint :key-env)))
+      (spit (str (fs/path dir "resolved.edn")) (pr-str {:resolved {:act :spec-reviewer :candidates [{:id "a" :model "m"} {:id "b" :model "m"} {:id "old" :model "m"}] :judge {:model "m"}}}))
+      (let [{:keys [changed lines]} (bo/reprice! dir opts)]
+        (is (= 2 changed) "the unpriced candidate and the judge; the priced one and the one with no ids stay")
+        (is (= #{"gen-a" "gen-j"} (set @seen)) "only what was unpriced and had ids was fetched")
+        (is (= 0.125 (:cost (edn/read-string (slurp (str (fs/path dir "records" "c1--a.edn")))))))
+        (is (= 0.5 (:cost (edn/read-string (slurp (str (fs/path dir "records" "c1--judge.edn")))))))
+        (is (= 0.25 (:cost (edn/read-string (slurp (str (fs/path dir "records" "c1--b.edn")))))) "a cost already there is not fetched again")
+        (is (some #(str/includes? % "c1--old.edn: no generation id") lines) "a record from before the ids were kept says so")
+        (is (fs/exists? (fs/path dir "TABLE.md")) "the table is re-rendered")
+        (is (= 0 (:changed (bo/reprice! dir opts))) "nothing left to fetch"))
+      (finally @(srv/server-stop! stop)))))
+
+(deftest the-records-of-a-run-keep-what-a-late-fetch-needs
+  (let [[{:keys [dir]} _] (with-stub (fn [endpoint]
+                                       (let [{:keys [plan dir spec]} (scratch-plan-with-bake-off)]
+                                         (with-out-str (bo/run-bake-off! spec {:listing cat-test/listing :routes (test-routes endpoint) :plan plan :method method-path :seed 3}))
+                                         {:dir dir})))
+        {:keys [candidates judges]} (bo/read-records dir)]
+    (doseq [r (concat (mapcat val candidates) (vals judges))]
+      (is (= ["gen-1"] (:generation-ids r)) (str (:candidate r) ": the completion ids"))
+      (is (string? (:endpoint r)))
+      (is (contains? r :key-env) "the key's NAME, never a key - nil here, since the test route names none"))))

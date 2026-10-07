@@ -38,6 +38,7 @@
 
   A record from before the ids were kept has nothing to fetch by, and says so."
   (:require
+   [babashka.fs :as fs]
    [clojure.edn :as edn]
    [clojure.pprint :as pp]
    [clojure.string :as str]
@@ -237,6 +238,9 @@
       (when-not (or (:run/id record) reading?)
         (println (str "reprice: " path " has no :run/id and no reading's ids - it is neither a run record nor a review"))
         (System/exit 1))
+      (when (fs/exists? (fs/path path "bake-off.edn"))
+        (println (str "reprice: " path " is a bake-off folder - run `bb bake-off reprice " path "`, which prices every record and re-renders the table"))
+        (System/exit 2))
       (cond
         ;; A reading's record: one call, its ids beside its cost.
         reading? (reprice-reading-file! path record)

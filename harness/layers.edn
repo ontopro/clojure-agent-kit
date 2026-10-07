@@ -73,7 +73,7 @@
                               harness.setup.skills harness.setup.template harness.setup.workspace}
  harness.setup.upgrade      #{harness.models.profile harness.rules harness.setup.doctor harness.setup.skills harness.setup.workspace}
  harness.setup.next         #{harness.contract.blueprint harness.setup.plan harness.setup.workspace}
- harness.models.bake-off    #{harness.contract.spec-review harness.loop.driver harness.models.agent harness.models.catalogue
+ harness.models.bake-off    #{harness.contract.spec-review harness.loop.driver harness.models.agent harness.models.catalogue harness.money.reprice
                               harness.setup.blueprint-review harness.setup.plan harness.setup.plan-review harness.setup.workspace}
  harness.money.stage-report #{harness.contract.blueprint harness.loop.log harness.setup.workspace}
  harness.setup.health       #{harness.gates.boundary harness.gates.run harness.loop.driver harness.loop.orchestrate harness.models.runner

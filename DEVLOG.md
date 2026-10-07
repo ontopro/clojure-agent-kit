@@ -41,6 +41,25 @@ difference, and nothing is migrated.
 
 ## 2026-10-07
 
+### A bake-off's records keep what a late cost is fetched by
+
+Row 112's residue. A completion from the router carries no price; the harness asks the
+generation endpoint by the completion's id, and that record often lags the call by seconds.
+Every other call site keeps the ids for a later fetch - a run's steps, a reading's record -
+and `bb reprice` fills what was missing. A bake-off's records kept the cost alone, so when
+every generation record lagged on the day's bake-off, the table said the bake-off cost
+nothing and the account balance gave the figure.
+
+Each candidate's record and each judge's now carries its generation ids, its endpoint and the
+NAME of its key's variable, through `agent/call-record` as a reading does, and `bb bake-off
+reprice <dir>` prices every record under `records/` through the repricer's reading path,
+rewrites what changed, and re-renders the table; a record from before the ids were kept says
+so and stays, and `bb reprice` given a bake-off folder points at the command. It is the
+bake-off's command rather than the repricer's because of the layers declared this morning:
+the repricer sits below the loop and the bake-off above it, so the bake-off requires the
+repricer and not the other way, and `layers.edn` says so. The day's own records cannot be
+repriced; the balance stands for them, in words.
+
 ### The shipped reader moves to the newest of its line, on a bake-off
 
 Row 112. `bb profile` had said it on the day it could: the OpenAI reader behind the

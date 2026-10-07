@@ -161,7 +161,7 @@
   ;; Candidates for a role, read against the same artifact, compared by a judge that reads them
   ;; blind - one pass each, the person's marks decide what is real. The table is held to the
   ;; records by `bake-off-check`, which `gates` runs in a workspace's clone.
-  bake-off {:doc "bb bake-off run <plan>/bake-offs/<id>/bake-off.edn | table <dir> | check: a three-line spec (:role, :candidates as \"<model> <effort>\", :judge) expanded through the catalogue and routes.edn, every case run with every candidate, a judge that reads the answers blind and maps consensus, one TABLE.md; marks.edn is the person's real/not per row"
+  bake-off {:doc "bb bake-off run <plan>/bake-offs/<id>/bake-off.edn | table <dir> | reprice <dir> | check: a three-line spec (:role, :candidates as \"<model> <effort>\", :judge) expanded through the catalogue and routes.edn, every case run with every candidate, a judge that reads the answers blind and maps consensus, one TABLE.md; marks.edn is the person's real/not per row"
             :requires ([harness.models.bake-off :as bake-off])
             :task (apply bake-off/-main *command-line-args*)}
   bake-off-check {:doc "Fail when a bake-off's TABLE.md has drifted from its records and marks (the workspace's plan; nothing to check outside one)"
