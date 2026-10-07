@@ -31,6 +31,21 @@
       (is (some #(str/includes? % "the plan template changed since: plan-template/01-requirements.md") lines))
       (is (some #(str/includes? % "git -C /k diff abc HEAD -- plan-template/") lines) "the command that shows it")
       (is (some #(str/includes? % "placeholder rule :data-conventions changed since this workspace filled it") lines))))
+  (testing "the application template's pin moved: both pins, and where the template's change is seen"
+    (let [kit-v1 {:git/url "https://github.com/ontopro/clojure-stack-lite.git" :git/tag "kit-v1"
+                  :git/sha "a2c0eaa567b01eefdf7dcde74a0960e72968a850"}
+          kit-v1-1 (assoc kit-v1 :git/tag "kit-v1.1" :git/sha "f6049dcc98c0cf8f536b8f69f26613360ae41c26")
+          line (fn [from to] (some #(when (str/includes? % "pin moved") %)
+                                   (upgrade/expectations (assoc complete :pin-moved {:from from :to to}))))]
+      (is (str/includes? (line kit-v1 kit-v1-1) "the application template's pin moved since: kit-v1 (a2c0eaa) -> kit-v1.1 (f6049dc)"))
+      (is (str/includes? (line kit-v1 kit-v1-1) "https://github.com/ontopro/clojure-stack-lite/compare/a2c0eaa...f6049dc"))
+      (is (str/includes? (line (dissoc kit-v1 :git/tag) (assoc kit-v1-1 :git/url "https://example.invalid/t.git"))
+                         "(a2c0eaa) -> kit-v1.1 (f6049dc)")
+          "no tag: the commit alone")
+      (is (str/includes? (line kit-v1 (assoc kit-v1-1 :git/url "https://example.invalid/t.git"))
+                         "`git diff a2c0eaa f6049dc` in a clone of https://example.invalid/t.git")
+          "not on GitHub: the git command")
+      (is (not-any? #(str/includes? % "pin moved") (upgrade/expectations complete)) "no line when the pin has not moved")))
   (testing "a commit this clone does not have"
     (is (str/includes? (first (upgrade/expectations (assoc complete :behind nil)))
                        "does not have: another KIT, or a commit not yet pulled")))
@@ -66,6 +81,15 @@
                                               :keys-present (remove #{:workspace/kit-commit} upgrade/expected-keys)))
                        "workspace.edn records no :workspace/kit-commit"))))
 
+(deftest the-pin-moved-when-the-default-templates-commit-differs
+  (let [pins (fn [sha tag] {:default :t :templates {:t {:git/sha sha :git/tag tag :git/url "u"}
+                                                    :other {:git/sha "0000000000" :git/url "u"}}})]
+    (is (nil? (upgrade/pin-moved (pins "a2c0eaa000" "kit-v1") (pins "a2c0eaa000" "kit-v1"))))
+    (is (nil? (upgrade/pin-moved (pins "a2c0eaa000" "kit-v1") (assoc-in (pins "a2c0eaa000" "kit-v1") [:templates :other :git/sha] "1111111111")))
+        "an entry bb init does not generate from moving is not the application's")
+    (is (= ["kit-v1" "kit-v1.1"]
+           (map :git/tag ((juxt :from :to) (upgrade/pin-moved (pins "a2c0eaa000" "kit-v1") (pins "f6049dc000" "kit-v1.1"))))))))
+
 (deftest the-facts-are-read-from-a-workspace-against-this-clone
   ;; A workspace made at this clone's HEAD, with the shipped profile copied in and no mirror:
   ;; nothing has changed since, the profile has every role, and the report says so.
@@ -85,6 +109,7 @@
       (is (= head (:made-at f)))
       (is (= 0 (:behind f)) "made at HEAD: nothing is later")
       (is (= [] (:template-changed f)))
+      (is (nil? (:pin-moved f)) "made at HEAD: the pin is the one the application came from")
       (is (= [] (:guidance-changed f)))
       (is (= [] (:mirrors-drifted f)))
       (is (nil? (:profile f)) "no :workspace/build, so no profile is found - which the renamed-key line explains")

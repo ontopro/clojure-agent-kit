@@ -25,6 +25,7 @@
    [harness.rules :as rules]
    [harness.setup.doctor :as doctor]
    [harness.setup.skills :as skills]
+   [harness.setup.template :as template]
    [harness.setup.workspace :as workspace]))
 
 (def expected-keys
@@ -44,6 +45,29 @@
 ;; pure: the lines
 ;; ---------------------------------------------------------------------------
 
+(defn pin-moved
+  "The default template's pin in `then-pins` and in `now-pins` - two template pins
+  files as data, `bb init`'s at the workspace's commit and the KIT's now - as
+  `{:from _ :to _}` when its commit differs, else nil. `bb init` generates from
+  the default entry only, so that is the one an application came from."
+  [then-pins now-pins]
+  (let [then (template/pin then-pins)
+        now (template/pin now-pins)]
+    (when (not= (:git/sha then) (:git/sha now))
+      {:from then :to now})))
+
+(defn- short-sha [p] (subs (:git/sha p) 0 7))
+
+(defn- pin-label [p] (str (some-> (:git/tag p) (str " ")) "(" (short-sha p) ")"))
+
+(defn- template-diff
+  "Where a person sees what the template changed between two pins: GitHub's
+  compare page where the template is there, else the git command for a clone."
+  [from to]
+  (if-let [repo (second (re-matches #"https://github\.com/(.+?)(?:\.git)?" (str (:git/url to))))]
+    (str "https://github.com/" repo "/compare/" (short-sha from) "..." (short-sha to))
+    (str "`git diff " (short-sha from) " " (short-sha to) "` in a clone of " (:git/url to))))
+
 (defn expectations
   "The report's lines from `facts`:
 
@@ -55,6 +79,8 @@
     :behind           how many commits `head` is past `made-at`, or nil when
                       `made-at` is unknown here (another KIT, or never recorded)
     :template-changed plan-template files changed since `made-at`
+    :pin-moved        the application template's pin then and now (`pin-moved`),
+                      or nil when it has not moved since `made-at`
     :guidance-changed ids of placeholder rules whose shipped text changed since
                       `made-at`, among those this workspace's overlay fills
     :mirrors-drifted  rule mirrors that do not match the source now
@@ -65,7 +91,7 @@
 
   Each line names what is expected, what is here, and the command that shows
   the difference. An empty vector means nothing is missing."
-  [{:keys [kit keys-present made-at made-version head head-version behind template-changed guidance-changed
+  [{:keys [kit keys-present made-at made-version head head-version behind template-changed pin-moved guidance-changed
            mirrors-drifted profile profile-missing skills-missing skills-drifted]}]
   (let [present (set keys-present)
         ;; the version beside the commit where one is known: a tag at a plan's boundary, for a person
@@ -102,6 +128,12 @@
       (conj (str "the plan template changed since: " (str/join ", " template-changed)
                  " - the build's copies are its own; where a document is still being filled, read the diff: "
                  "`git -C " kit " diff " made-at " HEAD -- plan-template/`"))
+
+      pin-moved
+      (conj (let [{:keys [from to]} pin-moved]
+              (str "the application template's pin moved since: " (pin-label from) " -> " (pin-label to)
+                   "; the application was generated from the first and is the project's own, so nothing in it changed - "
+                   "what the template changed: " (template-diff from to) ", and the KIT's DEVLOG says why")))
 
       (seq guidance-changed)
       (conj (str "the shipped guidance of placeholder rule" (when (not= 1 (count guidance-changed)) "s") " "
@@ -193,7 +225,8 @@
 (defn facts
   "Everything `expectations` needs, read from the workspace `ws` and asked of
   git in `kit-dir`. The commit comparisons need `made-at` to be in this clone's
-  history; when it is not, `:behind` is nil and the two change lists are empty."
+  history; when it is not, `:behind` and `:pin-moved` are nil and the two change
+  lists are empty."
   [ws kit-dir]
   (let [raw (raw-workspace ws)
         made-at (:workspace/kit-commit raw)
@@ -212,6 +245,11 @@
      :template-changed (if known?
                          (vec (remove str/blank? (str/split-lines (or (git kit-dir "diff" "--name-only" made-at "HEAD" "--" "plan-template/") ""))))
                          [])
+     :pin-moved (when known?
+                  (some-> (git kit-dir "show" (str made-at ":harness/resources/" template/resource-name))
+                          (java.io.StringReader.)
+                          (template/load-pins)
+                          (pin-moved (template/load-pins))))
      :guidance-changed (if known? (guidance-changed ws kit-dir made-at) [])
      :mirrors-drifted (mirrors-drifted ws)
      :profile profile-path

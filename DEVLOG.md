@@ -40,6 +40,19 @@ until a workflow runs it on push.
 
 ## 2026-10-07
 
+### `bb doctor` says when the application template's pin moved
+
+Row 114's residue. The doctor's report in a workspace - what a pulled KIT expects that the
+workspace lacks - compared the plan template, the rules' guidance, the mirrors, the skills and
+`workspace.edn`'s keys, and not the pin, so a pull that moved it, as the move to `kit-v1.1` did,
+said nothing to a workspace whose application came from the one before. It reads the pins file
+at the commit `bb init` recorded, compares the default entry - the only one `bb init` generates
+from - with the KIT's now, and when the commit differs says both pins, that the application is
+the project's own and nothing in it changed, and where the template's change is seen: GitHub's
+compare page where the template is there, the git command for a clone where it is not. The
+comparison is a pure function tested on data, not on a past commit of this repository, which a
+squash merge would take away; the line was tried on the pins at the commit before the move.
+
 ### The pinned template is `kit-v1.1`: its security defaults completed
 
 Row 114. The plan template's architecture document is gaining a security section whose first
@@ -79,7 +92,7 @@ accounts, which the KIT does not generate - the template's auth variant is left 
 The pin moves, and both platforms' health records are run again on it. An application already
 generated is a copy and keeps `kit-v1`, and nothing tells its workspace the pin moved: `bb
 doctor`'s upgrade lines compare the plan template, the rules' guidance and the mirrors, not the
-pin. Open, in the row.
+pin - fixed the same day, in the entry above.
 
 ## 0.6.0 — plan v6's boundary: the guided lean workflow
 

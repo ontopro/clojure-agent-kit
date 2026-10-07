@@ -71,7 +71,7 @@
  ;; the roots - nothing requires them
  harness.setup.init         #{harness.contract.shapes harness.models.profile harness.rules harness.setup.app harness.setup.doctor
                               harness.setup.skills harness.setup.template harness.setup.workspace}
- harness.setup.upgrade      #{harness.models.profile harness.rules harness.setup.doctor harness.setup.skills harness.setup.workspace}
+ harness.setup.upgrade      #{harness.models.profile harness.rules harness.setup.doctor harness.setup.skills harness.setup.template harness.setup.workspace}
  harness.setup.next         #{harness.contract.blueprint harness.setup.plan harness.setup.workspace}
  harness.models.bake-off    #{harness.contract.spec-review harness.loop.driver harness.models.agent harness.models.catalogue harness.money.reprice
                               harness.setup.blueprint-review harness.setup.plan harness.setup.plan-review harness.setup.workspace}
