@@ -65,20 +65,22 @@
 
   Each line names what is expected, what is here, and the command that shows
   the difference. An empty vector means nothing is missing."
-  [{:keys [kit keys-present made-at head behind template-changed guidance-changed
+  [{:keys [kit keys-present made-at made-version head head-version behind template-changed guidance-changed
            mirrors-drifted profile profile-missing skills-missing skills-drifted]}]
-  (let [present (set keys-present)]
+  (let [present (set keys-present)
+        ;; the version beside the commit where one is known: a tag at a plan's boundary, for a person
+        at (fn [commit version] (str commit (when version (str " (version " version ")"))))]
     (cond-> []
       (and made-at (nil? behind))
-      (conj (str "made at KIT commit " made-at ", which this clone (" kit ", at " head
+      (conj (str "made at KIT commit " (at made-at made-version) ", which this clone (" kit ", at " (at head head-version)
                  ") does not have: another KIT, or a commit not yet pulled - nothing below can say what changed since"))
 
       (and made-at behind (pos? behind))
-      (conj (str "made at KIT commit " made-at "; the KIT is " behind " commit"
-                 (when (not= 1 behind) "s") " later, at " head))
+      (conj (str "made at KIT commit " (at made-at made-version) "; the KIT is " behind " commit"
+                 (when (not= 1 behind) "s") " later, at " (at head head-version)))
 
       (and made-at behind (zero? behind))
-      (conj (str "made at KIT commit " made-at ", which is where the KIT is"))
+      (conj (str "made at KIT commit " (at made-at made-version) ", which is where the KIT is"))
 
       (nil? made-at)
       (conj (str "workspace.edn records no :workspace/kit-commit (bb init writes it since 2026-10-06): "
@@ -203,7 +205,9 @@
      :kit (str kit-dir)
      :keys-present (vec (keys raw))
      :made-at made-at
+     :made-version (:workspace/kit-version raw)
      :head head
+     :head-version (git kit-dir "describe" "--tags" "--abbrev=0")
      :behind behind
      :template-changed (if known?
                          (vec (remove str/blank? (str/split-lines (or (git kit-dir "diff" "--name-only" made-at "HEAD" "--" "plan-template/") ""))))

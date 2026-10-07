@@ -61,7 +61,7 @@
     (str (fs/relativize (fs/normalize ws-dir) (fs/normalize kit-dir)))
     (str (fs/normalize kit-dir))))
 
-(defn- workspace-edn [{:workspace/keys [kit app build work rule-mirrors rules-overlay records run-tables kit-commit]}]
+(defn- workspace-edn [{:workspace/keys [kit app build work rule-mirrors rules-overlay records run-tables kit-commit kit-version]}]
   (str ";; Which folder is which, for the KIT's harness (`harness.setup.workspace` reads it). Written by\n"
        ";; `bb init`. A relative path is relative to this file. In no repository: if it is lost, write it again.\n"
        "{:workspace/kit " (pr-str kit) "\n"
@@ -78,7 +78,9 @@
        " :workspace/run-tables " (pr-str run-tables) "\n"
        " ;; the KIT commit this workspace was made at: `bb doctor` run here says what a later KIT expects\n"
        " ;; that this workspace lacks (harness.setup.upgrade); never rewritten by a pull\n"
-       " :workspace/kit-commit " (pr-str kit-commit) "}\n"))
+       " :workspace/kit-commit " (pr-str kit-commit) "\n"
+       " ;; the KIT's version then - the tag at the last plan boundary - for a person; the doctor reads the commit\n"
+       " :workspace/kit-version " (pr-str kit-version) "}\n"))
 
 (defn- rules-overlay-edn
   "`<build>/rules.edn` as `bb init` writes it: the rule source's placeholder rules,
@@ -297,7 +299,7 @@
   `:dir? true`, `:content string`, `:copy-from abs`, or `:app? true` (the
   application's folder: created only by an `:app-fn`). `:repos` are the folders
   that become repositories."
-  [{:keys [kit-dir dir plan-template skills rule-mirrors seat brief today kit-commit] project :name defaults :loop/defaults
+  [{:keys [kit-dir dir plan-template skills rule-mirrors seat brief today kit-commit kit-version] project :name defaults :loop/defaults
     app-folder :app build-folder :build}]
   (let [ws-dir (str (fs/normalize (or dir (fs/parent kit-dir))))
         seat (or seat default-seat)
@@ -311,7 +313,8 @@
                     :workspace/rules-overlay (str build "/rules.edn")
                     :workspace/records (str build "/runs")
                     :workspace/run-tables (str build "/RUNS.md")}
-             kit-commit (assoc :workspace/kit-commit kit-commit))
+             kit-commit (assoc :workspace/kit-commit kit-commit)
+             kit-version (assoc :workspace/kit-version kit-version))
         kit-path #(str (fs/path kit-dir %))]
     {:workspace/dir ws-dir
      :default? (nil? dir)
@@ -485,6 +488,16 @@
                                     "git" "rev-parse" "HEAD")]
     (when (zero? exit) (str/trim out))))
 
+(defn kit-version
+  "The KIT's version at `kit-dir`: the nearest tag at or before HEAD (`git describe
+  --tags --abbrev=0`), which the KIT puts at each plan's boundary; nil where there
+  is no tag or no repository. Recorded beside the commit, so a person reads a
+  version and the doctor computes from the commit."
+  [kit-dir]
+  (let [{:keys [exit out]} (p/shell {:dir (str kit-dir) :out :string :err :string :continue true}
+                                    "git" "describe" "--tags" "--abbrev=0")]
+    (when (zero? exit) (not-empty (str/trim out)))))
+
 (defn- git! [dir env & args]
   (let [{:keys [exit err]} (apply p/shell {:dir (str dir) :out :string :err :string
                                            :continue true :extra-env env}
@@ -586,6 +599,7 @@
                :brief (some-> brief-file slurp)
                :today (str (java.time.LocalDate/now))
                :kit-commit (kit-commit kit-dir)
+               :kit-version (kit-version kit-dir)
                :plan-template (plan-template-files kit-dir)
                :skills (skills/sources kit-dir)
                ;; THE MIRROR FOLLOWS THE FOLDER, not the name: it is a path in workspace.edn.

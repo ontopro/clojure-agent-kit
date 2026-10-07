@@ -34,6 +34,11 @@
   (testing "a commit this clone does not have"
     (is (str/includes? (first (upgrade/expectations (assoc complete :behind nil)))
                        "does not have: another KIT, or a commit not yet pulled")))
+  (testing "the version beside the commit, where a tag names one; nothing where none does"
+    (is (= "made at KIT commit abc (version 0.6.0); the KIT is 3 commits later, at def (version 0.7.0)"
+           (first (upgrade/expectations (assoc complete :head "def" :behind 3 :made-version "0.6.0" :head-version "0.7.0")))))
+    (is (= "made at KIT commit abc, which is where the KIT is" (first (upgrade/expectations complete)))
+        "a workspace from before the versions, against a clone with no tag: the line as it was"))
   (testing "no commit recorded: the line says how to add it, and nothing claims what changed"
     (let [lines (upgrade/expectations (assoc complete :made-at nil :behind nil
                                              :keys-present (remove #{:workspace/kit-commit} upgrade/expected-keys)))]

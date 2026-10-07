@@ -23,9 +23,56 @@ because nothing here can re-derive them: what was learned is said in words. The
 development branch reached `main` as one commit, so its commits are not cited
 either; an entry's date is its reference.
 
+**How it is versioned.** The KIT carries a tag at each plan's boundary - `0.6.0` closes plan
+v6, the next plan's boundary is `0.7.0` - and a heading for the tag stands above the day's
+entries here, with the one line a workspace made before it needs: what `bb doctor` run there
+will list, in a sentence. `bb init` records the version beside the commit in `workspace.edn`,
+the doctor prints both, and the root README names the current tag. Not `kit-vN`: those are
+the template fork's tags and version the template, not the KIT.
+
 ---
 
+## 0.6.0 — plan v6's boundary: the guided lean workflow
+
+A workspace made before `0.6.0` lacks the plan reviewer role, the four skills under
+`.claude/skills/`, the stage gates records, the lessons document, and the renamed `loop.edn`
+and `workspace.edn` keys; `bb doctor` run in it lists each with the command that shows the
+difference, and nothing is migrated.
+
 ## 2026-10-07
+
+### The KIT carries a version tag at each plan's boundary
+
+Row 109. The clone is upgraded with `git pull`, and what a workspace was made at was a commit
+hash in `workspace.edn` and a date in the DEVLOG; nothing short named where a plan's work
+ended and the next began, and a person reading "made at commit 1799a80" learned nothing a
+version would have told them. A reading of a Clojure web framework that tags each release and
+heads its changelog with what an upgrade needs named the shape: a tag at each plan's boundary,
+not the template fork's `kit-vN`, a DEVLOG heading per tag with the one line an older
+workspace needs, the version recorded beside the commit, the root README naming the tag.
+
+`bb init` now records `:workspace/kit-version` - the nearest tag at or before HEAD, nil where
+there is none - beside `:workspace/kit-commit`, for a person; the doctor computes from the
+commit as before and prints the version beside it where one is known, at both ends of "made
+at ... the KIT is N commits later". The DEVLOG's head says how it is versioned, and the
+heading above is `0.6.0`'s, written here before the tag exists because the tag is the person's
+to make on `main` after this lands: a version named before it is made is a promise, and the
+heading is where the promise is kept. The key is not among the ones the doctor reports as
+missing: a workspace without it is older, not wrong.
+
+### The alignment sentence is a project's formatter setting, said in its data conventions
+
+Row 108. `:align-forms` ended with a sentence about cljfmt - that it does not align `cond` or
+`let` values, and that `:else    x` fails the fmt gate - which is true of the KIT's own
+`.cljfmt.edn`, where `:remove-multiple-non-indenting-spaces? true` makes it so, and false of a
+project whose formatter aligns: a reading of a Clojure web framework whose config turns
+alignment on showed a role following the rule and gate 0 rewriting its file the other way. A
+rule that misdescribes its gate erodes every other rule, and this one described a setting as a
+property of the tool. The sentence now says what is true everywhere - alignment is the project's
+formatter setting, the data conventions say which way it is set, and a form padded against the
+setting fails the fmt gate - and the `:data-conventions` placeholder asks the project to say it,
+with what each setting means at the gate. `bb rules-sync` re-rendered the two mirrors; a
+project that filled the placeholder before this hears of the changed guidance from `bb doctor`.
 
 ### The harness is under its own boundary gate: folders say topic, layers say dependency order
 

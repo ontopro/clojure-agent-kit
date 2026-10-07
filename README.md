@@ -22,8 +22,10 @@ something narrower each time:
 > project's workspace next to the application it generates from a pinned template, upgraded
 > with `git pull`, and nothing of the project is written into it; `bb doctor` run in the
 > workspace then says what the pulled KIT expects that the workspace, made at an earlier commit,
-> lacks. There is no library to require; there is one commit of one template that a dated health
-> check certifies with it.
+> lacks. The KIT carries a version tag at each plan's boundary - `0.6.0` is the current one, and
+> the DEVLOG's heading for it says in a line what a workspace made before it needs; `bb init`
+> records the version beside the commit. There is no library to require; there is one commit
+> of one template that a dated health check certifies with it.
 
 ## Five parts
 
