@@ -154,8 +154,22 @@
            :params {:reasoning_effort "medium"
                     :provider {:only ["google-vertex"] :allow_fallbacks false}}}
 
-  ;; REVIEWER — gpt-5.6-sol at high effort, over OpenRouter's standard endpoint.
-  ;; Dated selection 2026-09-16.
+  ;; REVIEWER — gpt-6.1-sol at high effort, over OpenRouter's standard endpoint.
+  ;; Dated selection 2026-10-07; gpt-5.6-sol from 2026-09-16 until then.
+  ;;
+  ;; WHY IT MOVED, MEASURED: `bb profile` said the line had two newer models at
+  ;; the same price, and a bake-off read eight saved specs with both the old
+  ;; reader and gpt-6.1-sol at high, a judge of another family reading blind.
+  ;; The newer one raised half as many findings and the judge called nearly
+  ;; all of them real; the old one raised twice as many and the judge called
+  ;; fewer than half real, the rest being of the kind the method already
+  ;; answers with its types rule. Each found a handful the other missed, so
+  ;; neither wins on recall; for a list a person reads at a stop, fewer
+  ;; findings that are mostly real is the better economy, and it read faster.
+  ;; Measured as the spec reviewer; the three reading roles move together,
+  ;; since they are one reader read three ways. The person decided on the
+  ;; judge's reading. The records are the KIT session's working material, not
+  ;; in the repository, so this is said in words.
   ;;
   ;; STANDARD, NOT FLEX. Flex was rate-limited upstream on most requests when
   ;; this was measured, and a verifier that fails for capacity rather than for
@@ -175,7 +189,7 @@
   ;; findings. A flash tier spends a high budget thinking and has nothing left
   ;; to say with; this model showed no such shape at high.
   :reviewer {:family :openai
-             :model "openai/gpt-5.6-sol"
+             :model "openai/gpt-6.1-sol"
              :shape :openai
              :endpoint "https://openrouter.ai/api/v1"
              :key-env "OPENROUTER_API_KEY"
@@ -203,7 +217,7 @@
   ;; NOT THE SEAT'S FAMILY, and `bb profile` checks it as it checks the spec
   ;; reviewer: the plan and every stage plan are the seat's writing.
   :plan-reviewer {:family :openai
-                  :model "openai/gpt-5.6-sol"
+                  :model "openai/gpt-6.1-sol"
                   :shape :openai
                   :endpoint "https://openrouter.ai/api/v1"
                   :key-env "OPENROUTER_API_KEY"
@@ -221,13 +235,16 @@
   ;; the way its author did. The spec's writer and its reviewer are different
   ;; families for the same reason the Tester is not the Coder's.
   ;;
-  ;; WHY THIS MODEL, AND HIGH: measured. Tried on specs that had already been
-  ;; dispatched it named every ambiguity that had cost a round; the
-  ;; Architect's own family at low effort matched it on the one spec compared,
-  ;; but is the seat's family. A cheaper choice here is possible and not yet
-  ;; measured.
+  ;; WHY THIS MODEL, AND HIGH: measured. The line's first model, tried on specs
+  ;; that had already been dispatched, named every ambiguity that had cost a
+  ;; round; the Architect's own family at low effort matched it on the one spec
+  ;; compared, but is the seat's family. On 2026-10-07 the line's newest,
+  ;; gpt-6.1-sol, was read against it on eight saved specs with a judge of
+  ;; another family: fewer findings, nearly all of them real by the judge's
+  ;; reading, faster, same price (the Reviewer's comment has it). A cheaper
+  ;; choice here is possible and not yet measured.
   :spec-reviewer {:family :openai
-                  :model "openai/gpt-5.6-sol"
+                  :model "openai/gpt-6.1-sol"
                   :shape :openai
                   :endpoint "https://openrouter.ai/api/v1"
                   :key-env "OPENROUTER_API_KEY"

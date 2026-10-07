@@ -41,6 +41,33 @@ difference, and nothing is migrated.
 
 ## 2026-10-07
 
+### The shipped reader moves to the newest of its line, on a bake-off
+
+Row 112. `bb profile` had said it on the day it could: the OpenAI reader behind the
+Reviewer, the spec reviewer and the plan reviewer of the shipped `claude` example had two
+newer models in its line at the same price. The method's rule is that a selection is measured
+before it changes, so plan v6 §5a's bake-off ran: eight of the first project's saved specs,
+read in place, by the reader of record and by the line's newest at high effort, a judge of
+another family reading the answers blind. The person dropped the middle model after one
+reading; the run was stopped twice and the tool learned to read in parallel and to resume on
+the way (rows 110 and 111), and the whole bake-off, repeats included, cost under two dollars
+and took twenty minutes once it ran eight at a time.
+
+What the judge said, shown and never counted: the newer model raised half as many findings
+and nearly all of them were real; the older raised twice as many and fewer than half were,
+the rest being the "behaviour on an invalid argument is unspecified" kind the method already
+answers with its types rule. Each found a handful the other missed, so neither wins on
+recall; for a list a person reads at a stop, fewer findings that are mostly real is the
+better economy, and the newer read faster. The person decided on the judge's reading rather
+than marking the rows, and the three reading roles moved together, since they are one reader
+read three ways: `openai/gpt-6.1-sol` at high, from 2026-10-07, with the measurement in the
+profile's comment in words. The records are the KIT session's working material and stay out
+of the repository, as the earlier selections' did.
+
+The run also showed the tool's own gap: every reading's record had no cost, because the
+generation record lagged the call and a bake-off's records keep nothing to fetch it by later,
+so the table said the bake-off cost nothing and the account balance gave the figure. Open in
+the row.
 ### A bake-off reads in a bounded pool, and a stopped one resumes from its records
 
 Rows 110 and 111, one commit: the two halves of one afternoon. The shipped reviewer's bake-off
