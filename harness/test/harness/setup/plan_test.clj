@@ -34,7 +34,7 @@
   ;; The fixture. `bb init` copies every one of these into `<name>-build/docs/`.
   (is (= {"00-overview.md" 19
           "01-requirements.md" 14
-          "02-architecture.md" 23
+          "02-architecture.md" 35
           "03-method-and-tooling.md" 42
           "04-decision-log.md" 12
           "05-lessons.md" 11
@@ -59,6 +59,16 @@
           to (str/index-of text "# Part 2")]
       (is (and from to (< from to)) (str doc " has a header rule and a Part 2"))
       (is (= [] (plan/placeholders (subs text from to))) (str doc "'s given part is written, not asked")))))
+
+(deftest the-given-security-section-names-the-pin-it-was-verified-at
+  ;; 02 §4 says what the pinned template does for security, each line checked against it. A pin
+  ;; that moves without the section being read again is a claim about a template nobody checked:
+  ;; the section names the tag it was checked at, and that must be the pin's.
+  (let [text (slurp (str (fs/path template-dir "02-architecture.md")))
+        section (subs text (str/index-of text "## 4. Security, as the template gives it") (str/index-of text "# Part 2"))]
+    (is (str/includes? section (str "As of the pin `" (:git/tag (template/pin (template/load-pins))) "`."))
+        "re-read 02 §4 against the new pin, then name its tag there")
+    (is (str/includes? section "Not given:") "what the template does not do is said as plainly")))
 
 ;; ---------------------------------------------------------------------------
 ;; the check

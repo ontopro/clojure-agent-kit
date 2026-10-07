@@ -40,6 +40,32 @@ until a workflow runs it on push.
 
 ## 2026-10-07
 
+### The architecture document asks about security, in its three parts
+
+Row 115. Nothing the KIT gave a project said anything about security: the gates, the readings
+and the stage-end checks were silent, the architecture document's cross-cutting concerns named
+"authn/authz" in a list, and the pre-release stage held "the security engineering" as one more
+requirement to write. A project could reach release without being asked what it holds or who
+reaches it, and without being told what the template already did.
+
+`02-architecture.md` now carries the question where the document's parts already split what is
+given from what is decided. Part 1's new §4 says what the pinned template does for sessions, the
+session secret, CSRF, the response headers, errors, SQL, static files and HTML - each line
+naming the generated file and the function or key that does it, never a line number, which the
+next template version would move - and then says as plainly what it does not do: no CSP, no
+session expiry, no accounts, the htmx token, TLS in the deploy's proxy, the `Server` header and
+the image's user, no size or rate limit in the template's code. It is the pin's, so it names the
+pin it was checked at, and a test fails when the pin's tag moves and the section still names the
+old one. Part 2's new §8 asks the five things decided once in stage 0: what the application
+holds, who reaches it, the auth model, where it is deployed, the CSP. Part 3's new §15 is the
+threat model - assets, actors, one line per threat with its answer or the stage that answers it -
+three lines for a public brochure site, which is the right length for one. The sections after
+each insertion are renumbered, and the two references `03-method-and-tooling.md` made to them
+follow; cross-cutting concerns hands authn/authz to §8, and the technology summary gains the
+given sessions row and the chosen auth model. `bb plan-check` reads the new marks and
+instructions as it reads the rest, with no code change: the plan as `bb init` leaves it fails
+with them counted, and the filled fixture passes with them filled.
+
 ### `bb doctor` says when the application template's pin moved
 
 Row 114's residue. The doctor's report in a workspace - what a pulled KIT expects that the

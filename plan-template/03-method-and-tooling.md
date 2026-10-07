@@ -234,14 +234,14 @@ written down — the rule source's own first rule says it outranks the others:
 > lives in the overlay.
 
 - **`:layer-boundaries`** — the layers and their allowed direction: the template's six
-  (`02-architecture.md` §2) and this project's own (§4 there). <One sentence, or "as `layers.edn`
+  (`02-architecture.md` §2) and this project's own (§5 there). <One sentence, or "as `layers.edn`
   declares".>
 - **`:shapes-are-the-contract`** — the validation library and the error a boundary failure
   throws. <Malli as shipped; `ex-info` carrying which type, named here.>
 - **`:data-conventions`** — what this project's recurring data IS, for every role: what a tree
   or document is and how it is walked, what collection each recurring argument is, what the
   targets' recurring words mean, where input comes from, what each seam guarantees to everything
-  past it (`02-architecture.md` §5, last column), who owns presentation and which design tokens
+  past it (`02-architecture.md` §6, last column), who owns presentation and which design tokens
   the views draw on, and whether the template's own test suite is the pattern. <Filled in the
   overlay; summarise its headings here.>
 - **Project rules of its own** — <none yet, or one line per rule, by its id>. A rule of a new id is
