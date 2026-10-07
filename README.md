@@ -16,7 +16,7 @@ something narrower each time:
 |---|---|---|
 | `clojure-agent-kit/` | a folder in a project's workspace | that workspace's clone of the KIT, under the name `git clone` gives it; `workspace.edn` records it, so it may be renamed or kept elsewhere - a KIT kept outside its workspace is pointed at it with `KIT_WORKSPACE` or `--workspace <dir>` |
 | `kit` | a branch of [`ontopro/clojure-stack-lite`](https://github.com/ontopro/clojure-stack-lite), the application template the KIT brings with it | the KIT's line of that template; its `master` is an untouched mirror of the upstream template |
-| `kit-v1`, `kit-v2`, … | tags on that branch | versions of THE TEMPLATE as the KIT pins it — **not** versions of the KIT |
+| `kit-v1`, `kit-v1.1`, … | tags on that branch | versions of THE TEMPLATE as the KIT pins it — **not** versions of the KIT |
 
 > **Clone it and build beside it.** The KIT is what a project adopts: its clone sits in the
 > project's workspace next to the application it generates from a pinned template, upgraded

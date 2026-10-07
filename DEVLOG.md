@@ -38,6 +38,49 @@ until a workflow runs it on push.
 
 ---
 
+## 2026-10-07
+
+### The pinned template is `kit-v1.1`: its security defaults completed
+
+Row 114. The plan template's architecture document is gaining a security section whose first
+part says what the pinned template already does, each claim with the file that holds it. Read at
+`kit-v1`, with the sources of the libraries the generated application resolves, and then tried
+with curl against a generated application with three probe routes, the template held most of
+what a server-rendered site wants - encrypted cookie sessions, anti-forgery on every non-GET,
+parameterised SQL through HoneySQL, static files with no listing and no way out of their folder,
+escaped HTML - and five things a project would have inherited without knowing:
+
+- the security headers were route middleware, so a page not found and every static file went
+  out without them - the resource and default handlers sit beside the router, outside it;
+- an exception answered 500 with a JSON body carrying its message, its ex-data, and its class,
+  method, file and line; a failed response coercion answered with the schema and the value; and
+  a request body that failed to decode passed the exception middleware by, to Jetty, which
+  answered a bare 500 without the headers - empty only because its own page, which carries the
+  message, was over its size limit;
+- no `Referrer-Policy`;
+- the session cookie carried no `SameSite`;
+- `X-XSS-Protection: 1`, which asks for a filter no current browser has and which, in the old
+  browsers that kept it, could be made to strip a page's own scripts.
+
+`kit-v1.1` fixes each in the fork, a commit and a test each, every test red without its fix: the
+headers wrap the whole handler; an exception middleware of the template's own, FIRST in the
+route chain, answers the error page and puts the rest in the log; `Referrer-Policy:
+strict-origin-when-cross-origin`; `SameSite=Lax`; `X-XSS-Protection: 0`. The tests are a new
+`server_test.clj` in the generated application: the whole handler called as a function, and
+each error tried through it with its routes swapped for a probe route - a swap the namespace
+says is safe only under the template's single-threaded test runner, and not a pattern to copy.
+The error pages carry no detail in development either; the log has it.
+
+Not among the fixes, and said in the security section instead: a `Content-Security-Policy`,
+because the template's Alpine build needs `'unsafe-eval'` and htmx injects inline styles, so any
+policy is a project's choice and not a default; a session that expires on the server; and
+accounts, which the KIT does not generate - the template's auth variant is left as it is.
+
+The pin moves, and both platforms' health records are run again on it. An application already
+generated is a copy and keeps `kit-v1`, and nothing tells its workspace the pin moved: `bb
+doctor`'s upgrade lines compare the plan template, the rules' guidance and the mirrors, not the
+pin. Open, in the row.
+
 ## 0.6.0 — plan v6's boundary: the guided lean workflow
 
 A workspace made before `0.6.0` lacks the plan reviewer role, the four skills under
