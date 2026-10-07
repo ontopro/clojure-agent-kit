@@ -13,13 +13,22 @@
   the fixture such a check is written against.
 
   THE CHECK IS THE GATE, and it is cheap: no mark left in the governing
-  documents, none of the template's instructions left standing, the overlay's
-  placeholders filled, and the given parts intact - the KIT's rules unedited,
-  the template's layers not loosened, the gate keys in the KIT's order. The
-  model's reading of the plan (`harness.setup.plan-review`) is not a gate:
-  it gives the Architect a list, and this check is what `start` holds a
-  workspace to, once, before its first dispatch (`inputs-hash` is how once
-  is known)."
+  documents, none of the template's instructions left standing, every
+  requirement citing an observation of `source.md` or marked as the
+  Architect's inference, the overlay's placeholders filled, and the given
+  parts intact - the KIT's rules unedited, the template's layers not
+  loosened, the gate keys in the KIT's order. The model's reading of the plan
+  (`harness.setup.plan-review`) is not a gate: it gives the Architect a list,
+  and this check is what `start` holds a workspace to, once, before its first
+  dispatch (`inputs-hash` is how once is known).
+
+  THE CITATIONS ARE HELD IN TWO DIRECTIONS. A requirement rests on the source
+  or on the Architect, and the row says which: `S-n.m` in its Source column,
+  or `(inferred)`. Neither is a failure, by name. The other direction is a
+  list, not a failure: the observations of `source.md` that no governing
+  document cites are the backlog nobody decided on, printed for the stage's
+  end to revise the scope lists against; and the inferred requirements are
+  printed for the person, who is shown them at the stage's approval."
   (:require
    [babashka.fs :as fs]
    [clojure.edn :as edn]
@@ -139,10 +148,91 @@
                        (when (contains? instructions (normalize-quote line)) (inc i)))
                      (str/split-lines text))))
 
+;; ---------------------------------------------------------------------------
+;; the citations: a requirement rests on the source or on the Architect, and says which
+;; ---------------------------------------------------------------------------
+
+(defn- cells
+  "A table line's cells, trimmed, the outer pipes dropped; an empty cell is
+  an empty string, the last one included."
+  [line]
+  (mapv str/trim (str/split (str/replace (str/trim line) #"^\||\|$" "") #"\|" -1)))
+
+(defn- table-line? [line] (str/starts-with? (str/trim line) "|"))
+
+(defn requirement-citations
+  "`[[id source] …]` for every row of every table in `text` whose header has
+  a Source column and whose first cell is a requirement id (`FR-n`, `NFR-n`):
+  the id and what its Source cell says, in the document's order. A table with
+  no Source column - the index, the scope lists, the non-functional targets -
+  has no citations to read."
+  [text]
+  (->> (str/split-lines text)
+       (partition-by table-line?)
+       (filter #(table-line? (first %)))
+       (mapcat (fn [[header & rows]]
+                 (let [hs (cells header)
+                       i (first (keep-indexed (fn [i h] (when (re-matches #"(?i)\**source\**" h) i)) hs))]
+                   (when i
+                     (for [r rows
+                           :let [cs (cells r)]
+                           :when (re-matches #"N?FR-\d+" (first cs))]
+                       [(first cs) (nth cs i "")])))))
+       vec))
+
+(def observation-id
+  "An observation of `source.md`, as the template numbers them: `S-n.m`."
+  #"S-\d+\.\d+")
+
+(defn inferred?
+  "Is `source` (a Source cell) the Architect's inference - `(inferred)`, in
+  any dress?"
+  [source]
+  (boolean (re-find #"(?i)inferred" (str source))))
+
+(defn cited?
+  "Does `source` rest on something: an observation, or the Architect?"
+  [source]
+  (boolean (or (re-find observation-id (str source)) (inferred? source))))
+
+(defn citation-problems
+  "The requirements of `text` (the governing document `rel`) that cite no
+  observation and are not marked inferred, one sentence each. The template's
+  own `S-n.m` is such a row: it names no observation."
+  [rel text]
+  (vec (for [[id source] (requirement-citations text) :when (not (cited? source))]
+         (str "docs/" rel ": " id " cites no observation of source.md (S-n.m in its Source column)"
+              " and is not marked (inferred)"))))
+
+(defn observations
+  "The observation ids `source-text` defines, in its order: its `**S-n.m**`
+  bullets."
+  [source-text]
+  (vec (distinct (map second (re-seq #"\*\*(S-\d+\.\d+)\*\*" source-text)))))
+
+(defn uncited-observations
+  "The observations of `source-text` that none of `other-texts` (every other
+  governing document) mentions, in the source's order - the backlog nobody
+  decided on, which the stage's end revises the scope lists against."
+  [source-text other-texts]
+  (let [cited (into #{} (mapcat #(re-seq observation-id %)) other-texts)]
+    (filterv (complement cited) (observations source-text))))
+
+(defn inferred-requirements
+  "`[[id rel] …]`: the requirements across `docs` (`[[rel text] …]`) marked
+  as the Architect's inference - what the person is shown at the stage's
+  approval."
+  [docs]
+  (vec (for [[rel text] docs
+             [id source] (requirement-citations text)
+             :when (inferred? source)]
+         [id rel])))
+
 (defn document-problems
   "What the governing documents under `docs-dir` still carry, as sentences:
-  marks (`placeholders`) and the template's instructions (`instructions-left`,
-  against `template-dir`)."
+  marks (`placeholders`), the template's instructions (`instructions-left`,
+  against `template-dir`), and requirements that rest on nothing
+  (`citation-problems`)."
   [docs-dir template-dir]
   (let [instructions (instruction-lines template-dir)]
     (vec (mapcat
@@ -158,7 +248,9 @@
                 (seq left)
                 (conj (str "docs/" rel ": " (count left) " line" (when (> (count left) 1) "s")
                            " of the template's instructions still standing (first at line "
-                           (first left) ") - delete each blockquote once it is acted on")))))
+                           (first left) ") - delete each blockquote once it is acted on"))
+                :always
+                (into (citation-problems rel text)))))
           (governing docs-dir)))))
 
 (defn overlay-problems
@@ -279,22 +371,40 @@
   `{:plan _ :workspace _ :problems [...] :documents n}`."
   [plan-dir ws]
   (let [plan (str (fs/normalize (fs/absolutize (or plan-dir (:workspace/build ws)))))
-        docs (fs/path plan "docs")]
+        docs (fs/path plan "docs")
+        texts (when (fs/directory? docs)
+                (vec (for [rel (governing docs)] [rel (slurp (str (fs/path docs rel)))])))
+        source (some (fn [[rel text]] (when (= rel "source.md") text)) texts)]
     {:plan plan
      :workspace (some-> ws :workspace/dir)
-     :documents (if (fs/directory? docs) (count (governing docs)) 0)
-     :problems (problems plan ws (fs/path (kit-dir ws) "plan-template") (template/pin (template/load-pins)))}))
+     :documents (count texts)
+     :problems (problems plan ws (fs/path (kit-dir ws) "plan-template") (template/pin (template/load-pins)))
+     ;; the two lists, not failures: what the person and the stage's end are shown
+     :inferred (inferred-requirements texts)
+     :uncited (if source
+                (uncited-observations source (map second (remove #(= "source.md" (first %)) texts)))
+                [])}))
 
 (defn report
-  "The check's result as the lines `bb plan-check` prints."
-  [{:keys [plan problems documents workspace]}]
-  (if (seq problems)
-    (str "plan-check: " (count problems) " thing" (when (> (count problems) 1) "s") " left in " plan "\n"
-         (str/join "\n" (map #(str "  - " %) problems)))
-    (str "plan-check: " documents " governing document" (when (not= 1 documents) "s")
-         (if workspace
-           ", the rules overlay, layers.edn and loop.edn - nothing left to fill, the given parts intact"
-           " - nothing left to fill (no workspace.edn above the plan, so the overlay and the given parts were not read)"))))
+  "The check's result as the lines `bb plan-check` prints: the verdict, then
+  the inferred requirements for the person and the uncited observations for
+  the stage's end, each only when there are any."
+  [{:keys [plan problems documents workspace inferred uncited]}]
+  (str (if (seq problems)
+         (str "plan-check: " (count problems) " thing" (when (> (count problems) 1) "s") " left in " plan "\n"
+              (str/join "\n" (map #(str "  - " %) problems)))
+         (str "plan-check: " documents " governing document" (when (not= 1 documents) "s")
+              (if workspace
+                ", the rules overlay, layers.edn and loop.edn - nothing left to fill, the given parts intact"
+                " - nothing left to fill (no workspace.edn above the plan, so the overlay and the given parts were not read)")))
+       (when (seq inferred)
+         (str "\n  inferred: " (count inferred) " requirement" (when (> (count inferred) 1) "s")
+              " rest" (when (= 1 (count inferred)) "s") " on the Architect's inference, shown at the stage's approval - "
+              (str/join ", " (for [[id rel] inferred] (str id " (docs/" rel ")")))))
+       (when (seq uncited)
+         (str "\n  uncited: " (count uncited) " observation" (when (> (count uncited) 1) "s")
+              " of source.md nothing cites - the backlog nobody decided on, revised at the stage's end: "
+              (str/join ", " uncited)))))
 
 (defn -main
   "bb plan-check [<plan-dir>] [--workspace <dir>]

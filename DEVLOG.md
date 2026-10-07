@@ -27,6 +27,29 @@ either; an entry's date is its reference.
 
 ## 2026-10-06
 
+### `bb plan-check` holds the citations in two directions
+
+Row 100. The template has asked since the morning that every requirement name the observation
+of `source.md` it rests on, `S-n.m`, or be marked `(inferred)` as the Architect's own, and
+that the inferred ones be shown to the person at the stage's approval; and the scope section
+says the observations nothing claims are the backlog the stage's end revises the lists
+against. Nothing read either. A reading of one project's design showed the first half - every
+requirement cited or marked - and a reading of another the second - the uncited list - and
+the two are one check in two directions.
+
+The plan check reads every table with a Source column in the governing documents - the
+requirements document and every stage plan written since - and a row whose first cell is a
+requirement id and whose Source cell names no observation and says nothing of inference fails
+by name, with the document. The template's own `S-n.m` fails that way, which is what a row
+left standing should do, and the fixture fills it. After the verdict the check prints two
+lists that fail nothing: the requirements marked inferred, with the document each is in, for
+the person; and the observations `source.md` defines - its `**S-n.m**` bullets - that no
+other governing document mentions, in the source's order, for the stage's end. Any mention
+counts as a claim: a requirement's Source cell, a deferral, a decision's evidence. `start`
+runs the check and stops on the same failures; the two lists are `bb plan-check`'s alone,
+since a stop before a dispatch is not where a person reads a backlog. The index and the
+scope lists have no Source column and are not read as citations.
+
 ### The plan review runs in every stage's plan step, and asks the step's three questions by name
 
 Rows 93 and 98, the harness's half. The method's §02 said since the morning that the pass runs

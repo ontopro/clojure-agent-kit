@@ -131,7 +131,9 @@
   every mark replaced."
   [text]
   (-> (->> (str/split-lines text) (remove #(re-matches #"\s*>.*" %)) (str/join "\n"))
-      (str/replace #"<[^<>\n]+>" #(if (plan/known %) % "filled"))))
+      (str/replace #"<[^<>\n]+>" #(if (plan/known %) % "filled"))
+      ;; the template's own citation names no observation; a project's names one
+      (str/replace #"S-n\.m" "S-1.1")))
 
 (defn- workspace
   "A workspace with a plan (its docs from the template, its overlay, `loop.edn`),
@@ -170,13 +172,15 @@
         by-doc (fn [doc] (filter #(str/starts-with? % (str "docs/" doc ":")) problems))]
     (is (= 7 documents))
     (doseq [doc (plan/governing template-dir)]
-      (is (= 2 (count (by-doc doc))) (str doc ": its marks and its instructions, one sentence each")))
+      (is (= (if (= doc "01-requirements.md") 3 2) (count (by-doc doc)))
+          (str doc ": its marks and its instructions, one sentence each; the requirements' FR-1 cites the template's S-n.m")))
     (is (some #(str/includes? % "docs/00-overview.md: 19 marks") problems) "the fixture's count, by name")
+    (is (some #(= % "docs/01-requirements.md: FR-1 cites no observation of source.md (S-n.m in its Source column) and is not marked (inferred)") problems))
     (is (= 3 (count (filter #(str/starts-with? % "rules.edn:") problems))) "the overlay's three placeholders")
     (is (not-any? #(str/starts-with? % "layers.edn") problems) "the given parts are intact as generated")
     (is (not-any? #(str/starts-with? % "loop.edn") problems))
-    (is (= 17 (count problems)))
-    (is (str/starts-with? (plan/report (check (workspace {}))) "plan-check: 17 things left"))))
+    (is (= 18 (count problems)))
+    (is (str/starts-with? (plan/report (check (workspace {}))) "plan-check: 18 things left"))))
 
 (deftest a-filled-plan-passes-and-each-way-of-breaking-it-is-one-sentence
   (let [ws (workspace {:filled? true})
@@ -223,6 +227,56 @@
         (spit loop-edn as-written)))
     (is (= [] (:problems (check ws))) "every break was undone")))
 
+;; --- the citations, in two directions --------------------------------------------
+
+(def ^:private requirements
+  (str "## 6. Functional requirements\n\n"
+       "| # | Requirement | Source | Priority |\n|---|---|---|---|\n"
+       "| FR-1 | the first | S-1.1 | must |\n"
+       "| FR-2 | the second | | must |\n"
+       "| NFR-1 | the third | (inferred) | should |\n"
+       "| FR-3 | the fourth | S-2.3, S-1.1 | could |\n\n"
+       "### 6b. The index\n\n| # | Stage | Written in | One line |\n|---|---|---|---|\n| FR-9 | 2 | the stage plan | |\n"))
+
+(deftest a-requirement-cites-an-observation-or-is-marked-inferred
+  (is (= [["FR-1" "S-1.1"] ["FR-2" ""] ["NFR-1" "(inferred)"] ["FR-3" "S-2.3, S-1.1"]]
+         (plan/requirement-citations requirements))
+      "every row of a table with a Source column, by id; the index has no Source column and is not read")
+  (is (= ["docs/01-requirements.md: FR-2 cites no observation of source.md (S-n.m in its Source column) and is not marked (inferred)"]
+         (plan/citation-problems "01-requirements.md" requirements)))
+  (is (= [] (plan/citation-problems "x.md" "no table at all")))
+  (is (= [["NFR-1" "01-requirements.md"]] (plan/inferred-requirements [["01-requirements.md" requirements] ["source.md" ""]]))
+      "the inferred ones, for the person at the stage's approval"))
+
+(deftest the-observations-nobody-cites-are-a-list-not-a-failure
+  (let [source "### S-1 — the brief\n\n- **S-1.1** shows\n- **S-1.2** implies\n- **S-1.3** leaves open\n\n### S-2 — a file\n\n- **S-2.3** a figure\n"]
+    (is (= ["S-1.1" "S-1.2" "S-1.3" "S-2.3"] (plan/observations source)))
+    (is (= ["S-1.2" "S-1.3"] (plan/uncited-observations source [requirements "a stage plan citing nothing"]))
+        "in the source's order; S-2.3 is cited by FR-3")
+    (is (= [] (plan/uncited-observations source [requirements "a decision resting on S-1.2 and S-1.3"]))
+        "any governing document's mention counts")))
+
+(deftest the-check-prints-the-two-lists-after-its-verdict
+  (let [ws (workspace {:filled? true})
+        plan (fs/path ws "xyx-build")
+        doc (fn [nm] (str (fs/path plan "docs" nm)))
+        r (check ws)]
+    (is (= [] (:problems r)))
+    (is (= [] (:inferred r)) "the filled fixture infers nothing")
+    (is (= ["S-1.2" "S-1.3"] (:uncited r)) "the template's source defines three observations and its FR-1 cites the first")
+    (is (str/includes? (plan/report r) "\n  uncited: 2 observations of source.md nothing cites - the backlog nobody decided on, revised at the stage's end: S-1.2, S-1.3"))
+    (is (not (str/includes? (plan/report r) "inferred:")))
+    (testing "a stage plan's requirements: one inferred, one resting on nothing"
+      (spit (doc "stages/stage-1-skeleton.md")
+            "# Stage 1\n\n## 2. Requirements this stage adds\n\n| # | Requirement | Source | Priority |\n|---|---|---|---|\n| FR-4 | walks | (inferred) | must |\n| FR-5 | runs | | must |\n")
+      (let [r (check ws)]
+        (is (= ["docs/stages/stage-1-skeleton.md: FR-5 cites no observation of source.md (S-n.m in its Source column) and is not marked (inferred)"]
+               (:problems r)))
+        (is (= [["FR-4" "stages/stage-1-skeleton.md"]] (:inferred r)))
+        (is (str/includes? (plan/report r) "\n  inferred: 1 requirement rests on the Architect's inference, shown at the stage's approval - FR-4 (docs/stages/stage-1-skeleton.md)")))
+      (fs/delete (doc "stages/stage-1-skeleton.md")))
+    (is (= [] (:problems (check ws))))))
+
 (deftest the-hash-covers-what-the-check-reads-and-nothing-else
   (let [ws (workspace {:filled? true})
         wsm (workspace/find-workspace ws)
@@ -249,7 +303,7 @@
     (let [ctx (run-ctx (workspace {}))
           e (try (with-out-str (driver/start! ctx)) nil (catch clojure.lang.ExceptionInfo e e))]
       (is (= :plan-check (:run-loop/error (ex-data e))))
-      (is (= 17 (count (:problems (ex-data e)))))
+      (is (= 18 (count (:problems (ex-data e)))))
       (is (str/includes? (ex-message e) "bb plan-check"))
       (is (not (fs/exists? (fs/path (:run-dir ctx) "state.edn"))))
       (is (not (fs/exists? (fs/path (:run-dir ctx) ".." ".." "plan-check.edn"))) "nothing cached on a failure")))
