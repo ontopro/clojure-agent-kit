@@ -41,6 +41,15 @@ difference, and nothing is migrated.
 
 ## 2026-10-07
 
+### A health record's platform label names the Linux distribution, not the kernel
+
+The first Linux health record (the container's, below) labelled its platform "Linux
+7.0.14-linuxkit arm64": the JVM's `os.version` is the OS version on macOS and the KERNEL's on
+Linux, and in a container the kernel is the virtual machine's, which says nothing about the OS
+the tools were installed on. On Linux the label now takes the distribution's name from
+`/etc/os-release` - "Linux Ubuntu 24.04.5 LTS arm64" - and falls back to the kernel where that
+file is missing. The record's key, `linux-arm64`, was right and is unchanged.
+
 ### A test fixture was red on macOS and green on Linux, by printf's exit code
 
 The first run of the KIT's gates on a Linux machine (the fresh-machine container, below) failed

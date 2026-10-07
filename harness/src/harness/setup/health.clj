@@ -517,17 +517,29 @@
 (def begin-marker "<!-- health:begin -->")
 (def end-marker "<!-- health:end -->")
 
+(defn- linux-release
+  "The distribution's name from `/etc/os-release` (`Ubuntu 24.04.5 LTS`), where the file is;
+  nil elsewhere. On Linux the JVM's `os.version` is the KERNEL's version - in a container
+  the virtual machine's, which says nothing of the OS the tools were installed on."
+  []
+  (let [f (fs/file "/etc/os-release")]
+    (when (fs/exists? f)
+      (some->> (str/split-lines (slurp f))
+               (some #(second (re-matches #"PRETTY_NAME=\"?([^\"]*)\"?" %)))))))
+
 (defn platform
-  "This machine, as a record's key and label: `{:key \"macos-arm64\" :label \"macOS 26.5 arm64\"}`.
-  Nothing of the host but its OS and architecture."
+  "This machine, as a record's key and label: `{:key \"macos-arm64\" :label \"macOS 26.5 arm64\"}`,
+  `{:key \"linux-arm64\" :label \"Linux Ubuntu 24.04.5 LTS arm64\"}`. Nothing of the host but
+  its OS and architecture."
   []
   (let [os (System/getProperty "os.name")
-        version (System/getProperty "os.version")
         arch (System/getProperty "os.arch")
         os-key (cond (str/starts-with? os "Mac") "macos"
                      (str/starts-with? os "Linux") "linux"
                      (str/starts-with? os "Windows") "windows"
                      :else (str/lower-case (str/replace os #"\\s+" "-")))
+        version (or (when (= "linux" os-key) (linux-release))
+                    (System/getProperty "os.version"))
         arch-key (case arch ("aarch64" "arm64") "arm64" ("amd64" "x86_64") "x86_64" arch)]
     {:key (str os-key "-" arch-key)
      :label (str (case os-key "macos" "macOS" "linux" "Linux" "windows" "Windows" os) " " version " " arch-key)}))
