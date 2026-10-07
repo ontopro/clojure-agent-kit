@@ -27,6 +27,22 @@ either; an entry's date is its reference.
 
 ## 2026-10-06
 
+### The workflow follows the shape: scoping first, stage 0 the spike, every stage the same four steps
+
+Row 91, the workflow's half. `workflow.md` drew setup, plan, Foundation, stages, loop in a
+line and numbered fourteen steps as if each happened once. The diagram now begins with
+scoping - the six groups of questions, the brief written to a file - and setup files the brief
+with `bb init --brief`; the plan is for stage 0, approved with a cap that a record carries;
+stage 0 builds Foundation and runs the spike's packets, the first of them the machine's
+proving run; every stage from 1 on is one box of four steps - scope with the lessons read
+first, the stage plan reviewed cold and approved with its cap, the blueprint reviewed and
+signed, implement through the loop, deploy locally with the browser pack and the owner's
+walk - and its end pulls the next increment, a pre-release stage, or the release, which
+returns to the next increment. The table says which steps are stage 0's once and which
+are every stage's, and a second table puts the four reviews by the step of a stage they
+belong to. The three things the diagram says gained a fourth reading and the gates as
+records. The root README's one line on the workflow says the same.
+
 ### The lessons have a document and a reader, and a stage's gates are a record
 
 Row 98. Two things a reading of another project's design made visible. The method's stage

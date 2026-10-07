@@ -1,7 +1,7 @@
 # Clojure Agent Kit (aka "KIT")
 
 **An opinionated, reusable way to build Clojure software with a small team of independent
-AI agents** — a contract-first Blueprint, an isolated dispatch loop, a living decision log,
+AI agents** — a contract-first blueprint, an isolated dispatch loop, a living decision log,
 and quality gates ordered cheap-to-expensive.
 
 Distilled from a live multi-agent build that ran this loop across dozens of real dispatches,
@@ -42,7 +42,7 @@ something narrower each time:
 | [`DEVLOG.md`](DEVLOG.md) | what changed, when, and why — newest first |
 | [`portability.md`](portability.md) | running the kit from a seat other than Claude Code, and the dispatch design that follows |
 | [`harness/README.md`](harness/README.md) | the harness: what is in it, how a project adopts it, what is deliberately left out |
-| [`workflow.md`](workflow.md) | the method as it runs on the KIT, in order — setup, plan, Foundation, stages, the loop — as one diagram and a table of steps |
+| [`workflow.md`](workflow.md) | the method as it runs on the KIT, in order — scoping, setup, the plan for stage 0, stage 0 with Foundation inside it, the stages with their four steps and their reviews, the loop, pre-release and release — as one diagram and a table of steps |
 | [`harness/roster.md`](harness/roster.md) | who acts in a build — every review, gate and dispatch — from which role, on which model |
 | `CLAUDE.md` | working rules for an agent changing this repository |
 
