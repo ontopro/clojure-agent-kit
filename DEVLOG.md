@@ -28,9 +28,8 @@ tag stands above the day's entries here, with the one line a workspace made befo
 what `bb doctor` run there will list, in a sentence. The numbers mean this and not what a
 library's would: the minor is a plan family - `0.6.0` closed plan v6, the guided lean workflow -
 and the patch is a follow-on plan that completes the family without changing the workflow's
-shape, so `0.6.1` closes plan 6.1 and a patch here is not a fix. `1.0` is the proof: a project
-built on this workflow through its stages, its figures in the stage reports and nothing of it
-hand-kept. A `0.7` would be a change to the workflow's shape before that proof. `bb init` records the version beside the commit in `workspace.edn`,
+shape, so `0.6.1` closes plan 6.1, `0.6.2` the plan after it, and a patch here is not a fix.
+What `1.0` will mean is not decided here. `bb init` records the version beside the commit in `workspace.edn`,
 the doctor prints both, and the root README names the current tag. Not `kit-vN`: those are
 the template fork's tags and version the template, not the KIT. Before a tag is made, `bb
 docker-gates` is run by hand on the commit it will name and is green: the gates on a clone of
