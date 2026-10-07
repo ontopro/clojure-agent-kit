@@ -233,3 +233,27 @@
     (testing "the file `run` accepts: it expands without a call"
       (is (= ["grok-4.7-high" "claude-opus-5.5-high"]
              (mapv :id (:candidates (:resolved (bo/expand spec cat-test/listing (test-routes "http://stub"))))))))))
+
+(deftest readings-run-in-a-bounded-pool-and-a-stopped-run-resumes-from-its-records
+  (is (= [1 2 3 4 5] (bo/in-parallel 2 identity [1 2 3 4 5])) "results in the inputs' order, whatever the batches")
+  (is (= [] (bo/in-parallel 4 identity [])))
+  (testing "the pool size is the spec's, four when left out, a positive integer or refused"
+    (let [routes (test-routes "http://127.0.0.1:1")
+          spec {:role :blueprint-reviewer :candidates ["grok high" "opus high"] :judge "x-ai/grok-4.6 low"}]
+      (is (= 4 (get-in (bo/expand spec cat-test/listing routes) [:resolved :parallel])))
+      (is (= 2 (get-in (bo/expand (assoc spec :parallel 2) cat-test/listing routes) [:resolved :parallel])))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #":parallel must be a positive integer"
+                            (bo/expand (assoc spec :parallel 0) cat-test/listing routes)))))
+  (testing "a second run reads nothing again: every record and the judge's are reused"
+    (let [[[first-out second-out] seen]
+          (with-stub (fn [endpoint]
+                       (let [{:keys [plan spec]} (scratch-plan-with-bake-off)
+                             opts {:listing cat-test/listing :routes (test-routes endpoint) :plan plan :method method-path :seed 3}
+                             first-out (with-out-str (bo/run-bake-off! spec opts))
+                             second-out (with-out-str (bo/run-bake-off! spec opts))]
+                         [first-out second-out])))]
+      (is (= 3 (count seen)) "two candidate calls and one judge call, once")
+      (is (str/includes? first-out "4 at a time") "the pool size is said, the default when the spec has none")
+      (is (not (str/includes? first-out "reused")))
+      (is (= 3 (count (re-seq #"\(reused from the last run\)" second-out))) "both readings and the judge")
+      (is (str/includes? second-out "written:") "the table is rendered again from the records"))))

@@ -142,16 +142,25 @@
                        :params params}
                 (:key-env route) (assoc :key-env (:key-env route)))}))
 
+(def default-parallel
+  "How many readings run at once when the spec says nothing: a reading is one
+  completion with no tools and no shared state, so the pool is bounded by the
+  providers' patience, not by the harness."
+  4)
+
 (defn expand
   "The typed spec → the resolved one: the act, each candidate expanded, the
   judge expanded and held to the rule (never a candidate; a spec with no judge
   is refused - the session's model would be the default and this tool cannot
   know it, so the person names one). Two candidates at least."
-  [{:keys [role candidates judge] :as spec} listing routes]
+  [{:keys [role candidates judge parallel] :as spec} listing routes]
   (let [_ (act-of role)
         cands (mapv #(expand-candidate listing routes %) candidates)]
     (when (< (count cands) 2)
       (throw (ex-info "a bake-off needs at least two candidates" {:bake-off/error :too-few-candidates})))
+    (when-not (or (nil? parallel) (pos-int? parallel))
+      (throw (ex-info (str ":parallel must be a positive integer - how many readings run at once (" default-parallel " when left out); got " (pr-str parallel))
+                      {:bake-off/error :bad-parallel :parallel parallel})))
     (when (str/blank? (str judge))
       (throw (ex-info (str "name a judge (:judge \"<model> <effort>\"): the session's model would be the default "
                            "and this tool cannot know it; it must not be one of the candidates")
@@ -166,6 +175,7 @@
                              :profile-role (:role (act-of role))
                              :candidates cands
                              :judge j
+                             :parallel (or parallel default-parallel)
                              :at (str (java.time.Instant/now))}))))
 
 ;; ---------------------------------------------------------------------------
@@ -259,35 +269,72 @@
      :work (or (:workspace/work ws) (str (fs/path (fs/parent plan) "work")))
      :method (or (:method opts) (str (fs/path (plan/kit-dir ws) "method.md")))}))
 
+(defn in-parallel
+  "`f` over `xs`, at most `n` at a time, results in `xs`' order: each batch of
+  `n` runs as futures and is waited for whole before the next starts."
+  [n f xs]
+  (vec (mapcat (fn [batch] (mapv deref (mapv #(future (f %)) batch)))
+               (partition-all (max 1 (or n 1)) xs))))
+
+(defn- reusable
+  "The record at `path` when a stopped run already wrote it and it is an
+  answer - not a failed call, not an answer with no block - else nil. A run
+  resumes rather than repeats; delete `records/` to read everything again."
+  [path]
+  (when-let [rec (read-edn path)]
+    (when-not (or (:failed rec) (:no-block? rec)) rec)))
+
+(defn- say-record [case-id who {:keys [failed no-block? count cost ms reused?]} what]
+  (println (format "  %-14s %-28s %s" case-id who
+                   (cond failed (str "FAILED: " failed)
+                         no-block? (str "no " what " block")
+                         :else (format "%d %s%s, %ds%s" count what
+                                       (if cost (format ", $%.4f" (double cost)) "")
+                                       (quot (or ms 0) 1000)
+                                       (if reused? " (reused from the last run)" ""))))))
+
 (defn run-candidates!
-  "Every case with every candidate, one record each; returns the records.
-  A candidate whose call fails is recorded as failed, with the error, and the
-  bake-off goes on - the others' reads are still evidence."
-  [{:keys [act cases run]} resolved dir ctx]
-  (vec (for [c cases
-             cand (:candidates resolved)]
-         (let [rec (try
-                     (let [r (run (:profile cand) c ctx)]
-                       {:case (:id c) :candidate (:id cand) :model-named (:model cand)
-                        :model (:model r) :cost (:cost r) :ms (:ms r)
-                        :findings (:findings r) :count (count (:findings r))
-                        :no-block? (nil? (:findings r)) :input (:input r)
-                        :at (str (java.time.Instant/now))})
-                     (catch clojure.lang.ExceptionInfo e
-                       {:case (:id c) :candidate (:id cand) :model-named (:model cand)
-                        :failed (ex-message e) :at (str (java.time.Instant/now))}))]
-           (write-edn! (record-path dir (:id c) (:id cand)) (assoc rec :act act))
-           (println (format "  %-14s %-28s %s" (:id c) (:id cand)
-                            (cond (:failed rec) (str "FAILED: " (:failed rec))
-                                  (:no-block? rec) "no findings block"
-                                  :else (format "%d findings%s, %ds" (:count rec)
-                                                (if (:cost rec) (format ", $%.4f" (double (:cost rec))) "")
-                                                (quot (or (:ms rec) 0) 1000)))))
-           rec))))
+  "Every case with every candidate, one record each, `parallel` readings at a
+  time; returns the records in case-then-candidate order. A record a stopped
+  run already wrote is reused, not read again. A candidate whose call fails is
+  recorded as failed, with the error, and the bake-off goes on - the others'
+  reads are still evidence."
+  [{:keys [act cases run]} resolved dir ctx parallel]
+  (in-parallel
+   parallel
+   (fn [[c cand]]
+     (let [path (record-path dir (:id c) (:id cand))
+           rec (if-let [old (reusable path)]
+                 (assoc old :reused? true)
+                 (let [rec (try
+                             (let [r (run (:profile cand) c ctx)]
+                               {:case (:id c) :candidate (:id cand) :model-named (:model cand)
+                                :model (:model r) :cost (:cost r) :ms (:ms r)
+                                :findings (:findings r) :count (count (:findings r))
+                                :no-block? (nil? (:findings r)) :input (:input r)
+                                :at (str (java.time.Instant/now))})
+                             (catch clojure.lang.ExceptionInfo e
+                               {:case (:id c) :candidate (:id cand) :model-named (:model cand)
+                                :failed (ex-message e) :at (str (java.time.Instant/now))}))]
+                   (write-edn! path (assoc rec :act act))
+                   rec))]
+       (say-record (:id c) (:id cand) rec "findings")
+       (dissoc rec :reused?)))
+   (for [c cases, cand (:candidates resolved)] [c cand])))
+
+(declare judge-fresh!)
 
 (defn judge!
   "One judge call per case over the candidates' records: the letters shuffled
-  (the order kept in the record), the rows parsed, the record written."
+  (the order kept in the record), the rows parsed, the record written. A
+  judge's record a stopped run already wrote is reused."
+  [resolved dir case-id records seed]
+  (if-let [old (reusable (record-path dir case-id "judge"))]
+    (do (say-record case-id "judge" (assoc old :count (count (:rows old)) :reused? true) "rows")
+        old)
+    (judge-fresh! resolved dir case-id records seed)))
+
+(defn- judge-fresh!
   [resolved dir case-id records seed]
   (let [judge (:judge resolved)
         ok (remove #(or (:failed %) (:no-block? %)) records)
@@ -416,11 +463,14 @@
         id (fs/file-name dir)]
     (write-edn! (fs/path dir "resolved.edn") expanded)
     (println (str "bake-off " id ": " (name (:role spec)) ", " (count cases) " case" (if (= 1 (count cases)) "" "s")
-                  " × " (count (:candidates resolved)) " candidates, judge " (:model (:judge resolved))))
-    (let [records (run-candidates! (assoc act :act (:role spec) :cases cases) resolved dir ctx)
+                  " × " (count (:candidates resolved)) " candidates, judge " (:model (:judge resolved))
+                  ", " (:parallel resolved) " at a time"))
+    (let [parallel (:parallel resolved)
+          records (run-candidates! (assoc act :act (:role spec) :cases cases) resolved dir ctx parallel)
           seed (or (:seed opts) (hash id))
-          judges (doall (for [c cases]
-                          (judge! resolved dir (:id c) (filter #(= (:id c) (:case %)) records) (+ seed (hash (:id c))))))]
+          judges (in-parallel parallel
+                              (fn [c] (judge! resolved dir (:id c) (filter #(= (:id c) (:case %)) records) (+ seed (hash (:id c)))))
+                              cases)]
       (table! dir)
       (println (str "written: " (fs/path dir "TABLE.md") " — mark rows real or not in marks.edn, then `bb bake-off table " dir "`"))
       {:dir dir :records records :judges judges})))

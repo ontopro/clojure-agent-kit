@@ -41,6 +41,26 @@ difference, and nothing is migrated.
 
 ## 2026-10-07
 
+### A bake-off reads in a bounded pool, and a stopped one resumes from its records
+
+Rows 110 and 111, one commit: the two halves of one afternoon. The shipped reviewer's bake-off
+(plan v6 §5a) started with three candidates on eight saved specs, sequentially, and the first
+reading took seven minutes at high effort; the person dropped a candidate and the run was
+stopped and started again, which read the first spec a second time, since the runner wrote a
+record per reading and never read one back. Then the person asked why the readings could not
+run at once. They can: the sequence the loop keeps for its roles is for worktrees, an nREPL and
+a gate run per dispatch, and a reading is one completion with no tools and a record file of its
+own.
+
+`:parallel` in the three-line spec, four when left out, runs that many readings at a time,
+batch by batch, results in the spec's order; the judges the same, one call per case after its
+readings. Cost is unchanged, and a provider that pushes back costs a retry the agent loop
+already makes; the progress lines interleave, which is the price. A record a run already wrote
+- a candidate's or the judge's, when it is an answer and not a failed call - is reused and
+said so on its line, so a stopped run resumes rather than repeats, and deleting `records/`
+reads everything again. The bake-off of the day went on with the new tool, eight at a time,
+its one finished reading reused.
+
 ### Every stub model waits for its stop and answers `Connection: close`
 
 Row 102, from watch to fixed. The row opened on 2026-10-06 when a second stub-model test

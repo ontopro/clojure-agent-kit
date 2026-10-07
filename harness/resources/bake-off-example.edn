@@ -11,6 +11,10 @@
 ;;                effort is the family's highest when left out
 ;;   :judge       the same form; never a candidate, and another family when the field allows
 ;;   :cases       optional - paths; by default everything on disk for the act under the plan
+;;   :parallel    optional - how many readings run at once (4 when left out); a reading is one
+;;                completion with no tools, so the pool is bounded by the providers' patience. A
+;;                record a stopped run already wrote is reused, so a run resumes rather than repeats;
+;;                delete records/ to read everything again
 ;;
 ;; Copy this to <plan>/bake-offs/<id>/bake-off.edn and edit it.
 
