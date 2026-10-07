@@ -1,7 +1,7 @@
 (ns harness.setup.plan-review
   "The plan-review pass of `method.md` §02, run: `bb plan-review [<plan-dir>]`.
 
-  The six Phase A documents - `source.md` and `00`…`04` - read cold, as an
+  The seven Phase A documents - `source.md`, `00`…`04` and `05-lessons.md` - read cold, as an
   artifact, by the profile's `:spec-reviewer` role: a model that did not write
   them (`bb profile` holds it to a family other than the seat's), one
   completion, no tools, with §02's own checklist of the findings that recur.
@@ -31,9 +31,10 @@
    [harness.setup.workspace :as workspace]))
 
 (def documents
-  "The Phase A documents, in the order they are written and read."
+  "The Phase A documents, in the order they are written and read; the lessons
+  last, empty before stage 0 ends and read for the stage it does not answer after."
   ["source.md" "00-overview.md" "01-requirements.md" "02-architecture.md"
-   "03-method-and-tooling.md" "04-decision-log.md"])
+   "03-method-and-tooling.md" "04-decision-log.md" "05-lessons.md"])
 
 (def kinds
   "The findings §02 names as the ones that recur, as the `kind` the answer

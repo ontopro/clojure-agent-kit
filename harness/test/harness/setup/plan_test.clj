@@ -37,10 +37,12 @@
           "02-architecture.md" 23
           "03-method-and-tooling.md" 41
           "04-decision-log.md" 12
+          "05-lessons.md" 11
           "README.md" 1
           "source.md" 11
           "stages/stage-0-spike-template.md" 11
           "stages/stage-N-blueprint-template.md" 9
+          "stages/stage-N-gates-template.edn" 2
           "stages/stage-N-template.md" 25
           "stages/stage-prerelease-template.md" 12
           "stages/stage-release-template.md" 8}
@@ -62,11 +64,13 @@
 ;; the check
 ;; ---------------------------------------------------------------------------
 
-(deftest the-governing-documents-are-the-six-and-every-stage-written
+(deftest the-governing-documents-are-the-seven-and-every-stage-written
   (is (= ["00-overview.md" "01-requirements.md" "02-architecture.md" "03-method-and-tooling.md"
-          "04-decision-log.md" "source.md"]
+          "04-decision-log.md" "05-lessons.md" "source.md"]
          (plan/governing template-dir))
-      "the README explains the marks and carries one; the stage templates are copied per stage")
+      "the README explains the marks and carries one; the stage templates and the gates record's are copied per stage")
+  (is (not (plan/governing? "stages/stage-N-gates-template.edn")))
+  (is (plan/governing? "stages/stage-1-gates.edn") "a stage's record, once copied, is read like a stage plan")
   (is (plan/governing? "stages/stage-1-foundation.md") "a stage document written from the template is read")
   (is (not (plan/governing? "stages/stage-N-template.md"))))
 
@@ -164,15 +168,15 @@
 (deftest the-plan-as-init-left-it-fails-with-everything-named
   (let [{:keys [problems documents]} (check (workspace {}))
         by-doc (fn [doc] (filter #(str/starts-with? % (str "docs/" doc ":")) problems))]
-    (is (= 6 documents))
+    (is (= 7 documents))
     (doseq [doc (plan/governing template-dir)]
       (is (= 2 (count (by-doc doc))) (str doc ": its marks and its instructions, one sentence each")))
     (is (some #(str/includes? % "docs/00-overview.md: 19 marks") problems) "the fixture's count, by name")
     (is (= 3 (count (filter #(str/starts-with? % "rules.edn:") problems))) "the overlay's three placeholders")
     (is (not-any? #(str/starts-with? % "layers.edn") problems) "the given parts are intact as generated")
     (is (not-any? #(str/starts-with? % "loop.edn") problems))
-    (is (= 15 (count problems)))
-    (is (str/starts-with? (plan/report (check (workspace {}))) "plan-check: 15 things left"))))
+    (is (= 17 (count problems)))
+    (is (str/starts-with? (plan/report (check (workspace {}))) "plan-check: 17 things left"))))
 
 (deftest a-filled-plan-passes-and-each-way-of-breaking-it-is-one-sentence
   (let [ws (workspace {:filled? true})
@@ -190,7 +194,7 @@
     (testing "a stage document written from the template is read; the template itself is not"
       (spit (doc "stages/stage-1-foundation.md") "# Stage 1\n\n> The **stage plan**: the project plan's slice for this stage. Written **just-in-time**, when\n")
       (is (= 1 (count (:problems (check ws)))))
-      (is (= 7 (:documents (check ws))))
+      (is (= 8 (:documents (check ws))))
       (fs/delete (doc "stages/stage-1-foundation.md")))
     (testing "the overlay: a placeholder put back, then a KIT rule edited"
       (let [overlay (str (fs/path plan "rules.edn"))
@@ -245,7 +249,7 @@
     (let [ctx (run-ctx (workspace {}))
           e (try (with-out-str (driver/start! ctx)) nil (catch clojure.lang.ExceptionInfo e e))]
       (is (= :plan-check (:run-loop/error (ex-data e))))
-      (is (= 15 (count (:problems (ex-data e)))))
+      (is (= 17 (count (:problems (ex-data e)))))
       (is (str/includes? (ex-message e) "bb plan-check"))
       (is (not (fs/exists? (fs/path (:run-dir ctx) "state.edn"))))
       (is (not (fs/exists? (fs/path (:run-dir ctx) ".." ".." "plan-check.edn"))) "nothing cached on a failure")))

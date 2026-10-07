@@ -79,12 +79,14 @@
 (defn governing?
   "Is `rel` (a path under `docs/`) a document a check reads? Two kinds are
   not: the template's own `README.md`, which explains the marks and so carries
-  one, and the stage templates under `stages/` (`*-template.md`), which are
-  copied per stage with their marks standing by design. Every other document
-  - the six written in Phase A and every stage plan written since - is."
+  one, and the stage templates under `stages/` (`*-template.md`, and the gates
+  record's `*-template.edn`), which are copied per stage with their marks
+  standing by design. Every other document - the seven written in Phase A,
+  the lessons among them, and every stage plan written since - is."
   [rel]
   (not (or (= rel "README.md")
-           (and (str/starts-with? rel "stages/") (str/ends-with? rel "-template.md")))))
+           (and (str/starts-with? rel "stages/")
+                (or (str/ends-with? rel "-template.md") (str/ends-with? rel "-template.edn"))))))
 
 (defn governing
   "The governing documents under `docs-dir`, relative, sorted."

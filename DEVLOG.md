@@ -27,6 +27,27 @@ either; an entry's date is its reference.
 
 ## 2026-10-06
 
+### The lessons have a document and a reader, and a stage's gates are a record
+
+Row 98. Two things a reading of another project's design made visible. The method's stage
+end wrote the lessons and named no reader: `stage-end` appended to a document nothing
+created, and the next stage's plan started from its own sections. `05-lessons.md` is the
+plan's seventh document now - one section per stage, closed with its date, cost and runs,
+each lesson ending as a rule in the overlay, a line in the next stage plan, or a decision,
+and saying which; a lesson that ends as none of them is a remark and goes in the stage's
+§12. The stage plan template reads it first, the review pass asks for a lesson the new plan
+does not answer, and the plan check reads it like the other six.
+
+The three human gates of a stage - the plan approved with its cap, the blueprint signed off,
+the stage closed - were a status line changed in prose, which nothing could read, while the
+merge has been a file since the loop was rebuilt ("a question that cannot be answered
+tomorrow, or recorded, is not a gate"). `stages/stage-N-gates-template.edn` is the record:
+each gate nil until the person passes it, then a map with the date; copied beside the stage
+plan when the stage is pulled. The workflow-level `bb next` that reads it is the KIT's local
+plan's item 7; the plan check skips the template and reads a copied record. The template's
+README has the tree and the order of writing as they now are: scoping first, the plan
+committing to stage 0, every later stage plan written when pulled.
+
 ### The stage templates: the stage plan's twelve sections, and three kinds new
 
 Row 94, the templates' half. `stages/stage-N-template.md` is the stage plan the method's

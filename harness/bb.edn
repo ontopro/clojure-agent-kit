@@ -113,7 +113,7 @@
               :requires ([harness.setup.plan :as plan])
               :task (apply plan/-main *command-line-args*)}
 
-  plan-review {:doc "bb plan-review [<plan-dir>] [--profile <profile.edn>] [--workspace <dir>]: method.md §02's plan-review pass, run - the six Phase A documents read cold by the profile's :spec-reviewer with §02's checklist, one call; findings printed with the cost and written to <plan>/reviews/plan-review.edn. Not a gate"
+  plan-review {:doc "bb plan-review [<plan-dir>] [--profile <profile.edn>] [--workspace <dir>]: method.md §02's plan-review pass, run - the plan's documents read cold by the profile's :spec-reviewer with §02's checklist, one call; findings printed with the cost and written to <plan>/reviews/plan-review.edn. Not a gate"
                :requires ([harness.setup.plan-review :as plan-review])
                :task (apply plan-review/-main *command-line-args*)}
 

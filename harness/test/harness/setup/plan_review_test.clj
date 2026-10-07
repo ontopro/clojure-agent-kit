@@ -57,12 +57,12 @@
          (finally (srv/server-stop! stop)))))
 
 (defn- scratch-plan
-  "A plan folder with five of the six documents (no decision log yet) and a
+  "A plan folder with five of the seven documents (no decision log, no lessons yet) and a
   profile whose :spec-reviewer is the stub."
   [endpoint]
   (let [plan (str (fs/create-temp-dir {:prefix "plan-review-"}))]
     (fs/create-dirs (fs/path plan "docs"))
-    (doseq [nm (butlast pr/documents)]
+    (doseq [nm (drop-last 2 pr/documents)]
       (spit (str (fs/path plan "docs" nm)) (str "# " nm "\n\nthe text of " nm "\n")))
     (spit (str (fs/path plan "profile.edn"))
           (pr-str {:seat :claude
@@ -81,7 +81,7 @@
         written (edn/read-string (slurp (str (fs/path plan "reviews" "plan-review.edn"))))]
     (is (= 2 (:count written)))
     (is (= "the store disagrees" (-> written :findings first :finding)))
-    (is (= (vec (butlast pr/documents)) (:documents written)) "the documents that were there")
+    (is (= (vec (drop-last 2 pr/documents)) (:documents written)) "the documents that were there")
     (is (= "m-served" (:model written)))
     (is (= 1 (count (:reviews written))))
     (testing "the call's ids, endpoint and key variable are kept, so a late cost can be fetched by `bb reprice`"
@@ -96,6 +96,7 @@
         (is (< (str/index-of sent "=== source.md ===") (str/index-of sent "=== 03-method-and-tooling.md ===")))
         (is (str/includes? sent "the text of 01-requirements.md"))
         (is (str/includes? sent "=== 04-decision-log.md (not written) ==="))
+        (is (str/includes? sent "=== 05-lessons.md (not written) ===") "the lessons, last")
         (is (str/includes? sent "Deferred decisions with no owner"))
         (is (str/includes? sent "GIVEN parts") "the system prompt went too")))
     (testing "a second review keeps the first in the history"

@@ -1,0 +1,13 @@
+;; THE THREE HUMAN GATES OF A STAGE, AS A RECORD - a file, not a status line in prose, so that
+;; `bb next` can read where the stage stands the way the loop reads a merge decision. Copy to
+;; `stage-N-gates.edn` beside the stage plan when the stage is pulled. Each gate is nil until
+;; the person passes it, then a map with the date; nothing but the person writes one, and a
+;; gate once passed is not unpassed - a stage that loops back re-runs its exit criteria and
+;; closes again with a later date.
+{:stage/id "<N>"
+ ;; the stage plan approved, with its cap (the plan's §11): {:date "YYYY-MM-DD" :cap "<$>" :by "the person"}
+ :stage/approved nil
+ ;; the blueprint signed off (workflow step 10): {:date "YYYY-MM-DD" :by "the person"}
+ :blueprint/signed nil
+ ;; the exit criteria met, deployed locally and walked (the plan's §11): {:date "YYYY-MM-DD" :mvp? false}
+ :stage/closed nil}
