@@ -22,10 +22,30 @@
     (is (not (str/includes? c "## 03")) "it ends with the section"))
   (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no '### The plan-review pass'" (pr/checklist "# a method without it"))))
 
+(deftest the-checklist-names-the-three-findings-of-a-stages-plan-step
+  ;; The three the plan step is for, in the method and in the prompt's kinds:
+  ;; what a plan that commits to one stage at a time gets wrong.
+  (let [c (pr/checklist (slurp method-path))]
+    (is (str/includes? c "Requirements written for a stage not yet pulled"))
+    (is (str/includes? c "A risk with no owning stage"))
+    (is (str/includes? c "A lesson of the last stage this document does not answer")))
+  (is (= ["requirement-for-stage-not-pulled" "risk-without-owning-stage" "lesson-unanswered"] (take 3 pr/kinds)))
+  (is (str/includes? pr/system-prompt "STAGE PLAN under review first") "a later stage's reading is the stage plan first")
+  (is (str/includes? pr/system-prompt "The empty lessons document of a plan before stage 0 ends is not one")))
+
 (deftest the-input-is-every-document-in-order-then-the-checklist
   (let [text (pr/review-input [["source.md" "the brief"] ["00-overview.md" nil]] "- check this")]
     (is (< (str/index-of text "=== source.md ===\nthe brief") (str/index-of text "=== 00-overview.md (not written) ===")))
     (is (str/ends-with? text "=== THE CHECKLIST (method.md §02, the plan-review pass) ===\n- check this"))))
+
+(deftest a-stage-plan-is-read-first-and-keyed-by-its-stage
+  (let [text (pr/review-input ["stage-1-skeleton.md" "the skeleton"] [["source.md" "the brief"]] "- check this")]
+    (is (str/starts-with? text "=== stages/stage-1-skeleton.md (THE STAGE PLAN UNDER REVIEW) ===\nthe skeleton"))
+    (is (< (str/index-of text "THE STAGE PLAN UNDER REVIEW") (str/index-of text "=== source.md ==="))))
+  (is (= "stage-1" (pr/stage-key "docs/stages/stage-1-skeleton.md")) "as the blueprint review keys stage-1-blueprint.md")
+  (is (= "stage-0" (pr/stage-key "stage-0-spike.md")))
+  (is (= "stage-12" (pr/stage-key "stage-12-hosting.md")))
+  (is (= "hosting" (pr/stage-key "hosting.md")) "a file not named by its stage keeps its name"))
 
 (deftest findings-come-from-the-last-json-block
   (is (= [{:kind "contradiction" :where "01 §4" :finding "f" :evidence "e"}]
@@ -116,6 +136,37 @@
                            [(with-out-str (pr/review! plan (str (fs/path plan "profile.edn")) method-path)) plan])))]
     (is (str/includes? r "no findings block"))
     (is (not (fs/exists? (fs/path plan "reviews" "plan-review.edn"))))))
+
+(deftest a-stages-reading-sends-the-stage-plan-first-and-writes-under-the-stages-folder
+  ;; Every stage from 1 reads its stage plan cold before the blueprint is cut
+  ;; from it: the stage plan first, the seven documents as the context it
+  ;; revised, the record beside the stage's other reviews.
+  (let [[[out plan stage-plan] seen]
+        (with-stub answer
+          (fn [endpoint]
+            (let [plan (scratch-plan endpoint)
+                  stage-plan (str (fs/path plan "docs" "stages" "stage-1-skeleton.md"))]
+              (fs/create-dirs (fs/parent stage-plan))
+              (spit stage-plan "# Stage 1 - the walking skeleton\n\nthe text of the stage plan\n")
+              [(with-out-str (pr/review! plan (str (fs/path plan "profile.edn")) method-path stage-plan)) plan stage-plan])))
+        written (edn/read-string (slurp (str (fs/path plan "reviews" "stage-1" "plan-review.edn"))))]
+    (is (= 2 (:count written)))
+    (is (= "stage-1-skeleton.md" (:stage written)) "the record says which stage plan it read")
+    (is (= (vec (drop-last 2 pr/documents)) (:documents written)) "the seven documents are its context")
+    (is (not (fs/exists? (fs/path plan "reviews" "plan-review.edn"))) "stage 0's record is not touched")
+    (is (str/includes? out "reviews/stage-1/plan-review.edn"))
+    (is (str/includes? out "and the stage plan"))
+    (let [sent (json/generate-string (first seen))]
+      (is (< (str/index-of sent "stages/stage-1-skeleton.md (THE STAGE PLAN UNDER REVIEW)") (str/index-of sent "=== source.md ==="))
+          "the stage plan is read first")
+      (is (str/includes? sent "the text of the stage plan"))
+      (is (str/includes? sent "A lesson of the last stage this document does not answer") "the checklist went too"))
+    (is (= plan (pr/plan-dir-of stage-plan)) "the plan is the folder above docs/stages/")
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no stage plan at"
+                          (pr/review! plan (str (fs/path plan "profile.edn")) method-path
+                                      (str (fs/path plan "docs" "stages" "stage-2-missing.md")))))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"a stage plan lives at"
+                          (pr/plan-dir-of (str (fs/path plan "docs" "source.md")))))))
 
 (deftest a-plan-with-no-documents-and-a-profile-with-no-plan-reviewer-are-refused-by-name
   (let [plan (scratch-plan "http://127.0.0.1:1")]

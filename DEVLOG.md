@@ -27,6 +27,30 @@ either; an entry's date is its reference.
 
 ## 2026-10-06
 
+### The plan review runs in every stage's plan step, and asks the step's three questions by name
+
+Rows 93 and 98, the harness's half. The method's §02 said since the morning that the pass runs
+in every stage's plan step - the whole set in stage 0, the stage plan and the documents it
+revised after - and that its checklist opens with three findings a plan that commits to one
+stage at a time gets wrong; `bb plan-review` still read the seven documents once, with a
+prompt that said "before its first stage is built" and ten kinds that did not include them.
+The checklist itself was never stale, since it is read from the method at the call; the
+prompt around it and the command's reach were.
+
+`bb plan-review <stage-plan.md>` is a later stage's reading: the stage plan first, named as
+under review, then the seven documents as the context it revised, the record written to
+`reviews/<stage>/plan-review.edn` beside the blueprint review's, keyed by the `stage-N` the
+file name starts with as that review keys its own. With no file, or a plan folder, the
+reading is stage 0's as before. The prompt says which reading it is given, and names the plan
+step's three findings as the first three kinds - `requirement-for-stage-not-pulled`,
+`risk-without-owning-stage`, `lesson-unanswered` - with a sentence each on what they mean and
+one saying the empty lessons document of a plan before stage 0 ends is not a finding; the
+test holds the method's checklist to the three by their headings. The bake-off's
+`plan-reviewer` act has a case per reading a build makes: the set, then each stage plan on
+disk, templates and blueprints excluded. The harness has no way to know which documents a
+stage revised, so it sends the set; the prompt says so, and the reader can see what the stage
+plan cites.
+
 ### The plan reviewer is a role of its own, set to the spec reviewer's selection
 
 Row 99. `bb plan-review` read the profile's `:spec-reviewer` block, by a decision that still

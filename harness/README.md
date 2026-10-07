@@ -265,11 +265,16 @@ of a project is written into it - which is why the list below is short.
   `layers.edn` not loosened against the pin's layers, the gate keys in `loop.edn` in the KIT's
   order. Exit 1 with the list, one sentence each; `start` runs it once per workspace before its
   first dispatch and knows once by a hash of what it read (`work/plan-check.edn`). `bb plan-review`
-  is `method.md` §02's review pass, run: the plan's documents and §02's checklist to the
+  is `method.md` §02's review pass, run in every stage's plan step: in stage 0 the plan's seven
+  documents, and in every stage after its stage plan first (`bb plan-review
+  <stage-plan.md>`) with the seven as the context it revised, sent with §02's checklist to the
   profile's `:plan-reviewer` - a model of another family than the seat's - one completion, the
-  findings printed with the cost and written to `<name>-build/reviews/plan-review.edn`; the
-  Architect resolves them in the overview's table. A reading, not a gate. Both take the workspace's
-  plan by default, a plan path otherwise. **And each stage's Blueprint is read the same way before
+  findings printed with the cost and written to `<name>-build/reviews/plan-review.edn`, or
+  `reviews/<stage>/plan-review.edn` for a stage plan; the Architect resolves them in the
+  overview's table. The checklist asks the plan step's three questions by name - a requirement
+  written for a stage not pulled, a risk with no owning stage, a lesson of the last stage the plan
+  does not answer - before the faults that recur in any plan. A reading, not a gate. Both take the
+  workspace's plan by default, a plan path otherwise. **And each stage's Blueprint is read the same way before
   sign-off**: `bb blueprint-review <blueprint.md>` sends the stage document and the Blueprint to the
   profile's `:blueprint-reviewer` with `method.md` §07 step 2's question and §06's rules, and writes
   the findings to `<name>-build/reviews/<stage>/`; the spec review still reads every packet after.

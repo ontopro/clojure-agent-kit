@@ -54,8 +54,16 @@
   third step of the tool."
   {:plan-reviewer
    {:role :plan-reviewer
-    :cases (fn [{:keys [plan]}] [{:id "plan" :path plan}])
-    :run (fn [role {:keys [path]} {:keys [method]}] (plan-review/read! role path method))}
+    ;; stage 0's reading of the whole set, then one case per stage plan on
+    ;; disk, read first with the set as its context - the readings the pass
+    ;; makes in a build, in the order it makes them
+    :cases (fn [{:keys [plan]}]
+             (let [d (fs/path plan "docs" "stages")]
+               (into [{:id "plan" :path plan}]
+                     (for [f (when (fs/exists? d) (sort (map str (fs/glob d "stage-*.md"))))
+                           :when (not (or (str/ends-with? f "-template.md") (str/ends-with? f "-blueprint.md")))]
+                       {:id (plan-review/stage-key f) :path plan :stage f}))))
+    :run (fn [role {:keys [path stage]} {:keys [method]}] (plan-review/read! role path method stage))}
    :blueprint-reviewer
    {:role :blueprint-reviewer
     :cases (fn [{:keys [plan]}]
