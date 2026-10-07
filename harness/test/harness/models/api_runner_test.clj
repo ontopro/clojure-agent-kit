@@ -33,11 +33,11 @@
   (let [n (atom -1)
         stop (srv/run-server
               (fn [_] (let [i (min (swap! n inc) (dec (count responses)))]
-                        {:status 200 :headers {"Content-Type" "application/json"}
+                        {:status 200 :headers {"Content-Type" "application/json" "Connection" "close"}
                          :body (json/generate-string (nth responses i))}))
               {:port 0 :legacy-return-value? false})]
     (try (f (str "http://127.0.0.1:" (srv/server-port stop)))
-         (finally (srv/server-stop! stop)))))
+         (finally @(srv/server-stop! stop)))))
 
 (defn- text [s] {:id "g1" :choices [{:message {:content s}}]
                  :usage {:prompt_tokens 10 :completion_tokens 4}})
@@ -338,7 +338,7 @@
         stop (srv/run-server
               (fn [req]
                 (reset! seen (json/parse-string (slurp (:body req)) true))
-                {:status 200 :headers {"Content-Type" "application/json"}
+                {:status 200 :headers {"Content-Type" "application/json" "Connection" "close"}
                  :body (json/generate-string (text "looks fine"))})
               {:port 0 :legacy-return-value? false})]
     (try
@@ -348,7 +348,7 @@
         (is (= [] (:files r)))
         (is (= ["note" "read_file"] (mapv #(get-in % [:function :name]) (:tools @seen)))
             "no write_file, no nrepl_eval — it has neither a target nor a REPL"))
-      (finally (srv/server-stop! stop)))))
+      (finally @(srv/server-stop! stop)))))
 
 (defn- review
   "One Reviewer dispatch over a stub model that answers `reply`."
@@ -401,7 +401,7 @@
         stop (srv/run-server
               (fn [req]
                 (reset! seen (json/parse-string (slurp (:body req)) true))
-                {:status 200 :headers {"Content-Type" "application/json"}
+                {:status 200 :headers {"Content-Type" "application/json" "Connection" "close"}
                  :body (json/generate-string (text "ok"))})
               {:port 0 :legacy-return-value? false})]
     (try
@@ -430,7 +430,7 @@
         (is (str/includes? (:content user) "THE FILE MAY NOT EXIST YET")
             "and the role is told what finishing looks like, which neither the
              packet nor the rules ever say"))
-      (finally (srv/server-stop! stop)))))
+      (finally @(srv/server-stop! stop)))))
 
 ;; ---------------------------------------------------------------------------
 ;; capped, and nothing written

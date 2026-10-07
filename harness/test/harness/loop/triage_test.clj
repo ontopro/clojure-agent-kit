@@ -23,11 +23,11 @@
               (fn [req]
                 (swap! seen conj (assoc (select-keys req [:uri]) :body (json/parse-string (slurp (:body req)) true)))
                 {:status status
-                 :headers {"Content-Type" "application/json"}
+                 :headers {"Content-Type" "application/json" "Connection" "close"}
                  :body (json/generate-string body)})
               {:port 0 :legacy-return-value? false})]
     (try [(f (str "http://127.0.0.1:" (srv/server-port stop))) @seen]
-         (finally (srv/server-stop! stop)))))
+         (finally @(srv/server-stop! stop)))))
 
 (defn- text-reply [s]
   {:id "gen-1" :model "m-served" :choices [{:message {:content s}}]

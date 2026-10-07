@@ -99,14 +99,14 @@
                 (let [body (json/parse-string (slurp (:body req)) true)
                       judge? (str/includes? (json/generate-string body) "You are the judge")]
                   (swap! seen conj body)
-                  {:status 200 :headers {"Content-Type" "application/json"}
+                  {:status 200 :headers {"Content-Type" "application/json" "Connection" "close"}
                    :body (json/generate-string
                           {:id "gen-1" :model (if judge? "judge-served" "cand-served")
                            :choices [{:message {:content (if judge? judge-answer candidate-answer)}}]
                            :usage {:prompt_tokens 5 :completion_tokens 3}})}))
               {:port 0 :legacy-return-value? false})]
     (try [(f (str "http://127.0.0.1:" (srv/server-port stop))) @seen]
-         (finally (srv/server-stop! stop)))))
+         (finally @(srv/server-stop! stop)))))
 
 (defn- scratch-plan-with-bake-off
   "A plan with one Blueprint and its stage document, and a bake-off folder

@@ -20,13 +20,13 @@
                 (let [id (second (re-find #"id=([^&]+)" (str (:query-string req))))]
                   (swap! seen conj {:id id :auth (get-in req [:headers "authorization"])})
                   (if-let [g (get records id)]
-                    {:status 200 :headers {"Content-Type" "application/json"}
+                    {:status 200 :headers {"Content-Type" "application/json" "Connection" "close"}
                      :body (json/generate-string {:data (assoc g :id id)})}
                     {:status 404 :body "{}"})))
               {:port 0 :legacy-return-value? false})
         port (srv/server-port stop)]
     (try [(f (str "http://127.0.0.1:" port "/api/v1")) @seen]
-         (finally (srv/server-stop! stop)))))
+         (finally @(srv/server-stop! stop)))))
 
 (def fast {:attempts 1 :interval-ms 1 :timeout-ms 2000})
 

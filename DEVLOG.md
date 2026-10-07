@@ -41,6 +41,21 @@ difference, and nothing is migrated.
 
 ## 2026-10-07
 
+### Every stub model waits for its stop and answers `Connection: close`
+
+Row 102, from watch to fixed. The row opened on 2026-10-06 when a second stub-model test
+failed once and passed on the rerun, and said the fix would be taken when a third kind failed
+or it cost a commit; on the morning of the 7th a third and a fourth kind failed once each, the
+repricer's stub and the agent's, in two gates runs of one branch. The cause was two things the
+seventeen stubs across ten test namespaces all left open. `server-stop!` was called in a
+`finally` and not waited for, so a stopped server's connections lived on into the next test;
+and every stub answered keep-alive, so the client's connection pool could hand a later test's
+request to an earlier test's server once its port came round again - which is what "another
+server's words" in the triage failure were. Every stub now derefs its stop and sends
+`Connection: close`; the change is two substitutions per file, and a stub written later by
+copying any of them gets both. Five test runs in a row and a gates run were clean on the day,
+against about one run in three with one failure before.
+
 ### The KIT carries a version tag at each plan's boundary
 
 Row 109. The clone is upgraded with `git pull`, and what a workspace was made at was a commit

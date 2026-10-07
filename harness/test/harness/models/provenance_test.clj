@@ -17,10 +17,10 @@
                              {:port 0 :legacy-return-value? false})
         port (srv/server-port stop)]
     (try [(f (str "http://127.0.0.1:" port "/api/v1")) @seen]
-         (finally (srv/server-stop! stop)))))
+         (finally @(srv/server-stop! stop)))))
 
 (defn- json-ok [m]
-  {:status 200 :headers {"Content-Type" "application/json"} :body (json/generate-string m)})
+  {:status 200 :headers {"Content-Type" "application/json" "Connection" "close"} :body (json/generate-string m)})
 
 (def record
   {:data {:id "gen-abc" :model "deepseek/deepseek-v4-flash"

@@ -62,13 +62,13 @@
         stop (srv/run-server
               (fn [req]
                 (swap! seen conj (json/parse-string (slurp (:body req)) true))
-                {:status 200 :headers {"Content-Type" "application/json"}
+                {:status 200 :headers {"Content-Type" "application/json" "Connection" "close"}
                  :body (json/generate-string
                         {:id "gen-1" :model "m-served" :choices [{:message {:content body}}]
                          :usage {:prompt_tokens 5 :completion_tokens 3}})})
               {:port 0 :legacy-return-value? false})]
     (try [(f (str "http://127.0.0.1:" (srv/server-port stop))) @seen]
-         (finally (srv/server-stop! stop)))))
+         (finally @(srv/server-stop! stop)))))
 
 (defn- scratch-plan
   "A plan with one stage document and its Blueprint under docs/stages/, and a

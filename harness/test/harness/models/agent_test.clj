@@ -21,12 +21,12 @@
                   (swap! seen conj (assoc (select-keys req [:uri]) :body body)))
                 (let [i (min (swap! n inc) (dec (count responses)))]
                   {:status 200
-                   :headers {"Content-Type" "application/json"}
+                   :headers {"Content-Type" "application/json" "Connection" "close"}
                    :body (json/generate-string (nth responses i))}))
               {:port 0 :legacy-return-value? false})
         port (srv/server-port stop)]
     (try [(f (str "http://127.0.0.1:" port)) @seen]
-         (finally (srv/server-stop! stop)))))
+         (finally @(srv/server-stop! stop)))))
 
 (defn- role [endpoint] {:model "m" :shape :openai :endpoint endpoint})
 
@@ -139,8 +139,8 @@
 (def no-retry {:retry {:attempts 1}})
 
 (deftest an-api-error-ends-the-conversation-with-what-it-said
-  (let [stop (srv/run-server (fn [_] {:status 429 :body (json/generate-string
-                                                         {:error {:message "slow down"}})})
+  (let [stop (srv/run-server (fn [_] {:status 429 :headers {"Connection" "close"} :body (json/generate-string
+                                                                                         {:error {:message "slow down"}})})
                              {:port 0 :legacy-return-value? false})
         port (srv/server-port stop)]
     (try
@@ -148,7 +148,7 @@
         (is (= :failed (:status r)))
         (is (= 429 (get-in r [:error :status])))
         (is (= "slow down" (get-in r [:error :message]))))
-      (finally (srv/server-stop! stop)))))
+      (finally @(srv/server-stop! stop)))))
 
 (deftest an-error-inside-a-200-ends-the-conversation
   ;; Found live: an upstream rate limit as HTTP 200. The loop took it for an
@@ -169,11 +169,11 @@
   (let [n (atom -1)
         stop (srv/run-server
               (fn [_] (let [[status body headers] (nth responses (min (swap! n inc) (dec (count responses))))]
-                        {:status status :headers (merge {"Content-Type" "application/json"} headers)
+                        {:status status :headers (merge {"Content-Type" "application/json" "Connection" "close"} headers)
                          :body (json/generate-string body)}))
               {:port 0 :legacy-return-value? false})]
     (try [(f (str "http://127.0.0.1:" (srv/server-port stop))) (inc @n)]
-         (finally (srv/server-stop! stop)))))
+         (finally @(srv/server-stop! stop)))))
 
 (def limited [429 {:error {:message "slow down"}} nil])
 
@@ -275,7 +275,7 @@
                   (let [id (second (re-find #"id=([^&]+)" (str (:query-string req))))]
                     (if (<= (get (swap! polls update id (fnil inc 0)) id) lag)
                       {:status 404 :body "{}"}
-                      {:status 200 :headers {"Content-Type" "application/json"}
+                      {:status 200 :headers {"Content-Type" "application/json" "Connection" "close"}
                        :body (json/generate-string
                               {:data {:id id :model "m-resolved" :provider_name "P"
                                       :total_cost 0.001 :native_tokens_prompt 3
@@ -285,11 +285,11 @@
                         r (nth responses (min i (dec (count responses))))]
                     (if (::status r)
                       {:status (::status r) :body (json/generate-string (::body r))}
-                      {:status 200 :headers {"Content-Type" "application/json"}
+                      {:status 200 :headers {"Content-Type" "application/json" "Connection" "close"}
                        :body (json/generate-string (assoc r :id (str "gen-" i)))}))))
               {:port 0 :legacy-return-value? false})]
     (try (f (str "http://127.0.0.1:" (srv/server-port stop) "/api/v1"))
-         (finally (srv/server-stop! stop)))))
+         (finally @(srv/server-stop! stop)))))
 
 (deftest waiting-on-the-generation-record-is-not-time-in-the-model
   ;; One Tester spent 21.8s an iteration against the Coder's 4.7s, sending
@@ -341,9 +341,9 @@
 (deftest a-credit-refusal-names-the-endpoint-and-the-key-variable
   ;; The stop this becomes tells a person which account to top up; the error
   ;; from the adapter knows only a status, and the role knows the rest.
-  (let [stop (srv/run-server (fn [_] {:status 402 :body (json/generate-string
-                                                         {:error {:message "insufficient credits\nvisit https://x.test/keys?id=k1"
-                                                                  :code 402}})})
+  (let [stop (srv/run-server (fn [_] {:status 402 :headers {"Connection" "close"} :body (json/generate-string
+                                                                                         {:error {:message "insufficient credits\nvisit https://x.test/keys?id=k1"
+                                                                                                  :code 402}})})
                              {:port 0 :legacy-return-value? false})
         port (srv/server-port stop)
         endpoint (str "http://127.0.0.1:" port)]
@@ -355,4 +355,4 @@
         (is (contains? (:error r) :key-env) "the variable's name travels, nil when the role has none")
         (is (= "insufficient credits" (get-in r [:error :message])) "clipped before anything records it")
         (is (not (str/includes? (pr-str r) "id=k1")) "the URL is nowhere in the result"))
-      (finally (srv/server-stop! stop)))))
+      (finally @(srv/server-stop! stop)))))

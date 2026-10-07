@@ -34,7 +34,7 @@
     ;; to more than the account holds stops at the account's figure, and the line once
     ;; showed the key's alone and called it the balance.
     (let [stop (srv/run-server (fn [req]
-                                 {:status 200 :headers {"Content-Type" "application/json"}
+                                 {:status 200 :headers {"Content-Type" "application/json" "Connection" "close"}
                                   :body (json/generate-string
                                          (if (str/ends-with? (:uri req) "/credits")
                                            {:data {:total_credits 30.0 :total_usage 12.5}}
@@ -49,12 +49,12 @@
           (let [l (balance/line {:roles {:coder {:endpoint ep :key-env "PATH"}}} [])]
             (is (str/includes? l "key $23.22 remaining of its $40.00 limit"))
             (is (str/includes? l "account credit $17.50 remaining of $30.00 bought"))))
-        (finally (srv/server-stop! stop)))))
+        (finally @(srv/server-stop! stop)))))
   (testing "the key answers and the credits endpoint does not: the key's figures alone, and said so"
     (let [stop (srv/run-server (fn [req]
                                  (if (str/ends-with? (:uri req) "/credits")
                                    {:status 404 :body ""}
-                                   {:status 200 :headers {"Content-Type" "application/json"}
+                                   {:status 200 :headers {"Content-Type" "application/json" "Connection" "close"}
                                     :body (json/generate-string {:data {:limit 40.0 :usage 16.78 :limit_remaining 23.22}})}))
                                {:port 0 :legacy-return-value? false})]
       (try
@@ -62,7 +62,7 @@
               status (balance/openrouter-key-status ep "PATH")]
           (is (= {:limit 40.0 :usage 16.78 :remaining 23.22} status) "no :credits key at all")
           (is (str/includes? (balance/line {:roles {:coder {:endpoint ep :key-env "PATH"}}} []) "account credit unavailable")))
-        (finally (srv/server-stop! stop)))))
+        (finally @(srv/server-stop! stop)))))
   (testing "an OpenRouter key that does not answer is unavailable, not an error"
     (is (:unavailable (balance/openrouter-key-status "http://127.0.0.1:1/api/v1" "PATH")))
     (is (= {:unavailable "NO_SUCH_VAR_HERE is unset"} (balance/openrouter-key-status "http://x" "NO_SUCH_VAR_HERE")))))
