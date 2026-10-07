@@ -27,6 +27,26 @@ either; an entry's date is its reference.
 
 ## 2026-10-07
 
+### The harness inventory is rendered from the source, not counted by hand
+
+Row 106. The harness README opened its inventory with "thirty-seven namespaces in six groups",
+typed by hand, while `src/harness/` held forty-two; three of them had no row in the table at
+all. The README's own health block is rendered and drift-gated because a number nobody can
+re-derive is the thing this repository is most against, and the sentence above it was that
+number. A reading of a project that commits every generated thing and gates its drift named
+the shape to take.
+
+`bb inventory-sync` reads every `ns` form under `src/harness/` and renders the count, the
+groups with their sizes, and a table - namespace, group, the first line of its docstring -
+into the README between markers, the way the health block and the rule mirror are rendered.
+The hand-written table beneath stays prose: what each namespace is for and the lesson it
+encodes, in the order a run meets them. The check, `--check` in `bb gates`, holds the block to
+the source and the hand-written part to the source by name alone - a namespace the source
+has that the table never mentions fails, since a lesson nobody can find by the namespace it
+belongs to is the omission the README was written against. The first run of the check named
+the new namespace itself as unnamed; its row was written, and the three that had been missing
+- the targets gate, the repricer, the upgrade report - have theirs.
+
 ### `bb stage-report` rolls a stage's records up beside its cap
 
 Row 105, and the hand-kept figures of rows 82, 23 and 86. The method makes the stage the unit

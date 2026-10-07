@@ -40,11 +40,61 @@ The first `bb test` fetches malli into `~/.m2`; everything after that is offline
 
 ## The pieces
 
-Thirty-seven namespaces in six groups - `harness.setup` (the machine and the workspace), `harness.loop`
-(the steps and the loop), `harness.contract` (the packet, the shapes, the checks on a spec),
-`harness.gates` (the runner, gate 0, the boundary gate), `harness.models` (runners, adapters,
-profiles, provenance), `harness.money` (balance and the report) - and `harness.rules`, the rule
-source, on its own. The table is in the order a run meets them, not by group.
+The inventory is rendered from the source between the markers, so the count and the list are never
+typed by hand; the table after it is hand-written - what each namespace is for and the lesson it
+encodes, in the order a run meets them, not by group - and `bb inventory-sync --check` holds it to
+the source by name: a namespace the source has that the table never mentions fails the gates.
+
+<!-- harness-inventory:begin -->
+
+42 namespaces, rendered from `src/harness/` by `bb inventory-sync` (`--check` in `bb gates`): `harness.setup` (13: the machine and the workspace), `harness.loop` (5: the steps and the loop), `harness.contract` (7: the packet, the shapes, the checks on a spec), `harness.gates` (4: the runner, gate 0, the boundary gate), `harness.models` (9: runners, adapters, profiles, provenance), `harness.money` (4: balance, the reports, repricing).
+
+| Namespace | Group | The first line of its docstring |
+|---|---|---|
+| `harness.setup.app` | setup | The second part of `bb init`: generate the application from the pinned |
+| `harness.setup.blueprint-review` | setup | A stage's Blueprint, read cold before sign-off: `bb blueprint-review <blueprint.md>`. |
+| `harness.setup.doctor` | setup | Toolchain doctor: what this stack needs, whether it is here, and what it does. |
+| `harness.setup.health` | setup | `bb health` - the KIT's health check: does this KIT, on this machine, with the |
+| `harness.setup.init` | setup | `bb init <name> [dir]` - create the workspace a project is built in. |
+| `harness.setup.inventory` | setup | The harness's namespaces, rendered into its README from the source: |
+| `harness.setup.next` | setup | What comes next in the workflow, read off the build's files: `bb next`. |
+| `harness.setup.plan` | setup | What the harness knows about a plan's documents: the template the KIT ships |
+| `harness.setup.plan-review` | setup | The plan-review pass of `method.md` §02, run: `bb plan-review [<plan-dir> | <stage-plan.md>]`. |
+| `harness.setup.skills` | setup | The KIT's fifth part, `skills/`, and the two places it is rendered to: |
+| `harness.setup.template` | setup | The template the KIT brings with it: read the pin, and build the command that |
+| `harness.setup.upgrade` | setup | What a pulled KIT expects that this workspace lacks - a report, never a |
+| `harness.setup.workspace` | setup | Where things are: the workspace a path is in, and what its `workspace.edn` says. |
+| `harness.loop.driver` | loop | `bb run-loop <command> <run-dir> [args]` — the loop's steps as commands, with a |
+| `harness.loop.log` | loop | The run's append-only event log. One EDN map per line; never rewritten. |
+| `harness.loop.orchestrate` | loop | The loop: `bb run-loop run <run-dir>` drives one task to its next stop. |
+| `harness.loop.provision` | loop | Workspaces: a git worktree and its own nREPL, one per (task, role). |
+| `harness.loop.triage` | loop | Who owns a failure: one model call — on a red gate, a note, or a review |
+| `harness.contract.blueprint` | contract | A task's `spec.edn`, pulled out of a Blueprint written to the template. |
+| `harness.contract.packet` | contract | Task-packet assembly. |
+| `harness.contract.shapes` | contract | Malli schemas for the loop: the task packet, what a runner returns, |
+| `harness.contract.sigs` | contract | The Blueprint's `:deps-sigs`, checked against the source it describes. |
+| `harness.contract.spec-review` | contract | A review of the CONTRACT before anyone works from it: `bb run-loop spec-review <run-dir>`. |
+| `harness.contract.stub` | contract | The contract, as code the Tester can load. |
+| `harness.contract.targets` | contract | The spec's `:property-targets`, checked against the tests the Tester wrote. |
+| `harness.gates.boundary` | gates | Gate 4: the architecture-boundary check (method §09), against a project's |
+| `harness.gates.forms` | gates | The top-level forms of a Clojure file, as a table: kind, name, line range, |
+| `harness.gates.repair` | gates | Gate 0: mechanical repair, before the gates run. |
+| `harness.gates.run` | gates | The gate runner. |
+| `harness.models.adapter` | models | One request shape per model family, and one parsed shape out. |
+| `harness.models.agent` | models | One model, one conversation, the tools it may call. |
+| `harness.models.bake-off` | models | Candidates for a role, read against the same artifact, compared: `bb bake-off`. |
+| `harness.models.catalogue` | models | The models a route can reach, from OpenRouter's public listing: `bb models <query>`. |
+| `harness.models.profile` | models | Which model answers for which role, and the one client the human works in. |
+| `harness.models.provenance` | models | Who actually answered, what it actually cost. |
+| `harness.models.runner` | models | The AgentRunner seam. |
+| `harness.models.runner-check` | models | A conformance check for AgentRunner implementations. |
+| `harness.models.tools` | models | The four things a dispatched agent may do in its workspace. |
+| `harness.money.balance` | money | What the money looks like before and after a run: `bb balance`, and the two |
+| `harness.money.report` | money | The per-run report: what each step cost in time and money, and which model |
+| `harness.money.reprice` | money | `bb reprice <run.edn>`: fill the cost of every dispatch step a record left |
+| `harness.money.stage-report` | money | A stage's figures from its records: `bb stage-report <stage-plan.md>`. |
+
+<!-- harness-inventory:end -->
 
 Who acts on them — every review, gate and dispatch in a build, the profile role behind each and
 the model as shipped — is [`roster.md`](roster.md).
@@ -62,13 +112,14 @@ the model as shipped — is [`roster.md`](roster.md).
 | `harness.setup.template` | The template the kit brings with it, as data (`resources/template-pins.edn`: coordinate, full commit, tag, deps-new version) and the pure function that turns a pin into the generation command | A template named in code is a template nobody can change without a release; a pin that is a tag or a branch is not a pin |
 | `harness.setup.plan` + `harness.setup.plan-review` | `bb plan-check`: what a filled plan still carries - every mark, every line of the template's instructions still standing, every requirement that cites no observation of `source.md` and is not marked inferred, the overlay's placeholders - and whether its given parts are intact (the KIT's rules unedited, `layers.edn` not loosened against the pin's layers, the gate keys in the KIT's order); exit 1 with the list, and `start` runs it once per workspace, known by a hash of what it read. `bb plan-review`: `method.md` §02's pass, run - the plan's documents and §02's checklist, read from the method at the call, to the profile's `:plan-reviewer`, one completion; findings printed with the cost and written to `<plan>/reviews/` | The plan is the Architect's session's to fill, and nothing read it: a mark left standing reached the next reader as literal text, the rule source's failure one level up; and two projects ran the review pass as a throwaway script each with the checklist pasted in by hand. The check is the gate and is free; the reading is not a gate, because a review that found nothing proves nothing |
 | `harness.setup.blueprint-review` | `bb blueprint-review <blueprint.md>`: a stage's Blueprint and the stage document it names, read whole by the profile's `:blueprint-reviewer` against `method.md` §07 step 2 (is it over-engineered?) and §06's rules for shapes and targets, both read from the method at the call; one completion, no tools; the findings printed with the cost and written to `<plan>/reviews/<stage>/blueprint-review.edn`, for the Architect to resolve in the stage document before the sign-off | The method promised this read and nothing ran it: the harness's orchestrator is triage, and a Blueprint's packets met a model one at a time in the spec review, which cannot see a layer with one use or a shape nothing needs. Two projects wrote the read as a throwaway script; the third measured which family reads a Blueprint best, and the answer set the role |
-| `harness.setup.doctor` | Toolchain probe and report | A missing small binary doesn't fail the loop — it quietly spends the Coder's retry budget on parens. Check the toolchain; don't assume it. |
+| `harness.setup.doctor` + `harness.setup.upgrade` | Toolchain probe and report; in a workspace, what a pulled KIT expects that it lacks | A missing small binary doesn't fail the loop — it quietly spends the Coder's retry budget on parens. Check the toolchain; don't assume it. |
 | `harness.setup.skills` | `bb skills-sync [--check]`: the KIT's `skills/` - one skill per conversational step of the workflow - rendered to the clone's own `.claude/skills/` and a workspace's, each copy noting the KIT commit; the check compares everything but the commit, and holds every heading a skill's Reads table cites to the file it names. A project's own skill under another name is never touched | The method is the source: a skill that restated its section would drift, so each cites its headings and the gates hold them; and a workspace's copy of a skill was nobody's to update until the doctor and this check said so |
+| `harness.setup.inventory` | `bb inventory-sync [--check]`: this README's inventory block - every namespace under `src/harness/`, its group, the first line of its docstring, the count - rendered from the source between markers; the check fails on drift and on a namespace this table never names | The count above was typed by hand and was wrong within a week of being right; a number nobody re-derives is the failure this repository is most against, and the first run of the check named this very namespace as unnamed here |
 | `harness.setup.next` | `bb next`: the workflow's next step, its owner and the command or skill that runs it, from five facts that are files - a workspace, the plan check, the stage's gates record, its blueprint reviewed and signed, its packets' merged records; before a workspace exists, scoping. Pure over the facts and table-tested, as the loop's `next-action` is; information, never a gate | The hand-offs between the workflow's steps lived in prose and in whoever remembered them; a session opened cold had to find its place by reading everything. The loop answered the same question for a run from its state alone, and this is that shape one level up |
 | `harness.money.stage-report` | `bb stage-report <stage-plan.md>`: a stage's roll-up over the run records of its blueprint's packets and its readings - money by role, rounds, stops by owner, retries and rejections - beside its cap and the stage before, rendered into the stage plan's exit-criteria section as a block that names itself; `--check` (in `bb gates`) holds every published block to the records, both directions, as `report-check` holds `RUNS.md`. Said, not counted: the cap stays the person's stop | The stage is the unit of money and its figures were a hand-kept rounds table, a ledger and a spend sheet, re-added after every merge and re-derivable by nobody |
 | `harness.contract.shapes` | Malli schemas: packet, result, gate result, run record | A result contract that isn't enforced isn't a contract. `AgentResult` is **closed**. |
 | `harness.contract.packet` | Cuts a role-specific packet from a task spec | The Tester's context excludes the Coder's impl — **mechanically**, not by asking a Blueprint author to remember. |
-| `harness.gates.run` + `harness.gates.repair` | Ordered, short-circuiting gate runner; gate 0 | Cheap before expensive; a failing gate returns *what it said*, not just which one; a broken gate config fails the gate, not the run. |
+| `harness.gates.run` + `harness.gates.repair` + `harness.contract.targets` | Ordered, short-circuiting gate runner; gate 0 | Cheap before expensive; a failing gate returns *what it said*, not just which one; a broken gate config fails the gate, not the run. |
 | `harness.gates.forms` | A Clojure file's top-level forms as a table (kind, name, lines, hash) and the difference between two tables | A change to an existing file reports what it did at the level of forms - lost, gained, changed by name - while the author is still there; the same table is the check a MODIFY packet will need. Silent when a file does not parse. |
 | `harness.models.runner` + `harness.models.runner-check` | The `AgentRunner` seam, a `ManualRunner`, and a conformance check | Ship the mechanics first with a human at the invocation point. Then check every runner you add against the same contract. |
 | `harness.rules` | One rule source, rendered into prompts *and* into `AGENTS.md`, with a gate on drift | Prompt rules beat retry feedback. A rule written in two places rots; a rule written only in a file never reaches a model family that doesn't read files. |
@@ -82,7 +133,7 @@ the model as shipped — is [`roster.md`](roster.md).
 | `harness.models.bake-off` | `bb bake-off new \| run \| table \| check`: candidates for an act, read against the same artifact, compared. A three-line spec (the act, the candidates as "model effort", the judge) expanded through the catalogue and the routes into role blocks; every case run with every candidate ONCE through that review's `read!`; a judge that is never a candidate reads the answers blind (A, B, C in a recorded shuffle) and maps consensus and disagreement into one table; the person marks rows real or not in `marks.edn` and the per-dollar figures render from the marks alone. `bake-off-check` holds `TABLE.md` to the records in a workspace's gates. The reading acts today; the dispatched roles' runner is row 46's residue | Three bake-offs were run as throwaway scripts scored by hand, and none survived. The build decides on one pass, so a bake-off measures one pass; the consensus across candidates is the only repetition, and a singleton is where the information is. A judge that decides what is real is a fourth voice to argue with; one that only matches findings is the step a rubric cannot do |
 | `harness.models.adapter` + `harness.models.provenance` | Two request shapes, and the second call that says who answered; for an endpoint with no such call, usage × the profile's list prices, marked as computed | A completion names no provider. One slug can be served by several hosts at several quantisations, and which one answered decides the chat template. A price table in the harness would rot; one in the profile carries its source and date. |
 | `harness.models.tools` + `harness.models.agent` | `read_file`, `write_file`, `edit_file` (a text that occurs once, replaced), `nrepl_eval`, and the loop that drives them, which keeps a transcript — what the model said and ran, per completion — and sends a request again on a rate limit or an overloaded host, counting how often | A tool failure returns to the model as data. `nrepl_eval` is a shell, unavoidably — the containment is the worktree, not the tool list. A dispatch that wrote nothing used to leave nothing to say why. |
-| `harness.money.report` | Per-step time, cost, model and serving provider for a run; below it the performance section — total/waiting/active time from absolute timestamps, money by provider, role and model, the OpenRouter balance at start and record, tokens with the cache share, rounds, roles as run — and the drift gate over the reports a document publishes | A number nobody measured must say so, in the cell. A total that silently omits three dispatches is worse than no total. And a published number whose record has gone missing is unverifiable, so `bb report-check` fails on it — the same treatment `AGENTS.md` gets, applied to the other kind of generated content this repository commits. |
+| `harness.money.report` + `harness.money.reprice` | Per-step time, cost, model and serving provider for a run; below it the performance section — total/waiting/active time from absolute timestamps, money by provider, role and model, the OpenRouter balance at start and record, tokens with the cache share, rounds, roles as run — and the drift gate over the reports a document publishes | A number nobody measured must say so, in the cell. A total that silently omits three dispatches is worse than no total. And a published number whose record has gone missing is unverifiable, so `bb report-check` fails on it — the same treatment `AGENTS.md` gets, applied to the other kind of generated content this repository commits. |
 
 ## The rule source
 

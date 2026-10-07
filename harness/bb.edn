@@ -84,6 +84,13 @@
                :requires ([harness.setup.skills :as skills])
                :task (apply skills/-main *command-line-args*)}
 
+  ;; The harness's own inventory, rendered into its README from src/harness/ between markers and
+  ;; drift-gated like the health block; the hand-written table beneath it is held to the source
+  ;; by name.
+  inventory-sync {:doc "bb inventory-sync [--check]: render every namespace under src/harness/ - name, group, first docstring line, the count - into README.md between its markers; --check (in gates) fails on drift and on a namespace the hand-written table never names"
+                  :requires ([harness.setup.inventory :as inventory])
+                  :task (apply inventory/-main *command-line-args*)}
+
   ;; A stage's figures from its records - money by role, rounds, stops by owner, rework - beside
   ;; its cap and the stage before, rendered into the stage plan's exit-criteria section and held
   ;; to the records by --check, which `gates` runs in a workspace's clone. Said, not counted: the
@@ -180,6 +187,7 @@
          :task (do (shell "bb" "doctor" "--tier" "gates") (run 'fmt-check) (run 'lint)
                    (run 'rules-check)
                    (shell "bb" "skills-sync" "--check")
+                   (shell "bb" "inventory-sync" "--check")
                    (shell "bb" "health-sync" "--check")
                    (shell "bb" "report-check")
                    (shell "bb" "stage-report" "--check")
