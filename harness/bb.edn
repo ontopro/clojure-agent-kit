@@ -84,6 +84,12 @@
                :requires ([harness.setup.skills :as skills])
                :task (apply skills/-main *command-line-args*)}
 
+  ;; The workflow's next step, read off the build's files - the loop's `next-action` one level
+  ;; up, so the hand-off between steps lives in no skill. Information: exit 0 always.
+  next {:doc "bb next [--workspace <dir>]: the workflow's next step, its owner and the command or skill to run, from five facts that are files - a workspace, the plan check, the stage's gates record, its blueprint's review and sign-off, its packets' merged records; scoping before a workspace exists"
+        :requires ([harness.setup.next :as next])
+        :task (apply next/-main *command-line-args*)}
+
   rules-prompt {:doc "Render the rules for one audience as a system-prompt block: --audience <name> [--out FILE] [--<key> <value>]..."
                 :requires ([harness.rules :as rules])
                 :task (apply rules/prompt-main *command-line-args*)}

@@ -27,6 +27,36 @@ either; an entry's date is its reference.
 
 ## 2026-10-07
 
+### `bb next` says the workflow's next step from the build's files
+
+Row 104. The loop has answered "what happens now?" for a run since it was rebuilt:
+`next-action`, pure over the run's state, table-tested, with every routing decision in one
+place because a control flow scattered through the steps that perform it can only be tested
+by performing them. The workflow had no such answer. Fourteen steps, three human gates and
+four conversations, and a session opened cold found its place by reading `workflow.md`
+against the build by hand; a skill that ended with "then do X" carried a hand-off that was
+the workflow's, not the skill's. A reading of a skills-only project named the shape to take:
+a workflow-level `next-action`, over facts that are files.
+
+Five facts, every one a file. A `workspace.edn` at or above here - none, and the next
+action is scoping from the clone's own skill, which is the plan's step 0 before step 1 made
+real. `bb plan-check`'s list - anything left, and the plan skill is next, the brief first if
+`source.md` §1 still carries the template's mark. The stage in progress - the highest-numbered
+under `docs/stages/` with any file - and its gates record, the three human gates the person
+writes: not approved, and the next action is the approval (stage 0) or the stage plan and
+then the approval (a later stage); approved with no blueprint, the blueprint; a blueprint
+with no reading under `reviews/stage-N/`, the review; reviewed and not signed, the sign-off.
+Its packets, in the blueprint's order, against the merged records under the build's `runs/`:
+the first without one is the next packet, and when its latest record says otherwise the stop
+is named - a merge for the person, an escalation for a person, a run to continue. All merged
+and not closed: the stage's end. Closed: pull the next by kind. Each answer carries the step's
+number from `workflow.md`, its owner, the command or skill, and the fact it rests on, and a
+fact the command cannot read is said as such rather than guessed - a workspace with no
+records key gets no records, not a stack trace, which the first project's workspace taught
+on the day. Information, never a gate: exit 0 always. A first cut, and the docstring says
+where it stops: a run in flight is known only by its last record, the plan review's findings
+are not read, and the stage map is not consulted for which stage the person meant to pull.
+
 ### The four conversational steps are skills: the KIT's fifth part, held to the method
 
 Row 103. Four of the workflow's steps are conversations with a person that end in documents -
