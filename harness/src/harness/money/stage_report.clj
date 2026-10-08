@@ -91,9 +91,11 @@
   `[[label cost n] …]` for the plan review, the blueprint review and the spec
   reviews) and their money; the cap and its date from the gates record, or
   nil; the threat model's signature from it (`:security`) and the plan's kind,
-  which together say whether a pre-release stage is signed; `:before` the
-  stage before's `{:id :cost :runs :rounds :stops}` or nil."
-  [{:keys [id kind packets records readings gates before]}]
+  which together say whether a pre-release stage is signed; the security
+  pack's counts and date from the record its run at the stage's end wrote
+  (`:security-checks`), or nil; `:before` the stage before's `{:id :cost :runs
+  :rounds :stops}` or nil."
+  [{:keys [id kind packets records readings gates checks before]}]
   (let [runs (mapv run-summary records)
         by-task (into {} (map (juxt :task/id identity)) runs)
         dispatch-money (sum :cost runs)
@@ -121,6 +123,7 @@
      :approved (:date (:stage/approved gates))
      :kind kind
      :security (:security/signed gates)
+     :security-checks (when checks {:counts (:counts checks) :date (some-> (:security/at checks) str (subs 0 10))})
      :before before}))
 
 (defn- dollars [x] (format "$%.2f" (double (or x 0))))
@@ -131,9 +134,12 @@
   "The stage's block, as published: its first line names the stage, so the
   check can find it without a marker. The threat model's line is there for a
   pre-release stage, or any stage whose record carries the signature, and for
-  no other - a block published before the line existed reads the same."
+  no other - a block published before the line existed reads the same. So is
+  the security checks' line: a stage with the pack's record, or a pre-release
+  stage, which says when it has none."
   [{:keys [id run-count merged money cap approved before by-role readings reading-money
-           rounds retry-cost dispatch-money rejections stops stop-kinds packets kind security]}]
+           rounds retry-cost dispatch-money rejections stops stop-kinds packets kind security
+           security-checks]}]
   (->> [(str "Stage " id " report · " run-count " run" (when (not= 1 run-count) "s") ", " merged " merged · "
              (dollars money) (if cap (str " of cap " cap (when approved (str " (approved " approved ")")))
                                  " · cap: not recorded (no :stage/approved in the gates record)")
@@ -162,6 +168,11 @@
              (if (seq packets)
                (str/join " · " (for [[t s] packets] (str t " " (name s))))
                "none in the blueprint"))
+        (when (or security-checks (= "pre-release" kind))
+          (str "  Security checks: "
+               (if-let [{:keys [ok warn fail skipped]} (:counts security-checks)]
+                 (str ok " ok, " warn " warn, " fail " fail, " skipped " skipped (" (:date security-checks) ")")
+                 "no record (the stage-end skill runs the security pack with --record docs/stages/stage-N-security.edn)")))
         (when (or security (= "pre-release" kind))
           (str "  Threat model: "
                (if security
@@ -280,7 +291,8 @@
                                                                (fs/path build "reviews" "plan-review.edn")
                                                                (fs/path reviews "plan-review.edn")))
                                       (reading "blueprint review" (fs/path reviews "blueprint-review.edn"))]))
-         :gates (read-edn (fs/path stages (str "stage-" id "-gates.edn")))}))))
+         :gates (read-edn (fs/path stages (str "stage-" id "-gates.edn")))
+         :checks (read-edn (fs/path stages (str "stage-" id "-security.edn")))}))))
 
 (defn summary-for
   "The stage's summary with the stage before it folded in, or nil when the

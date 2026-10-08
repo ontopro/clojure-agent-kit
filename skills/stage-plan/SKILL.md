@@ -58,7 +58,9 @@ threat model, every line of the architecture's §15 to be answered with its evid
 the release from its template (the three criteria; the changelog; the rollback). The
 requirements this stage adds go in §2, each citing its observation or marked `(inferred)`.
 A stage that changes what the application holds or who reaches it - a form, an editor,
-accounts - says so, and the architecture's §8 decision and §15's lines are amended with it.
+accounts - says so, and the architecture's §8 decision and §15's lines are amended with it, and
+the routes the security pack tries (`docs/security-routes.edn`) gain the stage's forms and the
+routes that need a login.
 The exit criteria are things a person can check, "deployed locally" among them from stage 1
 on, and the cap is proposed to the person. Then run `bb plan-review
 docs/stages/stage-N-<name>.md` and read the findings cold with the person, resolving each in

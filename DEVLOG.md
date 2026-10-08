@@ -40,6 +40,23 @@ until a workflow runs it on push.
 
 ## 2026-10-08
 
+### Every stage's end runs the security pack, and the stage report reads its record
+
+Row 115. The `stage-end` skill runs the pack after the browser's, from the application's folder
+with the project's routes file and `--record docs/stages/stage-N-security.edn`, so the record is
+committed beside the stage plan and the gates record; a pre-release stage runs it against the
+rehearsed host, `--running --base <its url>`, so TLS is tried on the deploy and not only skipped
+on localhost. No failing row is an exit criterion of every stage (`stage-N-template.md` §11,
+"deployed locally") and of the pre-release stage (its §7, each warn answered in §15 or a
+decision); the skill's done-when names the record. `bb stage-report` reads it and adds a line,
+"Security checks: n ok, n warn, n fail, n skipped (date)", for a stage with the record or any
+pre-release stage, which says when it has none - so a block published before the line existed
+reads the same and `--check` holds it. `bb next` is unchanged: the pre-release signature already
+stands between the stage and its close. The `stage-plan` skill adds a stage's forms and login
+routes to the routes file when it amends §8 and §15; `03-method-and-tooling.md` §17 asks a
+project which routes file it keeps; `method.md` §02 says what is tried besides what is decided,
+which its paragraph of the day before left for when the pack existed.
+
 ### Health records with the security check: macOS and the container, 9 of 9 each
 
 Row 115. Both run on `d50125f`, the commit that added the check: macOS 27.0.1 in 77 s and the

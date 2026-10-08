@@ -84,6 +84,18 @@
     (is (str/ends-with? (sr/render (sr/stage-summary (-> facts (assoc :kind "pre-release")
                                                          (assoc-in [:gates :security/signed] {:date "2026-10-07" :by "the person"}))))
                         "\n  Threat model: signed 2026-10-07 by the person")))
+  (testing "the security checks' line: a stage with the pack's record, or a pre-release stage, and no other"
+    (let [checks {:security/at "2026-10-08T00:05:12.3" :counts {:ok 10 :warn 5 :fail 0 :skipped 3} :ok? true}]
+      (is (not (str/includes? (sr/render (sr/stage-summary (assoc facts :kind "increment"))) "Security checks"))
+          "a block published before the line existed reads the same")
+      (is (str/ends-with? (sr/render (sr/stage-summary (assoc facts :kind "increment" :checks checks)))
+                          "\n  Security checks: 10 ok, 5 warn, 0 fail, 3 skipped (2026-10-08)"))
+      (is (str/includes? (sr/render (sr/stage-summary (assoc facts :kind "pre-release")))
+                         "\n  Security checks: no record (the stage-end skill runs the security pack")
+          "a pre-release stage says it has none")
+      (is (str/includes? (sr/render (sr/stage-summary (assoc facts :kind "pre-release" :checks checks)))
+                         "Security checks: 10 ok, 5 warn, 0 fail, 3 skipped (2026-10-08)\n  Threat model: not signed")
+          "before the signature, which reads it")))
   (testing "no cap, no stage before, no runs"
     (let [r (sr/render (sr/stage-summary {:id 0 :packets ["a"] :records [] :readings [] :gates nil :before nil}))]
       (is (str/starts-with? r "Stage 0 report · 0 runs, 0 merged · $0.00 · cap: not recorded (no :stage/approved in the gates record) · no stage before"))
@@ -138,6 +150,9 @@
     (spit (str (fs/path records "w0.edn")) (pr-str (assoc merged-run :run/id "w0" :task/id "w0")))
     (spit (str (fs/path build "reviews" "stage-1" "blueprint-review.edn")) (pr-str {:cost 1.0 :reviews [{:cost 1.0} {:cost 0.5}]}))
     (spit (str (fs/path build "reviews" "plan-review.edn")) (pr-str {:cost 0.75}))
+    (spit (str (fs/path stages "stage-1-security.edn"))
+          (str ";; Written by the KIT's security pack. Do not edit.\n"
+               (pr-str {:security/at "2026-10-08T00:05" :counts {:ok 9 :warn 2 :fail 0 :skipped 3} :ok? true :rows []})))
     (is (= [[0 "stage-0-spike.md"] [1 "stage-1-skeleton.md"]] (sr/stage-plans stages)))
     (is (nil? (sr/summary-for build records 2)) "no blueprint, nothing to roll up")
     (let [s (sr/summary-for build records 1)]
@@ -145,7 +160,9 @@
       (is (= [["blueprint review" 1.5 2] ["spec reviews" 0.75 3]] (:readings s)) "the history's readings; no plan review for this stage")
       (is (= "$20" (:cap s)))
       (is (= "increment" (:kind s)) "the plan's kind line")
-      (is (= {:id 0 :cost 4.625 :runs 1 :rounds 2 :stops 1} (:before s)) "stage 0: its run, its spec review and the whole-set plan review"))
+      (is (= {:id 0 :cost 4.625 :runs 1 :rounds 2 :stops 1} (:before s)) "stage 0: its run, its spec review and the whole-set plan review")
+      (is (= {:counts {:ok 9 :warn 2 :fail 0 :skipped 3} :date "2026-10-08"} (:security-checks s))
+          "the security pack's record beside the gates record, its comment line read past"))
     (is (= ["stage-0-spike.md publishes no stage report and its packets have records: run `bb stage-report`"
             "stage-1-skeleton.md publishes no stage report and its packets have records: run `bb stage-report`"]
            (sr/check build records))

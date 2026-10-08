@@ -70,6 +70,10 @@
   of its §4, a decision, or this stage's work - each with its evidence beside it, and
   `:security/signed` set in `stage-N-gates.edn` by the person; a line that cannot be answered
   this release is a decision that says so, never a line left blank
+- **The security pack green on the deploy:** the KIT's security pack run against the rehearsed
+  host (`--running --base <its url>`, so TLS is tried), with `../security-routes.edn` where the
+  project has one; `stage-N-security.edn` beside this plan with no failing row, and each warn
+  read and answered in §15 or a decision
 - **Deployed locally** still: the browser checks and the owner's walk against the local build
 - **Decision-log updates recorded**; this stage's section of `../05-lessons.md` written; the scope
   lists and the stage map revised; the next stage named - another pre-release stage, or the release
