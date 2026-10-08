@@ -115,6 +115,17 @@
                    #(agent/converse! (role %) "R" "go" {:dir "."}))]
     (is (= (count (tools/for-role :coder)) (count (get-in (first reqs) [:body :tools]))))))
 
+(deftest another-registry-replaces-the-coders-tools-for-one-conversation
+  ;; the security reviewer's tools (`harness.models.review-tools`) ride on this option
+  (let [registry {"echo" {:description "Say it back."
+                          :schema {:type "object" :properties {:text {:type "string"}} :required ["text"]}
+                          :fn (fn [_ctx {:keys [text]}] (tools/ok (str "echo: " text)))}}
+        [r reqs] (with-stub [(tool-reply "echo" {:text "hi"}) (text-reply "done")]
+                   #(agent/converse! (role %) "R" "go" {:dir "."} {:registry registry :tools #{"echo"}}))]
+    (is (= :done (:status r)))
+    (is (= ["echo"] (map #(get-in % [:function :name]) (get-in (first reqs) [:body :tools]))) "only its tools are declared")
+    (is (= "echo: hi" (:content (first (:calls r)))) "and its function is the one run")))
+
 ;; ---------------------------------------------------------------------------
 ;; the cap
 ;; ---------------------------------------------------------------------------

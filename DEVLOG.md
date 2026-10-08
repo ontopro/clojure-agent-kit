@@ -51,6 +51,17 @@ the template fork's tags and version the template, not the KIT.
 
 ## 2026-10-08
 
+### The security reviewer's tools begin: a registry of its own, and a search (row 121)
+
+A security reviewer reads the code and checks a concern by writing a test and seeing it fail, so
+its tools are a test harness's: read a file, search the tree, send one request to the application
+under test, write a test, run the tests - and no REPL. They are the same for every model that fills
+the role, so a comparison measures the models and not their tools. They live in
+`harness.models.review-tools` as a registry of the shape of `tools/specs`; `declarations` and
+`invoke` take an optional registry and `converse!` an option to name one, which leaves the coder's
+five tools - a test pins them - exactly as they were. This commit adds the registry and the
+search; request, test-writing and test-running follow, each its own commit.
+
 ### The `z-ai` family has a route
 
 The bake-off's second candidate, `z-ai/glm-5.3-prime`, was in the catalogue with no route, and a

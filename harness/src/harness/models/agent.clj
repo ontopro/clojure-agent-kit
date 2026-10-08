@@ -176,8 +176,10 @@
   ([role system opening ctx opts]
    (let [{:keys [max-iterations timeout-ms retry]} (merge defaults opts)
          retry (merge (:retry defaults) retry)
+         registry (:registry opts)
          decls (tools/declarations (:shape role)
-                                   (or (:tools opts) (tools/for-role :coder)))
+                                   (or (:tools opts) (tools/for-role :coder))
+                                   registry)
          key (some-> (:key-env role) System/getenv)]
      (loop [messages [{:role "user" :content opening}]
             calls []
@@ -212,7 +214,7 @@
              (if (= :tool-use (:stop parsed))
                (let [results (mapv (fn [c]
                                      (let [t (System/currentTimeMillis)
-                                           r (tools/invoke ctx c)]
+                                           r (if registry (tools/invoke registry ctx c) (tools/invoke ctx c))]
                                        (assoc r :ms (- (System/currentTimeMillis) t))))
                                    (:tool-calls parsed))
                      messages (-> messages

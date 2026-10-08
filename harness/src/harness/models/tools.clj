@@ -62,11 +62,17 @@
       (str (subs s 0 max-output)
            "\n\n[truncated at " max-output " characters of " (count s) "]"))))
 
-(defn- ok [s] {:error? false :content (clip s)})
+(defn ok
+  "A successful tool result, clipped."
+  [s]
+  {:error? false :content (clip s)})
 ;; Clipped too. An error used to be short — a missing file, a refused path —
 ;; until `nrepl_eval` started returning a failed evaluation's whole output
 ;; through here.
-(defn- err [s] {:error? true :content (clip (str "ERROR: " s))})
+(defn err
+  "A failed tool result the model can read, clipped."
+  [s]
+  {:error? true :content (clip (str "ERROR: " s))})
 
 ;; ---------------------------------------------------------------------------
 ;; the tools
@@ -432,21 +438,23 @@
 
 (defmulti declarations
   "The declarations for `names` in one shape's vocabulary. Same tools, two
-  spellings — OpenAI nests them under `function`, Anthropic does not."
-  (fn [shape _names] shape))
+  spellings — OpenAI nests them under `function`, Anthropic does not. A third
+  argument names another registry than `specs` (the review tools, in
+  `harness.models.review-tools`), same shape: name -> {:description :schema :fn}."
+  (fn [shape & _] shape))
 
-(defn- selected [names]
-  (sort (select-keys specs names)))
+(defn- selected [registry names]
+  (sort (select-keys (or registry specs) names)))
 
 (defmethod declarations :openai
-  [_ names]
-  (vec (for [[nm {:keys [description schema]}] (selected names)]
+  [_ names & [registry]]
+  (vec (for [[nm {:keys [description schema]}] (selected registry names)]
          {:type "function"
           :function {:name nm :description description :parameters schema}})))
 
 (defmethod declarations :anthropic
-  [_ names]
-  (vec (for [[nm {:keys [description schema]}] (selected names)]
+  [_ names & [registry]]
+  (vec (for [[nm {:keys [description schema]}] (selected registry names)]
          {:name nm :description description :input_schema schema})))
 
 ;; ---------------------------------------------------------------------------
@@ -468,23 +476,25 @@
 
   `ctx` is `{:dir _ :targets [_] :port _}` — the workspace, what the packet
   allows writing, and the REPL. An unknown tool name is a result, not an error:
-  a model that hallucinated a tool should be told so and given another turn."
-  [ctx {:keys [id name args]}]
-  (let [[ok? decoded] (decode args)
-        result (cond
-                 (not ok?) (err decoded)
-                 (nil? (get specs name)) (err (str "no tool named " name
-                                                   " — you have "
-                                                   (str/join ", " (sort (keys specs)))))
-                 :else (try ((:fn (get specs name)) ctx decoded)
+  a model that hallucinated a tool should be told so and given another turn.
+  The three-argument form runs against another registry than `specs`."
+  ([ctx call] (invoke specs ctx call))
+  ([registry ctx {:keys [id name args]}]
+   (let [[ok? decoded] (decode args)
+         result (cond
+                  (not ok?) (err decoded)
+                  (nil? (get registry name)) (err (str "no tool named " name
+                                                       " — you have "
+                                                       (str/join ", " (sort (keys registry)))))
+                  :else (try ((:fn (get registry name)) ctx decoded)
                             ;; The backstop. Every tool above returns data on
                             ;; the paths it knows about; this catches the ones
                             ;; it does not, so no tool can kill a dispatch.
-                            (catch Exception e
-                              (err (str (ex-message e))))))]
-    ;; The decoded arguments come back too. This namespace is the one that
-    ;; knows a JSON string and a map mean the same thing, and a caller that
-    ;; re-derives it gets the OpenAI shape wrong — `(str args)` on a string
-    ;; is the string, so a note came back as its own JSON.
-    (cond-> (assoc result :id id)
-      ok? (assoc :args decoded))))
+                             (catch Exception e
+                               (err (str (ex-message e))))))]
+     ;; The decoded arguments come back too. This namespace is the one that
+     ;; knows a JSON string and a map mean the same thing, and a caller that
+     ;; re-derives it gets the OpenAI shape wrong — `(str args)` on a string
+     ;; is the string, so a note came back as its own JSON.
+     (cond-> (assoc result :id id)
+       ok? (assoc :args decoded)))))

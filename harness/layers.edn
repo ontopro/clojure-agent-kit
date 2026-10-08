@@ -49,6 +49,7 @@
  harness.models.agent        #{harness.models.adapter harness.models.provenance harness.models.tools}
  harness.models.runner       #{harness.gates.repair harness.models.agent harness.models.tools harness.rules}
  harness.models.runner-check #{harness.contract.shapes harness.models.runner}
+ harness.models.review-tools #{harness.models.tools}
  harness.money.balance       #{harness.models.profile}
  harness.money.reprice       #{harness.models.profile harness.models.provenance harness.money.report}
 
