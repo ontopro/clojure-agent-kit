@@ -38,6 +38,15 @@ until a workflow runs it on push.
 
 ---
 
+## 2026-10-08
+
+### Health records with the security check: macOS and the container, 9 of 9 each
+
+Row 115. Both run on `d50125f`, the commit that added the check: macOS 27.0.1 in 77 s and the
+container (Ubuntu 24.04.5, arm64) in 79 s, 9 of 9 each, the security check 10 ok, 5 warn, 0 fail,
+3 skipped on both - the same rows (`bb health --record`, `bb docker-health`; the README's block by
+`bb health-sync`). The known-good set is unchanged.
+
 ## 2026-10-07
 
 ### `bb health` runs the security pack against the generated application
