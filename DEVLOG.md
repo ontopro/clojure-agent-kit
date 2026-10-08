@@ -40,6 +40,39 @@ until a workflow runs it on push.
 
 ## 2026-10-07
 
+### The security pack: what a request can try, tried from outside
+
+Row 115's second half begins. `tools/security/` is the fourth part's third pack, run as the
+browser pack is - `bb --config <kit>/tools/security/bb.edn check` from the application's
+folder, serving it through the browser pack's own `server.clj` or, with `--running`, checking
+the one already up. It reads nothing of the application, only its answers: the response
+headers on every answer it got, the CSP (absent a warn, a fail once the routes file says
+`:csp :required`), a `Server` header with a version (a warn), every cookie's flags, a POST
+without its token, the routes that need a login, the error pages, the static folders, TLS on an
+https base. Only a failing row fails the run; every failing or warned row names what fixes it,
+the file and function in the pinned template where the fix is the template's.
+
+The routes that need a login and the routes that take a form cannot be found without reading
+a framework, so the project types them, in `docs/security-routes.edn` of its build repository;
+a public site with neither has no file. With no form named, `/` gets the POST, and a 404 or 405
+there is a skip that says to name one - not a pass.
+
+Two choices the first run made. Every request is sent as written, HTTP/1.0 over a socket (a TLS
+socket for https, the certificate and host name checked): an HTTP client tidies `..` and a bad
+escape away, and those are the paths that matter. And a header missing only on a request a
+browser never sends - a malformed path, a `..` - is a warn: Jetty refuses those before the
+application with a page of its own, which carries none of the application's headers, and no
+link leads to it. Against an application generated from `kit-v1.1` (a `bb health --keep`
+copy): 10 ok, 5 warn - those three header rows on Jetty's pages, no CSP, `Server:
+Jetty(12.1.0)` - 0 fail, 3 skipped (no form route, no login route, http). The same application
+with a routes file naming `/` as needing a login, `/health` as a form and `:csp :required`
+failed those three rows and exited 1.
+
+The judgements are pure, in `tools/security/src/security_check.clj`, and tested on canned
+responses in the harness's suite (`test/harness/tools/security_check_test.clj`, 17 tests); `bb gates` formats,
+lints and tests the pack's source with the harness's. The other packs have no pure part to test
+that way.
+
 ### The method says why security is asked and signed, not gated
 
 Row 115, the last of its first half. `method.md` §02 has a subsection, "Security is a decision in

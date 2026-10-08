@@ -32,12 +32,13 @@
         :task (apply init/-main *command-line-args*)}
 
   test {:doc "Run the test suites"
-        ;; dev/ too: dev/example.clj has its own test through `bb example`.
-        :extra-paths ["test" "dev"]
+        ;; dev/ too: dev/example.clj has its own test through `bb example`. And the security
+        ;; pack's judgements, which are pure and tested here: the pack runs on its own bb.edn
+        :extra-paths ["test" "dev" "../tools/security/src"]
         :task (run-test-nses! (test-nses))}
 
   fmt {:doc "Format with cljfmt"
-       :task (shell "cljfmt fix src test dev")}
+       :task (shell "cljfmt fix src test dev ../tools/security/src")}
 
   ;; Gate 0 for work done beside the loop. NOT part of `gates` — gate 0 runs
   ;; before the gate sequence, not inside it.
@@ -62,10 +63,10 @@
                :task (apply health/sync-main *command-line-args*)}
 
   fmt-check {:doc "Check formatting (no changes)"
-             :task (shell "cljfmt check src test dev")}
+             :task (shell "cljfmt check src test dev ../tools/security/src")}
 
   lint {:doc "Lint with clj-kondo"
-        :task (shell "clj-kondo --lint src test dev")}
+        :task (shell "clj-kondo --lint src test dev ../tools/security/src")}
 
   rules-sync {:doc "Regenerate every rule mirror - resources/rule-mirrors.edn, ../rule-mirrors.edn and the workspace's, where they exist - or the paths given, from resources/agent-rules.edn. [--workspace <dir>] for a KIT kept outside its workspace (or KIT_WORKSPACE)"
               :requires ([harness.rules :as rules])

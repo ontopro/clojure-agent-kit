@@ -1,0 +1,95 @@
+# tools/security/ - the security checks, tried from outside
+
+What `02-architecture.md` §4 says the template gives, and what a project's §8 chose, are claims
+until a request tries them. This pack sends those requests to the running application, as a
+visitor would, and reads only the answers: the response headers, the cookies, a POST without
+its token, the routes that need a login, the error pages, the static folders, and TLS where
+the base is https. No dependency and nothing of any framework.
+
+Run it from the application's folder, through the pack's own `bb.edn`:
+
+```
+bb --config <kit>/tools/security/bb.edn check [--serve "<cmd>"] [--health <path>] [--base <url>]
+     [--running] [--routes <file>] [--out <dir>] [--record <file>]
+```
+
+Like the browser pack, it serves the application, checks and stops it - through the browser
+pack's own `server.clj`, so the two packs travel together - or, with `--running`, checks the
+one already serving. Defaults are the Stack Lite template's: `bb serve`, `/health`,
+`http://localhost:8000`.
+
+> [!IMPORTANT]
+> Only a failing row fails the run (exit 1). A warn is a choice the project has not made yet,
+> or a weakness that is not the application's; a skip says what was not tried and why. Read
+> both - a skipped CSRF row on an application with forms means the routes file is missing them.
+
+## The rows
+
+| Check | What is sent | Fails when |
+|---|---|---|
+| `headers` | read on every answer below | `X-Content-Type-Options: nosniff`, `X-Frame-Options` (or a CSP `frame-ancestors`), a `Referrer-Policy` that is not `unsafe-url` missing; `Strict-Transport-Security` missing on an https base; `X-XSS-Protection: 1` is a warn |
+| `csp` | the same answers | a policy lets scripts come from anywhere (`*`, a bare scheme, no `script-src` and no `default-src`); no policy is a warn, or a fail when the routes file says `:csp :required` |
+| `server` | the same answers | never: a `Server` header naming a version is a warn |
+| `cookies` | every `Set-Cookie` seen | no `HttpOnly`, no `SameSite`, `SameSite=None` without `Secure`; no `Secure` on an https base |
+| `csrf` | a POST with no token to each `:forms` route, `/` when none is named | accepted, redirected or an error; a named route taking no POST (the list is wrong). `/` taking no POST is a skip |
+| `protected` | each `:protected` route, with no session | answered 2xx, redirected anywhere but `:login`, or a 404 (the list is wrong) |
+| `errors` | a page that does not exist, a malformed path, each `:throws` route | the page carries a stack frame, a compiled function's class, a source file and line, a class name, an exception's name or a path on a machine; a missing page answering 200 is a warn |
+| `static` | each `:static` folder itself, and five paths out of it (`..` as written, escaped, with an escaped slash) | a listing; a file from outside the folder coming back (a page coming back is a warn) |
+| `tls` | a handshake, on an https base | the certificate or the host name does not validate, or the protocol is older than TLS 1.2 |
+
+Every failing or warned row prints what fixes it in the terms of the pinned template, `kit-v1.1`
+- the file and the function - where the fix is the template's, and names the plan's section
+where it is the project's decision.
+
+**Every request is sent as written.** An HTTP client tidies a path before sending it - resolves
+`..`, refuses a bad escape - and the paths that matter here are the untidy ones, so the pack
+speaks HTTP/1.0 over a socket (a TLS socket for https, checking the certificate and the host
+name as a browser does).
+
+**A request a browser never sends** - a malformed path, a path with `..` - may be refused by the
+server before the application sees it, with a page of the server's own. Jetty does this, and its
+page carries none of the application's headers. A header missing only there is a warn, not a
+fail: the page is the server's, no link leads to it, and the header rules are about the
+application's pages.
+
+## The routes file
+
+The pack cannot find an application's routes without reading its framework, so the project
+types the ones that matter, in its build repository's `docs/security-routes.edn`, and each
+stage plan says what it adds:
+
+```clojure
+{:protected ["/admin" "/admin/pages"] ; need a login: refused, or redirected to :login
+ :login "/login"
+ :forms ["/contact"]                  ; take a POST: refused without the token
+ :throws []                           ; a route the project makes throw, where it has one
+ :static ["/assets/"]                 ; no listing, no path out
+ :static-files []                     ; a file to read a static answer's headers from;
+                                      ; default: the first one the home page links to
+ :csp :optional}                      ; :required once 02-architecture §8 chose a policy
+```
+
+Every key is optional; the defaults are the ones shown for `:static` and `:csp`, and none for
+the rest. A public site with no forms and no login has no file at all.
+
+## Where it writes
+
+The table to the terminal, and `security.edn` (the rows, the counts, the base, the KIT commit)
+with `security.md` beside it, under `--out`, else `SECURITY_OUT`, else the workspace's
+`work/security/<app>/` when the application is in a KIT workspace (scratch, in no repository),
+else `.local/security/`. `--record <file>` writes the same `security.edn` where a committed
+document can cite it: the `stage-end` skill passes the stage's
+`docs/stages/stage-N-security.edn`, beside its gates record, and `bb stage-report` reads it from
+there.
+
+## What it does not try
+
+What only the source shows: that SQL is parameterised, that HTML is escaped, that the session
+secret is the environment's in production, that the session cookie is encrypted. §4 says where
+the template does each, and the template's own tests hold what they can. And an exception
+answering the error page needs a route that throws - a project names one under `:throws` if it
+has one; for the template, its `server_test.clj` holds it, and `bb health` runs that test in
+the generated application's gates.
+
+Nor the dependencies' advisories or a secret committed by mistake: those are scans over the
+source, not requests, and wait for a project that needs them.
