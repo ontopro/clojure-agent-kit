@@ -23,6 +23,7 @@ skill's.
 | `method.md` | `Scope is three lists, revised at every stage's end` |
 | `method.md` | `Rank risks, then order the stages by them` |
 | `method.md` | `The document set` |
+| `method.md` | `Security is a decision in stage 0 and a signature before release, not a gate` |
 | `method.md` | `The plan-review pass — the cheapest gate in the whole method` |
 | `plan-template/source.md` | `2. What was read from it` |
 | `plan-template/00-overview.md` | `4. Stage map` |

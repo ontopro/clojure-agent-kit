@@ -40,6 +40,20 @@ until a workflow runs it on push.
 
 ## 2026-10-07
 
+### The method says why security is asked and signed, not gated
+
+Row 115, the last of its first half. `method.md` §02 has a subsection, "Security is a decision in
+stage 0 and a signature before release, not a gate", with its point in a callout: what an
+application should hold, and who should reach it, is a decision, and a gate holds only what a
+tool can decide. It says where each part lives - what the template gives in the architecture
+document's §4, the five choices in §8, the threat model in §15 - why the choices are stage 0's
+(they shape the stage map), that a stage which changes what the application holds or who reaches
+it amends both, and that the pre-release stage signs the threat model. Phase A's exit criteria
+gain the choices and the threat model, and §04's pre-release stage its signature, so the method
+says what the `plan` and `stage-end` skills already ask; the `plan` skill cites the new heading.
+The pack that tries the given part against a running application is not in the method yet: it
+is said when it exists.
+
 ### The three planning skills ask the security questions where their steps meet them
 
 Row 115. The architecture document's security sections and the pre-release gate are only asked
