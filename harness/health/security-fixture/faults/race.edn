@@ -1,0 +1,11 @@
+{:id :race,
+ :kind :architectural,
+ :what
+ "The quota of three notes is checked by one query and the note added by a second, with nothing holding the two together: requests sent at once all read a count under three and all insert.",
+ :edits
+ [{:file "src/notes/notebook.clj",
+   :find
+   "  \"Add a note within the quota: true when it was added, false when the user is at the quota.\n  One statement, so two requests at once cannot both pass the count.\"\n  [conn user-id title body]\n  (let [r (db/exec-one! conn {:insert-into [[:notes [:user_id :title :body]]\n                                            {:select [[[:lift user-id]] [[:lift title]] [[:lift body]]]\n                                             :where [:< {:select [[[:count :*]]]\n                                                         :from [:notes]\n                                                         :where [:= :user_id user-id]}\n                                                     quota]}]})]\n    (pos? (or (:next.jdbc/update-count r) 0))))",
+   :replace
+   "  \"Add a note within the quota: true when it was added, false when the user is at the quota.\"\n  [conn user-id title body]\n  (let [n (:n (db/exec-one! conn {:select [[[:count :*] :n]]\n                                  :from [:notes]\n                                  :where [:= :user_id user-id]}))]\n    (if (< n quota)\n      (do (db/exec-one! conn {:insert-into :notes\n                              :values [{:user_id user-id :title title :body body}]})\n          true)\n      false)))"}],
+ :reference "the-quota-holds-when-notes-are-added-at-once"}

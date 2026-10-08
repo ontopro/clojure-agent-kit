@@ -1,0 +1,15 @@
+{:id :csrf-get,
+ :kind :diff-local,
+ :what
+ "A note is deleted by a GET as well as a POST, and the delete is a link: the anti-forgery check never looks at a GET, so a link or an image on any site deletes a logged-in user's note.",
+ :edits
+ [{:file "src/notes/routes.clj",
+   :find "[\"/:id/delete\" {:post {:handler web/delete-note!}}]]",
+   :replace
+   "[\"/:id/delete\" {:get {:handler web/delete-note!}\n                    :post {:handler web/delete-note!}}]]"}
+  {:file "src/notes/web.clj",
+   :find
+   "(form (str \"/notes/\" (:id n) \"/delete\") [:button {:type \"submit\"} \"Delete\"])",
+   :replace
+   "[:a {:href (str \"/notes/\" (:id n) \"/delete\")} \"Delete\"]"}],
+ :reference "a-note-is-deleted-only-by-a-post-with-its-token"}

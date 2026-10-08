@@ -1,0 +1,10 @@
+{:id :raw-sql,
+ :kind :diff-local,
+ :what
+ "The title search is a raw SQL string with the query text inside it: a quote in the search ends the string and the rest is SQL, reading every user's notes.",
+ :edits
+ [{:file "src/notes/notebook.clj",
+   :find "(seq q) (conj [:like :title (str \"%\" q \"%\")]))",
+   :replace
+   "(seq q) (conj [:raw (str \"title LIKE '%\" q \"%'\")]))"}],
+ :reference "a-search-reads-only-the-searchers-notes"}

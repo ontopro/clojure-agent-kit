@@ -58,6 +58,11 @@
           :requires ([harness.setup.health :as health])
           :task (apply health/-main *command-line-args*)}
 
+  ;; NEVER part of `gates` either: it generates an application and runs its tests twice.
+  security-fixture {:doc "bb security-fixture <dir>: build the security reading's planted-fault fixture into an empty <dir> - the application from the pin, a feature on two branches, clean and with six faults (health/security-fixture/), which is which in <dir>/cases.edn outside the repository - and verify its key: every reference test passes on the clean feature, exactly the faults' fail on the faulted one"
+                    :requires ([harness.setup.security-fixture :as security-fixture])
+                    :task (apply security-fixture/-main *command-line-args*)}
+
   health-sync {:doc "Render health/records/*.edn into the README's health block; --check only compares (the gate)"
                :requires ([harness.setup.health :as health])
                :task (apply health/sync-main *command-line-args*)}

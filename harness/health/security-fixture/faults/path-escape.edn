@@ -1,0 +1,11 @@
+{:id :path-escape,
+ :kind :diff-local,
+ :what
+ "The export download opens the name it is given inside the exports folder without checking it: `../` leaves the folder and reads any file the process can, another user's export among them.",
+ :edits
+ [{:file "src/notes/web.clj",
+   :find
+   "  (let [f (io/file (exports-dir request) (export-name user))]\n    (if (and (= name (export-name user)) (.isFile f))",
+   :replace
+   "  (let [f (io/file (exports-dir request) name)]\n    (if (.isFile f)"}],
+ :reference "an-export-serves-its-owners-file-and-nothing-else"}

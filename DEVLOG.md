@@ -51,6 +51,22 @@ the template fork's tags and version the template, not the KIT.
 
 ## 2026-10-08
 
+### The security reading's fixture: six faults planted, a test each (row 121)
+
+The two auditors the plan takes on - an architecture tracer and an attacker on the diff, models
+chosen by a bake-off - need a known answer to be measured against: a reading of a real project
+cannot be scored, since nobody knows what it missed. The generated application has two routes and
+nothing to attack, so `bb security-fixture <dir>` adds a feature to it twice, from the same base:
+accounts, private notes with a quota of three, an export, an administrator's page - once careful,
+once with two architectural faults (a race on the quota, the administrator check on the GET method
+only) and four in the diff (raw SQL in the search, a delete by GET, a path out of the exports
+folder, a note read by its id). The branches have neutral names and which is which is written
+outside the repository; the faults are data in the KIT, a reference test each, and the build runs
+the tests and refuses a fixture whose key does not hold. Two of the first tests passed for the
+wrong reason and were caught by running them on the faulted branch: Hiccup escaped the apostrophe
+the IDOR test looked for. The race's test, the one that depends on timing, failed ten runs of ten
+with its fault and none without.
+
 ### `bb health` and every stage's end run the two scans; row 118 fixed
 
 With the pin past its advisories, the scans are wired where the plan put them. `bb health`'s

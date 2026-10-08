@@ -1,0 +1,11 @@
+{:id :idor,
+ :kind :diff-local,
+ :what
+ "A note is loaded by its id alone: any logged-in user reads any note by changing the number in /notes/<id>.",
+ :edits
+ [{:file "src/notes/notebook.clj",
+   :find
+   "  (db/exec-one! conn {:select [:id :title :body :created_at]\n                      :from [:notes]\n                      :where [:and [:= :id note-id] [:= :user_id user-id]]}))",
+   :replace
+   "  (db/exec-one! conn {:select [:id :title :body :created_at]\n                      :from [:notes]\n                      :where [:= :id note-id]}))"}],
+ :reference "a-note-is-read-only-by-its-owner"}

@@ -1,0 +1,11 @@
+{:id :admin-authz,
+ :kind :architectural,
+ :what
+ "The administrator check is attached to the GET method of /admin/users, not to the route: a POST to the same path, which makes an account an administrator, passes with any login.",
+ :edits
+ [{:file "src/notes/routes.clj",
+   :find
+   "   [\"/admin/users\" {:middleware [web/wrap-require-login web/wrap-require-admin]\n                    :get {:handler web/users-page}\n                    :post {:handler web/make-admin!}}]])",
+   :replace
+   "   [\"/admin/users\" {:middleware [web/wrap-require-login]\n                    :get {:handler web/users-page\n                          :middleware [web/wrap-require-admin]}\n                    :post {:handler web/make-admin!}}]])"}],
+ :reference "only-an-administrator-makes-an-administrator"}

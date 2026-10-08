@@ -76,6 +76,7 @@
  harness.models.bake-off    #{harness.contract.spec-review harness.loop.driver harness.models.agent harness.models.catalogue harness.money.reprice
                               harness.setup.blueprint-review harness.setup.plan harness.setup.plan-review harness.setup.workspace}
  harness.money.stage-report #{harness.contract.blueprint harness.loop.log harness.setup.workspace}
+ harness.setup.security-fixture #{harness.setup.template}
  harness.setup.health       #{harness.gates.boundary harness.gates.run harness.loop.driver harness.loop.orchestrate harness.models.runner
                               harness.rules harness.setup.app harness.setup.doctor harness.setup.init harness.setup.skills
                               harness.setup.template harness.setup.workspace}}
