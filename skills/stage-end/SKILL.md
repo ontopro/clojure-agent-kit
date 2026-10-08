@@ -29,6 +29,7 @@ exit criteria and says what is kept.
 | `plan-template/01-requirements.md` | `10. Scope — three lists, revised at every stage's end` |
 | `plan-template/stages/stage-N-template.md` | `11. Exit criteria (the stage's gate), and the cap` |
 | `plan-template/stages/stage-N-template.md` | `12. Residual risks / feeds into the next stage` |
+| `plan-template/02-architecture.md` | `15. Threat model` |
 | `tools/browser/README.md` | `Three things to know` |
 
 And the workspace's own files, never the conversation: this stage's plan (§11 and §12), its
@@ -53,7 +54,11 @@ check` against the local server; the README's three things say what it does and 
 prove), the serve command for "deployed locally". Then the owner's walk, page by page or
 function by function: ask the person for every page or function the stage made what is wrong,
 record each thing said as one line, and settle each now - fixed before the stage closes, or
-moved to the deferred list with the stage that takes it. Then the lessons: what this stage
+moved to the deferred list with the stage that takes it. For a pre-release stage, then the
+threat model: every line of `docs/02-architecture.md` §15 read with the person, each with its
+answer and the evidence for it, a line that cannot be answered this release a decision that
+says so; the person signs it. For any stage that changed what the application holds or who
+reaches it, §15's lines revised with it. Then the lessons: what this stage
 taught, each ending as a rule in the overlay, a line in the next stage plan, or a decision,
 and which; a lesson that ends as none is a remark for §12. Then the decisions this stage
 exercised: each provisional entry confirmed or reversed with the evidence; stage 0's pass
@@ -73,7 +78,8 @@ its resolution, under the stage plan; `docs/05-lessons.md`'s section for the sta
 its date, cost and runs; `docs/04-decision-log.md` with the stage's entries settled and the
 walk's decisions added; `docs/01-requirements.md` with the scope lists revised and the index
 appended; `docs/00-overview.md` with the stage closed in the stage map, the risk register and
-the map re-ranked, the next stage named with its cap proposed; the gates record's
+the map re-ranked, the next stage named with its cap proposed; for a pre-release stage, the
+gates record's `:security/signed` with the date, written by the person, before its
 `:stage/closed` with the date, written by the person; the tag `stage-N` on the application's
 merged tip. Not this skill's: the run records and `RUNS.md` (`record` writes them per run) and
 the screenshots (the work folder, uncommitted). Then say the next step: `bb next`, and the
@@ -83,6 +89,7 @@ the screenshots (the work folder, uncommitted). Then say the next step: `bb next
 
 Every exit criterion of §11 has its evidence written beside it; the walk's record has no line
 without a resolution; the lessons section is closed with its date, cost and runs; the decision
-log has no provisional entry this stage gated; the gates record says `:stage/closed`; the tag
+log has no provisional entry this stage gated; a pre-release stage's gates record says
+`:security/signed`; the gates record says `:stage/closed`; the tag
 is on the merged tip; and the next stage is named in the stage map with a kind and a proposed
 cap.

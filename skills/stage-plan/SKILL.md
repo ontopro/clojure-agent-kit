@@ -26,6 +26,8 @@ before the blueprint is cut.
 | `plan-template/stages/stage-N-template.md` | `2. Requirements this stage adds` |
 | `plan-template/stages/stage-N-template.md` | `11. Exit criteria (the stage's gate), and the cap` |
 | `plan-template/stages/stage-0-spike-template.md` | `2. The risks it proves, and the decisions it gates` |
+| `plan-template/stages/stage-prerelease-template.md` | `7. Exit criteria (the stage's gate), and the cap` |
+| `plan-template/02-architecture.md` | `15. Threat model` |
 
 And the workspace's own files, never the conversation, in this order: `docs/05-lessons.md`
 (the previous stage's section, read before anything else), the previous stage plan's §12
@@ -51,9 +53,12 @@ Then the template's sections in order for the stage's kind: stage 0 from the spi
 (the risks it proves, each with its pass criterion and fallback; the Foundation built inside
 it; what runs at its end; what is kept); stage 1 from the stage template with breadth written
 beside depth in §4; an increment from the stage template; a pre-release stage from its
-template (what of release's needs it takes; the deploy path rehearsed on a throwaway host);
+template (what of release's needs it takes; the deploy path rehearsed on a throwaway host; the
+threat model, every line of the architecture's §15 to be answered with its evidence and signed);
 the release from its template (the three criteria; the changelog; the rollback). The
 requirements this stage adds go in §2, each citing its observation or marked `(inferred)`.
+A stage that changes what the application holds or who reaches it - a form, an editor,
+accounts - says so, and the architecture's §8 decision and §15's lines are amended with it.
 The exit criteria are things a person can check, "deployed locally" among them from stage 1
 on, and the cap is proposed to the person. Then run `bb plan-review
 docs/stages/stage-N-<name>.md` and read the findings cold with the person, resolving each in

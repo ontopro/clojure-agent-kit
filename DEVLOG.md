@@ -40,6 +40,20 @@ until a workflow runs it on push.
 
 ## 2026-10-07
 
+### The three planning skills ask the security questions where their steps meet them
+
+Row 115. The architecture document's security sections and the pre-release gate are only asked
+if the steps that fill and close the plan ask them. The `plan` skill now reads the architecture
+document's §4, §8 and §15, asks the five security choices against what §4 says the template does
+not do, writes the threat model from them, and is not done until both are answered. The
+`stage-plan` skill reads the threat model and the pre-release template's exit criteria: a
+pre-release stage's plan carries the threat model to be answered and signed, and any stage that
+changes what the application holds or who reaches it - a form, an editor, accounts - says so and
+amends §8 and §15 with it. The `stage-end` skill reads the threat model: a pre-release stage's
+end reads every line with the person, each with its answer and evidence, and the person signs it
+in the gates record before the close. Every new citation is a heading `bb skills-sync --check`
+holds to its file; renaming §15's heading for a moment failed the check on all three skills.
+
 ### A pre-release stage closes with its threat model signed: a fourth gate in its record
 
 Row 115. The threat model is answered by the time the application is released or it is not

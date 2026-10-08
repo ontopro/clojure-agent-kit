@@ -29,6 +29,9 @@ skill's.
 | `plan-template/00-overview.md` | `4. Stage map` |
 | `plan-template/00-overview.md` | `4a. Risk register` |
 | `plan-template/01-requirements.md` | `10. Scope — three lists, revised at every stage's end` |
+| `plan-template/02-architecture.md` | `4. Security, as the template gives it` |
+| `plan-template/02-architecture.md` | `8. Security choices` |
+| `plan-template/02-architecture.md` | `15. Threat model` |
 | `plan-template/04-decision-log.md` | `5. Validation spikes (R)` |
 
 And the workspace's own files, never the conversation: `<name>-build/docs/source.md` (the
@@ -54,7 +57,11 @@ criterion and a fallback; the stage map by kind - stage 0 the spike, stage 1 the
 skeleton, candidate increments - with a cap on stage 0 alone; the three scope lists, every
 exclusion a decision with a reason; stage 1's requirements only, each citing its observation or
 marked `(inferred)`; the architecture's candidates, each a PROVISIONAL decision gated by a spike
-stage 0 runs; the method document's chosen part; and the rules overlay's three placeholders.
+stage 0 runs; the security choices (the architecture's §8 - what the application holds, who
+reaches it, the auth model, where it is deployed, the CSP), each a decision, asked against what
+§4 says the template does not do, and the threat model (§15) written from them - three lines for
+a public site that holds nothing private, more where it holds more; the method document's chosen
+part; and the rules overlay's three placeholders.
 Then run `bb plan-review` and read the findings cold with the person, resolving each in the
 overview's findings table; then `bb plan-check` until it passes, and read it its two lists -
 the inferred requirements, for the approval, and the uncited observations, for later.
@@ -71,5 +78,7 @@ Then say the next step: the person's approval of stage 0 with its cap, recorded 
 
 `bb plan-check` passes with no problems; `bb plan-review` has run and every finding has a
 resolution in the overview's table; the decision log has no entry that is neither RESOLVED,
-PROVISIONAL-with-a-gate nor OPEN-with-an-owner; the stage map names stage 0 and stage 1 by
-kind with a cap on stage 0 alone; and the person has been shown the inferred requirements.
+PROVISIONAL-with-a-gate nor OPEN-with-an-owner; the architecture's §8 has every row answered
+with its decision and §15 its assets, actors and a line per threat; the stage map names stage 0
+and stage 1 by kind with a cap on stage 0 alone; and the person has been shown the inferred
+requirements.
