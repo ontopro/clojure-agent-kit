@@ -31,14 +31,34 @@ and the patch is a follow-on plan that completes the family without changing the
 shape, so `0.6.1` closes plan 6.1, `0.6.2` the plan after it, and a patch here is not a fix.
 What `1.0` will mean is not decided here. `bb init` records the version beside the commit in `workspace.edn`,
 the doctor prints both, and the root README names the current tag. Not `kit-vN`: those are
-the template fork's tags and version the template, not the KIT. Before a tag is made, `bb
-docker-gates` is run by hand on the commit it will name and is green: the gates on a clone of
-that commit inside a machine that has only the toolchain, which is the fresh-machine check
-until a workflow runs it on push.
+the template fork's tags and version the template, not the KIT.
+
+**Before a tag**, in this order, because the containers clone HEAD and see only what is committed:
+
+1. The plan's work committed and the tree clean.
+2. The health records on that commit: `bb health --record` in `harness/`, then `bb docker-health`
+   at the root, then `bb health-sync`; the records and the README block committed. A record
+   names the commit it ran on, and a tag on code its records never ran is a tag on an untried
+   claim.
+3. The tag's documents: its heading here, with the one line a workspace made before it needs, and
+   the root README's sentence naming the current tag.
+4. On the commit the tag will name: `bb repair && bb gates` green, then `bb docker-gates` run by
+   hand and green - the gates on a clone of that commit inside a machine that has only the
+   toolchain, which is the fresh-machine check until a workflow runs it on push.
+5. The merge, the tag and the push, by the person.
 
 ---
 
 ## 2026-10-08
+
+### A checklist before a tag
+
+The tag convention had one step: `bb docker-gates` green on the commit the tag names. Row 117
+changed the health check after the health records were made, so a tag cut then would have named
+code its records never ran. The convention at the head of this file is a checklist now: the work
+committed, the health records on that tree (the host's, then the container's, then the README
+block), the tag's documents, the gates and `bb docker-gates` on the final commit, then the person's
+merge, tag and push. `CLAUDE.md` points to it.
 
 ### `bb health`'s serve check asks whether anything answers (row 117)
 

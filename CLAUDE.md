@@ -35,6 +35,9 @@ benefit. It is also a product artifact, and also not addressed to you.
 - **Run `bb repair && bb gates` in `harness/` before committing.** `repair` is gate 0
   over the Clojure files you changed; `gates` is doctor → format → lint → the harness's own boundary gate → rules → skills → inventory → health block → the records → test. Fast,
   and the only thing checking this repo — there is no CI.
+- **Before a tag, the checklist at the head of `DEVLOG.md`**, in its order: the health records on
+  the committed tree, the tag's documents, then the gates and `bb docker-gates` on the commit the
+  tag will name.
 - **A finding is not finished until a document carries it.** Anything still open goes in
   `NOTES.md`'s register; what changed and why goes in `DEVLOG.md`; a health run that
   certifies a machine goes in `harness/health/records/` by `bb health --record`. Write it up in
