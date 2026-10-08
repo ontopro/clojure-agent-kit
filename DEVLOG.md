@@ -61,6 +61,17 @@ costs its readers more than a missed one; an answer with no findings block is re
 nothing, not as a clean review. The tests it wrote are collected from the clone and kept beside the
 record. The command is a real model call and says so before it spends.
 
+### GLM-5.3-prime's first review: no answer, no faults found (row 121)
+
+The second candidate, `z-ai/glm-5.3-prime` at high effort as the tracer on the fixed fixture, used all
+thirty rounds (456 s, $0.64) and never wrote an answer. It sent its requests one per completion - ten in a
+row - where the first candidate batched four reads to a completion and finished in fifteen, so a round
+limit that suited one model may have cut the other off before it concluded. Scored on its tests alone, since
+it reported nothing: none of the six planted faults. Of its eight test files, four pass on the faulted
+branch - among them its attempts at the export path and the note isolation, both of which are defects there,
+so those tests were wrong rather than the concerns - and three do not compile. One run of each model is
+an anecdote; the thirty-round limit is the first thing to change before the bake-off.
+
 ### `bb security-score`: which fault a test detects is mechanical (row 121)
 
 The by-hand scoring of the first real review compared the faulted and the careful branch, which says a
