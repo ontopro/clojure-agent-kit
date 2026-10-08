@@ -40,6 +40,18 @@ until a workflow runs it on push.
 
 ## 2026-10-07
 
+### The architecture document's headers claim, as a request found it
+
+`02-architecture.md` §4 said the template's headers are on every response, a page not found, a
+static file and an error page included. The security pack's first run found the exception: a
+request Jetty refuses before the application - a malformed path, a `..` or an escaped one - gets
+Jetty's own 400 page, with none of the headers and Jetty's version in its body. The claim was
+read in the source and tried with curl on ordinary paths, which is why it held there. It now says
+"every response the application makes", and the list of what is not given has the line for
+Jetty's page. Not a fix to the template: nothing of the application is in that page and no link
+leads to it, so the pack warns on it rather than failing, and the claim is the thing that was
+wrong.
+
 ### The security pack: what a request can try, tried from outside
 
 Row 115's second half begins. `tools/security/` is the fourth part's third pack, run as the

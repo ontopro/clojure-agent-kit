@@ -69,7 +69,7 @@ of it matters, and §15 where each threat is answered.
 | Sessions | An encrypted cookie store (AES, with an HMAC), keyed from the session secret; the cookie `HttpOnly`, `SameSite=Lax`, and `Secure` under the `:prod` profile | `server.clj` `ring-handler` (`wrap-session`); `config.edn` `:cookie-attrs-secure?` |
 | The session secret | Under `:prod`, read from `SESSION_SECRET_KEY`, and without it the application refuses to start; the other profiles use a fixed test key | `config.edn` `:session-secret-key`; `server.clj` `ig/assert-key` |
 | CSRF | Every request but GET, HEAD and OPTIONS carries the anti-forgery token - a form's `__anti-forgery-token` field or an `X-CSRF-Token` header - or is refused with 403; `reitit-extras.core/csrf-token-html` and `csrf-token-json` write it into a page | `server.clj` `ring-handler` (`wrap-anti-forgery`) |
-| Headers | On every response, a page not found, a static file and an error page included: `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Strict-Transport-Security` (a year, subdomains), `X-XSS-Protection: 0`, `Referrer-Policy: strict-origin-when-cross-origin` | `server.clj` `ring-handler` (the handler-wide `:middleware`), `wrap-referrer-policy` |
+| Headers | On every response the application makes, a page not found, a static file and an error page included: `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Strict-Transport-Security` (a year, subdomains), `X-XSS-Protection: 0`, `Referrer-Policy: strict-origin-when-cross-origin` | `server.clj` `ring-handler` (the handler-wide `:middleware`), `wrap-referrer-policy` |
 | Errors | A handler that throws, a response that fails its coercion and a request body that fails to decode answer the error page (500, 400) and nothing of the error; the log has the exception with the request's method and path | `server.clj` `exception-middleware`, first of the route middleware |
 | SQL | Queries are HoneySQL data, formatted with every value a parameter and every identifier quoted; a raw SQL string or `[:raw …]` is outside that. Migrations are Ragtime's SQL files | `db.clj` `exec!`, `exec-one!`; `resources/migrations/` |
 | Static files | Served from `resources/public/` under `/assets/`, with no directory listing and no path out of the folder; cached for a year under `:prod` | `server.clj` `ring-handler` (`create-resource-handler-cached`); `config.edn` `:cache-assets?` |
@@ -88,6 +88,9 @@ Not given:
   TLS in its proxy (`.kamal/deploy.yml`, `proxy`); another host decides it in §8.
 - **The `Server` header names Jetty and its version**, and the application's image runs as root
   on the JRE base its `Dockerfile` pins.
+- **A request Jetty refuses before the application** - a malformed path, a `..` or an escaped
+  one - gets Jetty's own 400 page, which carries none of the headers above and names Jetty's
+  version; nothing of the application is in it, and no link leads to it.
 - **No request size limit and no rate limit** is set in the template's code; what Jetty and Ring
   do by default is not stated here.
 
