@@ -10,6 +10,7 @@
    [clojure.test :refer [deftest is testing]]
    [harness.contract.shapes :as shapes]
    [harness.models.bake-off :as bo]
+   [harness.models.catalogue :as cat]
    [harness.models.catalogue-test :as cat-test]
    [malli.core :as m]
    [org.httpkit.server :as srv]))
@@ -28,29 +29,29 @@
 ;; ---------------------------------------------------------------------------
 
 (deftest a-candidate-line-is-a-query-and-an-effort
-  (is (= {:query "anthropic/claude-opus-5.5" :effort "high"} (bo/parse-candidate "anthropic/claude-opus-5.5 high")))
-  (is (= {:query "grok" :effort nil} (bo/parse-candidate "  grok  ")))
-  (is (= {:query "x" :effort "low"} (bo/parse-candidate {:query "x" :effort "low"}))))
+  (is (= {:query "anthropic/claude-opus-5.5" :effort "high"} (cat/parse-candidate "anthropic/claude-opus-5.5 high")))
+  (is (= {:query "grok" :effort nil} (cat/parse-candidate "  grok  ")))
+  (is (= {:query "x" :effort "low"} (cat/parse-candidate {:query "x" :effort "low"}))))
 
 (deftest a-candidate-expands-to-a-role-block-through-the-catalogue-and-the-routes
   (let [routes (test-routes "http://stub")
-        c (bo/expand-candidate cat-test/listing routes "grok medium")]
+        c (cat/expand-candidate cat-test/listing routes "grok medium")]
     (is (= "x-ai/grok-4.7" (:model c)) "the newest grok")
     (is (= "grok-4.7-medium" (:id c)))
     (is (= :x-ai (:family c)))
     (is (m/validate shapes/RoleProfile (:profile c)) "a RoleProfile a profile could carry")
     (is (= "medium" (get-in c [:profile :params :reasoning_effort])))
     (is (= {:only ["xai"] :allow_fallbacks false} (get-in c [:profile :params :provider])))
-    (is (= "high" (:effort (bo/expand-candidate cat-test/listing routes "grok"))) "no effort: the route's highest")
-    (is (= 16000 (get-in (bo/expand-candidate cat-test/listing routes "opus") [:profile :params :max_tokens]))))
+    (is (= "high" (:effort (cat/expand-candidate cat-test/listing routes "grok"))) "no effort: the route's highest")
+    (is (= 16000 (get-in (cat/expand-candidate cat-test/listing routes "opus") [:profile :params :max_tokens]))))
   (testing "refusals by name"
     (let [routes (test-routes "http://stub")]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no model in the listing matches \"nope\""
-                            (bo/expand-candidate cat-test/listing routes "nope high")))
+                            (cat/expand-candidate cat-test/listing routes "nope high")))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no route is written for the family :mistralai"
-                            (bo/expand-candidate cat-test/listing routes "mistral")))
+                            (cat/expand-candidate cat-test/listing routes "mistral")))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"takes an effort of low, medium, high, not \"max\""
-                            (bo/expand-candidate cat-test/listing routes "grok max"))))))
+                            (cat/expand-candidate cat-test/listing routes "grok max"))))))
 
 (deftest the-spec-expands-and-the-judge-is-held-to-the-rule
   (let [routes (test-routes "http://stub")

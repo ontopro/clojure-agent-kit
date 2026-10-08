@@ -13,9 +13,10 @@
 
   NO KEY IS SENT: the listing is public. Nothing here spends money.
 
-  The pure parts are `matching`, `model-row`, `family-of`, `per-million` and
-  `route`; `fetch-listing` and `fetch-endpoints` are the two calls; `-main`
-  prints."
+  The pure parts are `matching`, `model-row`, `family-of`, `per-million`,
+  `route`, and `parse-candidate` / `expand-candidate`, which turn a line like
+  `anthropic/claude-fable-5.1 high` into a role block for a bake-off or a review;
+  `fetch-listing` and `fetch-endpoints` are the two calls; `-main` prints."
   (:require
    [babashka.http-client :as http]
    [cheshire.core :as json]
@@ -115,6 +116,62 @@
   "The first of `matching`'s answer, or nil."
   [matches]
   (first matches))
+
+;; ---------------------------------------------------------------------------
+;; a candidate line: a model, an effort, and the role block they make
+;; ---------------------------------------------------------------------------
+
+;; Here, and not in the bake-off, because the bake-off and the security review both read a line
+;; like "anthropic/claude-fable-5.1 high" and neither may require the other.
+
+(defn parse-candidate
+  "`\"anthropic/claude-opus-5.5 high\"` → `{:query \"anthropic/claude-opus-5.5\" :effort \"high\"}`;
+  `\"grok\"` → `{:query \"grok\" :effort nil}`. A map is taken as already parsed."
+  [line]
+  (if (map? line)
+    line
+    (let [[q e] (str/split (str/trim (str line)) #"\s+" 2)]
+      {:query q :effort (some-> e str/trim not-empty)})))
+
+(defn candidate-id
+  "A short id for records and columns: the slug's last segment and the effort."
+  [{:keys [model effort]}]
+  (str (last (str/split model #"/")) "-" effort))
+
+(defn expand-candidate
+  "One candidate line → `{:id :query :model :family :effort :profile}` where
+  `:profile` is a `RoleProfile` block built from the catalogue's newest match
+  and the family's route. Refuses by name: nothing matches, no route for the
+  family, an effort the route does not know. The effort defaults to the
+  route's last level - the highest - when the line gives none."
+  [listing routes line]
+  (let [{:keys [query effort]} (parse-candidate line)
+        m (newest (matching listing query))
+        _ (when-not m
+            (throw (ex-info (str "no model in the listing matches \"" query "\" - bb models <query> shows what there is")
+                            {:bake-off/error :no-such-model :query query})))
+        family (:family m)
+        route (route routes family)
+        levels (get-in route [:effort :levels])
+        effort (or effort (last levels))
+        _ (when-not (some #{effort} levels)
+            (throw (ex-info (str "the family " family " takes an effort of " (str/join ", " levels) ", not \"" effort "\"")
+                            {:bake-off/error :no-such-effort :family family :effort effort})))
+        params (cond-> {(get-in route [:effort :param]) effort
+                        :provider {:only [(:provider route)] :allow_fallbacks false}}
+                 (:max_tokens route) (assoc :max_tokens (:max_tokens route))
+                 (nil? (:provider route)) (dissoc :provider))]
+    {:query query
+     :model (:id m)
+     :family family
+     :effort effort
+     :id (candidate-id {:model (:id m) :effort effort})
+     :profile (cond-> {:family family
+                       :model (:id m)
+                       :shape (:shape route)
+                       :endpoint (:endpoint route)
+                       :params params}
+                (:key-env route) (assoc :key-env (:key-env route)))}))
 
 ;; ---------------------------------------------------------------------------
 ;; a model's line: the same name with a later version

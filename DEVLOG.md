@@ -51,6 +51,14 @@ the template fork's tags and version the template, not the KIT.
 
 ## 2026-10-08
 
+### A candidate line is expanded by the catalogue
+
+The bake-off turned a line like "anthropic/claude-fable-5.1 high" into a role block with three functions of its
+own, and the security review needs the same line read the same way - while the bake-off will in turn run
+the review as one of its acts, so neither could require the other. The three functions use only the
+catalogue and its routes, so they moved there; nothing about them changed, and their tests moved with
+the calls.
+
 ### The security reviewer's tools begin: a registry of its own, and a search (row 121)
 
 A security reviewer reads the code and checks a concern by writing a test and seeing it fail, so

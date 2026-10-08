@@ -25,7 +25,7 @@
   is run. The reading acts reuse the review commands' `read!` with the
   candidate's role block in the seat; nothing else branches on the role.
 
-  The pure parts: `parse-candidate`, `expand-candidate`, `expand`,
+  The pure parts: `expand`,
   `judge-input`, `parse-rows`, `summary`, `render`. `run-bake-off!`, `judge!`,
   `table!` and `check!` are the commands."
   (:require
@@ -94,55 +94,6 @@
 ;; expanding the three-line spec
 ;; ---------------------------------------------------------------------------
 
-(defn parse-candidate
-  "`\"anthropic/claude-opus-5.5 high\"` → `{:query \"anthropic/claude-opus-5.5\" :effort \"high\"}`;
-  `\"grok\"` → `{:query \"grok\" :effort nil}`. A map is taken as already parsed."
-  [line]
-  (if (map? line)
-    line
-    (let [[q e] (str/split (str/trim (str line)) #"\s+" 2)]
-      {:query q :effort (some-> e str/trim not-empty)})))
-
-(defn candidate-id
-  "A short id for records and columns: the slug's last segment and the effort."
-  [{:keys [model effort]}]
-  (str (last (str/split model #"/")) "-" effort))
-
-(defn expand-candidate
-  "One candidate line → `{:id :query :model :family :effort :profile}` where
-  `:profile` is a `RoleProfile` block built from the catalogue's newest match
-  and the family's route. Refuses by name: nothing matches, no route for the
-  family, an effort the route does not know. The effort defaults to the
-  route's last level - the highest - when the line gives none."
-  [listing routes line]
-  (let [{:keys [query effort]} (parse-candidate line)
-        m (catalogue/newest (catalogue/matching listing query))
-        _ (when-not m
-            (throw (ex-info (str "no model in the listing matches \"" query "\" - bb models <query> shows what there is")
-                            {:bake-off/error :no-such-model :query query})))
-        family (:family m)
-        route (catalogue/route routes family)
-        levels (get-in route [:effort :levels])
-        effort (or effort (last levels))
-        _ (when-not (some #{effort} levels)
-            (throw (ex-info (str "the family " family " takes an effort of " (str/join ", " levels) ", not \"" effort "\"")
-                            {:bake-off/error :no-such-effort :family family :effort effort})))
-        params (cond-> {(get-in route [:effort :param]) effort
-                        :provider {:only [(:provider route)] :allow_fallbacks false}}
-                 (:max_tokens route) (assoc :max_tokens (:max_tokens route))
-                 (nil? (:provider route)) (dissoc :provider))]
-    {:query query
-     :model (:id m)
-     :family family
-     :effort effort
-     :id (candidate-id {:model (:id m) :effort effort})
-     :profile (cond-> {:family family
-                       :model (:id m)
-                       :shape (:shape route)
-                       :endpoint (:endpoint route)
-                       :params params}
-                (:key-env route) (assoc :key-env (:key-env route)))}))
-
 (def default-parallel
   "How many readings run at once when the spec says nothing: a reading is one
   completion with no tools and no shared state, so the pool is bounded by the
@@ -156,7 +107,7 @@
   know it, so the person names one). Two candidates at least."
   [{:keys [role candidates judge parallel] :as spec} listing routes]
   (let [_ (act-of role)
-        cands (mapv #(expand-candidate listing routes %) candidates)]
+        cands (mapv #(catalogue/expand-candidate listing routes %) candidates)]
     (when (< (count cands) 2)
       (throw (ex-info "a bake-off needs at least two candidates" {:bake-off/error :too-few-candidates})))
     (when-not (or (nil? parallel) (pos-int? parallel))
@@ -166,7 +117,7 @@
       (throw (ex-info (str "name a judge (:judge \"<model> <effort>\"): the session's model would be the default "
                            "and this tool cannot know it; it must not be one of the candidates")
                       {:bake-off/error :no-judge})))
-    (let [j (expand-candidate listing routes judge)]
+    (let [j (catalogue/expand-candidate listing routes judge)]
       (when (some #(= (:model %) (:model j)) cands)
         (throw (ex-info (str "the judge " (:model j) " is a candidate; a judge is never a candidate - name another")
                         {:bake-off/error :judge-is-candidate :judge (:model j)})))
@@ -542,7 +493,7 @@
                      chosen (cond n (get act-names (dec n)) (some #{a} act-names) a)]
                  (if chosen (keyword chosen) (do (say "  one of the numbers, or the act's name") (recur)))))
         resolve-one (fn [line]
-                      (try (let [c (expand-candidate listing routes line)]
+                      (try (let [c (catalogue/expand-candidate listing routes line)]
                              (say (format "  → %s at %s (%s; %s in, %s out per M tokens)"
                                           (:model c) (:effort c) (name (:family c))
                                           (money2 (:in (catalogue/newest (catalogue/matching listing (:model c)))))
