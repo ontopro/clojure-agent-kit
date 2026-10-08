@@ -189,6 +189,14 @@
         (is (false? (:ok? r)))
         (is (str/includes? (:detail r) "no record written"))))))
 
+(deftest a-port-another-program-holds-on-loopback-is-not-free
+  ;; The application binds the wildcard address, which can succeed on a port
+  ;; held on 127.0.0.1 alone; `localhost` would then reach the other program.
+  (let [port (with-open [held (java.net.ServerSocket. 0 50 (java.net.InetAddress/getByName "127.0.0.1"))]
+               (is (false? (health/port-free? (.getLocalPort held))))
+               (.getLocalPort held))]
+    (is (true? (health/port-free? port)) "and free once the other program lets go")))
+
 (deftest the-browser-check-performs-and-is-skipped-where-it-cannot
   ;; `geckodriver --version` passes on a machine where no browser can start; the
   ;; permission on macOS is the terminal application's, and a shell under a daemon

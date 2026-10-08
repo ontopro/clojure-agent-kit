@@ -40,6 +40,16 @@ until a workflow runs it on push.
 
 ## 2026-10-08
 
+### `bb health`'s serve check asks whether anything answers (row 117)
+
+Row 102's cause had a second place to bite. The serve check called port 8000 free when a
+wildcard bind on it succeeded, then read `GET http://localhost:8000/` as the application's answer;
+on macOS that bind succeeds on a port another program holds on 127.0.0.1, and the application binds
+the wildcard too, so the check could start the application and read the other program's answer.
+A port is free now when the bind succeeds and nothing accepts a connection at any address
+`localhost` resolves to. A test holding a port on 127.0.0.1 fails on the old check and passes on
+the new. The browser and security packs already asked whether anything answers.
+
 ### Every test stub binds 127.0.0.1; row 102 fixed
 
 A stub-model test failed once more and passed on the rerun, the second recurrence since the

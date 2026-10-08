@@ -376,9 +376,24 @@
 (def serve-port 8000)
 (def serve-timeout-ms 120000)
 
-(defn- port-free? [port]
-  (try (with-open [s (java.net.ServerSocket. port)] (.close s) true)
+(defn- answers?
+  "Does anything accept a connection on `port` at `addr`?"
+  [^java.net.InetAddress addr port]
+  (try (with-open [s (java.net.Socket.)]
+         (.connect s (java.net.InetSocketAddress. addr (int port)) 500)
+         true)
        (catch java.io.IOException _ false)))
+
+(defn port-free?
+  "Can the application take `port`, and will `localhost` reach it there? The
+  bind alone is not the answer: the application binds the wildcard address,
+  and macOS lets that bind succeed on a port another program holds on
+  127.0.0.1 - where `localhost` then reaches the other program. So nothing may
+  answer on any address `localhost` resolves to either."
+  [port]
+  (and (try (with-open [s (java.net.ServerSocket. port)] (.close s) true)
+            (catch java.io.IOException _ false))
+       (not-any? #(answers? % port) (java.net.InetAddress/getAllByName "localhost"))))
 
 (defn- get-status [url]
   (try (:status (http/get url {:throw false :timeout 2000}))
