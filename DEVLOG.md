@@ -69,7 +69,13 @@ carriage returns, was five-sixths of a failing run's output (7.7 KB to 1.5 KB on
 failure and the totals kept). Then `request`: one request to the application under test, the path as
 written - a step out of a folder is a request a test may need - but refused if a space, a control
 character or a line break in a header would make it more than one, with a budget on the reading and
-the answer cut to size. The container that the two sandbox functions run in is the last piece.
+the answer cut to size. The container that the two sandbox functions run in is `harness.models.review-sandbox`: a first container
+with the network warms the dependency cache for every alias the review uses (the application's own
+`bb.edn` has dependencies too, which a first attempt missed), a second has `--network none`, the cache
+read-only, limits on memory and processes and no capabilities, and the application is started in it and
+waited for. `bb test` is not run in it - babashka's own `clojure` helper downloads its tools into the
+container - the same `clojure -X:test` the task wraps is. Tried by hand against the fixture: up in 11 s,
+all five tools work through it, and a test that reaches for the internet from inside throws.
 
 ### The `z-ai` family has a route
 
