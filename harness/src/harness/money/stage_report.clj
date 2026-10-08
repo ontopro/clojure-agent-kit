@@ -93,9 +93,11 @@
   nil; the threat model's signature from it (`:security`) and the plan's kind,
   which together say whether a pre-release stage is signed; the security
   pack's counts and date from the record its run at the stage's end wrote
-  (`:security-checks`), or nil; `:before` the stage before's `{:id :cost :runs
+  (`:security-checks`), or nil; the two scans' the same, from the records `deps`
+  and `secrets` wrote (`:security-scans` `{:deps .. :secrets ..}`, each present
+  only with its record); `:before` the stage before's `{:id :cost :runs
   :rounds :stops}` or nil."
-  [{:keys [id kind packets records readings gates checks before]}]
+  [{:keys [id kind packets records readings gates checks scans before]}]
   (let [runs (mapv run-summary records)
         by-task (into {} (map (juxt :task/id identity)) runs)
         dispatch-money (sum :cost runs)
@@ -124,6 +126,8 @@
      :kind kind
      :security (:security/signed gates)
      :security-checks (when checks {:counts (:counts checks) :date (some-> (:security/at checks) str (subs 0 10))})
+     :security-scans (into {} (for [[k rec] scans :when rec]
+                                [k {:counts (:counts rec) :date (some-> (:security/at rec) str (subs 0 10))}]))
      :before before}))
 
 (defn- dollars [x] (format "$%.2f" (double (or x 0))))
@@ -136,10 +140,10 @@
   pre-release stage, or any stage whose record carries the signature, and for
   no other - a block published before the line existed reads the same. So is
   the security checks' line: a stage with the pack's record, or a pre-release
-  stage, which says when it has none."
+  stage, which says when it has none; and the two scans' lines the same way."
   [{:keys [id run-count merged money cap approved before by-role readings reading-money
            rounds retry-cost dispatch-money rejections stops stop-kinds packets kind security
-           security-checks]}]
+           security-checks security-scans]}]
   (->> [(str "Stage " id " report · " run-count " run" (when (not= 1 run-count) "s") ", " merged " merged · "
              (dollars money) (if cap (str " of cap " cap (when approved (str " (approved " approved ")")))
                                  " · cap: not recorded (no :stage/approved in the gates record)")
@@ -173,11 +177,18 @@
                (if-let [{:keys [ok warn fail skipped]} (:counts security-checks)]
                  (str ok " ok, " warn " warn, " fail " fail, " skipped " skipped (" (:date security-checks) ")")
                  "no record (the stage-end skill runs the security pack with --record docs/stages/stage-N-security.edn)")))
+        (for [[k label cmd] [[:deps "Dependencies" "deps"] [:secrets "Secrets" "secrets"]]]
+          (when (or (get security-scans k) (= "pre-release" kind))
+            (str "  " label ": "
+                 (if-let [{:keys [ok warn fail skipped]} (:counts (get security-scans k))]
+                   (str ok " ok, " warn " warn, " fail " fail, " skipped " skipped (" (:date (get security-scans k)) ")")
+                   (str "no record (the stage-end skill runs the security pack's " cmd " with --record docs/stages/stage-N-security-" cmd ".edn)")))))
         (when (or security (= "pre-release" kind))
           (str "  Threat model: "
                (if security
                  (str "signed " (:date security) (some->> (:by security) (str " by ")))
                  "not signed (a pre-release stage closes with :security/signed in its gates record)")))]
+       flatten
        (remove nil?)
        (str/join "\n")))
 
@@ -292,7 +303,9 @@
                                                                (fs/path reviews "plan-review.edn")))
                                       (reading "blueprint review" (fs/path reviews "blueprint-review.edn"))]))
          :gates (read-edn (fs/path stages (str "stage-" id "-gates.edn")))
-         :checks (read-edn (fs/path stages (str "stage-" id "-security.edn")))}))))
+         :checks (read-edn (fs/path stages (str "stage-" id "-security.edn")))
+         :scans {:deps (read-edn (fs/path stages (str "stage-" id "-security-deps.edn")))
+                 :secrets (read-edn (fs/path stages (str "stage-" id "-security-secrets.edn")))}}))))
 
 (defn summary-for
   "The stage's summary with the stage before it folded in, or nil when the

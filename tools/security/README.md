@@ -139,6 +139,11 @@ What a project has read and decided goes in the routes file, each with its reaso
  :secrets-allowed [{:file "test/fixtures/revoked.clj" :rule :stripe-key :reason "a revoked test key"}]}
 ```
 
+`bb health` runs both in the generated application, in the same `app security` row as the
+checks - `secrets` with `--all` - so an advisory published against the pin after it was made
+fails the next health run. The `stage-end` skill runs them at every stage's end, `secrets` over
+the stage's commits (`--from stage-<N-1>`).
+
 An accepted advisory or an allowed hit is a warn naming its reason; an acceptance past its
 `:until` accepts nothing. The records are `security-deps.edn` and `security-secrets.edn`, beside
 `security.edn` and under the same `--out` rules; `--record <file>` writes a copy where a

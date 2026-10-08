@@ -510,21 +510,29 @@
 
 (def security-timeout-ms 240000)
 
+(def security-commands
+  "The security pack's commands as health runs them: the command, the record it
+  writes, its flags, and how its line in the detail ends."
+  [["check" "security.edn" [] "from outside"]
+   ["deps" "security-deps.edn" [] "the dependencies"]
+   ["secrets" "security-secrets.edn" ["--all"] "secrets in the history"]])
+
 (defn check-security
-  "The KIT's security pack, `bb --config <kit>/tools/security/bb.edn check`, run in
-  the application: it serves, sends its requests from outside - headers, cookies,
-  a POST without its token, error pages, static folders - and stops the server.
-  Ok when the task exits 0 and wrote its record: no failing row. So every claim
-  of the plan template's `02-architecture.md` §4 that a request can try is tried
-  on the day of the run, against the application the pin generates; a claim
-  that fails here is either wrong or a fix the template needs.
+  "The KIT's security pack run in the application, its three commands: `check`
+  serves, sends its requests from outside - headers, cookies, a POST without its
+  token, error pages, static folders - and stops the server; `deps` asks OSV about
+  every library the application ships; `secrets --all` reads its whole history
+  for a committed secret. Ok when each exits 0 and wrote its record: no failing
+  row. So every claim of the plan template's `02-architecture.md` §4 that a
+  request can try is tried on the day of the run, against the application the
+  pin generates, and the pin's dependencies are asked about the same day: an
+  advisory published since the pin was made fails here first.
 
   The warns and skips travel into the detail, one line each: a warn is the
   template's known gap (no CSP, Jetty's version), a skip what a generated
-  application gives nothing to try (no form route, no login route, no https),
-  and neither fails the run. The pack needs nothing but `bb`, so nothing is
-  skipped for want of a tool. `run` is `(fn [dir env argv] -> {:exit :out})`,
-  for a test."
+  application gives nothing to try (no form route, no login route, no https) or
+  what could not be asked (OSV unreachable), and neither fails the run. `run` is
+  `(fn [dir env argv] -> {:exit :out})`, for a test."
   ([subject] (check-security subject {}))
   ([{:keys [dir kit] :as subject} {:keys [run]
                                    :or {run (fn [dir env argv]
@@ -532,25 +540,32 @@
                                                               :extra-env env :timeout security-timeout-ms}
                                                      argv))}}]
    (let [out-dir (str (fs/create-temp-dir {:prefix "kit-health-security"}))
-         record-file (fs/path out-dir "security.edn")
-         [{:keys [exit out err]} ms]
-         (timed #(try (run dir {} ["bb" "--config" (str (fs/path kit "tools" "security" "bb.edn"))
-                                   "check" "--out" out-dir])
-                      (catch Exception e {:exit -1 :out "" :err (ex-message e)})))
-         rec (when (fs/exists? record-file)
-               (try (edn/read-string (slurp (str record-file))) (catch Exception _ nil)))
-         ok? (and (= 0 exit) (:ok? rec))
-         tail (str/join "\n" (take-last 6 (str/split-lines (str out err))))]
+         pack (str (fs/path kit "tools" "security" "bb.edn"))
+         one (fn [[cmd file flags label]]
+               (let [{:keys [exit out err]} (try (run dir {} (into ["bb" "--config" pack cmd] (concat flags ["--out" out-dir])))
+                                                 (catch Exception e {:exit -1 :out "" :err (ex-message e)}))
+                     record-file (fs/path out-dir file)]
+                 {:cmd cmd :label label :exit exit
+                  :tail (str/join "\n" (take-last 6 (str/split-lines (str out err))))
+                  :rec (when (fs/exists? record-file)
+                         (try (edn/read-string (slurp (str record-file))) (catch Exception _ nil)))}))
+         [runs ms] (timed #(mapv one security-commands))
+         ok? (every? (fn [{:keys [exit rec]}] (and (= 0 exit) (:ok? rec))) runs)]
      (fs/delete-tree out-dir)
      (result :security subject ok? ms
-             (if rec
-               (let [{:keys [ok warn fail skipped]} (:counts rec)]
-                 (str/join "\n"
-                           (cons (str ok " ok, " warn " warn, " fail " fail, " skipped " skipped, from outside")
-                                 (for [{:keys [status check says]} (:rows rec)
-                                       :when (#{:fail :warn :skipped} status)]
-                                   (str (name status) " " (name check) ": " says)))))
-               (str "the security pack's check exited " exit ", no record written\n" tail))))))
+             (str/join "\n"
+                       (concat
+                        (for [{:keys [cmd label exit rec tail]} runs]
+                          (if rec
+                            (let [{:keys [ok warn fail skipped]} (:counts rec)]
+                              (str ok " ok, " warn " warn, " fail " fail, " skipped " skipped, " label))
+                            (str "the security pack's " cmd " exited " exit ", no record written\n" tail)))
+                        (for [{:keys [rec]} runs
+                              {:keys [status check subject says]} (:rows rec)
+                              :when (#{:fail :warn :skipped} status)]
+                          (str (name status) " " (name check)
+                               (when (#{:deps :secrets} check) (str " " subject))
+                               ": " says))))))))
 
 ;; ---------------------------------------------------------------------------
 ;; the generated application

@@ -51,6 +51,17 @@ the template fork's tags and version the template, not the KIT.
 
 ## 2026-10-08
 
+### `bb health` and every stage's end run the two scans; row 118 fixed
+
+With the pin past its advisories, the scans are wired where the plan put them. `bb health`'s
+`app security` row runs `deps` and `secrets --all` beside `check` in the generated application,
+each with its record, so an advisory published against the pin after it was made fails the next
+health run rather than a project's stage; nine of nine on `kit-v1.2`. The `stage-end` skill runs
+both at every stage's end - `secrets` over the stage's commits, from the tag before it - and their
+records sit beside the stage plan with the checks' record; no failing row is an exit criterion of
+the stage and pre-release templates, `bb stage-report` prints a Dependencies and a Secrets line,
+and 03 §17 asks for them. What a project accepts or allows goes in its routes file with a reason.
+
 ### The pinned template is `kit-v1.2`: its dependencies past their advisories (row 119)
 
 The `deps` scan's first run, on the health application, failed six libraries: Jetty 12.1.0 from

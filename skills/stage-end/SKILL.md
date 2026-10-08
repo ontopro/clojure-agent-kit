@@ -32,6 +32,7 @@ exit criteria and says what is kept.
 | `plan-template/02-architecture.md` | `15. Threat model` |
 | `tools/browser/README.md` | `Three things to know` |
 | `tools/security/README.md` | `The routes file` |
+| `tools/security/README.md` | `The two scans` |
 
 And the workspace's own files, never the conversation: this stage's plan (§11 and §12), its
 gates record, the run records under `<name>-build/runs/` for the stage, `docs/00-overview.md`,
@@ -55,8 +56,13 @@ check` against the local server; the README's three things say what it does and 
 prove), the security pack's table (run `bb --config <kit>/tools/security/bb.edn check --routes
 docs/security-routes.edn --record docs/stages/stage-N-security.edn` from the application's
 folder, the routes file where the project has one; a pre-release stage runs it against the
-rehearsed host with `--running --base <its url>`, so TLS is tried), no failing row and every
-warn read with the person, the serve command for "deployed locally". Then the owner's walk, page by page or
+rehearsed host with `--running --base <its url>`, so TLS is tried), and its two scans from the
+same folder - `deps --routes docs/security-routes.edn --record
+docs/stages/stage-N-security-deps.edn` and `secrets --from stage-<N-1> --routes
+docs/security-routes.edn --record docs/stages/stage-N-security-secrets.edn` (`--all` at the first
+stage's end, which has no tag before it) - no failing row in any of the three and every warn
+read with the person; an advisory accepted or a hit allowed goes in the routes file with its
+reason, never around it, and a secret found is rotated, not only removed. Then the serve command for "deployed locally". Then the owner's walk, page by page or
 function by function: ask the person for every page or function the stage made what is wrong,
 record each thing said as one line, and settle each now - fixed before the stage closes, or
 moved to the deferred list with the stage that takes it. For a pre-release stage, then the
@@ -72,7 +78,7 @@ prints the observations nothing cites) and the stage map re-ranked by what remai
 stage pulled by kind - an increment, a pre-release stage, or the release - and, at the first
 boundary where "could we ship after this one?" is yes, the MVP named. Finally the cap: what
 the stage cost against what was approved: run `bb stage-report docs/stages/stage-N-<name>.md`, which renders the
-stage's figures into §11 from the run records and its security checks from the pack's record,
+stage's figures into §11 from the run records and its security checks and scans from the pack's records,
 and read it with the person; the lessons section's
 cost and runs are its first line.
 
@@ -88,14 +94,15 @@ the map re-ranked, the next stage named with its cap proposed; for a pre-release
 gates record's `:security/signed` with the date, written by the person, before its
 `:stage/closed` with the date, written by the person; the tag `stage-N` on the application's
 merged tip. Not this skill's: the run records and `RUNS.md` (`record` writes them per run) and
-the screenshots (the work folder, uncommitted); the security pack's record
-`docs/stages/stage-N-security.edn` is the pack's, committed with the stage. Then say the next step: `bb next`, and the
+the screenshots (the work folder, uncommitted); the security pack's records
+`docs/stages/stage-N-security.edn`, `-security-deps.edn` and `-security-secrets.edn` are the
+pack's, committed with the stage. Then say the next step: `bb next`, and the
 `stage-plan` skill for the stage pulled, in a fresh session if the person likes.
 
 ## Done when
 
-Every exit criterion of §11 has its evidence written beside it; the security pack's record is
-beside the stage plan with no failing row; the walk's record has no line
+Every exit criterion of §11 has its evidence written beside it; the security pack's three
+records are beside the stage plan with no failing row; the walk's record has no line
 without a resolution; the lessons section is closed with its date, cost and runs; the decision
 log has no provisional entry this stage gated; a pre-release stage's gates record says
 `:security/signed`; the gates record says `:stage/closed`; the tag

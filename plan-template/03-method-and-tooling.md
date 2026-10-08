@@ -376,7 +376,10 @@ justifies the extra call, or the reason it isn't justified here>.
   the static folders, TLS on https, and the routes that need a login. The forms and the routes
   that need a login, which it cannot find by itself, each stage adding its own, are typed in:
   <`docs/security-routes.edn` · none, no form and no login>. Its record is
-  `stage-N-security.edn` beside the stage plan, committed; `bb stage-report` reads it.
+  `stage-N-security.edn` beside the stage plan, committed; `bb stage-report` reads it. Beside
+  it the pack's two scans over the source, `deps` (the dependencies' published advisories) and
+  `secrets` (a secret in the stage's commits), with their records; an advisory the project
+  accepts or a hit it allows goes in the same routes file, with its reason.
 
 ## 18. Readiness — the record
 

@@ -162,32 +162,44 @@
 
 (deftest the-security-check-runs-the-pack-and-carries-its-warns
   (let [subject {:subject :app :dir (str (fs/create-temp-dir)) :kit "/k"}
-        pack (fn [record exit]
+        files {"check" "security.edn" "deps" "security-deps.edn" "secrets" "security-secrets.edn"}
+        ;; `records` is command -> [record exit]; a command it does not name passes with one ok row
+        pack (fn [records]
                (fn [_dir _env argv]
-                 (let [out (second (drop-while #(not= "--out" %) argv))]
-                   (when record (spit (str (fs/path out "security.edn")) (pr-str record)))
+                 (let [out (second (drop-while #(not= "--out" %) argv))
+                       cmd (nth argv 3)
+                       [record exit] (get records cmd [{:ok? true :counts {:ok 1 :warn 0 :fail 0 :skipped 0}
+                                                        :rows [{:check (keyword cmd) :status :ok :says "clean"}]} 0])]
+                   (when record (spit (str (fs/path out (files cmd))) (pr-str record)))
                    {:exit exit :out "" :err ""})))
         clean {:ok? true :counts {:ok 10 :warn 1 :fail 0 :skipped 1}
                :rows [{:check :headers :status :ok :says "nosniff"}
                       {:check :csp :status :warn :says "no Content-Security-Policy"}
                       {:check :tls :status :skipped :says "the base is http"}]}]
-    (testing "ok when the pack exits 0 with its record; the warns and skips in the detail"
-      (let [seen (atom nil)
-            r (health/check-security subject {:run (fn [dir env argv] (reset! seen {:dir dir :argv argv}) ((pack clean 0) dir env argv))})]
+    (testing "ok when each command exits 0 with its record; the warns and skips in the detail"
+      (let [seen (atom [])
+            r (health/check-security subject {:run (fn [dir env argv] (swap! seen conj {:dir dir :argv argv}) ((pack {"check" [clean 0]}) dir env argv))})]
         (is (true? (:ok? r)))
-        (is (= ["bb" "--config" "/k/tools/security/bb.edn" "check" "--out"] (vec (take 5 (:argv @seen)))))
-        (is (= (:dir subject) (:dir @seen)))
-        (is (str/starts-with? (:detail r) "10 ok, 1 warn, 0 fail, 1 skipped"))
+        (is (= [["check"] ["deps"] ["secrets" "--all"]] (mapv #(vec (take-while (fn [a] (not= "--out" a)) (drop 3 (:argv %)))) @seen))
+            "the three commands, secrets over the whole history")
+        (is (= ["bb" "--config" "/k/tools/security/bb.edn"] (vec (take 3 (:argv (first @seen))))))
+        (is (every? #(= (:dir subject) (:dir %)) @seen))
+        (is (str/starts-with? (:detail r) "10 ok, 1 warn, 0 fail, 1 skipped, from outside\n1 ok, 0 warn, 0 fail, 0 skipped, the dependencies"))
         (is (str/includes? (:detail r) "warn csp: no Content-Security-Policy"))
         (is (str/includes? (:detail r) "skipped tls: the base is http"))
         (is (not (str/includes? (:detail r) "nosniff")) "an ok row is not repeated")))
-    (testing "failed on a failing row, and on no record"
-      (let [r (health/check-security subject {:run (pack (assoc clean :ok? false :rows [{:check :cookies :status :fail :says "no HttpOnly"}]) 1)})]
+    (testing "failed on a failing row in any command, and on no record"
+      (let [r (health/check-security subject {:run (pack {"check" [(assoc clean :ok? false :rows [{:check :cookies :status :fail :says "no HttpOnly"}]) 1]})})]
         (is (false? (:ok? r)))
         (is (str/includes? (:detail r) "fail cookies: no HttpOnly")))
-      (let [r (health/check-security subject {:run (pack nil 1)})]
+      (let [r (health/check-security subject {:run (pack {"deps" [{:ok? false :counts {:ok 0 :warn 0 :fail 1 :skipped 0}
+                                                                   :rows [{:check :deps :status :fail :subject "org.eclipse.jetty/jetty-http 12.1.0"
+                                                                           :says "HIGH GHSA-x, fixed in 12.1.7"}]} 1]})})]
+        (is (false? (:ok? r)) "an advisory published since the pin fails health")
+        (is (str/includes? (:detail r) "fail deps org.eclipse.jetty/jetty-http 12.1.0: HIGH GHSA-x")))
+      (let [r (health/check-security subject {:run (pack {"secrets" [nil 2]})})]
         (is (false? (:ok? r)))
-        (is (str/includes? (:detail r) "no record written"))))))
+        (is (str/includes? (:detail r) "the security pack's secrets exited 2, no record written"))))))
 
 (deftest a-port-another-program-holds-on-loopback-is-not-free
   ;; The application binds the wildcard address, which can succeed on a port

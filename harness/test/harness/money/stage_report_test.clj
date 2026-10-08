@@ -94,8 +94,17 @@
                          "\n  Security checks: no record (the stage-end skill runs the security pack")
           "a pre-release stage says it has none")
       (is (str/includes? (sr/render (sr/stage-summary (assoc facts :kind "pre-release" :checks checks)))
-                         "Security checks: 10 ok, 5 warn, 0 fail, 3 skipped (2026-10-08)\n  Threat model: not signed")
-          "before the signature, which reads it")))
+                         (str "Security checks: 10 ok, 5 warn, 0 fail, 3 skipped (2026-10-08)\n"
+                              "  Dependencies: no record (the stage-end skill runs the security pack's deps with --record docs/stages/stage-N-security-deps.edn)\n"
+                              "  Secrets: no record (the stage-end skill runs the security pack's secrets with --record docs/stages/stage-N-security-secrets.edn)\n"
+                              "  Threat model: not signed"))
+          "before the signature, which reads it; a pre-release stage says which scan has no record")))
+  (testing "the two scans' lines: a stage with their records, or a pre-release stage"
+    (let [scan (fn [ok fail] {:security/at "2026-10-08T12:30:00" :counts {:ok ok :warn 0 :fail fail :skipped 0} :ok? (zero? fail)})
+          r (sr/render (sr/stage-summary (assoc facts :kind "increment" :scans {:deps (scan 0 1) :secrets (scan 1 0)})))]
+      (is (str/ends-with? r "\n  Dependencies: 0 ok, 0 warn, 1 fail, 0 skipped (2026-10-08)\n  Secrets: 1 ok, 0 warn, 0 fail, 0 skipped (2026-10-08)")))
+    (is (not (str/includes? (sr/render (sr/stage-summary (assoc facts :kind "increment" :scans {:deps nil :secrets nil}))) "Dependencies"))
+        "an increment without the records reads as before"))
   (testing "no cap, no stage before, no runs"
     (let [r (sr/render (sr/stage-summary {:id 0 :packets ["a"] :records [] :readings [] :gates nil :before nil}))]
       (is (str/starts-with? r "Stage 0 report · 0 runs, 0 merged · $0.00 · cap: not recorded (no :stage/approved in the gates record) · no stage before"))
@@ -150,6 +159,8 @@
     (spit (str (fs/path records "w0.edn")) (pr-str (assoc merged-run :run/id "w0" :task/id "w0")))
     (spit (str (fs/path build "reviews" "stage-1" "blueprint-review.edn")) (pr-str {:cost 1.0 :reviews [{:cost 1.0} {:cost 0.5}]}))
     (spit (str (fs/path build "reviews" "plan-review.edn")) (pr-str {:cost 0.75}))
+    (spit (str (fs/path stages "stage-1-security-deps.edn"))
+          (pr-str {:security/at "2026-10-08T12:30" :scan :deps :counts {:ok 1 :warn 0 :fail 0 :skipped 0} :ok? true :rows []}))
     (spit (str (fs/path stages "stage-1-security.edn"))
           (str ";; Written by the KIT's security pack. Do not edit.\n"
                (pr-str {:security/at "2026-10-08T00:05" :counts {:ok 9 :warn 2 :fail 0 :skipped 3} :ok? true :rows []})))
@@ -162,7 +173,9 @@
       (is (= "increment" (:kind s)) "the plan's kind line")
       (is (= {:id 0 :cost 4.625 :runs 1 :rounds 2 :stops 1} (:before s)) "stage 0: its run, its spec review and the whole-set plan review")
       (is (= {:counts {:ok 9 :warn 2 :fail 0 :skipped 3} :date "2026-10-08"} (:security-checks s))
-          "the security pack's record beside the gates record, its comment line read past"))
+          "the security pack's record beside the gates record, its comment line read past")
+      (is (= {:deps {:counts {:ok 1 :warn 0 :fail 0 :skipped 0} :date "2026-10-08"}} (:security-scans s))
+          "the deps scan's record beside it; no secrets record, no entry"))
     (is (= ["stage-0-spike.md publishes no stage report and its packets have records: run `bb stage-report`"
             "stage-1-skeleton.md publishes no stage report and its packets have records: run `bb stage-report`"]
            (sr/check build records))

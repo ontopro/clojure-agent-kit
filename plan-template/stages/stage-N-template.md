@@ -118,8 +118,9 @@ to the records, so the figures here are never typed by hand.
 - <a concrete data behaviour, e.g. load v2, time-travel returns v1, diff lists changes>
 - Boundary gate passes; each protocol has one implementation **and a documented fallback**
 - **Deployed locally:** served by the project's own command from a clean checkout; the browser
-  checks and the security pack run against it (`../03-method-and-tooling.md` §17), the pack's
-  record `stage-N-security.edn` beside this plan with no failing row; and then **the owner's walk
+  checks and the security pack run against it and its two scans over the source
+  (`../03-method-and-tooling.md` §17), the pack's records `stage-N-security.edn`,
+  `-security-deps.edn` and `-security-secrets.edn` beside this plan with no failing row; and then **the owner's walk
   through every page the stage made**, with what they asked for done or written down - a
   first project's walk produced ten changes no target could have named
 - **Decision-log updates recorded:** spike outcomes noted against the decisions they gate;
