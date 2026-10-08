@@ -51,6 +51,13 @@ the template fork's tags and version the template, not the KIT.
 
 ## 2026-10-08
 
+### A pin bump passes the gates before it is committed (row 120)
+
+The upgrade test expected a workspace made at HEAD to see no pin move, reading HEAD's pin from
+git and this clone's from the working tree; moving the pin to `kit-v1.2` failed it before the
+commit could be made, on exactly the change the doctor's moved-pin line is for. The test now
+asks git whether the pins file differs from HEAD and expects the move then and only then.
+
 ### The security pack scans the dependencies and the commits (row 118)
 
 Two commands beside `check`: `deps` and `secrets`, over the source where `check` sends requests.

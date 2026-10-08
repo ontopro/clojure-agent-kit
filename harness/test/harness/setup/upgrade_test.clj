@@ -94,7 +94,12 @@
   ;; A workspace made at this clone's HEAD, with the shipped profile copied in and no mirror:
   ;; nothing has changed since, the profile has every role, and the report says so.
   (let [ws (str (fs/real-path (fs/create-temp-dir)))
-        head (str/trim (:out (p/shell {:dir kit-dir :out :string} "git" "rev-parse" "HEAD")))]
+        head (str/trim (:out (p/shell {:dir kit-dir :out :string} "git" "rev-parse" "HEAD")))
+        ;; a pin bump is gated BEFORE it is committed: this clone's pin then differs from HEAD's,
+        ;; and a workspace made at HEAD rightly sees the pin moved
+        bump? (pos? (:exit (p/shell {:dir kit-dir :continue true :out :string :err :string}
+                                    "git" "diff" "--quiet" "HEAD" "--" "harness/resources/template-pins.edn")))
+        pin-line? #(str/includes? % "pin moved")]
     (fs/create-dirs (fs/path ws "xyx-build"))
     (fs/copy (fs/path kit-dir "harness" "resources" "profiles" "claude.edn") (fs/path ws "xyx-build" "profile.edn"))
     (spit (str (fs/path ws "workspace.edn"))
@@ -109,7 +114,7 @@
       (is (= head (:made-at f)))
       (is (= 0 (:behind f)) "made at HEAD: nothing is later")
       (is (= [] (:template-changed f)))
-      (is (nil? (:pin-moved f)) "made at HEAD: the pin is the one the application came from")
+      (is (= bump? (some? (:pin-moved f))) "made at HEAD: the pin moved only when a bump is not yet committed")
       (is (= [] (:guidance-changed f)))
       (is (= [] (:mirrors-drifted f)))
       (is (nil? (:profile f)) "no :workspace/build, so no profile is found - which the renamed-key line explains")
@@ -132,6 +137,7 @@
         (let [f (upgrade/facts (workspace/find-workspace ws) kit-dir)]
           (is (= [] (:skills-missing f)))
           (is (= [] (:skills-drifted f)))
-          (is (= ["made at KIT commit "] (map #(subs % 0 19) (upgrade/expectations f))))
+          (is (= ["made at KIT commit "] (map #(subs % 0 19) (remove pin-line? (upgrade/expectations f)))))
+          (is (= bump? (boolean (some pin-line? (upgrade/expectations f)))))
           (spit (str (fs/path ws ".claude" "skills" "plan" "SKILL.md")) "edited\n")
           (is (= ["plan"] (:skills-drifted (upgrade/facts (workspace/find-workspace ws) kit-dir))) "an edited copy drifts"))))))
