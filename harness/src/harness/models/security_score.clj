@@ -2,11 +2,13 @@
   "Scoring a security review against the fixture's answer key: `bb security-score <review.edn>
   <fixture-dir>`. No model reads anything here; the tests the reviewer wrote are run.
 
-  A TEST IS RUN ON ITS OWN, ON EACH BRANCH THAT MATTERS. The faulted branch (all six faults), the
-  careful one (none), and for each fault the variant with only that fault reverted. A test that
-  fails on the faulted branch and passes on the careful one DISCRIMINATES; of the variants, the
-  ones on which it passes are the faults it detects, because reverting just that fault was
-  enough. That is a hit, and it needs nobody's opinion.
+  A TEST IS RUN ON ITS OWN, ON EACH BRANCH THAT MATTERS, AND JUDGED BY THE `deftest`. The faulted
+  branch (all six faults), the careful one (none), and for each fault the variant with only that
+  fault reverted. A test that fails on the faulted branch and passes on the careful one
+  DISCRIMINATES; of the variants, the ones on which it passes are the faults it detects, because
+  reverting just that fault was enough. That is a hit, and it needs nobody's opinion. The unit is
+  the `deftest`, not the file: a reviewer that bundles seven checks in one file has not made seven
+  files' worth of mistakes, and no single revert makes a whole bundle pass.
 
   What does not discriminate is classified, not judged: a test that fails on both branches is
   UNPLANTED - a real flaw nobody planted, an invented one, or a test whose own setup was refused;
@@ -60,6 +62,32 @@
       (let [s (str/join " | " (take 4 (drop from lines)))]
         (if (> (count s) 300) (str (subs s 0 300) "...") s)))))
 
+(defn deftest-names
+  "The names of the tests a test file defines, in order: its `deftest` forms, metadata skipped."
+  [text]
+  (vec (map second (re-seq #"\(deftest\s+(?:\^\S+\s+)*([^\s()\[\]]+)" (str text)))))
+
+(defn failing-vars
+  "The tests a run reports as failed or in error, by name: `FAIL in (a-test) (file.clj:5)`."
+  [out]
+  (set (map second (re-seq #"(?:FAIL|ERROR) in \(([^)\s]+)\)" (str out)))))
+
+(defn unit-statuses
+  "Each test of a namespace's status from how the namespace's run ended: a namespace that does not
+  compile fails to compile every test in it; one that fails with no test named (an error outside
+  any) fails them all, since nothing says which held; a namespace with no tests has none. `vars` are
+  the names the file defines, `out` the run's output."
+  [ns-status vars out]
+  (let [failing (failing-vars out)]
+    (case ns-status
+      :no-tests {}
+      :does-not-compile (zipmap vars (repeat :does-not-compile))
+      :passes (zipmap vars (repeat :passes))
+      :fails (let [named (filter failing vars)]
+               (if (seq named)
+                 (into {} (for [v vars] [v (if (failing v) :fails :passes)]))
+                 (zipmap vars (repeat :fails)))))))
+
 (defn classify
   "What one test namespace shows, from its outcomes: `{:faulted s :clean s :variants {fault s}}`.
   Returns `{:class _ :hits [fault ...]}`:
@@ -93,16 +121,22 @@
     :not-reproduced it says `reproduced` and its test passes on the faulted branch, does not
                     compile, or does not exist
     :hypothesis     it says so, and claims no test
-  `tests` is ns -> classify's map; `findings` the review's; `faults` the fixture's ids."
+  `tests` is `ns/test` -> classify's map; `findings` the review's; `faults` the fixture's ids. A
+  finding names a FILE, which may hold many tests, so it is given the best class of the tests in
+  that file (hit, then unattributed, then fails-on-both): its claim is as good as the best thing
+  its file shows. The count of planted faults found is by test and does not depend on it."
   [tests findings faults]
   (let [found (reduce (fn [m [ns-name {:keys [hits]}]]
                         (reduce #(update %1 %2 (fnil conj []) ns-name) m hits))
                       {} (sort-by key tests))
+        in-file (fn [test] (let [prefix (str (test-ns test) "/")]
+                             (keep (fn [[k v]] (when (str/starts-with? k prefix) v)) tests)))
         finding-class (fn [{:keys [kind test]}]
-                        (let [t (some-> test test-ns tests)]
+                        (let [cs (set (map :class (in-file test)))]
                           (cond (= :hypothesis kind) :hypothesis
-                                (nil? t) :not-reproduced
-                                (#{:hit :unattributed :fails-on-both} (:class t)) (:class t)
+                                (cs :hit) :hit
+                                (cs :unattributed) :unattributed
+                                (cs :fails-on-both) :fails-on-both
                                 :else :not-reproduced)))
         classed (mapv #(assoc (select-keys % [:title :kind :test]) :class (finding-class %)) findings)]
     {:found (into (sorted-map) found)
@@ -123,7 +157,7 @@
 
 (defn- run-branch!
   "The test namespaces `nses` run one at a time in the sandbox, on a fresh single-branch clone of
-  `branch` with the reviewer's test files copied in: ns -> {:status _ :why _}."
+  `branch` with the reviewer's test files copied in: ns -> {:status _ :why _ :units {test status}}."
   [kit app-dir branch files nses]
   (let [scratch (str (fs/create-temp-dir {:prefix "kit-score"}))
         clone (str (fs/path scratch "app"))]
@@ -136,31 +170,41 @@
         (try
           (into (sorted-map)
                 (for [n nses
-                      :let [r ((:run-tests sb) n)]]
-                  [n {:status (status r) :why (when (not= :passes (status r)) (why (:out r)))}]))
+                      :let [r ((:run-tests sb) n)
+                            st (status r)
+                            vars (deftest-names (some (fn [[path text]] (when (= n (test-ns path)) text)) files))]]
+                  [n {:status st
+                      :why (when (not= :passes st) (why (:out r)))
+                      :units (unit-statuses st vars (:out r))}]))
           (finally ((:stop! sb)))))
       (finally (fs/delete-tree scratch)))))
 
 (defn outcomes!
   "Run the reviewer's tests where they matter. `cases` is the fixture's cases.edn, `files` the
-  reviewer's tests (path -> text). Returns ns -> `{:faulted s :clean s :variants {fault s}
-  :why _}`. The variants are run only for the namespaces that discriminate."
+  reviewer's tests (path -> text). Returns `ns/test` -> `{:faulted s :clean s :variants {fault s}
+  :why _}`, one entry per `deftest`. The variants are run only for the namespaces with a test that
+  discriminates."
   [kit app-dir cases files]
   (let [nses (vec (sort (distinct (map test-ns (keys files)))))
         faulted (run-branch! kit app-dir (:faulted cases) files nses)
         clean (run-branch! kit app-dir (:clean cases) files nses)
         base (into (sorted-map)
-                   (for [n nses]
-                     [n {:faulted (get-in faulted [n :status]) :clean (get-in clean [n :status])
-                         :why (or (get-in faulted [n :why]) (get-in clean [n :why]))}]))
-        worth (vec (filter #(discriminates? (base %)) nses))
+                   (for [n nses
+                         v (distinct (concat (keys (get-in faulted [n :units])) (keys (get-in clean [n :units]))))]
+                     [(str n "/" v) {:ns n
+                                     :faulted (get-in faulted [n :units v])
+                                     :clean (get-in clean [n :units v])
+                                     :why (or (get-in faulted [n :why]) (get-in clean [n :why]))}]))
+        worth (vec (distinct (for [[_ o] base :when (discriminates? o)] (:ns o))))
         variants (into {} (when (seq worth)
                             (for [[fault branch] (:variants cases)]
                               [fault (run-branch! kit app-dir branch files worth)])))]
     (into (sorted-map)
-          (for [[n o] base]
-            [n (assoc o :variants (into {} (for [[fault results] variants :when (contains? results n)]
-                                             [fault (get-in results [n :status])])))]))))
+          (for [[k o] base]
+            [k (-> o
+                   (dissoc :ns)
+                   (assoc :variants (into {} (for [[fault results] variants :when (contains? results (:ns o))]
+                                               [fault (get-in results [(:ns o) :units (subs k (inc (count (:ns o))))])]))))]))))
 
 (defn score!
   "Score the review recorded in `review-file` (a `security-review` record, its tests beside it in
@@ -187,9 +231,9 @@
   (println "\n  planted faults found:")
   (doseq [[fault nses] found] (println (str "    " (name fault) " - " (str/join ", " nses))))
   (doseq [fault missed] (println (str "    " (name fault) " - MISSED")))
-  (println "\n  tests, each run alone:")
+  (println "\n  tests (each namespace run alone, each `deftest` judged):")
   (doseq [[n {:keys [class hits why]}] tests]
-    (println (format "    %-46s %-16s %s" n (name class) (cond (seq hits) (str "detects " (str/join ", " (map name hits)))
+    (println (format "    %-62s %-16s %s" n (name class) (cond (seq hits) (str "detects " (str/join ", " (map name hits)))
                                                                (= :fails-on-both class) (str "for you to mark: " why)
                                                                :else ""))))
   (println "\n  findings:")

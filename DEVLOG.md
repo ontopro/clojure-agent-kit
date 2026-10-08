@@ -61,6 +61,18 @@ costs its readers more than a missed one; an answer with no findings block is re
 nothing, not as a clean review. The tests it wrote are collected from the clone and kept beside the
 record. The command is a real model call and says so before it spends.
 
+### The scorer judges the `deftest`, not the file (row 121)
+
+In the first bake-off the first candidate's faulted reading scored 0 of 6 where the same model had scored
+6 of 6 an hour before. The review was no worse: this time it put seven checks in one test file, and a rule
+that a file must pass when one fault is reverted cannot attribute a bundle, since no single revert makes
+the whole file pass. The first review had happened to write a file per concern. The unit is now the
+`deftest`: each namespace is still run alone, and each test in it takes its status from the failures the
+run names; a namespace that does not compile fails every test in it. A finding names a file, so it gets the
+best class of the tests in that file; the count of planted faults found is by test and does not depend on
+that. A reading whose review is in the folder and whose score is not is scored again without a model call,
+so the four readings of the first run were re-scored by the corrected scorer at no cost.
+
 ### `bb security-bake-off`, and GLM-5.3-prime with room to finish (row 121)
 
 With sixty rounds GLM-5.3-prime finished in forty-six (515 s, $0.97) and reported five reproduced findings

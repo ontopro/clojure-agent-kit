@@ -49,11 +49,12 @@
   (is (false? (score/discriminates? {:faulted :passes :clean :passes}))))
 
 (deftest the-summary-names-what-was-found-what-was-missed-and-what-each-claim-came-to
-  (let [tests {"notes.a-test" {:class :hit :hits [:race]}
-               "notes.b-test" {:class :hit :hits [:idor :raw-sql]}
-               "notes.c-test" {:class :fails-on-both :why "register ../x"}
-               "notes.d-test" {:class :did-not-hold}
-               "notes.e-test" {:class :does-not-compile}}
+  (let [tests {"notes.a-test/race" {:class :hit :hits [:race]}
+               "notes.b-test/idor" {:class :hit :hits [:idor]}
+               "notes.b-test/sql" {:class :hit :hits [:raw-sql]}
+               "notes.c-test/setup" {:class :fails-on-both :why "register ../x"}
+               "notes.d-test/idle" {:class :did-not-hold}
+               "notes.e-test/broken" {:class :does-not-compile}}
         findings [{:title "race" :kind :reproduced :test "test/notes/a_test.clj"}
                   {:title "idor" :kind :reproduced :test "test/notes/b_test.clj"}
                   {:title "other" :kind :reproduced :test "test/notes/c_test.clj"}
@@ -62,7 +63,37 @@
                   {:title "no file" :kind :reproduced :test "test/notes/gone_test.clj"}
                   {:title "maybe" :kind :hypothesis}]
         s (score/summary tests findings [:race :idor :raw-sql :admin-authz :csrf-get :path-escape])]
-    (is (= {:idor ["notes.b-test"] :race ["notes.a-test"] :raw-sql ["notes.b-test"]} (:found s)))
+    (is (= {:idor ["notes.b-test/idor"] :race ["notes.a-test/race"] :raw-sql ["notes.b-test/sql"]} (:found s)))
     (is (= [:admin-authz :csrf-get :path-escape] (:missed s)))
     (is (= [:hit :hit :fails-on-both :not-reproduced :not-reproduced :not-reproduced :hypothesis] (mapv :class (:findings s))))
     (is (= {:hit 2 :fails-on-both 1 :not-reproduced 3 :hypothesis 1 :findings 7} (:counts s)))))
+
+(deftest a-bundle-of-checks-in-one-file-is-scored-by-the-check
+  ;; a reviewer that put seven checks in one file: no single revert makes the FILE pass, but each
+  ;; check passes when its own fault is reverted - the unit is the deftest
+  (let [tests {"notes.sec-test/admin" (score/classify {:faulted :fails :clean :passes :variants {:admin-authz :passes :race :fails}})
+               "notes.sec-test/quota" (score/classify {:faulted :fails :clean :passes :variants {:admin-authz :fails :race :passes}})
+               "notes.sec-test/idle" (score/classify {:faulted :passes :clean :passes})}
+        s (score/summary tests [{:title "admin" :kind :reproduced :test "test/notes/sec_test.clj"}
+                                {:title "quota" :kind :reproduced :test "test/notes/sec_test.clj"}]
+                         [:admin-authz :race :idor])]
+    (is (= {:admin-authz ["notes.sec-test/admin"] :race ["notes.sec-test/quota"]} (:found s)))
+    (is (= [:idor] (:missed s)))
+    (is (= [:hit :hit] (mapv :class (:findings s))) "both claims name the same file, which has hits")))
+
+(deftest the-tests-in-a-file-and-the-ones-a-run-names-are-read
+  (is (= ["a-first" "second-one" "with-meta"]
+         (score/deftest-names "(ns x)\n(deftest a-first\n  (is true))\n(deftest second-one (is 1))\n(deftest ^:slow with-meta (is 2))\n(defn- helper [])")))
+  (is (= [] (score/deftest-names "(ns x-support)\n(defn helper [])")))
+  (is (= #{"a-first" "second-one"}
+         (score/failing-vars "FAIL in (a-first) (x.clj:5)\nexpected\nERROR in (second-one) (FutureTask.java:122)\nFAIL in (a-first) (x.clj:9)"))))
+
+(deftest a-namespaces-run-is-turned-into-the-status-of-each-of-its-tests
+  (let [vars ["a" "b" "c"]]
+    (is (= {"a" :passes "b" :passes "c" :passes} (score/unit-statuses :passes vars "")))
+    (is (= {"a" :fails "b" :passes "c" :passes} (score/unit-statuses :fails vars "FAIL in (a) (x.clj:5)")))
+    (is (= {"a" :passes "b" :fails "c" :fails} (score/unit-statuses :fails vars "FAIL in (b) (x.clj:5)\nERROR in (c) (y.java:1)")))
+    (is (= {"a" :does-not-compile "b" :does-not-compile "c" :does-not-compile} (score/unit-statuses :does-not-compile vars "")))
+    (is (= {"a" :fails "b" :fails "c" :fails} (score/unit-statuses :fails vars "Execution error at the top"))
+        "a failure no test is named in fails them all: nothing says which held")
+    (is (= {} (score/unit-statuses :no-tests [] "Ran 0 tests")))))

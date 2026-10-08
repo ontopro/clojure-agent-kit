@@ -96,29 +96,44 @@
 
 (defn- read-edn [f] (when (fs/exists? f) (edn/read-string (slurp (str f)))))
 
+(defn- score-reading!
+  "Score the review in `rec`, write `sco`, and say how the reading came out. A review with no test
+  of its own is scored as nothing found, without starting a container."
+  [{:keys [kit fixture]} cases id rec sco r]
+  (let [s (if (seq (:tests r))
+            (score/score! kit (str rec) (str fixture))
+            (assoc (score/summary {} (:findings r) (:faults cases)) :review (str (fs/file-name rec))))]
+    (spit (str sco) (with-out-str (pp/pprint s)))
+    (println (format "  %s: %s, %d completions, %ds; %d of %d planted faults found"
+                     id (cond (:refused? r) "REFUSED" (:no-block? r) "no answer" :else "answered")
+                     (or (:iterations r) 0) (quot (or (:ms r) 0) 1000)
+                     (count (:found s)) (+ (count (:found s)) (count (:missed s)))))
+    s))
+
 (defn- reading!
-  "One reading: reuse its files when both are there, else clone the branch, review it, write the
-  record, score its tests. Returns `{:review _ :score _}`."
-  [{:keys [kit fixture out rounds]} cases {:keys [candidate case id]}]
+  "One reading. Both of its files there: reused. Its record there and no score (a stopped run, or
+  a scorer that changed): scored again, with no new model call. Neither: clone the branch, review
+  it, write the record, score it. Returns `{:review _ :score _}`."
+  [{:keys [kit out rounds] :as opts} cases {:keys [candidate case id]}]
   (let [rec (fs/path out (str id ".edn"))
         sco (fs/path out (str id "-score.edn"))]
-    (if (and (fs/exists? rec) (fs/exists? sco))
+    (cond
+      (and (fs/exists? rec) (fs/exists? sco))
       (do (println (str "  " id ": reused from the last run"))
           {:review (read-edn rec) :score (read-edn sco)})
+
+      (fs/exists? rec)
+      (let [r (read-edn rec)]
+        (println (str "  " id ": its review is there; scoring it again"))
+        {:review r :score (score-reading! opts cases id rec sco r)})
+
+      :else
       (let [scratch (str (fs/create-temp-dir {:prefix "kit-bakeoff"}))]
         (try
-          (let [clone (review/review-clone! (fs/path fixture "notes") (get cases case) (fs/path scratch "app"))
-                r (review/review! (:profile candidate) :tracer clone (cond-> {:kit kit} rounds (assoc :rounds rounds)))
-                _ (review/write-record! out id r)
-                s (if (seq (:tests r))
-                    (score/score! kit (str rec) (str fixture))
-                    (assoc (score/summary {} (:findings r) (:faults cases)) :review (str (fs/file-name rec))))]
-            (spit (str sco) (with-out-str (pp/pprint s)))
-            (println (format "  %s: %s, %d completions, %ds; %d of %d planted faults found"
-                             id (cond (:refused? r) "REFUSED" (:no-block? r) "no answer" :else "answered")
-                             (or (:iterations r) 0) (quot (or (:ms r) 0) 1000)
-                             (count (:found s)) (+ (count (:found s)) (count (:missed s)))))
-            {:review (read-edn rec) :score s})
+          (let [clone (review/review-clone! (fs/path (:fixture opts) "notes") (get cases case) (fs/path scratch "app"))
+                r (review/review! (:profile candidate) :tracer clone (cond-> {:kit kit} rounds (assoc :rounds rounds)))]
+            (review/write-record! out id r)
+            {:review (read-edn rec) :score (score-reading! opts cases id rec sco r)})
           (finally (fs/delete-tree scratch)))))))
 
 (defn run-readings!
