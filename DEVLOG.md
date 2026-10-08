@@ -40,6 +40,15 @@ until a workflow runs it on push.
 
 ## 2026-10-08
 
+### The root README names the security pack; row 115 fixed
+
+The parts table's `tools/` row named only the browser pack; it names the SVG check and the
+security pack beside it now. Row 115 is fixed: the KIT asks about security in the architecture
+document's three parts, a pre-release stage signs the threat model, and what a request can try is
+tried at every stage's end and in every health run. The scans over the source - dependency
+advisories, a secret committed by mistake - and a security reading stay paused until a project
+holds accounts or data.
+
 ### Every stage's end runs the security pack, and the stage report reads its record
 
 Row 115. The `stage-end` skill runs the pack after the browser's, from the application's folder
