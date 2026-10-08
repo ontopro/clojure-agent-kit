@@ -143,7 +143,12 @@
         (for [rel (remove str/blank? (str/split-lines (git clone "ls-files" "--others" "--exclude-standard" "test")))]
           [rel (slurp (str (fs/path clone rel)))])))
 
-(def default-rounds 30)
+(def default-rounds
+  "Completions a review may take. Thirty cut a model off that sends its requests one to a completion
+  (GLM-5.3-prime used all of them, ten on single requests, and never answered) while another batched
+  four reads to a completion and finished in fifteen; a limit is for a runaway, not for the slower way
+  of working."
+  60)
 (def default-requests 150)
 
 (def default-max-tokens
