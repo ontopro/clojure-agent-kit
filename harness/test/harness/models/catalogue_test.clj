@@ -42,7 +42,7 @@
   (is (= :x-ai (cat/family-of "x-ai/grok-4.7")))
   (is (nil? (cat/family-of "claude-fable-5-1")) "a direct model name has no prefix")
   (let [r (cat/routes)]
-    (is (= #{:anthropic :openai :google :x-ai :anthropic-direct} (set (keys r))))
+    (is (= #{:anthropic :openai :google :x-ai :z-ai :anthropic-direct} (set (keys r))))
     (doseq [[fam route] r]
       (is (and (:endpoint route) (:key-env route) (:shape route) (get-in route [:effort :param]) (seq (get-in route [:effort :levels])))
           (str (name fam) ": endpoint, key variable, shape, effort parameter and levels"))

@@ -51,6 +51,13 @@ the template fork's tags and version the template, not the KIT.
 
 ## 2026-10-08
 
+### The `z-ai` family has a route
+
+The bake-off's second candidate, `z-ai/glm-5.3-prime`, was in the catalogue with no route, and a
+family with no route is refused by name. It is reached through OpenRouter like the others, pinned
+to Alibaba - the one host OpenRouter lists for it, and one of many for `glm-5.3`, so the pin
+holds if the person moves to that one - and both take tools and `reasoning_effort`.
+
 ### The security reading's fixture: six faults planted, a test each (row 121)
 
 The two auditors the plan takes on - an architecture tracer and an attacker on the diff, models

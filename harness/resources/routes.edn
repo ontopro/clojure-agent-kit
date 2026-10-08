@@ -36,6 +36,13 @@
         :shape :openai
         :provider "xai"
         :effort {:param :reasoning_effort :levels ["low" "medium" "high"]}}
+ ;; Alibaba is the one host OpenRouter lists for glm-5.3-prime (2026-10-08) and one of many for
+ ;; glm-5.3, so the pin serves both; it takes tools and reasoning_effort on each.
+ :z-ai {:endpoint "https://openrouter.ai/api/v1"
+        :key-env "OPENROUTER_API_KEY"
+        :shape :openai
+        :provider "alibaba"
+        :effort {:param :reasoning_effort :levels ["low" "medium" "high"]}}
  :anthropic-direct {:endpoint "https://api.anthropic.com"
                     :key-env "ANTHROPIC_API_KEY"
                     :shape :anthropic
