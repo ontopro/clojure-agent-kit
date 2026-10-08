@@ -143,17 +143,29 @@
     ;; The generation record's model is the RESOLVED one — asking for
     ;; `deepseek/deepseek-v4-flash` got back `deepseek-v4-flash-20260423`.
     ;; What you requested is in the profile; what answered belongs here.
-     {:model (or (:model generation) (get-in parsed [:raw :model]))
-      :provider (:provider_name generation)
-      :cost (:total_cost generation)
-      :tokens (or (when-let [n (:native_tokens_prompt generation)]
-                    (+ n (or (:native_tokens_completion generation) 0)))
-                  (when (or in out) (+ (or in 0) (or out 0))))
-     ;; THREE MORE FIELDS THE RECORD ALREADY HAD. Reasoning tokens and the
-     ;; host's own generation time say whether a slow turn was the model
-     ;; thinking; the service tier is the only field that tells OpenAI's flex
-     ;; from its standard endpoint — :provider_name is "OpenAI" for both.
-      :reasoning-tokens (:native_tokens_reasoning generation)
-      :generation-ms (:generation_time generation)
-      :service-tier (:service_tier generation)
-      :generation-id (:id parsed)})))
+     (merge
+      {:model (or (:model generation) (get-in parsed [:raw :model]))
+       :provider (:provider_name generation)
+       :cost (:total_cost generation)
+       :tokens (or (when-let [n (:native_tokens_prompt generation)]
+                     (+ n (or (:native_tokens_completion generation) 0)))
+                   (when (or in out) (+ (or in 0) (or out 0))))
+       ;; THREE MORE FIELDS THE RECORD ALREADY HAD. Reasoning tokens and the
+       ;; host's own generation time say whether a slow turn was the model
+       ;; thinking; the service tier is the only field that tells OpenAI's flex
+       ;; from its standard endpoint — :provider_name is "OpenAI" for both.
+       :reasoning-tokens (:native_tokens_reasoning generation)
+       :generation-ms (:generation_time generation)
+       :service-tier (:service_tier generation)
+       :generation-id (:id parsed)}
+      ;; WHY A COMPLETION STOPPED, when the reply says: a completion that returns no text and no
+      ;; tool call is otherwise a blank in the record. `finish_reason` is the host's word for it
+      ;; (`stop`, `length`, `content_filter`, `error`); for a reply with neither text nor a tool
+      ;; call the message's other fields are named, never copied - what was in them can be long.
+      (let [choice (get-in parsed [:raw :choices 0])
+            msg (:message choice)]
+        (cond-> {}
+          (:finish_reason choice) (assoc :finish-reason (:finish_reason choice))
+          (:native_finish_reason choice) (assoc :native-finish-reason (:native_finish_reason choice))
+          (and msg (str/blank? (str (:content msg))) (empty? (:tool_calls msg)))
+          (assoc :empty-reply-fields (vec (sort (map name (keys (remove (comp nil? val) msg))))))))))))

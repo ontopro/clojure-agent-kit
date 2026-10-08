@@ -61,6 +61,15 @@ costs its readers more than a missed one; an answer with no findings block is re
 nothing, not as a clean review. The tests it wrote are collected from the clone and kept beside the
 record. The command is a real model call and says so before it spends.
 
+### A completion that returns nothing now says why (row 121)
+
+The larger output ceiling did not change the first real review: the same six completions, 106 s, eighteen
+files read, and a last completion with no text and no tool call - after 2,248 output tokens, a fraction
+of any cap, so it was not cut off. The earlier explanation was wrong, and the record could not say what
+was right because a step kept no finish reason. A step now keeps the host's `finish_reason`, and for a
+reply with neither text nor a tool call the names of the fields it did carry - names only, since a
+reasoning field can be long. The next review will say what the empty reply was.
+
 ### The first real review came back empty: its output ceiling was a route's, not a reviewer's
 
 Fable 5.1 at high effort, as the tracer on the fixture's faulted branch: six completions, 105 s, eighteen

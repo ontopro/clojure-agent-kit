@@ -1,6 +1,7 @@
 (ns harness.models.provenance-test
   (:require
    [cheshire.core :as json]
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [harness.models.provenance :as prov]
    [org.httpkit.server :as srv]))
@@ -165,3 +166,24 @@
 (deftest a-completion-that-reported-no-usage-reports-no-tokens
   (is (nil? (:tokens (prov/of {:id "x" :usage {}} nil)))
       "nil, not zero — zero is a measurement and this is an absence"))
+
+(deftest a-step-says-why-a-completion-stopped-and-what-an-empty-reply-carried
+  (let [reply (fn [choice] {:id "g" :usage {:in 1 :out 2} :raw {:model "m" :choices [choice]}})]
+    (testing "a reply with text keeps only the finish reason"
+      (let [p (prov/of (reply {:finish_reason "stop" :message {:content "hi"}}) nil)]
+        (is (= "stop" (:finish-reason p)))
+        (is (not (contains? p :empty-reply-fields)))))
+    (testing "an empty reply names the fields it did carry, never copies them"
+      (let [p (prov/of (reply {:finish_reason "length" :native_finish_reason "max_tokens"
+                               :message {:role "assistant" :content nil :reasoning "a long thought"}})
+                       nil)]
+        (is (= "length" (:finish-reason p)))
+        (is (= "max_tokens" (:native-finish-reason p)))
+        (is (= ["reasoning" "role"] (:empty-reply-fields p)))
+        (is (not (str/includes? (pr-str p) "a long thought")))))
+    (testing "a reply that calls a tool is not an empty one"
+      (is (not (contains? (prov/of (reply {:finish_reason "tool_calls" :message {:content nil :tool_calls [{:id "c"}]}}) nil)
+                          :empty-reply-fields))))
+    (testing "no raw reply, no new keys"
+      (is (= #{:model :provider :cost :tokens :reasoning-tokens :generation-ms :service-tier :generation-id}
+             (set (keys (prov/of {:id "g" :usage {:in 1 :out 2}} nil))))))))
