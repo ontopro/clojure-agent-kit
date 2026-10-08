@@ -31,7 +31,7 @@
     (tools/invoke rt/specs ctx {:id "c1" :name nm :args args})))
 
 (deftest the-reviewer-has-its-own-registry-and-the-coders-is-untouched
-  (is (= #{"read_file" "search" "write_test"} (set (keys rt/specs))) "grows as the tools are added")
+  (is (= #{"read_file" "search" "write_test" "run_tests"} (set (keys rt/specs))) "grows as the tools are added")
   (is (= #{"read_file" "write_file" "edit_file" "nrepl_eval" "note"} (set (keys tools/specs)))
       "no review tool leaks into the coder's registry")
   (is (nil? (get rt/specs "nrepl_eval")) "a reviewer has no REPL"))
@@ -120,3 +120,44 @@
       (is (:error? (refused {:path "test/app/e_test.clj" :content ""})))
       (is (str/includes? (:content (refused {:path "test/app/big_test.clj" :content (apply str (repeat (inc rt/max-test-bytes) "x"))}))
                          "is not one test")))))
+
+;; ---------------------------------------------------------------------------
+;; run_tests
+;; ---------------------------------------------------------------------------
+
+(def bar "  3/15    20% [==========                                        ]  ETA: 00:03 ")
+(def raw-run
+  (str "Running task: test\n" bar "\r" bar "\r  8/15    53% [==========================                        ]  ETA: 00:01 "
+       "\u001b[1;31mFAIL\u001b[0m in app.review-notes-test/a-property (review_notes_test.clj:6)\n"
+       "expected: (= 1 2)\n  actual: (not (= 1 2))\n55 assertions, 1 failure, 0 errors.\n"))
+
+(deftest a-test-runs-output-is-read-without-the-terminals-decoration
+  (let [clean (rt/clean-output raw-run)]
+    (is (not (str/includes? clean "ETA")))
+    (is (not (str/includes? clean "\u001b")))
+    (is (str/includes? clean "FAIL in app.review-notes-test/a-property"))
+    (is (str/includes? clean "55 assertions, 1 failure, 0 errors."))
+    (is (< (count clean) (/ (count raw-run) 2)))))
+
+(defn- sandbox [exit out seen]
+  {:run-tests (fn [ns-name] (swap! seen conj ns-name) {:exit exit :out out})})
+
+(deftest run-tests-runs-all-or-one-namespace-and-says-how-it-ended
+  (let [seen (atom [])
+        failing {:dir "." :sandbox (sandbox 1 raw-run seen)}
+        passing {:dir "." :sandbox (sandbox 0 "Ran 3 tests\n8 assertions, 0 failures, 0 errors.\n" seen)}]
+    (let [r (call failing "run_tests" {})]
+      (is (false? (:error? r)) "a failing test is a result, not a tool error")
+      (is (str/includes? (:content r) "FAIL in app.review-notes-test/a-property"))
+      (is (str/ends-with? (:content r) "[exit 1: a test failed or did not run]")))
+    (let [r (call passing "run_tests" {:namespace "app.review-notes-test"})]
+      (is (str/ends-with? (:content r) "[exit 0: the tests pass]")))
+    (is (= [nil "app.review-notes-test"] @seen) "all by default, or the namespace named")))
+
+(deftest run-tests-refuses-what-is-not-a-namespace-name-and-a-missing-sandbox
+  (let [seen (atom [])
+        ctx {:dir "." :sandbox (sandbox 0 "ok" seen)}]
+    (doseq [bad ["x) (System/exit 1" "a b" "../x" "(slurp \"/etc/passwd\")"]]
+      (is (str/includes? (:content (call ctx "run_tests" {:namespace bad})) "is not a namespace name") bad))
+    (is (empty? @seen) "nothing was run")
+    (is (str/includes? (:content (call {:dir "."} "run_tests" {})) "no sandbox"))))

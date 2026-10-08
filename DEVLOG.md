@@ -62,7 +62,11 @@ the role, so a comparison measures the models and not their tools. They live in
 five tools - a test pins them - exactly as they were. The registry came with the
 search; `write_test` follows - a new `*_test.clj` file below `test/` and nothing else, since the
 application's own tests are not the reviewer's to change and a test altered to pass would hide what it
-was written to show - and request and test-running after it, each its own commit.
+was written to show - then `run_tests` - the whole suite by default, or one namespace, in a sandbox the tool is handed as
+two functions and knows nothing more of, so the tools are tried without a container and the container
+is its own commit. The coverage runner's output is cleaned first: its progress bar, rewritten with
+carriage returns, was five-sixths of a failing run's output (7.7 KB to 1.5 KB on a saved log, the
+failure and the totals kept). The request tool follows.
 
 ### The `z-ai` family has a route
 

@@ -121,6 +121,36 @@
                              :else (str "; the linter finds:\n" (str/join "\n" warnings)))))))))
 
 ;; ---------------------------------------------------------------------------
+;; run_tests
+;; ---------------------------------------------------------------------------
+
+(defn clean-output
+  "A test run's output without what only a terminal wants: colour codes, and the coverage
+  runner's progress bar, which rewrites one line with carriage returns and is most of the
+  output when a test fails. What a person or a model reads is the failures and the totals."
+  [text]
+  (->> (str/split (str text) #"[\r\n]+")
+       (map #(str/replace % #"\u001b\[[0-9;]*[A-Za-z]" ""))
+       (map #(str/replace % #"^\s*\d+/\d+\s+\d+%\s+\[[= ]*\]\s+ETA:\s*\S+\s*" ""))
+       (remove str/blank?)
+       (str/join "\n")))
+
+(def ^:private namespace-name #"[a-zA-Z][\w.\-*!?]*")
+
+(defn- run-tests
+  "The application's tests in the sandbox: all of them, or one test namespace."
+  [{:keys [sandbox]} {ns-name :namespace}]
+  (cond
+    (nil? (:run-tests sandbox)) (tools/err "no sandbox to run the tests in")
+    (and (not (str/blank? ns-name)) (not (re-matches namespace-name ns-name)))
+    (tools/err (str ns-name " is not a namespace name"))
+    :else
+    (let [{:keys [exit out]} ((:run-tests sandbox) (when-not (str/blank? ns-name) ns-name))
+          text (clean-output out)]
+      (tools/ok (str (if (str/blank? text) "(no output)" text)
+                     "\n[" (if (zero? exit) "exit 0: the tests pass" (str "exit " exit ": a test failed or did not run")) "]")))))
+
+;; ---------------------------------------------------------------------------
 ;; the registry
 ;; ---------------------------------------------------------------------------
 
@@ -153,4 +183,16 @@
                           :content {:type "string"
                                     :description "The complete contents of the new test namespace."}}
              :required ["path" "content"]}
-    :fn #'write-test}})
+    :fn #'write-test}
+
+   "run_tests"
+   {:description (str "Run the application's tests and return their output: every test by default, or "
+                      "only the namespace you name (for example the one you wrote with write_test). "
+                      "A test fails when the property it states does not hold. A property you believe "
+                      "is broken should show here as a failing test of your own, and a test of yours "
+                      "that passes is a concern that did not hold.")
+    :schema {:type "object"
+             :properties {:namespace {:type "string"
+                                      :description "Optional: one test namespace, e.g. app.review-notes-test. Default: all tests."}}
+             :required []}
+    :fn #'run-tests}})
