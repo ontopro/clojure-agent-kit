@@ -61,6 +61,19 @@ costs its readers more than a missed one; an answer with no findings block is re
 nothing, not as a clean review. The tests it wrote are collected from the clone and kept beside the
 record. The command is a real model call and says so before it spends.
 
+### GPT-6 Astra did the review: all six planted faults, and two nobody planted (row 121)
+
+The same hand-try with `openai/gpt-6-astra` at high effort - the same price as the model that declined -
+ran fifteen completions in 372 s, read the files, wrote twelve test files and ran them ten times, and
+reported eight findings, each with a test of its own. Run one namespace at a time on the faulted branch
+and on the careful one, six of the eight fail on the faulted branch only and are exactly the six planted
+faults (the search injection by two tests); the other two fail on both. They are real: the first account
+is made administrator by a count and an insert in two steps, and a username with path characters becomes
+the name of the export file - flaws in the fixture's careful feature that its author did not know of.
+Of the twelve files, one is a concern that did not hold (it passes both ways, and was not reported), one
+does not compile (left over, not reported, and it breaks a whole-suite run), one is a helper. The whole
+scoring was done by hand here; it is the scorer's job next.
+
 ### Fable 5.1 declined the review; the tool now says so (row 121)
 
 The third real review, with the step diagnostic in place, showed what the empty completion was: finish
