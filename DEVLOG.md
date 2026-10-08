@@ -40,6 +40,15 @@ until a workflow runs it on push.
 
 ## 2026-10-08
 
+### `bb plan-check` reads a mark wrapped across lines (row 116)
+
+A mark was `<` to `>` on one line, and the template wraps its longer marks as prose: eight of
+them, six in `03-method-and-tooling.md` and one each in the stage-0 and stage-N templates, were
+invisible to the check, so a plan could leave them standing and pass. A mark may now wrap across
+lines but not across a blank line, and is reported on one line. Compared over every `.md` in the
+repository, old pattern against new, the change finds those eight and nothing else; the template's
+count fixture counts them.
+
 ### The root README names the security pack; row 115 fixed
 
 The parts table's `tools/` row named only the browser pack; it names the SVG check and the

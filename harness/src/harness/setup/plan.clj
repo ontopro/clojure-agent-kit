@@ -51,13 +51,20 @@
   [text]
   (str/replace text #"(?s)```.*?```" ""))
 
+(def mark
+  "An `<angle bracket>` mark: it may wrap across lines, as prose does, but not
+  across a blank line."
+  #"<[^<>\n]+(?:\n[^<>\n]+)*>")
+
 (defn placeholders
   "Every `<angle bracket>` mark in `text`, in order, that a project is meant
   to replace: outside fenced code blocks, not an autolink (`<http…>`), not an
   HTML comment (`<!-- … -->`), not one of `known`. Inline code counts - the
-  seams table's `<Store>` is a decision."
+  seams table's `<Store>` is a decision. A wrapped mark is returned on one
+  line."
   [text]
-  (->> (re-seq #"<[^<>\n]+>" (strip-fences text))
+  (->> (re-seq mark (strip-fences text))
+       (map #(str/replace % #"\s*\n\s*" " "))
        (remove #(or (str/starts-with? % "<!")
                     (str/starts-with? % "<http")
                     (known %)))

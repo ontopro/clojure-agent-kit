@@ -28,22 +28,25 @@
   (testing "not documentation of a command inside a fence, nor an autolink or a comment"
     (is (= [] (plan/placeholders "```bash\nclj-nrepl-eval -p <port> \"<code>\"\n```\n<https://x> <!-- note -->")))
     (is (= ["<after>"] (plan/placeholders "```\n<in>\n```\n<after>\n```\n<in again>\n```")))
-    (is (= ["<Store>"] (plan/placeholders "| Storage | `<Store>` |")) "inline code counts: a seam's name is a decision")))
+    (is (= ["<Store>"] (plan/placeholders "| Storage | `<Store>` |")) "inline code counts: a seam's name is a decision"))
+  (testing "a mark wrapped across lines is one mark, on one line; a blank line ends it"
+    (is (= ["<what stops the stage early>"] (plan/placeholders "Stop: <what stops the\n  stage early>.")))
+    (is (= [] (plan/placeholders "a < b\n\nc > d")))))
 
 (deftest the-shipped-template-carries-exactly-these-marks
   ;; The fixture. `bb init` copies every one of these into `<name>-build/docs/`.
   (is (= {"00-overview.md" 19
           "01-requirements.md" 14
           "02-architecture.md" 35
-          "03-method-and-tooling.md" 43
+          "03-method-and-tooling.md" 49
           "04-decision-log.md" 12
           "05-lessons.md" 11
           "README.md" 1
           "source.md" 11
-          "stages/stage-0-spike-template.md" 11
+          "stages/stage-0-spike-template.md" 12
           "stages/stage-N-blueprint-template.md" 9
           "stages/stage-N-gates-template.edn" 2
-          "stages/stage-N-template.md" 25
+          "stages/stage-N-template.md" 26
           "stages/stage-prerelease-template.md" 14
           "stages/stage-release-template.md" 8}
          (plan/placeholder-counts template-dir)))
@@ -141,7 +144,7 @@
   every mark replaced."
   [text]
   (-> (->> (str/split-lines text) (remove #(re-matches #"\s*>.*" %)) (str/join "\n"))
-      (str/replace #"<[^<>\n]+>" #(if (plan/known %) % "filled"))
+      (str/replace plan/mark #(if (plan/known %) % "filled"))
       ;; the template's own citation names no observation; a project's names one
       (str/replace #"S-n\.m" "S-1.1")))
 
