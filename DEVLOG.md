@@ -61,6 +61,17 @@ costs its readers more than a missed one; an answer with no findings block is re
 nothing, not as a clean review. The tests it wrote are collected from the clone and kept beside the
 record. The command is a real model call and says so before it spends.
 
+### Fable 5.1 declined the review; the tool now says so (row 121)
+
+The third real review, with the step diagnostic in place, showed what the empty completion was: finish
+reason `content_filter`, native reason `refusal`, and a `refusal` field in the reply. Fable 5.1 declined
+to do the review - after reading fifteen of the application's files - in all three runs. It was not an
+output cap, a tool fault or an empty answer, and both earlier explanations here were wrong. A refusal is
+the model's own safeguard, so the review is now reported as one (`:refused?`, a message saying the review
+did not happen, and a failing exit) instead of as an empty answer; in a bake-off it is a result for that
+candidate. No prompt was reworded to get past it: whether and how to proceed with a model that declines
+is the person's decision. About $3 was spent finding this out.
+
 ### A completion that returns nothing now says why (row 121)
 
 The larger output ceiling did not change the first real review: the same six completions, 106 s, eighteen

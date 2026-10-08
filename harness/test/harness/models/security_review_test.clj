@@ -149,3 +149,10 @@
         (is (vector? (:turns r)))
         (is (vector? (:steps r))))
       (finally @(srv/server-stop! stop)))))
+
+(deftest a-refusal-is-reported-as-a-refusal
+  (is (true? (sr/refused? [{:finish-reason "tool_calls"} {:finish-reason "content_filter" :native-finish-reason "refusal"}])))
+  (is (true? (sr/refused? [{:native-finish-reason "refusal"}])))
+  (is (true? (sr/refused? [{:finish-reason "content_filter"}])))
+  (is (false? (sr/refused? [{:finish-reason "stop"} {:finish-reason "length"} {}])))
+  (is (false? (sr/refused? []))))

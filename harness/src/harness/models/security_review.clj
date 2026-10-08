@@ -101,6 +101,14 @@
          (when (seq scans) (str "\n\nResults of the dependency and secrets scans, for you to weigh:\n" scans))
          "\n\nBegin. Give your answer as the JSON block described, when you have checked what you mean to report.")))
 
+(defn refused?
+  "Whether the model declined to do the review: a completion whose host finish reason is
+  `content_filter` or whose native one is `refusal` (Anthropic's word). That is the model's own
+  safeguard speaking, not a failure of the call, and a review in which it happened has said
+  nothing - it is reported as a refusal, never as a clean review or an empty answer."
+  [steps]
+  (boolean (some #(or (= "refusal" (:native-finish-reason %)) (= "content_filter" (:finish-reason %))) steps)))
+
 (defn parse-findings
   "The findings in the reviewer's final text, from its last ```json block: the vector (empty for
   an honest nothing), or nil when there was no block - a review with no block says nothing and
@@ -186,6 +194,7 @@
                 :no-block? (nil? findings)
                 :tests (reproductions clone)
                 :text (:text r)
+                :refused? (refused? (:steps r))
                 :empty-answer? (and (= :done (:status r)) (str/blank? (:text r)))
                 :turns (compact-turns (:turns r))
                 :steps (:steps r)
@@ -239,6 +248,7 @@
                 (quot (:ms r) 1000) "s, " (if (:cost r) (format "$%.2f" (double (:cost r))) "cost not yet reported")))
   (println (str "  tools: " (pr-str (frequencies (map first (:calls r))))))
   (cond
+    (:refused? r) (println "  the model REFUSED to do this review (finish reason content_filter / refusal): its own safeguard, not a failure of the call. The review did not happen; this is not a clean review")
     (:empty-answer? r) (println "  the last completion returned no text at all - cut off at its output limit, or an empty reply; the steps in the record say which")
     (:no-block? r) (println "  the answer had no findings block - it says nothing, and is not a clean review")
     (empty? (:findings r)) (println "  no findings")
@@ -263,4 +273,4 @@
             file (write-record! out id r)]
         (print-review r)
         (println (str "  record: " file))
-        (when (or (= :failed (:status r)) (:no-block? r)) (System/exit 1))))))
+        (when (or (= :failed (:status r)) (:refused? r) (:no-block? r)) (System/exit 1))))))
