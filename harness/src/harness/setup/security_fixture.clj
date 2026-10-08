@@ -107,7 +107,9 @@
   "Generate the application into `<dir>/notes` from the pin, commit it as `base`, and add the
   feature on two branches from it, clean and faulted, in an order drawn now. Writes
   `<dir>/cases.edn` - `{:clean branch :faulted branch :base \"base\" :faults [ids]}` - and
-  returns it."
+  also `:variants {fault-id branch}` in it. A VARIANT is the faulted feature with one fault reverted
+  and the other five in place, on a neutrally named branch: the scorer tells which fault a
+  reviewer's test detects by which variant makes it pass. Returns it."
   [kit dir]
   (let [fix (fixture-dir kit)
         app (str (fs/path dir app-name))
@@ -121,14 +123,17 @@
     (git app "add" "-A")
     (git app "commit" "-q" "-m" "base: the application as the template generates it")
     (git app "tag" "base")
-    (doseq [[branch files] [[clean-branch overlay]
-                            [faulted-branch (apply-edits overlay faults)]]]
+    (doseq [[branch files] (concat [[clean-branch overlay]
+                                    [faulted-branch (apply-edits overlay faults)]]
+                                   (for [[i fault] (map-indexed vector faults)]
+                                     [(str "v" (inc i)) (apply-edits overlay (remove #{fault} faults))]))]
       (git app "checkout" "-q" "-b" branch "base")
       (write-files! app files)
       (git app "add" "-A")
       (git app "commit" "-q" "-m" message))
     (git app "checkout" "-q" "base")
-    (let [cases {:base "base" :clean clean-branch :faulted faulted-branch :faults (mapv :id faults)}]
+    (let [cases {:base "base" :clean clean-branch :faulted faulted-branch :faults (mapv :id faults)
+                 :variants (into {} (map-indexed (fn [i fault] [(:id fault) (str "v" (inc i))]) faults))}]
       (spit (str (fs/path dir "cases.edn")) (with-out-str (pp/pprint cases)))
       cases)))
 
@@ -147,15 +152,23 @@
       (finally (fs/delete-tree scratch)))))
 
 (defn verify!
-  "The key, held: the reference tests on each branch. Returns `{:clean :faulted :problems}`."
+  "The key, held: the reference tests on each branch. Returns `{:clean :faulted :variants
+  {fault-id result} :problems}`. On the variant that reverts one fault, exactly the reference
+  tests of the other faults fail - so a test that passes there detects that fault and no other."
   [kit dir]
   (let [cases (edn/read-string (slurp (str (fs/path dir "cases.edn"))))
         app (str (fs/path dir app-name))
+        faults (load-faults (fixture-dir kit))
         clean (run-reference kit app (:clean cases))
-        faulted (run-reference kit app (:faulted cases))]
+        faulted (run-reference kit app (:faulted cases))
+        variants (into {} (for [[id branch] (:variants cases)] [id (run-reference kit app branch)]))]
     {:clean clean
      :faulted faulted
-     :problems (vec (problems (:failing clean) (:failing faulted) (load-faults (fixture-dir kit))))}))
+     :variants variants
+     :problems (vec (concat (problems (:failing clean) (:failing faulted) faults)
+                            (for [[id v] variants
+                                  p (problems #{} (:failing v) (remove #(= id (:id %)) faults))]
+                              (str "with " (name id) " reverted: " p))))}))
 
 (defn -main
   "bb security-fixture <dir>: build the fixture into an empty <dir> and verify its key."
@@ -167,11 +180,12 @@
       (System/exit 2))
     (let [dir (str (fs/normalize (fs/absolutize dir)))
           cases (build! kit dir)
-          {:keys [clean faulted problems]} (verify! kit dir)]
+          {:keys [clean faulted variants problems]} (verify! kit dir)]
       (println (str "security fixture in " dir "/" app-name ": base, and the feature on "
                     (:clean cases) " and " (:faulted cases) " (which is which: " dir "/cases.edn)"))
       (println (str "  clean:   " (count (:failing clean)) " reference tests failing"))
       (println (str "  faulted: " (count (:failing faulted)) " failing - " (str/join ", " (sort (:failing faulted)))))
+      (println (str "  each fault reverted alone: " (str/join ", " (for [[id v] (sort-by key variants)] (str (name id) " -> " (count (:failing v)) " failing")))))
       (if (seq problems)
         (do (doseq [pr problems] (println "  PROBLEM:" pr))
             (System/exit 1))

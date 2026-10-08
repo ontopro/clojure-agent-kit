@@ -63,6 +63,10 @@
                    :requires ([harness.models.security-review :as security-review])
                    :task (apply security-review/-main *command-line-args*)}
 
+  security-score {:doc "bb security-score <review.edn> <fixture-dir>: score a security review against the fixture's answer key - each test the reviewer wrote is run alone in the sandbox on the faulted branch, the careful one, and the variants with one fault reverted; a test that fails on the faulted branch only detects the fault whose revert makes it pass. Which planted faults were found, what is for you to mark, what was claimed and not reproduced. No model reads anything. Never in `bb gates`"
+                  :requires ([harness.models.security-score :as security-score])
+                  :task (apply security-score/-main *command-line-args*)}
+
   security-fixture {:doc "bb security-fixture <dir>: build the security reading's planted-fault fixture into an empty <dir> - the application from the pin, a feature on two branches, clean and with six faults (health/security-fixture/), which is which in <dir>/cases.edn outside the repository - and verify its key: every reference test passes on the clean feature, exactly the faults' fail on the faulted one"
                     :requires ([harness.setup.security-fixture :as security-fixture])
                     :task (apply security-fixture/-main *command-line-args*)}

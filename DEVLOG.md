@@ -61,6 +61,20 @@ costs its readers more than a missed one; an answer with no findings block is re
 nothing, not as a clean review. The tests it wrote are collected from the clone and kept beside the
 record. The command is a real model call and says so before it spends.
 
+### `bb security-score`: which fault a test detects is mechanical (row 121)
+
+The by-hand scoring of the first real review compared the faulted and the careful branch, which says a
+test discriminates but not which of six faults it is about. The builder now makes a variant per fault -
+the faulted feature with only that fault reverted - and checks each (the other five reference tests fail,
+the reverted one's passes); the scorer runs each test the reviewer wrote alone, on the faulted branch and
+the careful one and, for those that discriminate, on every variant: the variant on which it passes names
+the fault it detects. What does not discriminate is classified, not judged - fails on both (a flaw
+nobody planted, an invention, or a setup the application refused; the first failure is quoted, for the
+person to mark), passes on the faulted branch, does not compile. On the first review, against the fixed
+fixture, it finds six of six, attributes the two search-injection tests to the one fault, shows the
+refused-setup test as one to mark and the fixed registration race as claimed and not reproduced. Eight
+minutes, no model.
+
 ### The fixture's careful feature is fixed where the reviewer found it broken (row 121)
 
 The first-administrator race and the username that became a file name were the fixture's own mistakes, not

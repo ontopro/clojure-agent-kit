@@ -42,6 +42,11 @@ of them or the faulted branch fails other than exactly the six. Measured when it
 fault applied alone fails its own test and no other; the race's test failed ten runs of ten with
 its fault and none of ten without.
 
+The builder also makes six VARIANTS on neutrally named branches (`cases.edn` maps them): the faulted
+feature with one fault reverted and the other five in place, and the key checks each - the reference
+tests of the other five fail and the reverted fault's passes. That is what lets the scorer
+(`bb security-score`) say which fault a reviewer's test detects: the one whose revert makes it pass.
+
 Two more properties are tested that no fault is planted against, and hold on both branches: of the first
 registrations made at once exactly one is the administrator, and a username is three to thirty-two letters,
 digits, hyphens and underscores and never a path. They were added when a reviewer found the careful feature

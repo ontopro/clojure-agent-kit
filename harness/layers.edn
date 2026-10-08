@@ -51,6 +51,7 @@
  harness.models.runner-check #{harness.contract.shapes harness.models.runner}
  harness.models.review-tools #{harness.models.tools}
  harness.models.review-sandbox #{}
+ harness.models.security-score #{harness.models.review-sandbox harness.models.review-tools}
  harness.models.security-review #{harness.models.agent harness.models.catalogue
                                     harness.models.review-sandbox harness.models.review-tools}
  harness.money.balance       #{harness.models.profile}
