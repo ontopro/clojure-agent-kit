@@ -61,6 +61,26 @@ costs its readers more than a missed one; an answer with no findings block is re
 nothing, not as a clean review. The tests it wrote are collected from the clone and kept beside the
 record. The command is a real model call and says so before it spends.
 
+### `bb security-bake-off`, and GLM-5.3-prime with room to finish (row 121)
+
+With sixty rounds GLM-5.3-prime finished in forty-six (515 s, $0.97) and reported five reproduced findings
+and, honestly, a sixth it could not demonstrate - the quota race, which it suspected but whose test it could
+not get to run against the in-memory test database. The thirty-round limit was the whole of the first
+failure. Scored: three planted faults detected by tests that separate the branches (the note read by id,
+the export path, the search); two more claims are true - the administrator route and the SQL search are
+faulted - but their tests fail on the careful branch too, because they are wrong (one registers its
+"plain user" first, and the first account is the administrator; one asserts a name that is legitimately
+on the user's own page), so they do not count; two files do not compile. The first candidate's six of six
+stand against three of six detected and five claimed.
+
+The comparison of models is its own command, not the plan-reading bake-off: that tool compares
+one-completion readings under a judge, and a review is minutes of tool calls in a container scored by
+arithmetic. `bb security-bake-off` runs each model as the tracer on the faulted branch and on the careful
+one, scores every reading, and prints planted faults found, claims its tests did not show, what is left for
+the person, tests failing on the careful branch (the inventions), completions, minutes and cost. Tracer
+only for the first comparison: the diff reviewer would read the same code here, as this fixture's diff is
+the whole feature.
+
 ### GLM-5.3-prime's first review: no answer, no faults found (row 121)
 
 The second candidate, `z-ai/glm-5.3-prime` at high effort as the tracer on the fixed fixture, used all

@@ -130,6 +130,23 @@
       (throw (ex-info (str "git " (str/join " " args) " failed in " dir ": " (str/trim (:err r))) {:dir (str dir)})))
     (:out r)))
 
+(defn review-clone!
+  "A clone of `branch` of the repository at `source` for a reviewer to be handed: that branch only,
+  no tags and no remote, with the revision its change is from tagged `base`. Nothing in it says
+  where it came from or what the other branches are - a reviewer that can read `.git` would
+  otherwise read the answer key's neighbourhood."
+  [source branch dest]
+  (let [g (fn [dir & args]
+            (let [r (apply p/shell {:dir (str dir) :out :string :err :string :continue true} "git" args)]
+              (when-not (zero? (:exit r))
+                (throw (ex-info (str "git " (str/join " " args) " failed: " (str/trim (:err r))) {:source (str source)})))
+              (:out r)))]
+    (fs/create-dirs (fs/parent dest))
+    (g (fs/parent dest) "clone" "-q" "--single-branch" "--branch" branch "--no-tags" (str source) (str dest))
+    (g dest "tag" "base" (str/trim (g dest "rev-list" "--max-parents=0" "HEAD")))
+    (g dest "remote" "remove" "origin")
+    (str dest)))
+
 (defn clone-facts
   "What the opening needs from the clone: its tracked files, and its change from `base`."
   [clone base]

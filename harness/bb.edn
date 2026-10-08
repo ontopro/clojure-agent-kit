@@ -67,6 +67,10 @@
                   :requires ([harness.models.security-score :as security-score])
                   :task (apply security-score/-main *command-line-args*)}
 
+  security-bake-off {:doc "bb security-bake-off <fixture-dir> --model \"<model> [effort]\" ... [--out <dir>] [--rounds N] [--parallel N]: models compared as security reviewers - each reviews the fixture twice as the tracer, on the faulted branch and on the careful one, and every reading is scored by running the tests it wrote; a table of planted faults found, claims its tests did not show, what is left for you to mark, tests that fail on the careful branch, completions, minutes, cost. No judge: the tests are the evidence. REAL MODEL CALLS, minutes each; a stopped run resumes. Never in `bb gates`"
+                     :requires ([harness.models.security-bake-off :as security-bake-off])
+                     :task (apply security-bake-off/-main *command-line-args*)}
+
   security-fixture {:doc "bb security-fixture <dir>: build the security reading's planted-fault fixture into an empty <dir> - the application from the pin, a feature on two branches, clean and with six faults (health/security-fixture/), which is which in <dir>/cases.edn outside the repository - and verify its key: every reference test passes on the clean feature, exactly the faults' fail on the faulted one"
                     :requires ([harness.setup.security-fixture :as security-fixture])
                     :task (apply security-fixture/-main *command-line-args*)}
