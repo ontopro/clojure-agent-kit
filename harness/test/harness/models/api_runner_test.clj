@@ -28,14 +28,16 @@
     dir))
 
 (defn- stub
-  "A model server returning `responses` in order, last repeating."
+  "A model server returning `responses` in order, last repeating. On
+  127.0.0.1, as every stub here: on the wildcard address the port it is given
+  can be one another program holds on 127.0.0.1, and that program answers."
   [responses f]
   (let [n (atom -1)
         stop (srv/run-server
               (fn [_] (let [i (min (swap! n inc) (dec (count responses)))]
                         {:status 200 :headers {"Content-Type" "application/json" "Connection" "close"}
                          :body (json/generate-string (nth responses i))}))
-              {:port 0 :legacy-return-value? false})]
+              {:ip "127.0.0.1" :port 0 :legacy-return-value? false})]
     (try (f (str "http://127.0.0.1:" (srv/server-port stop)))
          (finally @(srv/server-stop! stop)))))
 
@@ -340,7 +342,7 @@
                 (reset! seen (json/parse-string (slurp (:body req)) true))
                 {:status 200 :headers {"Content-Type" "application/json" "Connection" "close"}
                  :body (json/generate-string (text "looks fine"))})
-              {:port 0 :legacy-return-value? false})]
+              {:ip "127.0.0.1" :port 0 :legacy-return-value? false})]
     (try
       (let [r (runner/run-agent
                (runner/api-runner (profile (str "http://127.0.0.1:" (srv/server-port stop))))
@@ -403,7 +405,7 @@
                 (reset! seen (json/parse-string (slurp (:body req)) true))
                 {:status 200 :headers {"Content-Type" "application/json" "Connection" "close"}
                  :body (json/generate-string (text "ok"))})
-              {:port 0 :legacy-return-value? false})]
+              {:ip "127.0.0.1" :port 0 :legacy-return-value? false})]
     (try
       (runner/run-agent
        (runner/api-runner (profile (str "http://127.0.0.1:" (srv/server-port stop))))

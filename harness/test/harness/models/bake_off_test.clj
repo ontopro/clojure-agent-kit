@@ -104,7 +104,7 @@
                           {:id "gen-1" :model (if judge? "judge-served" "cand-served")
                            :choices [{:message {:content (if judge? judge-answer candidate-answer)}}]
                            :usage {:prompt_tokens 5 :completion_tokens 3}})}))
-              {:port 0 :legacy-return-value? false})]
+              {:ip "127.0.0.1" :port 0 :legacy-return-value? false})]
     (try [(f (str "http://127.0.0.1:" (srv/server-port stop))) @seen]
          (finally @(srv/server-stop! stop)))))
 
@@ -269,7 +269,7 @@
                   (swap! seen conj id)
                   {:status 200 :headers {"Content-Type" "application/json" "Connection" "close"}
                    :body (json/generate-string {:data {:id id :total_cost (if (= id "gen-j") 0.5 0.125)}})}))
-              {:port 0 :legacy-return-value? false})
+              {:ip "127.0.0.1" :port 0 :legacy-return-value? false})
         endpoint (str "http://127.0.0.1:" (srv/server-port stop) "/api/v1") ; the generation endpoint is keyed off the OpenRouter path
         dir (str (fs/create-temp-dir {:prefix "bake-off-reprice-"}))
         opts {:fetch-opts {:attempts 1 :interval-ms 1 :timeout-ms 2000} :getenv {"BAKE_OFF_TEST_KEY" "sk-test"}}

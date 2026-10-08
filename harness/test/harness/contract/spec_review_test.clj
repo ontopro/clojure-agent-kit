@@ -63,7 +63,7 @@
                  :body (json/generate-string
                         {:id "gen-1" :model "m-served" :choices [{:message {:content body}}]
                          :usage {:prompt_tokens 5 :completion_tokens 3}})})
-              {:port 0 :legacy-return-value? false})]
+              {:ip "127.0.0.1" :port 0 :legacy-return-value? false})]
     (try [(f (str "http://127.0.0.1:" (srv/server-port stop))) @seen]
          (finally @(srv/server-stop! stop)))))
 

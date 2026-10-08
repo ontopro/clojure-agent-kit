@@ -25,7 +25,7 @@
                 {:status status
                  :headers {"Content-Type" "application/json" "Connection" "close"}
                  :body (json/generate-string body)})
-              {:port 0 :legacy-return-value? false})]
+              {:ip "127.0.0.1" :port 0 :legacy-return-value? false})]
     (try [(f (str "http://127.0.0.1:" (srv/server-port stop))) @seen]
          (finally @(srv/server-stop! stop)))))
 

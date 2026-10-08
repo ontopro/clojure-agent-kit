@@ -23,7 +23,7 @@
                     {:status 200 :headers {"Content-Type" "application/json" "Connection" "close"}
                      :body (json/generate-string {:data (assoc g :id id)})}
                     {:status 404 :body "{}"})))
-              {:port 0 :legacy-return-value? false})
+              {:ip "127.0.0.1" :port 0 :legacy-return-value? false})
         port (srv/server-port stop)]
     (try [(f (str "http://127.0.0.1:" port "/api/v1")) @seen]
          (finally @(srv/server-stop! stop)))))

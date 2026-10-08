@@ -40,6 +40,19 @@ until a workflow runs it on push.
 
 ## 2026-10-08
 
+### Every test stub binds 127.0.0.1; row 102 fixed
+
+A stub-model test failed once more and passed on the rerun, the second recurrence since the
+watch, so the fix was taken - and it was neither of the two the row named. Every stub bound the
+wildcard address on port 0, and macOS may give that bind a port another program already listens on
+at 127.0.0.1, where every stub's client connects; the other program answers. A loop of 15,000 stubs
+gave 5-10 foreign answers a run, each from a port `lsof` lists as another program's loopback
+listener - an editor's "Invalid CSRF token", and "WebSockets request was expected", the answer the
+row opened on. By hand, a stub on one of those ports binds on the wildcard and is refused on
+127.0.0.1. The eighteen stubs bind 127.0.0.1 now, and 16,000 of them gave no foreign answer. It
+depended on what else the machine was running, which is why a rerun was always green. The stop
+deref and `Connection: close` of 2026-10-07 stay; they were not the cause.
+
 ### `bb plan-check` reads a mark wrapped across lines (row 116)
 
 A mark was `<` to `>` on one line, and the template wraps its longer marks as prose: eight of

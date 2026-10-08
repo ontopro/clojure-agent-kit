@@ -14,7 +14,7 @@
   [handler f]
   (let [seen (atom [])
         stop (srv/run-server (fn [req] (swap! seen conj req) (handler req))
-                             {:port 0 :legacy-return-value? false})
+                             {:ip "127.0.0.1" :port 0 :legacy-return-value? false})
         port (srv/server-port stop)]
     (try [(f (str "http://127.0.0.1:" port "/api/v1")) @seen]
          (finally @(srv/server-stop! stop)))))

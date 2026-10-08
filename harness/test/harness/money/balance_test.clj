@@ -39,7 +39,7 @@
                                          (if (str/ends-with? (:uri req) "/credits")
                                            {:data {:total_credits 30.0 :total_usage 12.5}}
                                            {:data {:limit 40.0 :usage 16.78 :limit_remaining 23.22}}))})
-                               {:port 0 :legacy-return-value? false})]
+                               {:ip "127.0.0.1" :port 0 :legacy-return-value? false})]
       (try
         (let [ep (str "http://127.0.0.1:" (srv/server-port stop) "/openrouter/api/v1")
               status (balance/openrouter-key-status ep "PATH")]
@@ -56,7 +56,7 @@
                                    {:status 404 :body ""}
                                    {:status 200 :headers {"Content-Type" "application/json" "Connection" "close"}
                                     :body (json/generate-string {:data {:limit 40.0 :usage 16.78 :limit_remaining 23.22}})}))
-                               {:port 0 :legacy-return-value? false})]
+                               {:ip "127.0.0.1" :port 0 :legacy-return-value? false})]
       (try
         (let [ep (str "http://127.0.0.1:" (srv/server-port stop) "/openrouter/api/v1")
               status (balance/openrouter-key-status ep "PATH")]

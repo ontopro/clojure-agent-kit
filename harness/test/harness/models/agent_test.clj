@@ -23,7 +23,7 @@
                   {:status 200
                    :headers {"Content-Type" "application/json" "Connection" "close"}
                    :body (json/generate-string (nth responses i))}))
-              {:port 0 :legacy-return-value? false})
+              {:ip "127.0.0.1" :port 0 :legacy-return-value? false})
         port (srv/server-port stop)]
     (try [(f (str "http://127.0.0.1:" port)) @seen]
          (finally @(srv/server-stop! stop)))))
@@ -141,7 +141,7 @@
 (deftest an-api-error-ends-the-conversation-with-what-it-said
   (let [stop (srv/run-server (fn [_] {:status 429 :headers {"Connection" "close"} :body (json/generate-string
                                                                                          {:error {:message "slow down"}})})
-                             {:port 0 :legacy-return-value? false})
+                             {:ip "127.0.0.1" :port 0 :legacy-return-value? false})
         port (srv/server-port stop)]
     (try
       (let [r (agent/converse! (role (str "http://127.0.0.1:" port)) "R" "go" {:dir "."} no-retry)]
@@ -171,7 +171,7 @@
               (fn [_] (let [[status body headers] (nth responses (min (swap! n inc) (dec (count responses))))]
                         {:status status :headers (merge {"Content-Type" "application/json" "Connection" "close"} headers)
                          :body (json/generate-string body)}))
-              {:port 0 :legacy-return-value? false})]
+              {:ip "127.0.0.1" :port 0 :legacy-return-value? false})]
     (try [(f (str "http://127.0.0.1:" (srv/server-port stop))) (inc @n)]
          (finally @(srv/server-stop! stop)))))
 
@@ -287,7 +287,7 @@
                       {:status (::status r) :body (json/generate-string (::body r))}
                       {:status 200 :headers {"Content-Type" "application/json" "Connection" "close"}
                        :body (json/generate-string (assoc r :id (str "gen-" i)))}))))
-              {:port 0 :legacy-return-value? false})]
+              {:ip "127.0.0.1" :port 0 :legacy-return-value? false})]
     (try (f (str "http://127.0.0.1:" (srv/server-port stop) "/api/v1"))
          (finally @(srv/server-stop! stop)))))
 
@@ -344,7 +344,7 @@
   (let [stop (srv/run-server (fn [_] {:status 402 :headers {"Connection" "close"} :body (json/generate-string
                                                                                          {:error {:message "insufficient credits\nvisit https://x.test/keys?id=k1"
                                                                                                   :code 402}})})
-                             {:port 0 :legacy-return-value? false})
+                             {:ip "127.0.0.1" :port 0 :legacy-return-value? false})
         port (srv/server-port stop)
         endpoint (str "http://127.0.0.1:" port)]
     (try
