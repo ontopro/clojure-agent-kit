@@ -124,3 +124,28 @@
   (let [clone (clone!) facts (sr/clone-facts clone "base")]
     (is (= ["src/a.clj"] (:files facts)))
     (is (str/includes? (:diff facts) "+(defn more [] 1)"))))
+
+(deftest the-output-ceiling-reaches-the-request-and-an-empty-answer-is-flagged
+  ;; a first review's last completion came back with no text at all: cut off at the route's 16,000
+  ;; output tokens, thinking. The review asks for room, and says so when the answer is empty.
+  (let [clone (clone!)
+        seen (atom [])
+        sandbox {:request (fn [_] {}) :run-tests (fn [_] {:exit 0 :out ""}) :stop! (fn [])}
+        stop (srv/run-server (fn [req]
+                               (swap! seen conj (json/parse-string (slurp (:body req)) true))
+                               {:status 200 :headers {"Content-Type" "application/json" "Connection" "close"}
+                                :body (json/generate-string (text-reply nil))})
+                             {:ip "127.0.0.1" :port 0 :legacy-return-value? false})
+        role {:family :stub :model "stub-1" :shape :openai :endpoint (str "http://127.0.0.1:" (srv/server-port stop))
+              :params {:max_tokens 16000 :reasoning_effort "high"}}]
+    (try
+      (let [r (sr/review! role :tracer clone {:sandbox sandbox})
+            r2 (sr/review! role :tracer clone {:sandbox sandbox :max-tokens 1234})]
+        (is (= 64000 (get-in (first @seen) [:max_tokens])) "the review's own ceiling replaces the route's")
+        (is (= 1234 (get-in (last @seen) [:max_tokens])))
+        (is (= "high" (get-in (first @seen) [:reasoning_effort])) "the rest of the role's params stay")
+        (is (true? (:empty-answer? r)))
+        (is (true? (:empty-answer? r2)))
+        (is (vector? (:turns r)))
+        (is (vector? (:steps r))))
+      (finally @(srv/server-stop! stop)))))

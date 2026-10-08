@@ -61,6 +61,16 @@ costs its readers more than a missed one; an answer with no findings block is re
 nothing, not as a clean review. The tests it wrote are collected from the clone and kept beside the
 record. The command is a real model call and says so before it spends.
 
+### The first real review came back empty: its output ceiling was a route's, not a reviewer's
+
+Fable 5.1 at high effort, as the tracer on the fixture's faulted branch: six completions, 105 s, eighteen
+files read and one search, no test written, and a last completion with no text at all. The family's route
+caps output at 16,000 tokens - sized for an answer - and a reviewer thinking at high effort over a dozen
+files can spend that before writing a word; the model itself allows 128,000. That is the likely cause
+and was not seen directly: the record kept only the cost, and the late generation record was not yet
+there. The review now asks for 64,000 (`--max-tokens` changes it), keeps each completion's step and a
+compact transcript in the record, and says so when the final completion is empty.
+
 ### A candidate line is expanded by the catalogue
 
 The bake-off turned a line like "anthropic/claude-fable-5.1 high" into a role block with three functions of its

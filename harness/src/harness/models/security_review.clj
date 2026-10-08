@@ -138,17 +138,40 @@
 (def default-rounds 30)
 (def default-requests 150)
 
+(def default-max-tokens
+  "The most a completion may write, its reasoning included. A route's own limit is sized for
+  an answer; a reviewer thinking at high effort over a dozen files can spend 16,000 tokens
+  before it writes a word, and a completion cut off there returns nothing - which a first review
+  did. Fable 5.1 takes 128,000; this is what the review asks for."
+  64000)
+
+(defn- compact-turns
+  "The conversation for the record: what the model said and which tools it called with what, each
+  call's result cut to a line. Whole files read stay out - the record is for judging a review,
+  not replaying it."
+  [turns]
+  (mapv (fn [{:keys [text calls]}]
+          {:text text
+           :calls (mapv (fn [{:keys [name args ms error? content]}]
+                          {:tool name :args args :ms ms :error? error?
+                           :result (let [s (str content)] (subs s 0 (min 160 (count s))))})
+                        calls)})
+        turns))
+
 (defn review!
   "Review the application cloned in `clone`: start the sandbox, run `role` (a role block) in the
   stance `stance` with the five tools, stop the sandbox whatever happens. Options: `:kit`
   (this KIT's folder), `:base` (the revision the change is from, default \"base\"), `:rounds`,
-  `:requests`, `:scans` (text for the reviewer to weigh), `:sandbox` (a started one, for a test).
+  `:requests`, `:max-tokens`, `:scans` (text for the reviewer to weigh), `:sandbox` (a started one,
+  for a test).
 
   Returns `{:stance :status :findings :no-block? :tests :text :calls :iterations :capped? :ms
   :model :cost :generation-ids ...}`: `:findings` as `parse-findings` reads them, `:tests` the
   files the reviewer wrote, `:calls` the tool calls it made as `[name ms error?]`."
-  [role stance clone {:keys [kit base rounds requests scans sandbox] :or {base "base" rounds default-rounds requests default-requests}}]
-  (let [facts (assoc (clone-facts clone base) :scans scans)
+  [role stance clone {:keys [kit base rounds requests max-tokens scans sandbox]
+                      :or {base "base" rounds default-rounds requests default-requests max-tokens default-max-tokens}}]
+  (let [role (assoc-in role [:params :max_tokens] max-tokens)
+        facts (assoc (clone-facts clone base) :scans scans)
         sb (or sandbox (sandbox/start! {:kit kit :clone clone}))
         t0 (System/currentTimeMillis)]
     (try
@@ -163,6 +186,9 @@
                 :no-block? (nil? findings)
                 :tests (reproductions clone)
                 :text (:text r)
+                :empty-answer? (and (= :done (:status r)) (str/blank? (:text r)))
+                :turns (compact-turns (:turns r))
+                :steps (:steps r)
                 :calls (mapv (juxt :name :ms :error?) (:calls r))
                 :iterations (:iterations r)
                 :capped? (:capped? r)
@@ -190,7 +216,7 @@
 
 (def usage
   (str "bb security-review <clone> --stance tracer|diff --model \"<model> [effort]\" [--base <rev>]\n"
-       "                          [--rounds N] [--out <dir>]\n"
+       "                          [--rounds N] [--max-tokens N] [--out <dir>]\n"
        "  <clone>  a git clone of the application, with the revision its change is from (default: base)\n"
        "  --model  as bb models names it and the bake-off takes it, e.g. \"anthropic/claude-fable-5.1 high\"\n"
        "A real model call: it spends money (up to --rounds completions, default " default-rounds ")."))
@@ -202,6 +228,7 @@
           (= a "--model") (recur (rest more) (assoc m :model (first more)))
           (= a "--base") (recur (rest more) (assoc m :base (first more)))
           (= a "--rounds") (recur (rest more) (assoc m :rounds (parse-long (first more))))
+          (= a "--max-tokens") (recur (rest more) (assoc m :max-tokens (parse-long (first more))))
           (= a "--out") (recur (rest more) (assoc m :out (first more)))
           (str/starts-with? a "--") (throw (ex-info (str "unknown argument " a "\n" usage) {}))
           :else (recur more (update m :positional (fnil conj []) a)))))
@@ -212,6 +239,7 @@
                 (quot (:ms r) 1000) "s, " (if (:cost r) (format "$%.2f" (double (:cost r))) "cost not yet reported")))
   (println (str "  tools: " (pr-str (frequencies (map first (:calls r))))))
   (cond
+    (:empty-answer? r) (println "  the last completion returned no text at all - cut off at its output limit, or an empty reply; the steps in the record say which")
     (:no-block? r) (println "  the answer had no findings block - it says nothing, and is not a clean review")
     (empty? (:findings r)) (println "  no findings")
     :else (doseq [{:keys [title kind test where why]} (:findings r)]
@@ -220,7 +248,7 @@
   (println (str "  tests it wrote: " (if (seq (:tests r)) (str/join ", " (keys (:tests r))) "none"))))
 
 (defn -main [& args]
-  (let [{:keys [positional stance model base rounds out]} (parse-args args)
+  (let [{:keys [positional stance model base rounds max-tokens out]} (parse-args args)
         [clone] positional
         kit (str (fs/normalize (fs/absolutize "..")))]
     (when-not (and clone (#{:tracer :diff} stance) model)
@@ -231,7 +259,7 @@
           out (or out (str (fs/path kit ".local" "security-review")))]
       (println (str "  " (name stance) " review of " clone " by " (:model cand) " (" (:effort cand) "), up to " (or rounds default-rounds) " completions"))
       (let [r (review! (:profile cand) stance (str (fs/absolutize clone))
-                       (cond-> {:kit kit} base (assoc :base base) rounds (assoc :rounds rounds)))
+                       (cond-> {:kit kit} base (assoc :base base) rounds (assoc :rounds rounds) max-tokens (assoc :max-tokens max-tokens)))
             file (write-record! out id r)]
         (print-review r)
         (println (str "  record: " file))
