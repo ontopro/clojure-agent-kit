@@ -1,16 +1,25 @@
-;; THE SECURITY TOOL PACK - run from a project's own folder, against the project's own running
-;; server, through this file:
+;; THE SECURITY TOOL PACK - run from a project's own folder, through this file:
 ;;
 ;;   bb --config <kit>/tools/security/bb.edn check [--serve "<cmd>"] [--health <path>] [--base <url>]
 ;;                                                [--running] [--routes <file>] [--out <dir>] [--record <file>]
+;;   bb --config <kit>/tools/security/bb.edn deps [--routes <file>] [--out <dir>] [--record <file>]
+;;   bb --config <kit>/tools/security/bb.edn secrets (--from <rev> | --all) [--routes <file>] [--out <dir>] [--record <file>]
 ;;
-;; `<kit>` is the KIT's clone. No dependency: Babashka's sockets are enough, and nothing of the
-;; application is read - only its answers. It serves through the browser pack's `server.clj`,
-;; so the two packs travel together. README.md beside this file says what each row tries.
+;; `<kit>` is the KIT's clone. `check` against the project's own running server; `deps` and
+;; `secrets` over its source. No dependency: Babashka's sockets and HTTP client are enough, and
+;; `check` reads nothing of the application - only its answers. It serves through the browser
+;; pack's `server.clj`, so the two packs travel together. README.md beside this file says what
+;; each row tries.
 {:tasks
  {:init (do (require '[babashka.fs :as fs])
             ;; where this pack is: the config bb was given, which is this file
             (def pack-dir (str (fs/parent (fs/absolutize (System/getProperty "babashka.config"))))))
 
   check {:doc "Serve (unless --running), try the response headers, cookies, CSRF, the routes that need a login, error pages, static folders and TLS from outside; a table, a record, exit 1 on a failing row"
-         :task (System/exit (:exit (apply shell {:continue true} "bb" (str pack-dir "/check.bb") *command-line-args*)))}}}
+         :task (System/exit (:exit (apply shell {:continue true} "bb" (str pack-dir "/check.bb") *command-line-args*)))}
+
+  deps {:doc "The resolved runtime libraries asked of OSV for published advisories; a HIGH or CRITICAL one not accepted fails; a table, a record, exit 1 on a failing row"
+        :task (System/exit (:exit (apply shell {:continue true} "bb" (str pack-dir "/deps.bb") *command-line-args*)))}
+
+  secrets {:doc "Every line the commits add (--from <rev>, or --all) read for a secret, and every committed .env file; the value never printed; exit 1 on a hit"
+           :task (System/exit (:exit (apply shell {:continue true} "bb" (str pack-dir "/secrets.bb") *command-line-args*)))}}}

@@ -51,6 +51,25 @@ the template fork's tags and version the template, not the KIT.
 
 ## 2026-10-08
 
+### The security pack scans the dependencies and the commits (row 118)
+
+Two commands beside `check`: `deps` and `secrets`, over the source where `check` sends requests.
+Each was chosen by a run, not by name. For the advisories, OSV's batch query against
+clj-watson's GitHub-advisory mode on the health application: OSV found every advisory clj-watson
+found and thirteen more, on a library clj-watson did not report though it is in the tree, in
+half a second and with no token. For secrets, a scanner of our own against gitleaks on a scratch
+repository of nine planted fake secrets and four decoys: ours found the nine and the committed
+`.env`, gitleaks six, missing the OpenRouter key the KIT itself uses; neither flagged a decoy or
+anything in the KIT's history. The first rule was entropy above 3.5, and measuring it showed one
+random 32-character hex key in five scoring below that while placeholders scored up to 3.6, so the
+rule reads the value's shape instead: long hex, or mixed character classes that are not words
+joined by separators. The value is never printed or written. The tests build their fake keys
+from pieces when they run, so no committed file is shaped like a secret.
+
+Not wired yet: run on the health application, `deps` fails today - the pinned template ships
+Jetty, Jackson and Logback versions with published HIGH advisories - so `bb health` and the
+stage's end take the scans once the pin moves past them.
+
 ### A checklist before a tag
 
 The tag convention had one step: `bb docker-gates` green on the commit the tag names. Row 117

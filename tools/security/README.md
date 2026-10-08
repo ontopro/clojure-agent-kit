@@ -1,4 +1,4 @@
-# tools/security/ - the security checks, tried from outside
+# tools/security/ - the security checks, tried from outside, and two scans
 
 What `02-architecture.md` §4 says the template gives, and what a project's §8 chose, are claims
 until a request tries them. This pack sends those requests to the running application, as a
@@ -6,7 +6,10 @@ visitor would, and reads only the answers: the response headers, the cookies, a 
 its token, the routes that need a login, the error pages, the static folders, and TLS where
 the base is https. No dependency and nothing of any framework.
 
-Run it from the application's folder, through the pack's own `bb.edn`:
+Beside it, two scans over the source that no request can make: the dependencies' published
+advisories (`deps`) and a secret committed by mistake (`secrets`) - [below](#the-two-scans).
+
+Run the checks from the application's folder, through the pack's own `bb.edn`:
 
 ```
 bb --config <kit>/tools/security/bb.edn check [--serve "<cmd>"] [--health <path>] [--base <url>]
@@ -92,7 +95,56 @@ has one; for the template, its `server_test.clj` holds it, and `bb health` runs 
 the generated application's gates.
 
 Nor the dependencies' advisories or a secret committed by mistake: those are scans over the
-source, not requests, and wait for a project that needs them.
+source, not requests - the two below.
 
 `bb health` runs this pack against the generated application, so every claim of §4 a request
 can try is tried on the day of the run; its record's row is `app security`.
+
+## The two scans
+
+```
+bb --config <kit>/tools/security/bb.edn deps [--routes <file>] [--out <dir>] [--record <file>]
+bb --config <kit>/tools/security/bb.edn secrets (--from <rev> | --all) [--routes <file>] [--out <dir>] [--record <file>]
+```
+
+> [!IMPORTANT]
+> Neither is a gate. An advisory is published whatever the diff did, so a dependency clean
+> yesterday fails today; the scans run at a stage's end and in `bb health`, never in a run's
+> gates.
+
+**`deps`**, from the application's folder: the resolved runtime classpath (`clojure -X:deps
+list` - what ships, not a test or build alias's), every library asked of
+[OSV](https://osv.dev), which carries the GitHub advisory database among its sources, in one
+request: no key, no download, network only. One row per vulnerable library - each advisory's
+severity, id and CVE, the version that fixes the line in use, and the libraries in `deps.edn`
+that bring it, which is the line to change. A HIGH or CRITICAL advisory fails; a MODERATE, LOW
+or unrated one warns. No answer from OSV is a skip, never an ok.
+
+**`secrets`**, from the repository to read: every line the commits after `--from <rev>` add, or
+HEAD's whole history with `--all` - each commit's own lines, so a secret added and removed
+inside the range is still found - and every committed `.env` file (not `.env.example`). The
+rules: values that say what they are by their shape (OpenRouter, Anthropic, OpenAI, GitHub,
+AWS, Stripe, Slack and Google keys, a private key, a password in a URL), and a random-looking
+value given to a name that says it is secret (`secret`, `token`, `password`, `api-key`). Any hit
+fails, and says to rotate it: removing the line does not remove it from the history.
+
+> [!CAUTION]
+> The matched value is never printed or written. A hit is the file, the line, the commit and
+> the rule; the record carries the same and nothing more.
+
+What a project has read and decided goes in the routes file, each with its reason:
+
+```clojure
+{:accepted {"GHSA-xxxx-xxxx-xxxx" {:reason "no Digest auth in this application" :until "2026-12-31"}}
+ :secrets-allowed [{:file "test/fixtures/revoked.clj" :rule :stripe-key :reason "a revoked test key"}]}
+```
+
+An accepted advisory or an allowed hit is a warn naming its reason; an acceptance past its
+`:until` accepts nothing. The records are `security-deps.edn` and `security-secrets.edn`, beside
+`security.edn` and under the same `--out` rules; `--record <file>` writes a copy where a
+committed document can cite it.
+
+What the secrets rules miss: a provider whose keys have no prefix this list knows, and a hex
+value shorter than 32 characters given to a secret's name about one time in six (its shape is
+too close to a word's). The prefixes are a list in `src/security_scan.clj`; a project whose
+provider is missing adds it there in the KIT, not around it.
