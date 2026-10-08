@@ -51,6 +51,20 @@ the template fork's tags and version the template, not the KIT.
 
 ## 2026-10-08
 
+### The pinned template is `kit-v1.2`: its dependencies past their advisories (row 119)
+
+The `deps` scan's first run, on the health application, failed six libraries: Jetty 12.1.0 from
+the Ring adapter and Jackson 2.18.2 from jsonista, each with published HIGH advisories, and
+Logback with three LOW. The newest releases of what brings them still lagged the fixes, so the
+fork's `kit-v1.2` moves the adapter and Logback and pins Jackson and Jetty, each family whole, at
+the top level of the template's `deps.edn` - the person's choice of three, measured first on a
+copy. The same tag pins every GitHub Action a generated project uses to a commit, since a tag
+moves at its owner's word and runs with the workflow's secrets. The pin moves to it; `bb health`
+on it is nine of nine and its application has no published advisory. The architecture
+document's §4 now says what the template gives for dependencies, and that no dependency stays
+clean. A workspace made before it keeps `kit-v1.1` in its application, and `bb doctor` there
+says the pin moved.
+
 ### A pin bump passes the gates before it is committed (row 120)
 
 The upgrade test expected a workspace made at HEAD to see no pin move, reading HEAD's pin from

@@ -40,7 +40,7 @@ one already serving. Defaults are the Stack Lite template's: `bb serve`, `/healt
 | `static` | each `:static` folder itself, and five paths out of it (`..` as written, escaped, with an escaped slash) | a listing; a file from outside the folder coming back (a page coming back is a warn) |
 | `tls` | a handshake, on an https base | the certificate or the host name does not validate, or the protocol is older than TLS 1.2 |
 
-Every failing or warned row prints what fixes it in the terms of the pinned template, `kit-v1.1`
+Every failing or warned row prints what fixes it in the terms of the pinned template, `kit-v1.2`
 - the file and the function - where the fix is the template's, and names the plan's section
 where it is the project's decision.
 

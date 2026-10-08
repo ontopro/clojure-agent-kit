@@ -18,11 +18,11 @@
  {:clojure-stack-lite
   {:template io.github.ontopro/clojure-stack-lite
    :git/url "https://github.com/ontopro/clojure-stack-lite.git"
-   :git/sha "f6049dcc98c0cf8f536b8f69f26613360ae41c26"
-   :git/tag "kit-v1.1"
-   :as-of "2026-10-07"
+   :git/sha "9ca4b7be867ff90b15546ac79304c8c02cc31d75"
+   :git/tag "kit-v1.2"
+   :as-of "2026-10-08"
    ;; upstream is abogoyavlensky/clojure-stack-lite (MIT); `git diff master..kit` in the fork is
-   ;; everything the KIT changed. (`kit` there is a BRANCH; `kit-v1.1` a version of the template,
+   ;; everything the KIT changed. (`kit` there is a BRANCH; `kit-v1.2` a version of the template,
    ;; not of the KIT)
    :deps-new {:git/tag "v0.8.0" :git/sha "2f96530"}
    ;; WHAT A RUN AGAINST THIS TEMPLATE'S PROJECTS NEEDS TO BE TOLD, written by `bb init` into the

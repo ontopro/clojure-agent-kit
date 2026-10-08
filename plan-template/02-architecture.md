@@ -58,7 +58,7 @@ this shape; §9's diagram is what this project makes of it.
 
 ## 4. Security, as the template gives it
 
-As of the pin `kit-v1.1`. Each line names the generated application's file - under its
+As of the pin `kit-v1.2`. Each line names the generated application's file - under its
 namespace folder in `src/`, or under `resources/` - and the function or key that does it; each was
 read in the template's source and tried with curl against an application generated from it.
 What the template does not do is the list after the table: §8 is where this project decides which
@@ -74,6 +74,7 @@ of it matters, and §15 where each threat is answered.
 | SQL | Queries are HoneySQL data, formatted with every value a parameter and every identifier quoted; a raw SQL string or `[:raw …]` is outside that. Migrations are Ragtime's SQL files | `db.clj` `exec!`, `exec-one!`; `resources/migrations/` |
 | Static files | Served from `resources/public/` under `/assets/`, with no directory listing and no path out of the folder; cached for a year under `:prod` | `server.clj` `ring-handler` (`create-resource-handler-cached`); `config.edn` `:cache-assets?` |
 | HTML | Hiccup 2 escapes every string it renders; `hiccup2.core/raw` is the way past it | `handlers.clj`, through `reitit-extras.core/render-html` |
+| Dependencies | No published advisory for any library on the runtime classpath on the day the pin was made; Jetty and Jackson are pinned over the versions Ring and jsonista bring, which lagged their fixes | `deps.edn`, the block after `ragtime` |
 
 Not given:
 
@@ -93,6 +94,9 @@ Not given:
   version; nothing of the application is in it, and no link leads to it.
 - **No request size limit and no rate limit** is set in the template's code; what Jetty and Ring
   do by default is not stated here.
+- **No dependency stays clean.** An advisory is published against a version after it ships, and
+  the pins above hold Jetty and Jackson where they are even when Ring or jsonista move on; the
+  security pack's `deps` scan, run at every stage's end, is what says when a version must move.
 
 ---
 

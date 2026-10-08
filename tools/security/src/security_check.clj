@@ -15,17 +15,17 @@
 
 (def fixes
   "What fixes a failing or warned row, said in the terms of the KIT's pinned template
-  (`kit-v1.1`) where the fix is the template's, and as the project's decision where it is not.
+  (`kit-v1.2`) where the fix is the template's, and as the project's decision where it is not.
   An application on another framework reads the template's line as what to look for."
-  {:headers "kit-v1.1 sets them in `server.clj` `ring-handler`, the handler-wide `:middleware` (nosniff, frame options, HSTS, X-XSS-Protection) and `wrap-referrer-policy`; one missing from a page not found or a static file means that middleware moved into the router's route data, which those responses never pass"
-   :csp "02-architecture §8 decides it; kit-v1.1 sets none - a policy is a middleware beside `wrap-referrer-policy` in `server.clj` `ring-handler`, loose enough for the Alpine and htmx builds the template ships"
-   :server "`server.clj` `ig/init-key ::server`: `jetty/run-jetty` takes `:send-server-version? false`; kit-v1.1 leaves Jetty's default (02-architecture §4, not given)"
-   :cookies "`server.clj` `ring-handler`, `wrap-session`'s `:cookie-attrs`: kit-v1.1 sets HttpOnly and SameSite=Lax, and Secure from `config.edn` `:cookie-attrs-secure?` under `:prod`; a cookie the application sets itself carries the same attributes by hand"
+  {:headers "kit-v1.2 sets them in `server.clj` `ring-handler`, the handler-wide `:middleware` (nosniff, frame options, HSTS, X-XSS-Protection) and `wrap-referrer-policy`; one missing from a page not found or a static file means that middleware moved into the router's route data, which those responses never pass"
+   :csp "02-architecture §8 decides it; kit-v1.2 sets none - a policy is a middleware beside `wrap-referrer-policy` in `server.clj` `ring-handler`, loose enough for the Alpine and htmx builds the template ships"
+   :server "`server.clj` `ig/init-key ::server`: `jetty/run-jetty` takes `:send-server-version? false`; kit-v1.2 leaves Jetty's default (02-architecture §4, not given)"
+   :cookies "`server.clj` `ring-handler`, `wrap-session`'s `:cookie-attrs`: kit-v1.2 sets HttpOnly and SameSite=Lax, and Secure from `config.edn` `:cookie-attrs-secure?` under `:prod`; a cookie the application sets itself carries the same attributes by hand"
    :csrf "`server.clj` `ring-handler`, `anti-forgery/wrap-anti-forgery` in the route middleware: a route that takes a POST without the token is outside it, or answers before it"
-   :protected "the project's own auth (02-architecture §8): the route refuses an unauthenticated request before its handler runs; kit-v1.1 generates no accounts"
-   :errors "`server.clj` `exception-middleware`, first of the route middleware in kit-v1.1, answers the error page and logs the detail; `ring/create-default-handler` answers a page not found; a page that names the error is a handler or a middleware ahead of them"
+   :protected "the project's own auth (02-architecture §8): the route refuses an unauthenticated request before its handler runs; kit-v1.2 generates no accounts"
+   :errors "`server.clj` `exception-middleware`, first of the route middleware in kit-v1.2, answers the error page and logs the detail; `ring/create-default-handler` answers a page not found; a page that names the error is a handler or a middleware ahead of them"
    :static "`server.clj` `ring-handler`, `reitit-extras/create-resource-handler-cached` serves `resources/public/` under `/assets/` with no listing and no path out; a second handler over a folder of files is what lists or escapes"
-   :tls "where TLS ends (02-architecture §8): kit-v1.1's Kamal deploy ends it in the proxy (`.kamal/deploy.yml`, `proxy`); its certificate and protocols are the proxy's"})
+   :tls "where TLS ends (02-architecture §8): kit-v1.2's Kamal deploy ends it in the proxy (`.kamal/deploy.yml`, `proxy`); its certificate and protocols are the proxy's"})
 
 (defn row
   "A row of the table; the fix only where there is something to fix."
