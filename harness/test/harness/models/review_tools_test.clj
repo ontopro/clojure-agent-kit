@@ -217,3 +217,24 @@
     (is (str/includes? (:content (call {:dir "."} "request" {:method "GET" :path "/"})) "no application is running"))
     (is (str/includes? (:content (call {:dir "." :sandbox (app-sandbox (atom []) {:error "connection refused"})} "request" {:method "GET" :path "/"}))
                        "no answer: connection refused"))))
+
+(deftest a-review-may-rewrite-its-own-test-and-nothing-else
+  ;; a wrong test had to be fixed in place: without this a reviewer wrote authz, authz2 … authz5
+  (let [dir (tree! {"test/app/existing_test.clj" "(ns app.existing-test)\n"})
+        ctx {:dir dir :written (atom #{})}]
+    (is (false? (:error? (call ctx "write_test" {:path "test/app/mine_test.clj" :content a-test}))))
+    (let [r (call ctx "write_test" {:path "test/app/mine_test.clj" :content (str/replace a-test "(= 1 1)" "(= 2 2)")})]
+      (is (false? (:error? r)) "its own file, again")
+      (is (str/includes? (slurp (str (fs/path dir "test" "app" "mine_test.clj"))) "(= 2 2)")))
+    (testing "the application's test is still not its to change, nor a path spelled another way"
+      (is (str/includes? (:content (call ctx "write_test" {:path "test/app/existing_test.clj" :content a-test})) "not one you wrote"))
+      (is (str/includes? (:content (call ctx "write_test" {:path "test/app/../app/existing_test.clj" :content a-test})) "not one you wrote"))
+      (is (= "(ns app.existing-test)\n" (slurp (str (fs/path dir "test" "app" "existing_test.clj"))))))
+    (testing "a file only counts once the review has written it"
+      (spit (str (fs/path dir "test" "app" "planted_test.clj")) "(ns app.planted-test)\n")
+      (is (:error? (call ctx "write_test" {:path "test/app/planted_test.clj" :content a-test}))))
+    (testing "the same path spelled another way is the same file"
+      (is (false? (:error? (call ctx "write_test" {:path "test/app/../app/mine_test.clj" :content a-test})))))
+    (testing "without the record of what was written, nothing is rewritable"
+      (call {:dir dir} "write_test" {:path "test/app/solo_test.clj" :content a-test})
+      (is (:error? (call {:dir dir} "write_test" {:path "test/app/solo_test.clj" :content a-test}))))))

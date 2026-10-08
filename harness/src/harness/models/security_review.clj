@@ -205,7 +205,7 @@
         sb (or sandbox (sandbox/start! {:kit kit :clone clone}))
         t0 (System/currentTimeMillis)]
     (try
-      (let [ctx {:dir (str clone) :sandbox sb :request-budget (atom requests)}
+      (let [ctx {:dir (str clone) :sandbox sb :request-budget (atom requests) :written (atom #{})}
             r (agent/converse! role system-prompt (opening stance facts) ctx
                                {:registry review-tools/specs :tools (set (keys review-tools/specs))
                                 :max-iterations rounds :timeout-ms 600000})

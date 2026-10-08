@@ -61,6 +61,24 @@ costs its readers more than a missed one; an answer with no findings block is re
 nothing, not as a clean review. The tests it wrote are collected from the clone and kept beside the
 record. The command is a real model call and says so before it spends.
 
+### Why GLM-5.3-prime used all sixty rounds and wrote no answer (row 121)
+
+Both its readings in the first bake-off ended at the round limit with no answer, and the records say why;
+none of it is a refusal or an error - all sixty completions ended in a tool call, the last included.
+It sends one tool call per completion (1.2 on average, against 2.4 and up to 8 for the other candidate,
+which finished in twelve completions with a quarter of the output tokens). On the faulted branch it read
+for nine rounds, then spent thirty-five on single HTTP requests, then wrote tests until the limit. On the
+careful branch, where there was nothing to find, it sent fifty-two single requests and one test run and
+never concluded that nothing was wrong: nothing in the prompt says when to stop. And its own tool cost
+it rounds: `write_test` refused to overwrite a file that existed, so a wrong test could not be fixed in
+place, and it wrote `web_authz`, `…2`, `…3`, `…4`, `…5` and `notes_search_injection`, `…2`, `…3` - twelve
+writes for about five tests, the broken ones left behind as the files that do not compile.
+
+The refusal to overwrite was there to protect the application's tests; it never needed to cover the
+reviewer's own. A review may now rewrite a test file it wrote itself, and nothing else. The other two
+causes - no stated budget or stopping rule, and probing by single requests instead of a test - are
+not yet changed.
+
 ### The scorer judges the `deftest`, not the file (row 121)
 
 In the first bake-off the first candidate's faulted reading scored 0 of 6 where the same model had scored
