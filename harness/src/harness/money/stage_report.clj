@@ -90,8 +90,10 @@
   cost, rejections, stops by owner and by kind; the readings (`:readings`:
   `[[label cost n] …]` for the plan review, the blueprint review and the spec
   reviews) and their money; the cap and its date from the gates record, or
-  nil; `:before` the stage before's `{:id :cost :runs :rounds :stops}` or nil."
-  [{:keys [id packets records readings gates before]}]
+  nil; the threat model's signature from it (`:security`) and the plan's kind,
+  which together say whether a pre-release stage is signed; `:before` the
+  stage before's `{:id :cost :runs :rounds :stops}` or nil."
+  [{:keys [id kind packets records readings gates before]}]
   (let [runs (mapv run-summary records)
         by-task (into {} (map (juxt :task/id identity)) runs)
         dispatch-money (sum :cost runs)
@@ -117,6 +119,8 @@
      :readings readings
      :cap (:cap (:stage/approved gates))
      :approved (:date (:stage/approved gates))
+     :kind kind
+     :security (:security/signed gates)
      :before before}))
 
 (defn- dollars [x] (format "$%.2f" (double (or x 0))))
@@ -125,39 +129,46 @@
 
 (defn render
   "The stage's block, as published: its first line names the stage, so the
-  check can find it without a marker."
+  check can find it without a marker. The threat model's line is there for a
+  pre-release stage, or any stage whose record carries the signature, and for
+  no other - a block published before the line existed reads the same."
   [{:keys [id run-count merged money cap approved before by-role readings reading-money
-           rounds retry-cost dispatch-money rejections stops stop-kinds packets]}]
-  (str/join
-   "\n"
-   [(str "Stage " id " report · " run-count " run" (when (not= 1 run-count) "s") ", " merged " merged · "
-         (dollars money) (if cap (str " of cap " cap (when approved (str " (approved " approved ")")))
-                             " · cap: not recorded (no :stage/approved in the gates record)")
-         " · " (if before
-                 (str "stage " (:id before) ": " (dollars (:cost before)) ", " (:runs before) " run"
-                      (when (not= 1 (:runs before)) "s") ", " (:rounds before) " round"
-                      (when (not= 1 (:rounds before)) "s") ", " (:stops before) " stop" (when (not= 1 (:stops before)) "s"))
-                 "no stage before"))
-    (str "  Money by role: "
-         (if (seq by-role)
-           (str/join " · " (for [[r c] (sort-by (comp - val) by-role)] (str (name r) " " (dollars c))))
-           "no priced dispatch")
-         " · readings " (dollars reading-money)
-         (when (seq readings)
-           (str " (" (str/join ", " (for [[label c n] readings] (str label " " n " " (dollars c)))) ")")))
-    (str "  Rounds: " rounds " over " run-count " run" (when (not= 1 run-count) "s")
-         (when (pos? run-count) (format " (%.1f per run)" (double (/ rounds run-count))))
-         " · retries " (dollars retry-cost) " (" (pct retry-cost dispatch-money) " of the dispatch money)"
-         " · " rejections " review" (when (not= 1 rejections) "s") " rejected")
-    (str "  Stops: "
-         (if (seq stops)
-           (str (str/join " · " (for [[o n] (sort-by (comp name key) stops)] (str (name o) " " n)))
-                " — by kind: " (str/join ", " (for [[k n] (sort-by (comp name key) stop-kinds)] (str (name k) " " n))))
-           "none"))
-    (str "  Packets: "
-         (if (seq packets)
-           (str/join " · " (for [[t s] packets] (str t " " (name s))))
-           "none in the blueprint"))]))
+           rounds retry-cost dispatch-money rejections stops stop-kinds packets kind security]}]
+  (->> [(str "Stage " id " report · " run-count " run" (when (not= 1 run-count) "s") ", " merged " merged · "
+             (dollars money) (if cap (str " of cap " cap (when approved (str " (approved " approved ")")))
+                                 " · cap: not recorded (no :stage/approved in the gates record)")
+             " · " (if before
+                     (str "stage " (:id before) ": " (dollars (:cost before)) ", " (:runs before) " run"
+                          (when (not= 1 (:runs before)) "s") ", " (:rounds before) " round"
+                          (when (not= 1 (:rounds before)) "s") ", " (:stops before) " stop" (when (not= 1 (:stops before)) "s"))
+                     "no stage before"))
+        (str "  Money by role: "
+             (if (seq by-role)
+               (str/join " · " (for [[r c] (sort-by (comp - val) by-role)] (str (name r) " " (dollars c))))
+               "no priced dispatch")
+             " · readings " (dollars reading-money)
+             (when (seq readings)
+               (str " (" (str/join ", " (for [[label c n] readings] (str label " " n " " (dollars c)))) ")")))
+        (str "  Rounds: " rounds " over " run-count " run" (when (not= 1 run-count) "s")
+             (when (pos? run-count) (format " (%.1f per run)" (double (/ rounds run-count))))
+             " · retries " (dollars retry-cost) " (" (pct retry-cost dispatch-money) " of the dispatch money)"
+             " · " rejections " review" (when (not= 1 rejections) "s") " rejected")
+        (str "  Stops: "
+             (if (seq stops)
+               (str (str/join " · " (for [[o n] (sort-by (comp name key) stops)] (str (name o) " " n)))
+                    " — by kind: " (str/join ", " (for [[k n] (sort-by (comp name key) stop-kinds)] (str (name k) " " n))))
+               "none"))
+        (str "  Packets: "
+             (if (seq packets)
+               (str/join " · " (for [[t s] packets] (str t " " (name s))))
+               "none in the blueprint"))
+        (when (or security (= "pre-release" kind))
+          (str "  Threat model: "
+               (if security
+                 (str "signed " (:date security) (some->> (:by security) (str " by ")))
+                 "not signed (a pre-release stage closes with :security/signed in its gates record)")))]
+       (remove nil?)
+       (str/join "\n")))
 
 ;; ---------------------------------------------------------------------------
 ;; pure: the block in the stage plan
@@ -211,6 +222,11 @@
 
 (defn stage-id [file-name] (some-> (re-find #"^stage-(\d+)-" file-name) second parse-long))
 
+(defn- stage-kind
+  "A stage plan's kind, from its `**Kind:**` line, or nil."
+  [text]
+  (some-> (re-find #"(?m)^\*\*Kind:\*\*\s*(.*?)\s*$" text) second))
+
 (defn stage-plans
   "The stage plans under `stages-dir`: `[[id file-name] …]` by id, templates,
   blueprints and gates records left out."
@@ -254,8 +270,10 @@
         bp (fs/path stages (str "stage-" id "-blueprint.md"))]
     (when (fs/exists? bp)
       (let [packets (mapv :task/id (blueprint/packets (slurp (str bp))))
-            reviews (fs/path build "reviews" (str "stage-" id))]
+            reviews (fs/path build "reviews" (str "stage-" id))
+            plan (some (fn [[i nm]] (when (= i id) nm)) (stage-plans stages))]
         {:id id
+         :kind (some->> plan (fs/path stages) str slurp stage-kind)
          :packets packets
          :records (records-for records-dir packets)
          :readings (vec (remove nil? [(reading "plan review" (if (= 0 id)

@@ -40,6 +40,25 @@ until a workflow runs it on push.
 
 ## 2026-10-07
 
+### A pre-release stage closes with its threat model signed: a fourth gate in its record
+
+Row 115. The threat model is answered by the time the application is released or it is not
+answered: the pre-release stage template gains an exit criterion - every line of the
+architecture document's §15 answered, by a line of its §4, a decision or the stage's own work,
+each with its evidence, and a line that cannot be answered this release a decision that says so -
+and a row in what the stage takes. The person's signature is a key of the stage's gates record,
+`:security/signed`, beside the three every stage has, so the tools read it as they read the
+others. It is in the one gates template, nil for every kind, rather than in a second template for
+pre-release stages that `bb init`, `bb next` and the plan check would all have had to know.
+
+The record does not know a stage's kind; the stage plan does, on its `**Kind:**` line. `bb next`
+reads that line now, and for a pre-release stage whose packets are merged it names the threat
+model in the stage-end step, before the close; a pre-release stage closed without the signature
+is the person's next step, ahead of pulling the next stage. Another kind is never asked.
+`bb stage-report` puts a "Threat model" line in a pre-release stage's block, signed with its date
+or not signed, and in the block of any stage whose record carries the signature - and in no
+other, so a block published before the line existed is still held equal to its records.
+
 ### The architecture document asks about security, in its three parts
 
 Row 115. Nothing the KIT gave a project said anything about security: the gates, the readings

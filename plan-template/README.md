@@ -19,7 +19,7 @@ repository's first commit, the way it generates `<name>-app/` from the KIT's app
       stage-0-<name>.md       ← the stage 0 plan, the spike's, from stage-0-spike-template.md
       stage-N-<name>.md       ← a stage plan, written just-in-time when the stage is pulled, from stage-N-template.md (pre-release and release from their own templates)
       stage-N-blueprint.md    ← the stage's blueprint, the Architect's output; signed off by the person
-      stage-N-gates.edn       ← the stage's three human gates as a record, from stage-N-gates-template.edn; `bb next` reads it
+      stage-N-gates.edn       ← the stage's human gates as a record (a pre-release stage's fourth, its threat model signed), from stage-N-gates-template.edn; `bb next` reads it
   reviews/                    ← a review's raw material, outside the governing documents
   rules.edn                   ← this project's rules over the KIT's rule source: its placeholders, filled here
   profile.edn                 ← the models per role and the seat; bb profile checks it

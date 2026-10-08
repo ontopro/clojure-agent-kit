@@ -10,7 +10,7 @@
   the next and a session opened cold can ask.
 
   FIVE FACTS, EVERY ONE A FILE. Is there a workspace; does the plan check
-  pass; which stage is pulled and where its three human gates stand
+  pass; which stage is pulled and where its human gates stand
   (`docs/stages/stage-N-gates.edn`, the record the person writes); is its
   blueprint written, reviewed, signed; which of its packets have a merged
   record under the build's `runs/`. Before a workspace exists the next action
@@ -51,14 +51,19 @@
 (defn- gates-file [id] (str "docs/stages/stage-" id "-gates.edn"))
 
 (defn- stage-action
-  "The next action inside the stage `s` in progress: `{:id :plan :gates
+  "The next action inside the stage `s` in progress: `{:id :plan :kind :gates
   :blueprint :reviewed? :packets :merged :runs}` - `:gates` the record's map or
-  nil, `:plan` and `:blueprint` file names or nil, `:packets` the blueprint's
-  task ids in order, `:merged` the set with a merged record, `:runs` task id →
-  the latest record's status for the rest."
-  [{:keys [id plan gates blueprint reviewed? packets merged runs]}]
+  nil, `:plan` and `:blueprint` file names or nil, `:kind` the plan's kind
+  line or nil, `:packets` the blueprint's task ids in order, `:merged` the set
+  with a merged record, `:runs` task id → the latest record's status for the
+  rest. A pre-release stage has a fourth gate, its threat model signed, which
+  comes before its close."
+  [{:keys [id plan kind gates blueprint reviewed? packets merged runs]}]
   (let [{:stage/keys [approved closed] :blueprint/keys [signed]} gates
-        spike? (= 0 id)]
+        spike? (= 0 id)
+        unsigned-threat-model? (and (= "pre-release" kind) (nil? (:security/signed gates)))
+        sign-threat-model (str "every line of docs/02-architecture.md §15 answered with its evidence, then "
+                               ":security/signed {:date :by} in " (gates-file id))]
     (cond
       (nil? gates)
       (action (if spike? 5 7) person
@@ -115,8 +120,15 @@
                   (str "the run for " t " is " status))))
 
       (nil? closed)
-      (action 14 architect "the stage-end skill"
+      (action 14 architect (if unsigned-threat-model?
+                             (str "the stage-end skill; a pre-release stage's exit criteria include its threat model: "
+                                  sign-threat-model ", before :stage/closed")
+                             "the stage-end skill")
               (str "every packet of stage " id " is merged (" (count packets) ") and the stage is not closed"))
+
+      unsigned-threat-model?
+      (action 14 person sign-threat-model
+              (str "stage " id " is pre-release and closed without its threat model signed"))
 
       :else
       (action 7 person (str "pull stage " (inc id) " by kind: copy docs/stages/stage-N-gates-template.edn to "
@@ -156,6 +168,11 @@
   (some-> (re-find #"^stage-(\d+)-" file-name) second parse-long))
 
 (defn- read-edn [path] (try (edn/read-string (slurp (str path))) (catch Exception _ nil)))
+
+(defn stage-kind
+  "A stage plan's kind, from its `**Kind:**` line (`spike`, `pre-release`, …), or nil."
+  [text]
+  (some-> (re-find #"(?m)^\*\*Kind:\*\*\s*(.*?)\s*$" text) second))
 
 (defn stage-files
   "The stages under `docs/stages/`, by id: `{id {:plan name :blueprint name
@@ -204,6 +221,7 @@
        :stage (when id
                 (merge files
                        {:id id
+                        :kind (some->> (:plan files) (fs/path build "docs" "stages") str slurp stage-kind)
                         :reviewed? (fs/exists? (fs/path build "reviews" (str "stage-" id) "blueprint-review.edn"))
                         :packets (or packets [])
                         :merged (into #{} (filter #(= :merged (statuses %))) packets)

@@ -89,6 +89,28 @@
           (is (str/includes? (:run (next/next-action closed)) "stage-2-gates.edn"))
           (is (= "stage 1 is closed" (:because (next/next-action closed)))))))))
 
+(deftest a-pre-release-stage-has-a-fourth-gate-its-threat-model-signed
+  (let [all (-> (with-stage {:kind "pre-release" :blueprint "stage-1-blueprint.md" :reviewed? true
+                             :packets ["t1"] :merged #{"t1"}})
+                (gate :stage/approved {:date "d"})
+                (gate :blueprint/signed {:date "d"}))]
+    (let [a (next/next-action all)]
+      (is (= [14 "the Architect's session"] ((juxt :step :owner) a)) "the stage-end skill still runs the stage's end")
+      (is (str/includes? (:run a) "every line of docs/02-architecture.md §15 answered with its evidence"))
+      (is (str/includes? (:run a) ":security/signed {:date :by} in docs/stages/stage-1-gates.edn, before :stage/closed")))
+    (let [closed (gate all :stage/closed {:date "d"})]
+      (is (= [14 "the person"] (step closed)) "closed without it: the person signs before the next stage is pulled")
+      (is (= "stage 1 is pre-release and closed without its threat model signed" (:because (next/next-action closed))))
+      (is (= [7 "the person"] (step (gate closed :security/signed {:date "d" :by "the person"}))) "signed: the next stage"))
+    (testing "another kind is not asked, and a plan with no kind line is another kind"
+      (is (= "the stage-end skill" (:run (next/next-action (assoc-in all [:stage :kind] "increment")))))
+      (is (= [7 "the person"] (step (-> all (assoc-in [:stage :kind] nil) (gate :stage/closed {:date "d"}))))))))
+
+(deftest a-stage-plans-kind-is-its-kind-line
+  (is (= "pre-release" (next/stage-kind "# Stage 5\n\n**Status:** PLANNED\n**Kind:** pre-release  \n**Version:** 0.1\n")))
+  (is (= "walking skeleton" (next/stage-kind "**Kind:** walking skeleton\n")))
+  (is (nil? (next/stage-kind "# Stage 1\n\nno kind here\n"))))
+
 (deftest every-action-names-a-step-an-owner-a-command-and-a-reason
   (doseq [f [{:workspace? false} {:workspace? true :brief? false} ready
              (gate ready :stage/approved {:date "d"}) (with-stage {:gates nil})]]
@@ -122,7 +144,7 @@
     (spit (str (fs/path stages "stage-N-gates-template.edn")) "{:stage/id \"<N>\"}")
     (spit (str (fs/path stages "stage-0-spike.md")) "# Stage 0\n")
     (spit (str (fs/path stages "stage-0-gates.edn")) (pr-str {:stage/id "0" :stage/approved {:date "d"} :stage/closed {:date "d"}}))
-    (spit (str (fs/path stages "stage-1-skeleton.md")) "# Stage 1\n")
+    (spit (str (fs/path stages "stage-1-skeleton.md")) "# Stage 1\n\n**Kind:** walking skeleton\n")
     (spit (str (fs/path stages "stage-1-gates.edn")) (pr-str {:stage/id "1" :stage/approved {:date "d"} :blueprint/signed {:date "d"}}))
     (spit (str (fs/path stages "stage-1-blueprint.md"))
           "# Blueprint\n\n```clojure\n{:task/id \"t1\"}\n```\n\n```clojure\n{:task/id \"t2\"}\n```\n")
@@ -136,6 +158,7 @@
       (is (true? (:brief? f)))
       (is (= 1 (:id s)) "the highest-numbered stage with a file; templates are not stages")
       (is (= "stage-1-skeleton.md" (:plan s)))
+      (is (= "walking skeleton" (:kind s)) "the plan's kind line")
       (is (= "stage-1-blueprint.md" (:blueprint s)))
       (is (true? (:reviewed? s)))
       (is (= ["t1" "t2"] (:packets s)) "in the blueprint's order")

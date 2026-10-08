@@ -3,7 +3,7 @@
 **Status:** PLANNED — for the person's approval, with its cap (§7)
 **Kind:** pre-release
 **Version:** 0.1 · **Last updated:** <YYYY-MM-DD>
-**Companion to:** `../01-requirements.md` §7 · `../04-decision-log.md` · `../05-lessons.md`
+**Companion to:** `../01-requirements.md` §7 · `../02-architecture.md` §15 · `../04-decision-log.md` · `../05-lessons.md`
 
 > A **pre-release stage** holds what release needs and nothing a user-visible stage needed
 > earlier (`method.md` §04): the host and the publish command; backup and restore; metrics,
@@ -40,6 +40,7 @@
 | Logging | <what release needs; a stage's own debugging logs landed in that stage> | | |
 | Auditing | | | |
 | The pre-publish gate | <what must be true of the application before anything is published: every page signed off, the go-live checklist's rows done, …> | | |
+| The threat model | <every line of `../02-architecture.md` §15 answered, and how each is shown> | | |
 
 ## 4. The deploy path, rehearsed
 
@@ -65,6 +66,10 @@
 - A restore rehearsed: a backup taken, the data removed, the backup restored, the application
   answering with it
 - The pre-publish gate written as a check a person can run, and run green
+- **The threat model signed:** every line of `../02-architecture.md` §15 answered - by a line
+  of its §4, a decision, or this stage's work - each with its evidence beside it, and
+  `:security/signed` set in `stage-N-gates.edn` by the person; a line that cannot be answered
+  this release is a decision that says so, never a line left blank
 - **Deployed locally** still: the browser checks and the owner's walk against the local build
 - **Decision-log updates recorded**; this stage's section of `../05-lessons.md` written; the scope
   lists and the stage map revised; the next stage named - another pre-release stage, or the release

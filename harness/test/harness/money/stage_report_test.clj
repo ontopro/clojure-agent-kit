@@ -76,6 +76,14 @@
       (is (str/includes? r "  Rounds: 5 over 2 runs (2.5 per run) · retries $3.13 (38% of the dispatch money) · 1 review rejected\n"))
       (is (str/includes? r "  Stops: architect 1 · person 2 — by kind: awaiting-merge 1, capped 1, spec-reviewed 1\n"))
       (is (str/ends-with? r "  Packets: t1 merged · t2 escalated · t3 no-record"))))
+  (testing "the threat model's line: a pre-release stage's, or a signed one's, and no other's"
+    (is (not (str/includes? (sr/render (sr/stage-summary (assoc facts :kind "increment"))) "Threat model"))
+        "a block published before the line existed reads the same")
+    (is (str/ends-with? (sr/render (sr/stage-summary (assoc facts :kind "pre-release")))
+                        "\n  Threat model: not signed (a pre-release stage closes with :security/signed in its gates record)"))
+    (is (str/ends-with? (sr/render (sr/stage-summary (-> facts (assoc :kind "pre-release")
+                                                         (assoc-in [:gates :security/signed] {:date "2026-10-07" :by "the person"}))))
+                        "\n  Threat model: signed 2026-10-07 by the person")))
   (testing "no cap, no stage before, no runs"
     (let [r (sr/render (sr/stage-summary {:id 0 :packets ["a"] :records [] :readings [] :gates nil :before nil}))]
       (is (str/starts-with? r "Stage 0 report · 0 runs, 0 merged · $0.00 · cap: not recorded (no :stage/approved in the gates record) · no stage before"))
@@ -84,7 +92,7 @@
       (is (str/includes? r "retries $0.00 (— of the dispatch money)")))))
 
 (def plan-text
-  "# Stage 1\n\n## 10. Dependency-ordered task list\n\n- t1\n\n## 11. Exit criteria (the stage's gate), and the cap\n\n**Cap:** $20.\n\n- a criterion\n\n## 12. Residual risks\n\nnone\n")
+  "# Stage 1\n\n**Kind:** increment\n\n## 10. Dependency-ordered task list\n\n- t1\n\n## 11. Exit criteria (the stage's gate), and the cap\n\n**Cap:** $20.\n\n- a criterion\n\n## 12. Residual risks\n\nnone\n")
 
 (deftest the-block-goes-into-the-exit-criteria-section-and-is-held-to-the-records
   (let [s (sr/stage-summary facts)
@@ -136,6 +144,7 @@
       (is (= ["t1" "t2"] (mapv :task/id (:runs s))) "the records of the blueprint's packets, in its order; w0 is stage 0's")
       (is (= [["blueprint review" 1.5 2] ["spec reviews" 0.75 3]] (:readings s)) "the history's readings; no plan review for this stage")
       (is (= "$20" (:cap s)))
+      (is (= "increment" (:kind s)) "the plan's kind line")
       (is (= {:id 0 :cost 4.625 :runs 1 :rounds 2 :stops 1} (:before s)) "stage 0: its run, its spec review and the whole-set plan review"))
     (is (= ["stage-0-spike.md publishes no stage report and its packets have records: run `bb stage-report`"
             "stage-1-skeleton.md publishes no stage report and its packets have records: run `bb stage-report`"]

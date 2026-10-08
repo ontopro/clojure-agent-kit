@@ -44,7 +44,7 @@
           "stages/stage-N-blueprint-template.md" 9
           "stages/stage-N-gates-template.edn" 2
           "stages/stage-N-template.md" 25
-          "stages/stage-prerelease-template.md" 12
+          "stages/stage-prerelease-template.md" 13
           "stages/stage-release-template.md" 8}
          (plan/placeholder-counts template-dir)))
   (is (= (keys (plan/placeholder-counts template-dir)) (init/plan-template-files (str (fs/parent template-dir))))
