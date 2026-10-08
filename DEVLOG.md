@@ -66,7 +66,10 @@ was written to show - then `run_tests` - the whole suite by default, or one name
 two functions and knows nothing more of, so the tools are tried without a container and the container
 is its own commit. The coverage runner's output is cleaned first: its progress bar, rewritten with
 carriage returns, was five-sixths of a failing run's output (7.7 KB to 1.5 KB on a saved log, the
-failure and the totals kept). The request tool follows.
+failure and the totals kept). Then `request`: one request to the application under test, the path as
+written - a step out of a folder is a request a test may need - but refused if a space, a control
+character or a line break in a header would make it more than one, with a budget on the reading and
+the answer cut to size. The container that the two sandbox functions run in is the last piece.
 
 ### The `z-ai` family has a route
 

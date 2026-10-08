@@ -31,7 +31,7 @@
     (tools/invoke rt/specs ctx {:id "c1" :name nm :args args})))
 
 (deftest the-reviewer-has-its-own-registry-and-the-coders-is-untouched
-  (is (= #{"read_file" "search" "write_test" "run_tests"} (set (keys rt/specs))) "grows as the tools are added")
+  (is (= #{"read_file" "search" "write_test" "run_tests" "request"} (set (keys rt/specs))) "grows as the tools are added")
   (is (= #{"read_file" "write_file" "edit_file" "nrepl_eval" "note"} (set (keys tools/specs)))
       "no review tool leaks into the coder's registry")
   (is (nil? (get rt/specs "nrepl_eval")) "a reviewer has no REPL"))
@@ -161,3 +161,59 @@
       (is (str/includes? (:content (call ctx "run_tests" {:namespace bad})) "is not a namespace name") bad))
     (is (empty? @seen) "nothing was run")
     (is (str/includes? (:content (call {:dir "."} "run_tests" {})) "no sandbox"))))
+
+;; ---------------------------------------------------------------------------
+;; request
+;; ---------------------------------------------------------------------------
+
+(defn- app-sandbox
+  "A stand-in application: records what it was sent, answers with `answer`."
+  [seen answer]
+  {:request (fn [req] (swap! seen conj req) answer)})
+
+(def a-page {:status 200 :headers [["content-type" "text/html"] ["set-cookie" "ring-session=abc; HttpOnly"]] :body "<h1>hi</h1>"})
+
+(deftest request-sends-one-request-and-shows-the-answer
+  (let [seen (atom [])
+        r (call {:dir "." :sandbox (app-sandbox seen a-page)} "request"
+                {:method "post" :path "/notes?q=1" :headers {"Cookie" "ring-session=abc"} :body "title=x"})]
+    (is (false? (:error? r)))
+    (is (= [{:method "POST" :path "/notes?q=1" :headers {:Cookie "ring-session=abc"} :body "title=x"}]
+           (mapv #(update % :headers update-keys keyword) @seen))
+        "the method upper-cased, the rest as written")
+    (is (= "HTTP 200\ncontent-type: text/html\nset-cookie: ring-session=abc; HttpOnly\n\n<h1>hi</h1>" (:content r)))
+    (testing "a path is sent as written, a step out of a folder included"
+      (call {:dir "." :sandbox (app-sandbox seen a-page)} "request" {:method "GET" :path "/export/download?name=../x.txt"})
+      (is (= "/export/download?name=../x.txt" (:path (last @seen)))))))
+
+(deftest request-refuses-what-is-not-one-well-formed-request
+  (let [seen (atom [])
+        ctx {:dir "." :sandbox (app-sandbox seen a-page)}
+        refused (fn [args] (:content (call ctx "request" args)))]
+    (is (str/includes? (refused {:method "TRACE" :path "/"}) "method must be one of"))
+    (doseq [p ["notes" "/a b" "/a\r\nGET /admin HTTP/1.1" "/a\u0000" "http://elsewhere/"]]
+      (is (str/includes? (refused {:method "GET" :path p}) "path must start with /") p))
+    (is (str/includes? (refused {:method "GET" :path "/" :headers {"X\r\nY" "1"}}) "header name"))
+    (is (str/includes? (refused {:method "GET" :path "/" :headers {"X-A" "1\r\nHost: evil"}}) "one line"))
+    (is (str/includes? (refused {:method "GET" :path "/" :headers {"Host" "evil"}}) "are set for you"))
+    (is (str/includes? (refused {:method "POST" :path "/" :body (apply str (repeat (inc rt/max-request-body) "x"))}) "a body over"))
+    (is (empty? @seen) "nothing was sent")))
+
+(deftest request-bounds-the-answer-and-the-reading
+  (let [seen (atom [])
+        big {:status 200 :headers [] :body (apply str (repeat (* 2 rt/max-response-body) "x"))}
+        r (call {:dir "." :sandbox (app-sandbox seen big)} "request" {:method "GET" :path "/"})]
+    (is (str/includes? (:content r) (str "[body cut at " rt/max-response-body " of ")))
+    (is (< (count (:content r)) (+ rt/max-response-body 200))))
+  (testing "the budget of a reading"
+    (let [seen (atom [])
+          ctx {:dir "." :sandbox (app-sandbox seen a-page) :request-budget (atom 2)}
+          go #(call ctx "request" {:method "GET" :path "/"})]
+      (is (false? (:error? (go))))
+      (is (false? (:error? (go))))
+      (is (str/includes? (:content (go)) "budget for this reading is spent"))
+      (is (= 2 (count @seen)))))
+  (testing "no application, and one that does not answer"
+    (is (str/includes? (:content (call {:dir "."} "request" {:method "GET" :path "/"})) "no application is running"))
+    (is (str/includes? (:content (call {:dir "." :sandbox (app-sandbox (atom []) {:error "connection refused"})} "request" {:method "GET" :path "/"}))
+                       "no answer: connection refused"))))

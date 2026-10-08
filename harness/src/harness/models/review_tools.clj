@@ -151,6 +151,57 @@
                      "\n[" (if (zero? exit) "exit 0: the tests pass" (str "exit " exit ": a test failed or did not run")) "]")))))
 
 ;; ---------------------------------------------------------------------------
+;; request
+;; ---------------------------------------------------------------------------
+
+(def ^:private methods-allowed #{"GET" "HEAD" "POST" "PUT" "PATCH" "DELETE" "OPTIONS"})
+(def ^:private headers-the-harness-sets #{"host" "content-length" "connection" "transfer-encoding"})
+(def max-request-body 20000)
+(def max-response-body 6000)
+
+(defn- request-problem
+  "Why the request is not one to send, or nil. The path is sent as written - a path that
+  steps out of a folder is a request a test may need - but a space or a control character
+  in it, or a line break in a header, would make it more than one request."
+  [{:keys [method path headers body]}]
+  (cond
+    (not (methods-allowed method)) (str "method must be one of " (str/join ", " (sort methods-allowed)))
+    (not (and (string? path) (re-matches #"/[\x21-\x7e]*" path))) "path must start with / and hold no space or control character"
+    (> (count path) 2000) "path is over 2000 characters"
+    (and headers (not (map? headers))) "headers must be an object of names and values"
+    (> (count headers) 20) "more than 20 headers"
+    (some (fn [[k _]] (not (re-matches #"[A-Za-z0-9-]+" (name k)))) headers) "a header name is letters, digits and hyphens"
+    (some (fn [[_ v]] (re-find #"[\r\n]" (str v))) headers) "a header value is one line"
+    (some (fn [[k _]] (headers-the-harness-sets (str/lower-case (name k)))) headers)
+    (str "the " (str/join ", " (sort headers-the-harness-sets)) " headers are set for you")
+    (> (count (str body)) max-request-body) (str "a body over " max-request-body " characters")))
+
+(defn- show-response
+  "A response as the model reads it: status, headers, a blank line, the body cut to size."
+  [{:keys [status headers body]}]
+  (str "HTTP " status "\n"
+       (str/join "\n" (for [[k v] headers] (str k ": " v)))
+       "\n\n"
+       (if (> (count (str body)) max-response-body)
+         (str (subs body 0 max-response-body) "\n[body cut at " max-response-body " of " (count body) " characters]")
+         body)))
+
+(defn- request
+  "One request to the application under test, through the sandbox. A budget in `:request-budget`
+  (an atom of how many are left) bounds a reading."
+  [{:keys [sandbox request-budget]} {:keys [method path headers body]}]
+  (let [req {:method (some-> method str/upper-case) :path path :headers (or headers {}) :body body}]
+    (cond
+      (nil? (:request sandbox)) (tools/err "no application is running to send a request to")
+      (request-problem req) (tools/err (request-problem req))
+      (and request-budget (not (pos? (first (swap-vals! request-budget #(max 0 (dec %)))))))
+      (tools/err "the request budget for this reading is spent")
+      :else (let [r ((:request sandbox) req)]
+              (if (:error r)
+                (tools/err (str "no answer: " (:error r)))
+                (tools/ok (show-response r)))))))
+
+;; ---------------------------------------------------------------------------
 ;; the registry
 ;; ---------------------------------------------------------------------------
 
@@ -195,4 +246,19 @@
              :properties {:namespace {:type "string"
                                       :description "Optional: one test namespace, e.g. app.review-notes-test. Default: all tests."}}
              :required []}
-    :fn #'run-tests}})
+    :fn #'run-tests}
+
+   "request"
+   {:description (str "Send ONE HTTP request to the application under test, running locally for this "
+                      "reading, and read the answer: status, headers, body. The path is sent exactly as "
+                      "you write it. There is no cookie jar - a session is a Cookie header you copy from "
+                      "a Set-Cookie header, and a form's anti-forgery token is one you read from its page. "
+                      "Use it to see what the application does, then state it as a test with write_test: "
+                      "a request is evidence, a failing test is the finding.")
+    :schema {:type "object"
+             :properties {:method {:type "string" :description "GET, HEAD, POST, PUT, PATCH, DELETE or OPTIONS."}
+                          :path {:type "string" :description "Starting with /, with any query string."}
+                          :headers {:type "object" :description "Header names and values; Host, Content-Length, Connection and Transfer-Encoding are set for you."}
+                          :body {:type "string" :description "The request body, for a POST or PUT."}}
+             :required ["method" "path"]}
+    :fn #'request}})
