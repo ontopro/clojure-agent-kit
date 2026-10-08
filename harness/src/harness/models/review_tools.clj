@@ -82,6 +82,45 @@
                              (when (pos? more) (str "\n[stopped at " max-matches " matches; narrow the pattern or the path]")))))))))))
 
 ;; ---------------------------------------------------------------------------
+;; write_test
+;; ---------------------------------------------------------------------------
+
+(def max-test-bytes (* 50 1024))
+
+(defn- test-path-problem
+  "Why `path` is not a place a reviewer may write, or nil: a NEW file named `*_test.clj`
+  below `test/`. The application's own tests are not the reviewer's to change - a test
+  changed to pass would hide the very thing it was written to show - and every file below
+  `test/` is loaded as a namespace by the runner, so a file that is not a test namespace
+  would break the whole suite."
+  [dir path]
+  (let [base (fs/normalize (fs/absolutize dir))
+        p (fs/normalize (fs/absolutize (fs/path dir (str path))))
+        under-test? (str/starts-with? (str p) (str (fs/path base "test") "/"))]
+    (cond
+      (str/blank? path) "path is required"
+      (not under-test?) (str path " is not below test/ - a test is the only thing you may write")
+      (not (str/ends-with? (str p) "_test.clj")) (str path " does not end in _test.clj")
+      (fs/exists? p) (str path " already exists - write a new file; the application's tests and your earlier ones are not changed"))))
+
+(defn- write-test
+  "Write a test file below `test/` that did not exist, and say what the linter finds in it."
+  [{:keys [dir]} {:keys [path content]}]
+  (cond
+    (test-path-problem dir path) (tools/err (test-path-problem dir path))
+    (str/blank? content) (tools/err "content is required")
+    (> (count (.getBytes (str content) "UTF-8")) max-test-bytes) (tools/err (str "a test over " max-test-bytes " bytes is not one test"))
+    :else
+    (let [p (str (fs/path dir path))]
+      (fs/create-dirs (fs/parent p))
+      (spit p content)
+      (let [warnings (tools/lint-warnings dir path)]
+        (tools/ok (str "wrote " path
+                       (cond (nil? warnings) " (the linter could not be run)"
+                             (empty? warnings) "; the linter finds nothing"
+                             :else (str "; the linter finds:\n" (str/join "\n" warnings)))))))))
+
+;; ---------------------------------------------------------------------------
 ;; the registry
 ;; ---------------------------------------------------------------------------
 
@@ -100,4 +139,18 @@
                           :path {:type "string"
                                  :description "Optional: a folder or file below the root to search; default the whole tree."}}
              :required ["pattern"]}
-    :fn #'search}})
+    :fn #'search}
+
+   "write_test"
+   {:description (str "Write a NEW test file below test/ whose name ends in _test.clj. This is the only "
+                      "thing you may write: a concern you raise is a test that fails on this code and "
+                      "states the property that should hold, run with run_tests. An existing file, "
+                      "the application's tests included, is never changed; write a new file instead. "
+                      "The file must be a complete Clojure namespace whose name matches its path.")
+    :schema {:type "object"
+             :properties {:path {:type "string"
+                                 :description "Path below test/, ending in _test.clj, e.g. test/app/review_notes_test.clj."}
+                          :content {:type "string"
+                                    :description "The complete contents of the new test namespace."}}
+             :required ["path" "content"]}
+    :fn #'write-test}})

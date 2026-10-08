@@ -59,8 +59,10 @@ under test, write a test, run the tests - and no REPL. They are the same for eve
 the role, so a comparison measures the models and not their tools. They live in
 `harness.models.review-tools` as a registry of the shape of `tools/specs`; `declarations` and
 `invoke` take an optional registry and `converse!` an option to name one, which leaves the coder's
-five tools - a test pins them - exactly as they were. This commit adds the registry and the
-search; request, test-writing and test-running follow, each its own commit.
+five tools - a test pins them - exactly as they were. The registry came with the
+search; `write_test` follows - a new `*_test.clj` file below `test/` and nothing else, since the
+application's own tests are not the reviewer's to change and a test altered to pass would hide what it
+was written to show - and request and test-running after it, each its own commit.
 
 ### The `z-ai` family has a route
 
