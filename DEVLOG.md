@@ -61,6 +61,18 @@ costs its readers more than a missed one; an answer with no findings block is re
 nothing, not as a clean review. The tests it wrote are collected from the clone and kept beside the
 record. The command is a real model call and says so before it spends.
 
+### The fixture's careful feature is fixed where the reviewer found it broken (row 121)
+
+The first-administrator race and the username that became a file name were the fixture's own mistakes, not
+planted faults, so a control that fails them is not a control. Two reference tests that hold on both
+branches came first and failed on the unfixed feature (the registration one ten runs of ten); then the
+feature was fixed - a username is validated, and whether an account is the first is decided inside the
+statement that inserts it - and the builder's key held: the careful branch fails nothing, the faulted one
+exactly the six. The earlier reviewer's twelve test files, run again on the fixed fixture, still separate
+the six planted faults; its registration-race test now passes everywhere, and two of its tests that
+register a hostile username as their setup now fail on both branches because the application refuses it -
+a test that fails in its setup is not a reproduction, which the scorer will have to tell apart.
+
 ### GPT-6 Astra did the review: all six planted faults, and two nobody planted (row 121)
 
 The same hand-try with `openai/gpt-6-astra` at high effort - the same price as the model that declined -

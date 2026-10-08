@@ -43,16 +43,27 @@
                       :from [:users]
                       :where [:= :id id]}))
 
+(def username-pattern #"[A-Za-z0-9_-]{3,32}")
+
+(defn valid-username?
+  "Three to thirty-two letters, digits, hyphens and underscores. A username is shown in pages and
+  names the user's export file, so it is never a path."
+  [username]
+  (boolean (and (string? username) (re-matches username-pattern username))))
+
 (defn register!
-  "Create an account; the first one is the administrator. Nil when the username is taken."
+  "Create an account; the first one is the administrator. Nil when the username is not valid or is
+  taken. Whether the account is the first is decided by the statement that inserts it, so
+  registrations at once cannot all find the table empty."
   [conn username password]
-  (when-not (find-by-username conn username)
-    (let [first? (zero? (:n (db/exec-one! conn {:select [[[:count :*] :n]] :from [:users]})))]
-      (db/exec-one! conn {:insert-into :users
-                          :values [{:username username
-                                    :password_hash (hash-password password)
-                                    :admin (if first? 1 0)}]})
-      (find-by-username conn username))))
+  (when (and (valid-username? username) (not (find-by-username conn username)))
+    (try
+      (db/exec-one! conn {:insert-into [[:users [:username :password_hash :admin]]
+                                        {:select [[[:lift username]]
+                                                  [[:lift (hash-password password)]]
+                                                  [[:case [:= {:select [[[:count :*]]] :from [:users]} 0] 1 :else 0]]]}]})
+      (find-by-username conn username)
+      (catch java.sql.SQLException _ nil))))
 
 (defn authenticate
   "The account for `username` when `password` is its password, else nil."

@@ -91,8 +91,10 @@
   [{{:keys [username password]} :params
     :as request}]
   (cond
-    (or (str/blank? username) (< (count (str password)) 8))
-    (-> (page [:h1 "Register"] [:p "A username, and a password of eight characters or more."]) (response/status 400))
+    (not (accounts/valid-username? username))
+    (-> (page [:h1 "Register"] [:p "A username of three to thirty-two letters, digits, hyphens and underscores."]) (response/status 400))
+    (< (count (str password)) 8)
+    (-> (page [:h1 "Register"] [:p "A password of eight characters or more."]) (response/status 400))
     (accounts/register! (conn request) username password)
     (response/redirect "/login" :see-other)
     :else

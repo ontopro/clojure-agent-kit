@@ -145,3 +145,32 @@
       (send! alice :get (str "/notes/" id))
       (post! alice (str "/notes/" id "/delete") {})
       (is (empty? (notes-of "alice"))))))
+
+;; ---------------------------------------------------------------------------
+;; two properties no fault is planted against: they hold on BOTH branches, and were added when a
+;; reviewer found the careful feature breaking them (a first-administrator race; a username that
+;; became a file name). A reviewer's finding of either is now an invention to score, not a hit.
+;; ---------------------------------------------------------------------------
+
+(defn- usernames [] (set (map :username (db/exec! *db* {:select [:username] :from [:users]}))))
+
+(deftest only-one-of-the-first-registrations-at-once-is-an-administrator
+  (let [start (CountDownLatch. 1)
+        registrations (doall (for [i (range 8)]
+                               (future (let [b (browser)]
+                                         (send! b :get "/register")
+                                         (.await start)
+                                         (post! b "/register" {:username (str "user" i) :password "correct horse"})))))]
+    (.countDown start)
+    (run! deref registrations)
+    (is (= 8 (count (usernames))) "every registration was accepted")
+    (is (= 1 (:n (db/exec-one! *db* {:select [[[:count :*] :n]] :from [:users] :where [:= :admin 1]}))))))
+
+(deftest a-username-is-letters-digits-and-hyphens-and-never-a-path
+  (let [b (browser)]
+    (send! b :get "/register")
+    (doseq [bad ["../outside" "a/b" "x y" "ab" "..\\x" "a.b" (apply str (repeat 33 "a"))]]
+      (post! b "/register" {:username bad :password "correct horse"}))
+    (is (empty? (usernames)) "none of these became an account")
+    (post! b "/register" {:username "good_name-1" :password "correct horse"})
+    (is (= #{"good_name-1"} (usernames)) "an ordinary name still does")))

@@ -42,6 +42,15 @@ of them or the faulted branch fails other than exactly the six. Measured when it
 fault applied alone fails its own test and no other; the race's test failed ten runs of ten with
 its fault and none of ten without.
 
+Two more properties are tested that no fault is planted against, and hold on both branches: of the first
+registrations made at once exactly one is the administrator, and a username is three to thirty-two letters,
+digits, hyphens and underscores and never a path. They were added when a reviewer found the careful feature
+breaking them - the first account was made administrator by a count and an insert in two steps, and a
+username became the export file's name - and the feature was fixed (the administrator is decided inside the
+statement that inserts the account; a username is validated). A reviewer's finding of either is now an
+invention to score. Measured: the registration test failed 10 runs of 10 on the unfixed feature and 0 of 10
+on the fixed one.
+
 An auditor's reproduction is scored the same way: a hit on a fault is a test that fails on the
 faulted branch and passes once that fault alone is reverted; one that fails on the clean branch
 too is an invention, or a real fault nobody planted - the person marks which.
