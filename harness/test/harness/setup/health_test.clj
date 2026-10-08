@@ -160,6 +160,35 @@
     (is (str/includes? (health/render {"macos-arm64" (assoc-in rec [:kit :dirty?] true)}) "(uncommitted changes)"))
     (is (str/includes? (health/render {"macos-arm64" (assoc-in rec [:checks 2 :ok?] false)}) "app serve FAILED"))))
 
+(deftest the-security-check-runs-the-pack-and-carries-its-warns
+  (let [subject {:subject :app :dir (str (fs/create-temp-dir)) :kit "/k"}
+        pack (fn [record exit]
+               (fn [_dir _env argv]
+                 (let [out (second (drop-while #(not= "--out" %) argv))]
+                   (when record (spit (str (fs/path out "security.edn")) (pr-str record)))
+                   {:exit exit :out "" :err ""})))
+        clean {:ok? true :counts {:ok 10 :warn 1 :fail 0 :skipped 1}
+               :rows [{:check :headers :status :ok :says "nosniff"}
+                      {:check :csp :status :warn :says "no Content-Security-Policy"}
+                      {:check :tls :status :skipped :says "the base is http"}]}]
+    (testing "ok when the pack exits 0 with its record; the warns and skips in the detail"
+      (let [seen (atom nil)
+            r (health/check-security subject {:run (fn [dir env argv] (reset! seen {:dir dir :argv argv}) ((pack clean 0) dir env argv))})]
+        (is (true? (:ok? r)))
+        (is (= ["bb" "--config" "/k/tools/security/bb.edn" "check" "--out"] (vec (take 5 (:argv @seen)))))
+        (is (= (:dir subject) (:dir @seen)))
+        (is (str/starts-with? (:detail r) "10 ok, 1 warn, 0 fail, 1 skipped"))
+        (is (str/includes? (:detail r) "warn csp: no Content-Security-Policy"))
+        (is (str/includes? (:detail r) "skipped tls: the base is http"))
+        (is (not (str/includes? (:detail r) "nosniff")) "an ok row is not repeated")))
+    (testing "failed on a failing row, and on no record"
+      (let [r (health/check-security subject {:run (pack (assoc clean :ok? false :rows [{:check :cookies :status :fail :says "no HttpOnly"}]) 1)})]
+        (is (false? (:ok? r)))
+        (is (str/includes? (:detail r) "fail cookies: no HttpOnly")))
+      (let [r (health/check-security subject {:run (pack nil 1)})]
+        (is (false? (:ok? r)))
+        (is (str/includes? (:detail r) "no record written"))))))
+
 (deftest the-browser-check-performs-and-is-skipped-where-it-cannot
   ;; `geckodriver --version` passes on a machine where no browser can start; the
   ;; permission on macOS is the terminal application's, and a shell under a daemon

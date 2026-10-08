@@ -96,7 +96,8 @@ written by `bb health --record` after a run in which every check passed: the sel
 application generated from the pinned template, gates green, every gate failed on purpose, one
 task through the loop, the application served, a headless Firefox opening it through the KIT's browser
 pack (`tools/browser/`) where geckodriver and Firefox are installed (skipped, and the row says so,
-where they are not). `bb gates` fails if this block and the records
+where they are not), and the KIT's security pack (`tools/security/`) trying from outside what the
+plan template's architecture document says the template gives. `bb gates` fails if this block and the records
 disagree. The date is the claim; nothing here says it still holds today.
 
 <!-- health:begin -->

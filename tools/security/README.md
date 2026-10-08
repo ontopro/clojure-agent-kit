@@ -93,3 +93,6 @@ the generated application's gates.
 
 Nor the dependencies' advisories or a secret committed by mistake: those are scans over the
 source, not requests, and wait for a project that needs them.
+
+`bb health` runs this pack against the generated application, so every claim of §4 a request
+can try is tried on the day of the run; its record's row is `app security`.

@@ -36,6 +36,10 @@
               down, never merged
     :serve    (:app only) `bb serve`, `GET /` answers 200, the process tree
               stopped, the port free again
+    :browser  (:app only) the KIT's browser pack opens the page in a headless
+              Firefox; skipped, and said, where it cannot run
+    :security (:app only) the KIT's security pack tries from outside what the
+              architecture document's §4 says the template gives
 
   GUIDE, DO NOT INSTALL: a failing check names what failed and what to read;
   nothing here changes the machine. Offline after the template's first fetch.
@@ -486,6 +490,54 @@
                       "\n" tail)))))))
 
 ;; ---------------------------------------------------------------------------
+;; security
+;; ---------------------------------------------------------------------------
+
+(def security-timeout-ms 240000)
+
+(defn check-security
+  "The KIT's security pack, `bb --config <kit>/tools/security/bb.edn check`, run in
+  the application: it serves, sends its requests from outside - headers, cookies,
+  a POST without its token, error pages, static folders - and stops the server.
+  Ok when the task exits 0 and wrote its record: no failing row. So every claim
+  of the plan template's `02-architecture.md` §4 that a request can try is tried
+  on the day of the run, against the application the pin generates; a claim
+  that fails here is either wrong or a fix the template needs.
+
+  The warns and skips travel into the detail, one line each: a warn is the
+  template's known gap (no CSP, Jetty's version), a skip what a generated
+  application gives nothing to try (no form route, no login route, no https),
+  and neither fails the run. The pack needs nothing but `bb`, so nothing is
+  skipped for want of a tool. `run` is `(fn [dir env argv] -> {:exit :out})`,
+  for a test."
+  ([subject] (check-security subject {}))
+  ([{:keys [dir kit] :as subject} {:keys [run]
+                                   :or {run (fn [dir env argv]
+                                              (apply p/shell {:dir dir :out :string :err :string :continue true
+                                                              :extra-env env :timeout security-timeout-ms}
+                                                     argv))}}]
+   (let [out-dir (str (fs/create-temp-dir {:prefix "kit-health-security"}))
+         record-file (fs/path out-dir "security.edn")
+         [{:keys [exit out err]} ms]
+         (timed #(try (run dir {} ["bb" "--config" (str (fs/path kit "tools" "security" "bb.edn"))
+                                   "check" "--out" out-dir])
+                      (catch Exception e {:exit -1 :out "" :err (ex-message e)})))
+         rec (when (fs/exists? record-file)
+               (try (edn/read-string (slurp (str record-file))) (catch Exception _ nil)))
+         ok? (and (= 0 exit) (:ok? rec))
+         tail (str/join "\n" (take-last 6 (str/split-lines (str out err))))]
+     (fs/delete-tree out-dir)
+     (result :security subject ok? ms
+             (if rec
+               (let [{:keys [ok warn fail skipped]} (:counts rec)]
+                 (str/join "\n"
+                           (cons (str ok " ok, " warn " warn, " fail " fail, " skipped " skipped, from outside")
+                                 (for [{:keys [status check says]} (:rows rec)
+                                       :when (#{:fail :warn :skipped} status)]
+                                   (str (name status) " " (name check) ": " says)))))
+               (str "the security pack's check exited " exit ", no record written\n" tail))))))
+
+;; ---------------------------------------------------------------------------
 ;; the generated application
 ;; ---------------------------------------------------------------------------
 
@@ -654,7 +706,8 @@
                        :red (check-red subject)
                        :loop (check-loop subject)
                        :serve (check-serve subject)
-                       :browser (check-browser subject))]]
+                       :browser (check-browser subject)
+                       :security (check-security subject))]]
          (do (show r) r))))
 
 (defn -main
@@ -686,7 +739,7 @@
                 (let [{:keys [workspace app pin local-root ms]} (generate-app! kit)]
                   (say (format "  generated in %.1fs: %s%s" (/ ms 1000.0) app
                                (if local-root (str " - from LOCAL CLONE " local-root ", not the pin") "")))
-                  (let [rs (run-subject! (app-subject kit workspace app app-name pin) [:gates :red :loop :serve :browser])]
+                  (let [rs (run-subject! (app-subject kit workspace app app-name pin) [:gates :red :loop :serve :browser :security])]
                     (if (flags "--keep")
                       (say "\n  kept: " workspace)
                       (fs/delete-tree (fs/parent workspace)))

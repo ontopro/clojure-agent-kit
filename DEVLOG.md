@@ -40,6 +40,18 @@ until a workflow runs it on push.
 
 ## 2026-10-07
 
+### `bb health` runs the security pack against the generated application
+
+Row 115. The health check's ninth check, `app security`, after the browser's: the KIT's
+security pack run in the generated application, serving it and stopping it as the browser
+check does, ok when it exits 0 with its record. So every claim of `02-architecture.md` §4 a
+request can try is tried on the day of a health run against the application the pin generates,
+and a claim that stops holding fails the run instead of waiting for a project to find it. The
+warns and skips travel into the detail, one line each - no CSP, Jetty's version, Jetty's own
+400 pages, and nothing to try for forms, logins or TLS in an application that has none - and
+neither fails the run. The pack needs only `bb`, so the check is never skipped for a missing
+tool, and the doctor gains no row. The records follow in their own commit, run on this one.
+
 ### The architecture document's headers claim, as a request found it
 
 `02-architecture.md` §4 said the template's headers are on every response, a page not found, a
