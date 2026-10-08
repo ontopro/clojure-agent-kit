@@ -51,6 +51,16 @@ the template fork's tags and version the template, not the KIT.
 
 ## 2026-10-08
 
+### `bb security-review`: a review whose findings are failing tests (row 121)
+
+The reviewer is a model with the five tools in the sandbox, in one of two stances: the tracer, given the
+repository and asked to follow requests through routes, middleware and the state they share, and the
+change reviewer, given the stage's diff. The prompt asks for a test of its own for each concern, run to
+see it fail, and says in so many words that finding nothing is a complete answer and an invented finding
+costs its readers more than a missed one; an answer with no findings block is reported as saying
+nothing, not as a clean review. The tests it wrote are collected from the clone and kept beside the
+record. The command is a real model call and says so before it spends.
+
 ### A candidate line is expanded by the catalogue
 
 The bake-off turned a line like "anthropic/claude-fable-5.1 high" into a role block with three functions of its
