@@ -61,6 +61,18 @@ costs its readers more than a missed one; an answer with no findings block is re
 nothing, not as a clean review. The tests it wrote are collected from the clone and kept beside the
 record. The command is a real model call and says so before it spends.
 
+### A report after every bake-off (row 121)
+
+At the person's request, a run no longer ends at a table. `bb security-bake-off` records each invocation
+(when it started and finished, the models, the settings, the KIT commit) and writes `report.md` from the
+folder's records: time per reading and model split into the sandbox start, the review and the scoring,
+with the work added up against the wall-clock; cost per reading and model, with a cost a host has not yet
+reported said and left out; tokens - uncached and cached input, output, reasoning - per reading and
+model; how each reading went (completions, tool calls by kind and per completion, errors, tests written
+and rewritten, how it ended); and the result per fault found, in cost, work and tokens. Every figure is
+from a record. `--report <dir>` writes it again for a run already made - bake-off 1's was made that way,
+without a sandbox start or a wall-clock, which it was not recorded with.
+
 ### The reviewer's tests run in a fresh copy, not in the clone they were written in (row 121)
 
 One of GLM-5.3-prime's tests wrote a decoy file into `target/` and threw `FileNotFoundException` when scored

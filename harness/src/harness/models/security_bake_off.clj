@@ -20,6 +20,7 @@
   PURE UP TO THE EDGE: `jobs`, `row` and `render` are functions of data; `run-readings!` runs them."
   (:require
    [babashka.fs :as fs]
+   [babashka.process :as p]
    [clojure.edn :as edn]
    [clojure.pprint :as pp]
    [clojure.string :as str]
@@ -90,11 +91,201 @@
                    (str "\n- " candidate ": " note)))
        "\n"))
 
+(defn- read-edn [f] (when (fs/exists? f) (edn/read-string (slurp (str f)))))
+
+;; ---------------------------------------------------------------------------
+;; the report: time, cost, tokens, behaviour
+;; ---------------------------------------------------------------------------
+
+(defn clock
+  "Milliseconds as `m:ss` (or `h:mm:ss`); `—` when not recorded."
+  [ms]
+  (if (nil? ms)
+    "—"
+    (let [s (quot (long ms) 1000) h (quot s 3600) m (quot (rem s 3600) 60) sec (rem s 60)]
+      (if (pos? h) (format "%d:%02d:%02d" h m sec) (format "%d:%02d" m sec)))))
+
+(defn grouped
+  "A count with thousands separators."
+  [n]
+  (if (nil? n) "—" (format "%,d" (long n))))
+
+(defn dollars [x] (if (nil? x) "not reported" (format "$%.2f" (double x))))
+
+(defn token-usage
+  "The tokens of a review, summed over its completions' steps: uncached input, input read from the
+  cache, input written to it, output, and reasoning where the host reports it."
+  [steps]
+  (let [sum (fn [k] (reduce + 0 (keep #(get-in % [:usage k]) steps)))]
+    {:in (sum :in) :cache-read (sum :cache-read) :cache-write (sum :cache-write) :out (sum :out)
+     :reasoning (reduce + 0 (keep :reasoning-tokens steps))}))
+
+(defn reading-metrics
+  "Everything the report says of one reading, from its review record and its score."
+  [{:keys [id candidate case review score]}]
+  (let [calls (:calls review)
+        by-tool (frequencies (map first calls))
+        writes (for [t (:turns review) c (:calls t) :when (= "write_test" (:tool c))] (get-in c [:args :path]))
+        n (or (:iterations review) 0)
+        u (token-usage (:steps review))
+        found (count (:found score))
+        planted (+ found (count (:missed score)))]
+    {:id id :candidate candidate :case case
+     :review-ms (:ms review) :sandbox-ms (:sandbox-ms review) :score-ms (:ms score)
+     :work-ms (when (:ms review) (+ (:ms review) (or (:sandbox-ms review) 0) (or (:ms score) 0)))
+     :usage u :tokens (+ (:in u) (:cache-read u) (:cache-write u) (:out u))
+     :cost (:cost review)
+     :completions n :capped? (boolean (:capped? review)) :refused? (boolean (:refused? review))
+     :answered? (boolean (and (some? (:findings review)) (not (:refused? review))))
+     :calls (count calls) :by-tool by-tool
+     :calls-per-completion (when (pos? n) (/ (count calls) (double n)))
+     :call-errors (count (filter #(nth % 2 nil) calls))
+     :tests-written (count (distinct writes)) :test-writes (count writes)
+     :claims (count (:findings review))
+     :found found :planted planted :counts (:counts score)
+     :careful-failing (count (filter #(= :fails (:clean %)) (vals (:tests score))))}))
+
+(defn- sum-by [k ms] (reduce + 0 (keep k ms)))
+
+(defn- sum-or-nil
+  "The sum, or nil when no reading has the figure: a total of nothing is not zero."
+  [k ms]
+  (when (some some? (map k ms)) (sum-by k ms)))
+
+(defn- all-known? [k ms] (every? #(some? (k %)) ms))
+
+(defn model-totals
+  "One candidate's readings added up."
+  [ms]
+  (let [cost-known? (all-known? :cost ms)
+        found (sum-by :found (filter #(= :faulted (:case %)) ms))
+        faulted (filter #(= :faulted (:case %)) ms)]
+    {:candidate (:candidate (first ms))
+     :review-ms (sum-or-nil :review-ms ms) :sandbox-ms (sum-or-nil :sandbox-ms ms) :score-ms (sum-or-nil :score-ms ms)
+     :work-ms (sum-or-nil :work-ms ms)
+     :in (sum-by #(get-in % [:usage :in]) ms) :cache-read (sum-by #(get-in % [:usage :cache-read]) ms)
+     :cache-write (sum-by #(get-in % [:usage :cache-write]) ms) :out (sum-by #(get-in % [:usage :out]) ms)
+     :reasoning (sum-by #(get-in % [:usage :reasoning]) ms)
+     :tokens (sum-by :tokens ms)
+     :cost (sum-by :cost ms) :cost-known? cost-known?
+     :completions (sum-by :completions ms) :calls (sum-by :calls ms)
+     :found found :planted (sum-by :planted faulted)
+     :faulted-work-ms (sum-by :work-ms faulted)}))
+
+(defn- per-fault [x found] (when (and x (pos? found)) (/ x (double found))))
+
+(defn- table [head rows]
+  (str "| " (str/join " | " head) " |\n|" (str/join "|" (repeat (count head) "---")) "|\n"
+       (str/join "\n" (for [r rows] (str "| " (str/join " | " r) " |"))) "\n"))
+
+(defn report
+  "The report, as Markdown. `run` is `{:invocations [{:started :finished :elapsed-ms :kit-commit
+  :models :rounds :parallel :fixture} ...]}` (empty for a run made before they were recorded) and
+  `readings` the folder's readings as `reading-metrics` takes them. Every figure is from a record;
+  a figure no record carries is `—` or `not reported`, never an estimate."
+  [title run readings]
+  (let [ms (mapv reading-metrics readings)
+        by-cand (group-by :candidate ms)
+        totals (mapv model-totals (vals by-cand))
+        inv (:invocations run)
+        elapsed (when (seq inv) (sum-by :elapsed-ms inv))
+        work (sum-by :work-ms ms)
+        all-cost-known? (all-known? :cost ms)
+        label (fn [m] (str (:candidate m) " " (name (:case m))))]
+    (str "# " title "\n\n"
+         "- **Run:** " (if (seq inv)
+                         (str (str/join "; " (for [i inv] (str (:started i) " → " (:finished i)))) "; KIT " (str/join ", " (distinct (keep :kit-commit inv))))
+                         "made before runs were recorded")
+         (when (seq inv)
+           (str "\n- **Models:** " (str/join ", " (distinct (mapcat :models inv))) " · tracer · rounds " (str/join "/" (distinct (keep :rounds inv)))
+                " · " (str/join "/" (distinct (keep :parallel inv))) " readings at a time"))
+         "\n\n"
+
+         "## Time\n\n"
+         (table ["Reading" "Sandbox start" "Review" "Scoring" "Total"]
+                (concat
+                 (for [m (sort-by (juxt :candidate :case) ms)]
+                   [(label m) (clock (:sandbox-ms m)) (clock (:review-ms m)) (clock (:score-ms m)) (clock (:work-ms m))])
+                 (for [t (sort-by :candidate totals)]
+                   [(str "**" (:candidate t) " total**") (clock (:sandbox-ms t)) (clock (:review-ms t)) (clock (:score-ms t)) (str "**" (clock (:work-ms t)) "**")])))
+         "\n**Work: " (clock work) "** (the readings added up)"
+         (when elapsed
+           (str " · **elapsed: " (clock elapsed) "** wall-clock"
+                (when (pos? work) (format " · %.1f readings' work per minute of waiting" (/ (/ work 60000.0) (max 0.01 (/ elapsed 60000.0)))))))
+         "\n\n"
+
+         "## Cost\n\n"
+         (table ["Reading" "Cost"]
+                (concat (for [m (sort-by (juxt :candidate :case) ms)] [(label m) (dollars (:cost m))])
+                        (for [t (sort-by :candidate totals)]
+                          [(str "**" (:candidate t) " total**") (str "**" (if (:cost-known? t) (dollars (:cost t)) (str (dollars (:cost t)) " so far, some not reported")) "**")])))
+         "\n**Total: " (if all-cost-known? (dollars (sum-by :cost ms)) (str (dollars (sum-by :cost ms)) " so far; some readings' costs are not reported yet (`bb reprice` fetches them)")) "**\n\n"
+
+         "## Tokens\n\n"
+         (table ["Reading" "Input (uncached)" "Cache read" "Cache write" "Output" "Reasoning" "All"]
+                (concat (for [m (sort-by (juxt :candidate :case) ms)
+                              :let [u (:usage m)]]
+                          [(label m) (grouped (:in u)) (grouped (:cache-read u)) (grouped (:cache-write u)) (grouped (:out u)) (grouped (:reasoning u)) (grouped (:tokens m))])
+                        (for [t (sort-by :candidate totals)]
+                          [(str "**" (:candidate t) " total**") (grouped (:in t)) (grouped (:cache-read t)) (grouped (:cache-write t)) (grouped (:out t)) (grouped (:reasoning t)) (str "**" (grouped (:tokens t)) "**")])))
+         "\n**Total: " (grouped (sum-by :tokens ms)) " tokens** (all = uncached input + cache read + cache write + output; reasoning tokens are part of output, not extra)\n\n"
+
+         "## How each reading went\n\n"
+         (table ["Reading" "Completions" "Tool calls (per completion)" "Tools" "Call errors" "Tests written (writes)" "Ended"]
+                (for [m (sort-by (juxt :candidate :case) ms)]
+                  [(label m) (:completions m)
+                   (format "%d (%.1f)" (:calls m) (or (:calls-per-completion m) 0.0))
+                   (str/join ", " (for [[k v] (sort-by (comp - val) (:by-tool m))] (str k " " v)))
+                   (:call-errors m)
+                   (str (:tests-written m) " (" (:test-writes m) ")")
+                   (cond (:refused? m) "refused" (:capped? m) "hit the round limit" (:answered? m) "answered" :else "no answer")]))
+         "\n"
+
+         "## Result against the answer key\n\n"
+         (table ["Candidate" "Planted faults found" "Claims: shown / not reproduced / to mark" "Tests failing on the careful branch" "Cost per fault found" "Work per fault found" "Tokens per fault found"]
+                (for [t (sort-by :candidate totals)
+                      :let [c (first (filter #(and (= (:candidate t) (:candidate %)) (= :faulted (:case %))) ms))
+                            ctrl (first (filter #(and (= (:candidate t) (:candidate %)) (= :clean (:case %))) ms))
+                            counts (:counts c)
+                            faulted-tokens (:tokens c)]]
+                  [(:candidate t) (str (:found t) " of " (:planted t))
+                   (str (get counts :hit 0) " / " (get counts :not-reproduced 0) " / " (+ (get counts :fails-on-both 0) (get counts :unattributed 0)))
+                   (:careful-failing ctrl)
+                   (if-let [x (per-fault (:cost c) (:found t))] (dollars x) "—")
+                   (if-let [x (per-fault (:work-ms c) (:found t))] (clock x) "—")
+                   (if-let [x (per-fault faulted-tokens (:found t))] (grouped (Math/round x)) "—")]))
+         "\nCost, work and tokens per fault are the faulted-branch reading's, divided by the faults it found.\n\n"
+
+         "## What this report does not carry\n\n"
+         "- The scoring's own sandbox starts are inside its time, not listed apart.\n"
+         "- A reading reused from an earlier run keeps the time and cost it was recorded with; the elapsed figure covers only this run's invocations.\n"
+         "- A cost a host has not yet reported is shown as not reported and left out of the totals.\n")))
+
+(defn- read-folder
+  "The folder's readings: each `<id>.edn` that has a `<id>-score.edn`, with the candidate and branch
+  read from the id (`<candidate>-faulted` or `-clean`)."
+  [out]
+  (vec (for [f (sort (map str (fs/glob out "*.edn")))
+             :let [nm (str (fs/file-name f))
+                   id (str/replace nm #"\.edn$" "")]
+             :when (and (not (str/ends-with? id "-score")) (not= id "run")
+                        (fs/exists? (fs/path out (str id "-score.edn"))))
+             :let [[_ cand kind] (re-matches #"(.+)-(faulted|clean)" id)]
+             :when cand]
+         {:id id :candidate cand :case (keyword kind)
+          :review (read-edn f) :score (read-edn (fs/path out (str id "-score.edn")))})))
+
+(defn report!
+  "Write `report.md` in `out` from the run's `run.edn` and its readings. Returns the path."
+  [out]
+  (let [run (or (read-edn (fs/path out "run.edn")) {:invocations []})
+        file (str (fs/path out "report.md"))]
+    (spit file (report (str "Security bake-off report - " (fs/file-name out)) run (read-folder out)))
+    file))
+
 ;; ---------------------------------------------------------------------------
 ;; the edge
 ;; ---------------------------------------------------------------------------
-
-(defn- read-edn [f] (when (fs/exists? f) (edn/read-string (slurp (str f)))))
 
 (defn- score-reading!
   "Score the review in `rec`, write `sco`, and say how the reading came out. A review with no test
@@ -136,10 +327,26 @@
             {:review (read-edn rec) :score (score-reading! opts cases id rec sco r)})
           (finally (fs/delete-tree scratch)))))))
 
+(defn- kit-commit [kit]
+  (let [r (p/shell {:dir kit :out :string :err :string :continue true} "git" "rev-parse" "--short" "HEAD")]
+    (when (zero? (:exit r)) (str/trim (:out r)))))
+
+(defn- record-invocation!
+  "Append this invocation - when it started and finished, the models, the settings, the KIT commit - to
+  the folder's `run.edn`, which the report reads its elapsed time from. A run that resumes adds a
+  second entry; the report adds them up."
+  [out invocation]
+  (let [f (fs/path out "run.edn")
+        old (or (read-edn f) {:invocations []})]
+    (spit (str f) (with-out-str (pp/pprint (update old :invocations conj invocation))))))
+
 (defn run-readings!
-  "Run every reading, `parallel` at a time, and write `bake-off.md` under `out`. Returns the rows."
-  [{:keys [fixture out models parallel] :as opts}]
-  (let [cases (read-edn (fs/path fixture "cases.edn"))
+  "Run every reading, `parallel` at a time, and write `bake-off.md` and `report.md` under `out`.
+  Returns the rows."
+  [{:keys [fixture out models parallel kit rounds] :as opts}]
+  (let [started (java.time.Instant/now)
+        t0 (System/currentTimeMillis)
+        cases (read-edn (fs/path fixture "cases.edn"))
         listing (catalogue/fetch-listing)
         routes (catalogue/routes)
         cands (mapv #(catalogue/expand-candidate listing routes %) models)
@@ -151,11 +358,18 @@
         by (fn [cand k] (some (fn [[j r]] (when (and (= (:id cand) (:id (:candidate j))) (= k (:case j))) r)) results))
         rows (mapv (fn [c] (row c (by c :faulted) (by c :clean))) cands)]
     (spit (str (fs/path out "bake-off.md")) (render rows))
+    (record-invocation! out {:started (str started) :finished (str (java.time.Instant/now))
+                             :elapsed-ms (- (System/currentTimeMillis) t0)
+                             :kit-commit (kit-commit kit) :models (mapv :model cands)
+                             :rounds (or rounds review/default-rounds) :parallel (or parallel 2)
+                             :fixture (str fixture)})
+    (report! out)
     rows))
 
 (def usage
   (str "bb security-bake-off <fixture-dir> --model \"<model> [effort]\" --model \"<model> [effort]\" ...\n"
        "                         [--out <dir>] [--rounds N] [--parallel N]\n"
+       "bb security-bake-off --report <dir>   write report.md again from a folder's records (no model calls)\n"
        "  <fixture-dir>  what bb security-fixture built (notes/ and cases.edn)\n"
        "  Each model reviews the faulted branch and the careful one as the tracer, and each reading is scored.\n"
        "  REAL MODEL CALLS: it spends money. A stopped run resumes from the folder's records."))
@@ -167,12 +381,16 @@
           (= a "--out") (recur (rest more) (assoc m :out (first more)))
           (= a "--rounds") (recur (rest more) (assoc m :rounds (parse-long (first more))))
           (= a "--parallel") (recur (rest more) (assoc m :parallel (parse-long (first more))))
+          (= a "--report") (recur (rest more) (assoc m :report (first more)))
           (str/starts-with? a "--") (throw (ex-info (str "unknown argument " a "\n" usage) {}))
           :else (recur more (assoc m :fixture a)))))
 
 (defn -main [& args]
-  (let [{:keys [fixture models out rounds parallel]} (parse-args args)
+  (let [{:keys [fixture models out rounds parallel report]} (parse-args args)
         kit (str (fs/normalize (fs/absolutize "..")))]
+    (when report
+      (println (str "  report: " (report! (str (fs/absolutize report)))))
+      (System/exit 0))
     (when-not (and fixture (seq models))
       (println usage)
       (System/exit 2))
@@ -183,4 +401,5 @@
       (let [rows (run-readings! {:kit kit :fixture fixture :out out :models models :rounds rounds :parallel parallel})]
         (println)
         (println (render rows))
-        (println (str "  table: " (fs/path out "bake-off.md")))))))
+        (println (str "  table: " (fs/path out "bake-off.md")))
+        (println (str "  report: " (fs/path out "report.md")))))))

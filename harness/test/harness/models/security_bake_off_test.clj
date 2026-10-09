@@ -4,7 +4,7 @@
   security-bake-off`, never in the gates."
   (:require
    [clojure.string :as str]
-   [clojure.test :refer [deftest is]]
+   [clojure.test :refer [deftest is testing]]
    [harness.models.security-bake-off :as bo]))
 
 (def astra {:id "gpt-6-astra-high" :model "openai/gpt-6-astra"})
@@ -54,3 +54,50 @@
   (let [table (bo/render [(bo/row astra astra-faulted astra-control)])]
     (is (str/includes? table "| gpt-6-astra-high | 3 of 6 | 5 / 2 / 1 | 15 | 6.2 | $2.10 | 2 |"))
     (is (str/includes? table "- gpt-6-astra-high: missed admin-authz, csrf-get, path-escape"))))
+
+(def canned-review
+  {:model "openai/gpt-6-astra" :iterations 12 :ms 243000 :sandbox-ms 25000 :cost 0.80 :findings [{} {}]
+   :capped? false :refused? false
+   :steps [{:usage {:in 10 :out 400 :cache-read 5000 :cache-write 1000} :reasoning-tokens 100}
+           {:usage {:in 5 :out 600 :cache-read 7000 :cache-write 500} :reasoning-tokens 200}]
+   :calls [["read_file" 10 false] ["read_file" 12 false] ["write_test" 5 false] ["run_tests" 900 true]]
+   :turns [{:calls [{:tool "write_test" :args {:path "test/a_test.clj"}}]}
+           {:calls [{:tool "write_test" :args {:path "test/a_test.clj"}} {:tool "write_test" :args {:path "test/b_test.clj"}}]}]})
+
+(deftest a-readings-metrics-are-summed-from-its-records
+  (let [m (bo/reading-metrics {:id "x-faulted" :candidate "x" :case :faulted :review canned-review
+                               :score {:ms 182000 :found {:race ["t"] :idor ["u"]} :missed [:raw-sql]
+                                       :counts {:findings 2 :hit 2} :tests {"a/t" {:clean :passes} "a/u" {:clean :fails}}}})]
+    (is (= {:in 15 :cache-read 12000 :cache-write 1500 :out 1000 :reasoning 300} (:usage m)))
+    (is (= 14515 (:tokens m)) "uncached + cache read + cache write + output; reasoning is part of output")
+    (is (= 450000 (:work-ms m)) "sandbox start + conversation + scoring")
+    (is (= {"read_file" 2 "write_test" 1 "run_tests" 1} (:by-tool m)))
+    (is (= 1 (:call-errors m)))
+    (is (= [2 3] [(:tests-written m) (:test-writes m)]) "three writes to two files")
+    (is (== 4/12 (:calls-per-completion m)))
+    (is (= [2 3 1] [(:found m) (:planted m) (:careful-failing m)]))
+    (is (true? (:answered? m)))))
+
+(deftest the-report-has-time-cost-tokens-and-the-result-and-says-what-it-lacks
+  (let [reading (fn [cand k cost] {:id (str cand "-" (name k)) :candidate cand :case k
+                                   :review (assoc canned-review :cost cost) :score {:ms 60000 :found {:race ["t"]} :missed [:idor] :counts {:findings 1 :hit 1} :tests {}}})
+        run {:invocations [{:started "2026-10-09T01:00:00Z" :finished "2026-10-09T01:20:00Z" :elapsed-ms 1200000
+                            :kit-commit "abc1234" :models ["openai/gpt-6-astra"] :rounds 60 :parallel 2}]}
+        r (bo/report "T" run [(reading "astra" :faulted 0.80) (reading "astra" :clean 0.46)])]
+    (is (str/includes? r "## Time")) (is (str/includes? r "## Cost")) (is (str/includes? r "## Tokens"))
+    (is (str/includes? r "## How each reading went")) (is (str/includes? r "## Result against the answer key"))
+    (is (str/includes? r "| astra faulted | 0:25 | 4:03 | 1:00 | 5:28 |"))
+    (is (str/includes? r "**Work: 10:56** (the readings added up) · **elapsed: 20:00** wall-clock"))
+    (is (str/includes? r "**Total: $1.26**"))
+    (is (str/includes? r "**Total: 29,030 tokens**"))
+    (is (str/includes? r "| astra | 1 of 2 |"))
+    (is (str/includes? r "KIT abc1234"))
+    (testing "a cost not reported is said and left out of the total"
+      (let [r2 (bo/report "T" run [(reading "astra" :faulted 0.80) (reading "astra" :clean nil)])]
+        (is (str/includes? r2 "not reported"))
+        (is (str/includes? r2 "$0.80 so far"))))
+    (testing "a run made before runs were recorded"
+      (let [r3 (bo/report "T" {:invocations []} [(reading "astra" :faulted 0.80)])]
+        (is (str/includes? r3 "made before runs were recorded"))
+        (is (not (str/includes? r3 "wall-clock")))
+        (is (not (str/includes? r3 "**Models:**")))))))

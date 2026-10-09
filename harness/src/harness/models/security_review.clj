@@ -196,12 +196,14 @@
   for a test).
 
   Returns `{:stance :status :findings :no-block? :tests :text :calls :iterations :capped? :ms
-  :model :cost :generation-ids ...}`: `:findings` as `parse-findings` reads them, `:tests` the
+  :sandbox-ms :model :cost :generation-ids ...}` (`:ms` the conversation, `:sandbox-ms` the time
+  to start the sandbox before it): `:findings` as `parse-findings` reads them, `:tests` the
   files the reviewer wrote, `:calls` the tool calls it made as `[name ms error?]`."
   [role stance clone {:keys [kit base rounds requests max-tokens scans sandbox]
                       :or {base "base" rounds default-rounds requests default-requests max-tokens default-max-tokens}}]
   (let [role (assoc-in role [:params :max_tokens] max-tokens)
         facts (assoc (clone-facts clone base) :scans scans)
+        t-sandbox (System/currentTimeMillis)
         sb (or sandbox (sandbox/start! {:kit kit :clone clone}))
         t0 (System/currentTimeMillis)]
     (try
@@ -224,7 +226,8 @@
                 :iterations (:iterations r)
                 :capped? (:capped? r)
                 :error (:error r)
-                :ms (- (System/currentTimeMillis) t0)}
+                :ms (- (System/currentTimeMillis) t0)
+                :sandbox-ms (- t0 t-sandbox)}
                (agent/call-record r role)))
       (finally (when-not sandbox ((:stop! sb)))))))
 
