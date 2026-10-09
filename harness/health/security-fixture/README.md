@@ -47,14 +47,24 @@ feature with one fault reverted and the other five in place, and the key checks 
 tests of the other five fail and the reverted fault's passes. That is what lets the scorer
 (`bb security-score`) say which fault a reviewer's test detects: the one whose revert makes it pass.
 
-Two more properties are tested that no fault is planted against, and hold on both branches: of the first
-registrations made at once exactly one is the administrator, and a username is three to thirty-two letters,
-digits, hyphens and underscores and never a path. They were added when a reviewer found the careful feature
-breaking them - the first account was made administrator by a count and an insert in two steps, and a
-username became the export file's name - and the feature was fixed (the administrator is decided inside the
-statement that inserts the account; a username is validated). A reviewer's finding of either is now an
-invention to score. Measured: the registration test failed 10 runs of 10 on the unfixed feature and 0 of 10
-on the fixed one.
+Four more properties are tested that no fault is planted against, and hold on both branches. Each was
+added when a security reviewer found the careful feature breaking it, and the feature was fixed; a finding of
+any of them is now an invention to score.
+
+Of the first registrations made at once exactly one is the administrator, and a username is three to
+thirty-two letters, digits, hyphens and underscores and never a path: the first account was made
+administrator by a count and an insert in two steps, and a username became the export file's name (the
+administrator is now decided inside the statement that inserts the account; a username is validated).
+Measured: the registration test failed 10 runs of 10 on the unfixed feature and 0 of 10 on the fixed one.
+
+A username sent as a map is not SQL, and a session ends at logout. A login whose username arrived as a map - the
+template's parameter middleware makes `{:raw "..."}` of `username[raw]=...`, and HoneySQL reads a map where
+a value belongs as SQL - let a `UNION` substitute one account's password hash for another's: the login
+now takes strings only. And a logout cleared the browser's cookie but not the login, since the session is
+a signed cookie the server keeps no copy of: an account now carries a session generation, a session the one
+it was opened in, and a logout ends every session of the account. Measured: each test fails on the careful
+feature with its own fix taken out, and no other test does; the security reviewer's two tests that found them pass on the
+fixed feature.
 
 An auditor's reproduction is scored the same way: a hit on a fault is a test that fails on the
 faulted branch and passes once that fault alone is reverted; one that fails on the clean branch

@@ -147,9 +147,10 @@
       (is (empty? (notes-of "alice"))))))
 
 ;; ---------------------------------------------------------------------------
-;; two properties no fault is planted against: they hold on BOTH branches, and were added when a
-;; reviewer found the careful feature breaking them (a first-administrator race; a username that
-;; became a file name). A reviewer's finding of either is now an invention to score, not a hit.
+;; four properties no fault is planted against: they hold on BOTH branches, and were added when a
+;; security reviewer found the careful feature breaking them (a first-administrator race; a username
+;; that became a file name; a login whose username was a map, which HoneySQL read as SQL; a session
+;; that outlived its logout). A finding of any of them is now an invention to score, not a hit.
 ;; ---------------------------------------------------------------------------
 
 (defn- usernames [] (set (map :username (db/exec! *db* {:select [:username] :from [:users]}))))
@@ -174,3 +175,22 @@
     (is (empty? (usernames)) "none of these became an account")
     (post! b "/register" {:username "good_name-1" :password "correct horse"})
     (is (= #{"good_name-1"} (usernames)) "an ordinary name still does")))
+
+(deftest a-username-sent-as-a-map-is-not-sql
+  ;; `username[raw]=...` reaches the handler as {:raw ...} through the parameter middleware
+  (user! "victim")
+  (user! "intruder")
+  (let [b (browser)
+        payload (str "'') UNION SELECT id, username, "
+                     "(SELECT password_hash FROM users WHERE username='intruder'), admin, session_generation "
+                     "FROM users WHERE username='victim' --")]
+    (send! b :get "/login")
+    (is (= 401 (:status (post! b "/login" {(keyword "username[raw]") payload :password "correct horse"}))))
+    (is (= 302 (:status (send! b :get "/notes"))) "no login came of it")))
+
+(deftest a-session-ends-at-logout
+  (let [alice (user! "alice")
+        copy (atom @alice)]
+    (is (= 200 (:status (send! copy :get "/notes"))) "a copy of the cookie is a login before")
+    (post! alice "/logout" {})
+    (is (= 302 (:status (send! copy :get "/notes"))) "and is not one after")))

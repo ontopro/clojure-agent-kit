@@ -33,13 +33,13 @@
 
 (defn find-by-username
   [conn username]
-  (db/exec-one! conn {:select [:id :username :password_hash :admin]
+  (db/exec-one! conn {:select [:id :username :password_hash :admin :session_generation]
                       :from [:users]
                       :where [:= :username username]}))
 
 (defn find-by-id
   [conn id]
-  (db/exec-one! conn {:select [:id :username :admin]
+  (db/exec-one! conn {:select [:id :username :admin :session_generation]
                       :from [:users]
                       :where [:= :id id]}))
 
@@ -66,11 +66,23 @@
       (catch java.sql.SQLException _ nil))))
 
 (defn authenticate
-  "The account for `username` when `password` is its password, else nil."
+  "The account for `username` when `password` is its password, else nil. Both must be strings: the
+  parameter middleware makes a map of `username[x]=...`, and a map where a value belongs is SQL to
+  HoneySQL."
   [conn username password]
-  (let [user (find-by-username conn username)]
-    (when (and user (password-matches? password (:password-hash user)))
-      user)))
+  (when (and (string? username) (string? password))
+    (let [user (find-by-username conn username)]
+      (when (and user (password-matches? password (:password-hash user)))
+        user))))
+
+(defn end-sessions!
+  "End every session of the account: a session carries the generation it was opened in, and one
+  from an earlier generation is no longer a login. The session is a signed cookie the server keeps
+  no copy of, so this is the only way one stops working."
+  [conn user-id]
+  (db/exec-one! conn {:update :users
+                      :set {:session_generation [:+ :session_generation 1]}
+                      :where [:= :id user-id]}))
 
 (defn all-users
   [conn]

@@ -29,8 +29,12 @@
 ;; ---------------------------------------------------------------------------
 
 (defn current-user
+  "The account the session is a login of: none once that account's sessions were ended."
   [request]
-  (some->> (get-in request [:session :user-id]) (accounts/find-by-id (conn request))))
+  (let [{:keys [user-id generation]} (:session request)
+        user (some->> user-id (accounts/find-by-id (conn request)))]
+    (when (and user (= generation (:session-generation user)))
+      user)))
 
 (defn wrap-require-login
   "Only a logged-in user past here; anyone else to the login page."
@@ -69,11 +73,15 @@
     :as request}]
   (if-let [user (accounts/authenticate (conn request) username password)]
     (-> (response/redirect "/notes" :see-other)
-        (assoc :session {:user-id (:id user)}))
+        (assoc :session {:user-id (:id user) :generation (:session-generation user)}))
     (-> (page [:h1 "Log in"] [:p "Wrong username or password."]) (response/status 401))))
 
 (defn logout!
-  [_]
+  "Log out: the account's sessions ended, not only this browser's cookie cleared - a copy of the
+  cookie would otherwise still be a login."
+  [request]
+  (when-let [user (current-user request)]
+    (accounts/end-sessions! (conn request) (:id user)))
   (-> (response/redirect "/login" :see-other) (assoc :session nil)))
 
 (defn register-page

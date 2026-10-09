@@ -51,6 +51,20 @@ the template fork's tags and version the template, not the KIT.
 
 ## 2026-10-08
 
+### Two flaws in the fixture's careful feature, found by the security reviewer (row 121)
+
+The careful branch is meant to have nothing to find, and a reviewer's test that fails there is either a
+wrong test or a real flaw nobody planted. Three such tests from one model's reading were run by hand on a
+fresh clone. Two were real. The template's parameter middleware makes a map of `username[raw]=...`, and
+HoneySQL reads a map where a value belongs as SQL, so a login could `UNION` another account's password hash
+in and sign in as the first account - the administrator - with the attacker's own password. And a logout
+cleared the browser's cookie but not the login: the session is a signed cookie the server keeps no copy
+of, so a copy of it still read a private note. The login now takes strings only, and an account carries a
+session generation that a logout advances. A control reference test for each holds on both branches and
+fails with only its own fix taken out; the builder's key holds. The third was a test fault: it counted a
+query only the faulted branch makes. Both flaws are a template default meeting a feature; whether the
+template should change is the person's call.
+
 ### The security reviewer is named as one (row 121)
 
 `reviewer` is the code reviewer, the `:reviewer` role every task's patch passes; the security reading's
