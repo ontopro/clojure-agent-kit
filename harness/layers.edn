@@ -53,7 +53,7 @@
  harness.models.security-review-sandbox #{}
  harness.models.security-score #{harness.models.security-review-sandbox harness.models.security-review-tools}
  harness.models.security-bake-off #{harness.models.catalogue harness.models.security-review harness.models.security-score}
- harness.models.security-review #{harness.models.agent harness.models.catalogue
+ harness.models.security-review #{harness.models.agent harness.models.catalogue harness.models.profile
                                     harness.models.security-review-sandbox harness.models.security-review-tools}
  harness.money.balance       #{harness.models.profile}
  harness.money.reprice       #{harness.models.profile harness.models.provenance harness.money.report}

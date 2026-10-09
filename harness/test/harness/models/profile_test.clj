@@ -22,6 +22,8 @@
                            :endpoint "https://example.test"}
            :blueprint-reviewer {:family :anthropic :model "m" :shape :openai
                                 :endpoint "https://example.test"}
+           :security-reviewer {:family :openai :model "m" :shape :openai
+                               :endpoint "https://example.test"}
            :orchestrator {:family :anthropic :model "m" :shape :anthropic
                           :endpoint "https://example.test"}}})
 
@@ -188,8 +190,8 @@
                             :endpoint "https://example.test"})))))
 
 (deftest every-role-is-required
-  (is (= [:plan-reviewer :blueprint-reviewer :spec-reviewer :coder :tester :reviewer :orchestrator] profile/roles)
-      "seven: the plan reviewer meets a build first, in stage 0's plan step; the Blueprint reviewer once per stage; the spec reviewer before every start; the Orchestrator last")
+  (is (= [:plan-reviewer :blueprint-reviewer :spec-reviewer :coder :tester :reviewer :orchestrator :security-reviewer] profile/roles)
+      "eight: the plan reviewer meets a build first, in stage 0's plan step; the Blueprint reviewer once per stage; the spec reviewer before every start; the security reviewer last, at every stage's end")
   (doseq [r profile/roles]
     (is (= [:invalid] (errors (update base :roles dissoc r)))
         (str "a profile without a " (name r) " describes a build that cannot run"))))
@@ -267,8 +269,9 @@
     (is (re-find #"^blueprint-reviewer\s+anthropic\s+m\s" blueprint-reviewer))
     (is (re-find #"^spec-reviewer\s+openai\s+m\s" spec-reviewer))
     (is (re-find #"^coder\s+anthropic\s+m\s" coder))
-    (is (= 7 (count (rest (profile/summary base)))) "one line per role, the Orchestrator's last")
-    (is (re-find #"^orchestrator\s+anthropic" (last more)))))
+    (is (= 8 (count (rest (profile/summary base)))) "one line per role, the security reviewer's last")
+    (is (re-find #"^orchestrator\s+anthropic" (last (butlast more))))
+    (is (re-find #"^security-reviewer\s+openai" (last more)))))
 
 (deftest the-shipped-plan-reviewer-is-the-spec-reviewers-selection
   ;; Its own role from 2026-10-06, so a project can set it apart; the shipped

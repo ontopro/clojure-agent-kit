@@ -156,3 +156,19 @@
   (is (true? (sr/refused? [{:finish-reason "content_filter"}])))
   (is (false? (sr/refused? [{:finish-reason "stop"} {:finish-reason "length"} {}])))
   (is (false? (sr/refused? []))))
+
+(deftest the-security-reviewer-can-come-from-a-profile
+  (let [dir (fs/create-temp-dir {:prefix "kit-sr-profile"})
+        with (str (fs/path dir "with.edn"))
+        without (str (fs/path dir "without.edn"))]
+    (spit with (pr-str {:seat :claude
+                        :roles {:security-reviewer {:family :openai :model "openai/gpt-6-astra" :shape :openai
+                                                    :endpoint "https://example.test"
+                                                    :params {:reasoning_effort "high"}}}}))
+    (spit without (pr-str {:seat :claude :roles {}}))
+    (let [c (sr/role-from-profile with)]
+      (is (= "gpt-6-astra" (:id c)) "the record is named by the model, as with --model")
+      (is (= "high" (:effort c)))
+      (is (= :openai (get-in c [:profile :family])) "the role block is what reads"))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"has no :security-reviewer"
+                          (sr/role-from-profile without)))))

@@ -23,6 +23,7 @@
    [clojure.string :as str]
    [harness.models.agent :as agent]
    [harness.models.catalogue :as catalogue]
+   [harness.models.profile :as profile]
    [harness.models.security-review-sandbox :as sandbox]
    [harness.models.security-review-tools :as security-review-tools]))
 
@@ -249,10 +250,11 @@
 ;; ---------------------------------------------------------------------------
 
 (def usage
-  (str "bb security-review <clone> --stance tracer|diff --model \"<model> [effort]\" [--base <rev>]\n"
-       "                          [--rounds N] [--max-tokens N] [--out <dir>]\n"
-       "  <clone>  a git clone of the application, with the revision its change is from (default: base)\n"
-       "  --model  as bb models names it and the bake-off takes it, e.g. \"anthropic/claude-fable-5.1 high\"\n"
+  (str "bb security-review <clone> --stance tracer|diff [--model \"<model> [effort]\" | --profile <profile.edn>]\n"
+       "                          [--base <rev>] [--rounds N] [--max-tokens N] [--out <dir>]\n"
+       "  <clone>    a git clone of the application, with the revision its change is from (default: base)\n"
+       "  --model    as bb models names it and the bake-off takes it, e.g. \"openai/gpt-6-astra high\"\n"
+       "  --profile  the profile whose :security-reviewer reads; without --model or --profile, the workspace's\n"
        "A real model call: it spends money (up to --rounds completions, default " default-rounds ")."))
 
 (defn parse-args [args]
@@ -260,6 +262,7 @@
     (cond (nil? a) m
           (= a "--stance") (recur (rest more) (assoc m :stance (keyword (first more))))
           (= a "--model") (recur (rest more) (assoc m :model (first more)))
+          (= a "--profile") (recur (rest more) (assoc m :profile (first more)))
           (= a "--base") (recur (rest more) (assoc m :base (first more)))
           (= a "--rounds") (recur (rest more) (assoc m :rounds (parse-long (first more))))
           (= a "--max-tokens") (recur (rest more) (assoc m :max-tokens (parse-long (first more))))
@@ -282,14 +285,31 @@
             (when why (println (str "      " why)))))
   (println (str "  tests it wrote: " (if (seq (:tests r)) (str/join ", " (keys (:tests r))) "none"))))
 
+(defn role-from-profile
+  "The `:security-reviewer` of the profile at `path`, as a candidate: `{:profile role :id _ :model _
+  :effort _}`. Throws naming the file when the profile has no such role - one written before the
+  role existed; `bb doctor` in its workspace says so too."
+  [path]
+  (let [role (get-in (profile/read-profile path) [:roles :security-reviewer])]
+    (when-not role
+      (throw (ex-info (str path " has no :security-reviewer - add one (the shipped examples have it), or pass --model")
+                      {:profile (str path)})))
+    {:profile role
+     :id (last (str/split (:model role) #"/"))
+     :model (:model role)
+     :effort (get-in role [:params :reasoning_effort])}))
+
 (defn -main [& args]
-  (let [{:keys [positional stance model base rounds max-tokens out]} (parse-args args)
+  (let [{:keys [positional stance model base rounds max-tokens out] :as opts} (parse-args args)
         [clone] positional
-        kit (str (fs/normalize (fs/absolutize "..")))]
-    (when-not (and clone (#{:tracer :diff} stance) model)
+        kit (str (fs/normalize (fs/absolutize "..")))
+        profile-path (when-not model (or (:profile opts) (profile/project-profile)))]
+    (when-not (and clone (#{:tracer :diff} stance) (or model profile-path))
       (println usage)
       (System/exit 2))
-    (let [cand (catalogue/expand-candidate (catalogue/fetch-listing) (catalogue/routes) model)
+    (let [cand (if model
+                 (catalogue/expand-candidate (catalogue/fetch-listing) (catalogue/routes) model)
+                 (role-from-profile profile-path))
           id (str (:id cand) "-" (name stance) "-" (.format (java.time.LocalDateTime/now) (java.time.format.DateTimeFormatter/ofPattern "yyyyMMdd-HHmmss")))
           out (or out (str (fs/path kit ".local" "security-review")))]
       (println (str "  " (name stance) " review of " clone " by " (:model cand) " (" (:effort cand) "), up to " (or rounds default-rounds) " completions"))

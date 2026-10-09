@@ -108,15 +108,20 @@
   every stage plan cold, and the seat wrote them, so a reader of the seat's
   family would read each sentence the way its author did. Its own role from
   2026-10-06 (it borrowed the spec reviewer's block before), set to the spec
-  reviewer's selection in both shipped examples, and held to the same rule."
-  [:tester :reviewer :spec-reviewer :plan-reviewer])
+  reviewer's selection in both shipped examples, and held to the same rule.
+
+  AND THE SECURITY REVIEWER (2026-10-08): it reads the merged application to
+  find what the Coder got wrong, so a model of the Coder's family would share
+  the blind spots it is there to look past."
+  [:tester :reviewer :spec-reviewer :plan-reviewer :security-reviewer])
 
 (def roles
   "Every role a profile configures, in the order a build meets them: the plan
   reviewer in every stage's plan step, stage 0's first; the Blueprint reviewer
   once per stage before sign-off; the spec reviewer before every `start`; then
-  the two authors; then the two judges."
-  [:plan-reviewer :blueprint-reviewer :spec-reviewer :coder :tester :reviewer :orchestrator])
+  the two authors; then the two judges; then the security reviewer, once at
+  every stage's end."
+  [:plan-reviewer :blueprint-reviewer :spec-reviewer :coder :tester :reviewer :orchestrator :security-reviewer])
 
 (defn read-profile
   "The profile at `path`, or a throw naming the file.

@@ -51,6 +51,15 @@ the template fork's tags and version the template, not the KIT.
 
 ## 2026-10-08
 
+### The security reviewer is a profile role (row 121)
+
+The eighth role, and required, as the plan reviewer was when it became one: a profile without it is
+refused, and `bb doctor` in a workspace made before says the role is missing. It reads what the Coder wrote
+in order to disagree with it, so it is a verifier and `bb profile` holds it to another family than the
+Coder's. Both shipped examples set it to GPT-6 Astra at high effort, pinned to OpenAI - the choice of two
+bake-offs on the planted-fault fixture, said in the profile's comment in words. `bb security-review` reads
+that role when it is not given a model, so a stage's end runs it from the workspace's own profile.
+
 ### A request value is checked before it is used: a KIT rule (row 121)
 
 The login flaw in the fixture passed every role that wrote or read the code, because the type the code

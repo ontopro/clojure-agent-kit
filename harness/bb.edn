@@ -59,7 +59,7 @@
           :task (apply health/-main *command-line-args*)}
 
   ;; NEVER part of `gates` either: it generates an application and runs its tests twice.
-  security-review {:doc "bb security-review <clone> --stance tracer|diff --model \"<model> [effort]\" [--base <rev>] [--rounds N] [--out <dir>]: a security review of the application cloned in <clone> - a model in the security reviewer's seat, the five review tools, a sandbox with no network the application runs in; findings each backed by a failing test of its own, the tests it wrote beside the record. A real model call: it spends money. Never in `bb gates`"
+  security-review {:doc "bb security-review <clone> --stance tracer|diff [--model \"<model> [effort]\" | --profile <profile.edn>] [--base <rev>] [--rounds N] [--out <dir>]: a security review of the application cloned in <clone> - a model in the security reviewer's seat (--model, or the profile's :security-reviewer; the workspace's profile when neither is given), the five review tools, a sandbox with no network the application runs in; findings each backed by a failing test of its own, the tests it wrote beside the record. A real model call: it spends money. Never in `bb gates`"
                    :requires ([harness.models.security-review :as security-review])
                    :task (apply security-review/-main *command-line-args*)}
 

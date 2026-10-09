@@ -286,6 +286,30 @@
                                 :max_tokens 16000
                                 :provider {:only ["anthropic"] :allow_fallbacks false}}}
 
+  ;; SECURITY REVIEWER — gpt-6-astra at high effort, over OpenRouter pinned to OpenAI. Dated
+  ;; selection 2026-10-08, by two bake-offs on the KIT's planted-fault fixture (`bb security-bake-off`):
+  ;; once per stage, at its end, it reads the merged application with five tools in a sandbox with
+  ;; no network, and a finding counts only when a test of its own fails. It found six and five of
+  ;; six planted faults, and on the careful branch its only failing tests were two real flaws
+  ;; nobody had planted; the other candidate found three in every run and never answered inside
+  ;; its round limit. Fable 5.1 declined the review (its safeguard, three runs) and was
+  ;; not a candidate after.
+  ;;
+  ;; ONE SECURITY REVIEWER FOR NOW, the person's decision: a second from another family may be
+  ;; tried later for diversity. It is a verifier - it reads what the Coder wrote to disagree
+  ;; with it - so `bb profile` holds it to another family than the Coder's.
+  ;;
+  ;; WHAT IT COSTS: $0.46 to $1.50 a reading of the fixture, three to eight minutes of review;
+  ;; a real stage is larger. Its reproduced findings go to triage (`bb security-route`), its hypotheses to the
+  ;; person for the threat model.
+  :security-reviewer {:family :openai
+                      :model "openai/gpt-6-astra"
+                      :shape :openai
+                      :endpoint "https://openrouter.ai/api/v1"
+                      :key-env "OPENROUTER_API_KEY"
+                      :params {:reasoning_effort "high"
+                               :provider {:only ["openai"] :allow_fallbacks false}}}
+
   ;; ORCHESTRATOR — Claude Opus 5.5 at medium effort, over OpenRouter pinned to
   ;; Anthropic's own serving, as the Coder is and for the header's reasons.
   ;; Dated selection 2026-10-02 (below); Fable 5.1 at low from 2026-09-16 until
