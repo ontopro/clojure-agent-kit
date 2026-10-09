@@ -78,26 +78,35 @@
     (is (= [2 3 1] [(:found m) (:planted m) (:careful-failing m)]))
     (is (true? (:answered? m)))))
 
-(deftest the-report-has-time-cost-tokens-and-the-result-and-says-what-it-lacks
+(deftest the-report-is-two-tables-and-a-line-for-the-whole-run
   (let [reading (fn [cand k cost] {:id (str cand "-" (name k)) :candidate cand :case k
                                    :review (assoc canned-review :cost cost) :score {:ms 60000 :found {:race ["t"]} :missed [:idor] :counts {:findings 1 :hit 1} :tests {}}})
         run {:invocations [{:started "2026-10-09T01:00:00Z" :finished "2026-10-09T01:20:00Z" :elapsed-ms 1200000
                             :kit-commit "abc1234" :models ["openai/gpt-6-astra"] :rounds 60 :parallel 2}]}
         r (bo/report "T" run [(reading "astra" :faulted 0.80) (reading "astra" :clean 0.46)])]
-    (is (str/includes? r "## Time")) (is (str/includes? r "## Cost")) (is (str/includes? r "## Tokens"))
-    (is (str/includes? r "## How each reading went")) (is (str/includes? r "## Result against the answer key"))
-    (is (str/includes? r "| astra faulted | 0:25 | 4:03 | 1:00 | 5:28 |"))
-    (is (str/includes? r "**Work: 10:56** (the readings added up) · **elapsed: 20:00** wall-clock"))
-    (is (str/includes? r "**Total: $1.26**"))
-    (is (str/includes? r "**Total: 29,030 tokens**"))
-    (is (str/includes? r "| astra | 1 of 2 |"))
-    (is (str/includes? r "KIT abc1234"))
+    (is (str/includes? r "## By model")) (is (str/includes? r "## By reading"))
+    (is (not (str/includes? r "## Time")) "one table, not a section per subject")
+    (testing "by model: a column per candidate, the metrics as rows"
+      (is (str/includes? r "|  | astra |"))
+      (is (str/includes? r "| **Planted faults found** | **1 of 2** |"))
+      (is (str/includes? r "| **Cost** | **$1.26** |"))
+      (is (str/includes? r "| **Tokens: all** | **29,030** |"))
+      (is (str/includes? r "| Completions (faulted / careful) | 12 / 12 |"))
+      (is (str/includes? r "| Tests written (file writes), faulted | 2 (3) |"))
+      (is (str/includes? r "| Cost per fault found | $0.80 |")))
+    (testing "by reading"
+      (is (str/includes? r "| astra, faulted | 0:25 | 4:03 | 1:00 | $0.80 | 14,515 | 12 | answered |")))
+    (testing "the whole run, and the clock"
+      (is (str/includes? r "**Whole run: $1.26, 29,030 tokens, 10:56 of work, 20:00 wall-clock"))
+      (is (str/includes? r "KIT abc1234")))
     (testing "a cost not reported is said and left out of the total"
       (let [r2 (bo/report "T" run [(reading "astra" :faulted 0.80) (reading "astra" :clean nil)])]
-        (is (str/includes? r2 "not reported"))
-        (is (str/includes? r2 "$0.80 so far"))))
-    (testing "a run made before runs were recorded"
-      (let [r3 (bo/report "T" {:invocations []} [(reading "astra" :faulted 0.80)])]
+        (is (str/includes? r2 "$0.80 so far, some not reported"))
+        (is (str/includes? r2 "Whole run: $0.80 so far"))))
+    (testing "a run made before runs were recorded has no clock"
+      (let [old (update (reading "astra" :faulted 0.80) :review dissoc :sandbox-ms)
+            r3 (bo/report "T" {:invocations []} [old])]
         (is (str/includes? r3 "made before runs were recorded"))
-        (is (not (str/includes? r3 "wall-clock")))
-        (is (not (str/includes? r3 "**Models:**")))))))
+        (is (not (re-find #"\d wall-clock" r3)))
+        (is (not (str/includes? r3 "**Models:**")))
+        (is (str/includes? r3 "| **Time: sandbox start** | — |"))))))

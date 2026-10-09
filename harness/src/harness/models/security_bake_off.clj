@@ -179,19 +179,29 @@
        (str/join "\n" (for [r rows] (str "| " (str/join " | " r) " |"))) "\n"))
 
 (defn report
-  "The report, as Markdown. `run` is `{:invocations [{:started :finished :elapsed-ms :kit-commit
-  :models :rounds :parallel :fixture} ...]}` (empty for a run made before they were recorded) and
-  `readings` the folder's readings as `reading-metrics` takes them. Every figure is from a record;
-  a figure no record carries is `—` or `not reported`, never an estimate."
+  "The report, as Markdown, in tables: a header, one table by model (the metrics as rows, a column
+  per candidate), one by reading, a line for the whole run, and what the report lacks. `run` is
+  `{:invocations [{:started :finished :elapsed-ms :kit-commit :models :rounds :parallel :fixture}
+  ...]}` (empty for a run made before they were recorded) and `readings` the folder's readings as
+  `reading-metrics` takes them. Every figure is from a record; a figure no record carries is `—`
+  or `not reported`, never an estimate."
   [title run readings]
   (let [ms (mapv reading-metrics readings)
         by-cand (group-by :candidate ms)
         totals (mapv model-totals (vals by-cand))
+        tot (into {} (map (juxt :candidate identity)) totals)
+        cands (vec (sort (keys tot)))
         inv (:invocations run)
         elapsed (when (seq inv) (sum-by :elapsed-ms inv))
         work (sum-by :work-ms ms)
         all-cost-known? (all-known? :cost ms)
-        label (fn [m] (str (:candidate m) " " (name (:case m))))]
+        of (fn [c k] (first (filter #(and (= c (:candidate %)) (= k (:case %))) ms)))
+        pair (fn [c f] (str (f (of c :faulted)) " / " (f (of c :clean))))
+        ended (fn [m] (cond (nil? m) "—" (:refused? m) "refused" (:capped? m) "round limit" (:answered? m) "answered" :else "no answer"))
+        bold (fn [s] (str "**" s "**"))
+        cost-cell (fn [t] (if (:cost-known? t) (dollars (:cost t)) (str (dollars (:cost t)) " so far, some not reported")))
+        row (fn [label f] (into [label] (map f) cands))
+        per (fn [c f] (let [m (of c :faulted)] (if-let [x (per-fault (f m) (:found (tot c)))] x nil)))]
     (str "# " title "\n\n"
          "- **Run:** " (if (seq inv)
                          (str (str/join "; " (for [i inv] (str (:started i) " → " (:finished i)))) "; KIT " (str/join ", " (distinct (keep :kit-commit inv))))
@@ -199,67 +209,44 @@
          (when (seq inv)
            (str "\n- **Models:** " (str/join ", " (distinct (mapcat :models inv))) " · tracer · rounds " (str/join "/" (distinct (keep :rounds inv)))
                 " · " (str/join "/" (distinct (keep :parallel inv))) " readings at a time"))
-         "\n\n"
-
-         "## Time\n\n"
-         (table ["Reading" "Sandbox start" "Review" "Scoring" "Total"]
-                (concat
-                 (for [m (sort-by (juxt :candidate :case) ms)]
-                   [(label m) (clock (:sandbox-ms m)) (clock (:review-ms m)) (clock (:score-ms m)) (clock (:work-ms m))])
-                 (for [t (sort-by :candidate totals)]
-                   [(str "**" (:candidate t) " total**") (clock (:sandbox-ms t)) (clock (:review-ms t)) (clock (:score-ms t)) (str "**" (clock (:work-ms t)) "**")])))
-         "\n**Work: " (clock work) "** (the readings added up)"
-         (when elapsed
-           (str " · **elapsed: " (clock elapsed) "** wall-clock"
-                (when (pos? work) (format " · %.1f readings' work per minute of waiting" (/ (/ work 60000.0) (max 0.01 (/ elapsed 60000.0)))))))
-         "\n\n"
-
-         "## Cost\n\n"
-         (table ["Reading" "Cost"]
-                (concat (for [m (sort-by (juxt :candidate :case) ms)] [(label m) (dollars (:cost m))])
-                        (for [t (sort-by :candidate totals)]
-                          [(str "**" (:candidate t) " total**") (str "**" (if (:cost-known? t) (dollars (:cost t)) (str (dollars (:cost t)) " so far, some not reported")) "**")])))
-         "\n**Total: " (if all-cost-known? (dollars (sum-by :cost ms)) (str (dollars (sum-by :cost ms)) " so far; some readings' costs are not reported yet (`bb reprice` fetches them)")) "**\n\n"
-
-         "## Tokens\n\n"
-         (table ["Reading" "Input (uncached)" "Cache read" "Cache write" "Output" "Reasoning" "All"]
-                (concat (for [m (sort-by (juxt :candidate :case) ms)
-                              :let [u (:usage m)]]
-                          [(label m) (grouped (:in u)) (grouped (:cache-read u)) (grouped (:cache-write u)) (grouped (:out u)) (grouped (:reasoning u)) (grouped (:tokens m))])
-                        (for [t (sort-by :candidate totals)]
-                          [(str "**" (:candidate t) " total**") (grouped (:in t)) (grouped (:cache-read t)) (grouped (:cache-write t)) (grouped (:out t)) (grouped (:reasoning t)) (str "**" (grouped (:tokens t)) "**")])))
-         "\n**Total: " (grouped (sum-by :tokens ms)) " tokens** (all = uncached input + cache read + cache write + output; reasoning tokens are part of output, not extra)\n\n"
-
-         "## How each reading went\n\n"
-         (table ["Reading" "Completions" "Tool calls (per completion)" "Tools" "Call errors" "Tests written (writes)" "Ended"]
+         "\n\n## By model\n\n"
+         "Totals over each model's faulted and careful readings; the per-fault rows use the faulted reading.\n\n"
+         (table (into [""] cands)
+                [(row "**Planted faults found**" #(bold (str (:found (tot %)) " of " (:planted (tot %)))))
+                 (row "Claims: shown by its tests / not reproduced / to mark"
+                      #(let [c (:counts (of % :faulted))] (str (get c :hit 0) " / " (get c :not-reproduced 0) " / " (+ (get c :fails-on-both 0) (get c :unattributed 0)))))
+                 (row "Tests failing on the careful branch" #(:careful-failing (of % :clean)))
+                 (row "**Time: review**" #(clock (:review-ms (tot %))))
+                 (row "**Time: sandbox start**" #(clock (:sandbox-ms (tot %))))
+                 (row "**Time: scoring**" #(clock (:score-ms (tot %))))
+                 (row "**Time: total work**" #(bold (clock (:work-ms (tot %)))))
+                 (row "**Cost**" #(bold (cost-cell (tot %))))
+                 (row "**Tokens: all**" #(bold (grouped (:tokens (tot %)))))
+                 (row "Tokens: uncached input" #(grouped (:in (tot %))))
+                 (row "Tokens: cache read" #(grouped (:cache-read (tot %))))
+                 (row "Tokens: cache write" #(grouped (:cache-write (tot %))))
+                 (row "Tokens: output (reasoning included)" #(grouped (:out (tot %))))
+                 (row "Completions (faulted / careful)" #(pair % :completions))
+                 (row "Tool calls per completion (faulted / careful)" #(pair % (fn [m] (if-let [x (:calls-per-completion m)] (format "%.1f" x) "—"))))
+                 (row "Tests written (file writes), faulted" #(let [m (of % :faulted)] (str (:tests-written m) " (" (:test-writes m) ")")))
+                 (row "How it ended (faulted / careful)" #(pair % ended))
+                 (row "Cost per fault found" #(if-let [x (per % :cost)] (dollars x) "—"))
+                 (row "Work per fault found" #(if-let [x (per % :work-ms)] (clock x) "—"))
+                 (row "Tokens per fault found" #(if-let [x (per % :tokens)] (grouped (Math/round (double x))) "—"))])
+         "\n## By reading\n\n"
+         (table ["Reading" "Sandbox start" "Review" "Scoring" "Cost" "Tokens" "Completions" "Ended"]
                 (for [m (sort-by (juxt :candidate :case) ms)]
-                  [(label m) (:completions m)
-                   (format "%d (%.1f)" (:calls m) (or (:calls-per-completion m) 0.0))
-                   (str/join ", " (for [[k v] (sort-by (comp - val) (:by-tool m))] (str k " " v)))
-                   (:call-errors m)
-                   (str (:tests-written m) " (" (:test-writes m) ")")
-                   (cond (:refused? m) "refused" (:capped? m) "hit the round limit" (:answered? m) "answered" :else "no answer")]))
-         "\n"
-
-         "## Result against the answer key\n\n"
-         (table ["Candidate" "Planted faults found" "Claims: shown / not reproduced / to mark" "Tests failing on the careful branch" "Cost per fault found" "Work per fault found" "Tokens per fault found"]
-                (for [t (sort-by :candidate totals)
-                      :let [c (first (filter #(and (= (:candidate t) (:candidate %)) (= :faulted (:case %))) ms))
-                            ctrl (first (filter #(and (= (:candidate t) (:candidate %)) (= :clean (:case %))) ms))
-                            counts (:counts c)
-                            faulted-tokens (:tokens c)]]
-                  [(:candidate t) (str (:found t) " of " (:planted t))
-                   (str (get counts :hit 0) " / " (get counts :not-reproduced 0) " / " (+ (get counts :fails-on-both 0) (get counts :unattributed 0)))
-                   (:careful-failing ctrl)
-                   (if-let [x (per-fault (:cost c) (:found t))] (dollars x) "—")
-                   (if-let [x (per-fault (:work-ms c) (:found t))] (clock x) "—")
-                   (if-let [x (per-fault faulted-tokens (:found t))] (grouped (Math/round x)) "—")]))
-         "\nCost, work and tokens per fault are the faulted-branch reading's, divided by the faults it found.\n\n"
-
-         "## What this report does not carry\n\n"
-         "- The scoring's own sandbox starts are inside its time, not listed apart.\n"
-         "- A reading reused from an earlier run keeps the time and cost it was recorded with; the elapsed figure covers only this run's invocations.\n"
-         "- A cost a host has not yet reported is shown as not reported and left out of the totals.\n")))
+                  [(str (:candidate m) ", " (name (:case m))) (clock (:sandbox-ms m)) (clock (:review-ms m)) (clock (:score-ms m))
+                   (dollars (:cost m)) (grouped (:tokens m)) (:completions m) (ended m)]))
+         "\n**Whole run: " (if all-cost-known? (dollars (sum-by :cost ms)) (str (dollars (sum-by :cost ms)) " so far, some costs not reported (`bb reprice` fetches them)"))
+         ", " (grouped (sum-by :tokens ms)) " tokens, " (clock work) " of work"
+         (when elapsed (str ", " (clock elapsed) " wall-clock"
+                            (when (pos? work) (format " (%.1f minutes of work per minute of waiting)" (/ (/ work 60000.0) (max 0.01 (/ elapsed 60000.0)))))))
+         ".**\n\n"
+         "Notes: a dash is a figure no record carries. \"Total work\" adds a reading's sandbox start, review and scoring; readings run in parallel, so wall-clock is shorter. "
+         "Tokens: all = uncached input + cache read + cache write + output; reasoning tokens are part of output. A reading with no tests has no scoring time. "
+         "A reading reused from an earlier run keeps the time and cost it was recorded with; wall-clock covers only this run's invocations. "
+         "A cost a host has not yet reported is left out of the totals.\n")))
 
 (defn- read-folder
   "The folder's readings: each `<id>.edn` that has a `<id>-score.edn`, with the candidate and branch

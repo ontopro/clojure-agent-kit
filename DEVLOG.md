@@ -61,6 +61,13 @@ costs its readers more than a missed one; an answer with no findings block is re
 nothing, not as a clean review. The tests it wrote are collected from the clone and kept beside the
 record. The command is a real model call and says so before it spends.
 
+### The report is two tables (row 121)
+
+The person asked to see the bake-off report as a table and to make that the default. The report was a
+section for time, one for cost, one for tokens; it is now one table by model - the metrics as rows, a
+column per candidate, so two models read side by side - and one by reading, then a line for the whole
+run with its wall-clock, and short notes on what a dash means. The figures are the same.
+
 ### A report after every bake-off (row 121)
 
 At the person's request, a run no longer ends at a table. `bb security-bake-off` records each invocation
