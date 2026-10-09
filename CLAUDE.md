@@ -78,7 +78,9 @@ benefit. It is also a product artifact, and also not addressed to you.
   per-run and stays in the gitignored `.local/runs/` (or a workspace's `work/runs/`).
   The KIT's own committed evidence is `harness/health/records/`, rendered into the README
   and drift-gated. A published number nobody can re-derive is an unverifiable claim, which
-  is the one thing this repo is most against.
+  is the one thing this repo is most against. The commit check refuses an added line carrying a
+  name from `.local/wording/names.txt` (gitignored; whole word, any case) - add a project's names
+  there when it starts.
 - **`LICENSE` must stay the canonical MIT text and nothing else.** Third-party notices live
   in `NOTICE`. Appending them to `LICENSE` made GitHub classify the repo "Other" and cost
   the licence badge (commit `fb5e3b0`).

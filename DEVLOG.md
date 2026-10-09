@@ -51,6 +51,19 @@ the template fork's tags and version the template, not the KIT.
 
 ## 2026-10-09
 
+### A project's name is refused at commit (plan 6.2, item 5)
+
+The KIT's documents speak of the projects built with it by their order - "the first project built
+with the KIT" - and never by name, so that nothing here points at records this repository does
+not hold. That was a rule for whoever wrote the line. The commit check now reads every line a
+commit adds and refuses one that carries a name from a wording list kept outside the repository
+(`.local/wording/names.txt`, gitignored, so the list never names a project in a committed file),
+saying the file, the line and the name. A name matches as a whole word, in any case: no letter or
+digit just before or after it, so it is caught at the start, in the middle or at the end of a
+hyphenated, underscored or dotted compound and not inside another word, and a numbered variant is
+listed as its own entry. A clone with no list says so at every commit and checks nothing. Only
+added lines are read: a name already committed is not this check's to find.
+
 ### A NOTES.md edit moves its stamp (plan 6.2, item 4)
 
 `NOTES.md` opens with `**Updated <date> <time>`, and the stamp is how a reader knows the register

@@ -136,3 +136,45 @@
       (is (str/includes? (record/stamp-refusal head (notes "**Updated 2026-10-09 10:31") now) "later than the clock")))
     (testing "no stamp at all"
       (is (str/includes? (record/stamp-refusal head "# Notes\nUpdated 2026-10-09 10:00\n" now) "no `**Updated")))))
+
+(deftest a-listed-name-is-a-whole-word-anywhere
+  (let [hit? (fn [s] (boolean (re-find (record/name-pattern "acme") s)))]
+    (testing "start, middle, end, alone, any case, any separator"
+      (doseq [s ["acme" "acme-site" "prj-acme" "prj-acme-site" "acme_site.clj" "src/acme/core.clj" "PRJ-ACME" "(acme)"]]
+        (is (hit? s) s)))
+    (testing "inside another word, letters or digits: not a hit"
+      (doseq [s ["acmex" "xacme" "prj-xacme-site" "acme2" "dacme_x"]]
+        (is (not (hit? s)) s))))
+  (testing "a name with regex characters is taken literally"
+    (is (re-find (record/name-pattern "a.b") "x a.b y"))
+    (is (not (re-find (record/name-pattern "a.b") "axb")))))
+
+(deftest added-lines-are-numbered-in-the-new-file
+  (let [diff (str "diff --git a/x.md b/x.md\n--- a/x.md\n+++ b/x.md\n"
+                  "@@ -3,0 +4,2 @@ ctx\n+first added\n+second added\n"
+                  "@@ -10 +12 @@\n-old\n+replaced\n"
+                  "diff --git a/gone.md b/gone.md\n--- a/gone.md\n+++ /dev/null\n@@ -1 +0,0 @@\n-bye\n"
+                  "diff --git a/n.md b/n.md\nnew file mode 100644\n--- /dev/null\n+++ b/n.md\n@@ -0,0 +1 @@\n+++ two pluses\n")]
+    (is (= [{:file "x.md" :line 4 :text "first added"}
+            {:file "x.md" :line 5 :text "second added"}
+            {:file "x.md" :line 12 :text "replaced"}]
+           (take 3 (record/added-lines diff))))
+    (is (= 3 (count (filter #(= "x.md" (:file %)) (record/added-lines diff)))))
+    (is (empty? (filter #(= "gone.md" (:file %)) (record/added-lines diff))))
+    (is (= [{:file "n.md" :line 1 :text "++ two pluses"}]
+           (filter #(= "n.md" (:file %)) (record/added-lines diff))))))
+
+(deftest wording-refusals-name-file-line-and-name
+  (let [added [{:file "DEVLOG.md" :line 7 :text "built for prj-acme-site"}
+               {:file "README.md" :line 2 :text "the first project built with the KIT"}
+               {:file ".local/notes.md" :line 1 :text "acme"}]]
+    (is (= 1 (count (record/wording-refusals ["acme" "other"] added))))
+    (is (str/starts-with? (first (record/wording-refusals ["acme"] added)) "DEVLOG.md:7 names a listed project (acme)"))
+    (is (empty? (record/wording-refusals [] added)))))
+
+(deftest the-wording-list-skips-comments-and-blanks
+  (let [dir (str (fs/create-temp-dir))]
+    (is (nil? (record/read-names dir)))
+    (fs/create-dirs (fs/path dir ".local/wording"))
+    (spit (str (fs/path dir record/names-path)) "# the projects\nacme\n\n  other  \n")
+    (is (= ["acme" "other"] (record/read-names dir)))))

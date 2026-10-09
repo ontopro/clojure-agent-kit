@@ -18,6 +18,8 @@
   `tools/`, `skills/` or `plan-template/` stages `DEVLOG.md` or `NOTES.md` too.
   And a staged `NOTES.md` must have bumped its `**Updated <date> <time>` stamp
   past HEAD's, to no later than the clock.
+  And no added line may carry a name in the wording list (`.local/wording/names.txt`)
+  as a whole word.
   So \"`bb repair && bb gates` green before committing\" is a fact the commit
   checks, not a step remembered. The KIT's own development only: nothing here
   is shipped to a workspace."
@@ -296,6 +298,55 @@
       (str "NOTES.md's stamp " new " is later than the clock ("
            (.truncatedTo now java.time.temporal.ChronoUnit/MINUTES) ")"))))
 
+(def names-path
+  "The project names no committed line may carry, one per line, `#` a comment.
+  Under `.local/`, so the list itself never names a project in a committed file."
+  ".local/wording/names.txt")
+
+(defn read-names
+  "The names in the wording list at `root`, or nil when there is no list."
+  [root]
+  (let [f (fs/path root names-path)]
+    (when (fs/exists? f)
+      (->> (str/split-lines (slurp (str f)))
+           (map str/trim)
+           (remove #(or (str/blank? %) (str/starts-with? % "#")))
+           vec))))
+
+(defn name-pattern
+  "A name as a whole word: case-insensitive, no letter or digit just before or
+  after it, so `-`, `_`, `.` and `/` end a word and a digit does not. Pure."
+  [nm]
+  (re-pattern (str "(?i)(?<![\\p{L}\\p{N}])" (java.util.regex.Pattern/quote nm) "(?![\\p{L}\\p{N}])")))
+
+(defn added-lines
+  "The lines a unified diff with no context (`git diff -U0`) adds:
+  [{:file :line :text}], the line numbered in the new file. Pure."
+  [diff]
+  (loop [[l & more] (str/split-lines (or diff "")) prev nil file nil n 0 acc []]
+    (cond
+      (nil? l) acc
+      ;; a header only after its `---` line: an added line reading `++ x` is `+++ x` too
+      (and (str/starts-with? l "+++ ") (some-> prev (str/starts-with? "--- ")))
+      (recur more l (when-not (= l "+++ /dev/null")
+                      (-> (subs l 4) (str/replace #"^\"|\"$" "") (str/replace #"^b/" "")))
+             n acc)
+      (str/starts-with? l "@@ ")
+      (recur more l file (parse-long (second (re-find #"\+(\d+)" l))) acc)
+      (and file (str/starts-with? l "+"))
+      (recur more l file (inc n) (conj acc {:file file :line n :text (subs l 1)}))
+      :else (recur more l file n acc))))
+
+(defn wording-refusals
+  "Every added line that names a listed project: one reason each, the file,
+  the line and the name. `.local/` is never asked. Pure."
+  [names added]
+  (for [{:keys [file line text]} added
+        :when (not (str/starts-with? file ".local/"))
+        nm names
+        :when (re-find (name-pattern nm) text)]
+    (str file ":" line " names a listed project (" nm ") - the KIT's documents say \"the first project built with the KIT\", never its name")))
+
 (defn staged-paths
   "The paths the commit changes, from the index git names."
   [root]
@@ -312,12 +363,17 @@
         rec (read-record root)
         paths (staged-paths root)
         notes (when (some #{"NOTES.md"} paths) (git root ["show" ":NOTES.md"]))
-        whys (keep identity [(refusal rec (staged-tree root))
-                             (document-refusal paths)
-                             ;; a NOTES.md the commit deletes has no stamp to bump
-                             (when notes
-                               (stamp-refusal (git root ["show" "HEAD:NOTES.md"]) notes
-                                              (java.time.LocalDateTime/now)))])]
+        names (read-names root)
+        whys (concat (keep identity [(refusal rec (staged-tree root))
+                                     (document-refusal paths)
+                                     ;; a NOTES.md the commit deletes has no stamp to bump
+                                     (when notes
+                                       (stamp-refusal (git root ["show" "HEAD:NOTES.md"]) notes
+                                                      (java.time.LocalDateTime/now)))])
+                     (when names
+                       (wording-refusals names (added-lines (git root ["diff" "--cached" "-U0" "--no-color" "--no-ext-diff"])))))]
+    (when-not names
+      (println (str "commit-check: no wording list (" names-path "), names not checked")))
     (if (seq whys)
       (do (doseq [why whys] (println (str "commit refused: " why)))
           (System/exit 1))
