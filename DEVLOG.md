@@ -49,6 +49,15 @@ the template fork's tags and version the template, not the KIT.
 
 ---
 
+## 0.6.1 — plan 6.1's boundary: security asked and tried
+
+A workspace made before `0.6.1` lacks the security reviewer role in its profile, has the application
+template pinned at `kit-v1` where the KIT now pins `kit-v1.2`, has a rule mirror without the rule that a
+request value is checked before it is used, and has an older architecture document template, stage
+templates and three skills; `bb doctor` run in it lists each with the command that shows the
+difference, and nothing is migrated - the role's block is copied from the shipped example, and an
+application already generated keeps the template it was made from.
+
 ## 2026-10-08
 
 ### Every stage's end reads the code for what a request cannot show (row 121 fixed)
