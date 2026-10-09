@@ -102,6 +102,17 @@
   :title "Fix the cause, not the symptom."
   :text "Never add a workaround or a fallback for an infrastructure problem — a missing service, a broken REPL, an absent file. Fail fast and clearly instead, so the loop surfaces the real fault."}
 
+ ;; Set by a person, 2026-10-08, after the security reviewer found it in the planted-fault fixture's
+ ;; CAREFUL feature: a login whose username arrived as a map signed in as the administrator. Every
+ ;; packet's code reviewer and gates had passed it, because the type the code expected was a string and
+ ;; nothing told any role a request can send something else. The architecture template's §4 says it
+ ;; of the pin; this is where the roles that write and review the code read it.
+ {:id :request-values-are-checked
+  :group :non-negotiable
+  :audience #{:coder :tester :reviewer :human}
+  :title "A request value is checked before it is used."
+  :text "A value from a request - a form field, a query parameter, a path segment, a header - is checked to be the type its use expects (a string, a number) before it reaches a query, a file path or a page, and one that is not is refused as a bad request. A request can send more than strings: Ring's nested parameters make `name[x]=...` a map, and HoneySQL formats a map where a value belongs as SQL, not as a parameter. So a request value of the wrong type is never outside the domain: it can arrive."}
+
  {:id :note-the-contract
   :group :non-negotiable
   :audience #{:coder :tester :reviewer}

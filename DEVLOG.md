@@ -51,6 +51,17 @@ the template fork's tags and version the template, not the KIT.
 
 ## 2026-10-08
 
+### A request value is checked before it is used: a KIT rule (row 121)
+
+The login flaw in the fixture passed every role that wrote or read the code, because the type the code
+expected was a string and nothing told any role a request can send something else. The architecture
+template says so of the pin, but the Coder, the Tester and the code reviewer read the rule source and their
+packet, not the architecture document. A non-negotiable rule now tells all three: a request value is checked
+to be the type its use expects before it reaches a query, a file path or a page, and a value of the wrong
+type is in the domain, since nested parameters can send a map. The security reviewer should now meet this
+at a stage's end only where a role missed the rule. Triage of security findings stays on the shipped
+model, by the person's decision; its refusals are watched.
+
 ### Security triage tried: the model declined one call in four, and triage now says so (row 121)
 
 `bb security-route` ran twice for real over the two flaws the security reviewer found in the fixture, with
