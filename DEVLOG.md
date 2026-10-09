@@ -61,6 +61,16 @@ costs its readers more than a missed one; an answer with no findings block is re
 nothing, not as a clean review. The tests it wrote are collected from the clone and kept beside the
 record. The command is a real model call and says so before it spends.
 
+### The first security bake-off, scored: six of six against three of six (row 121)
+
+Tracer only, the fixed fixture, sixty rounds, each model on the faulted branch and on the careful one; the
+four readings re-scored by the per-test scorer after the first scoring undercounted a bundled file.
+GPT-6 Astra: all six planted faults, seven claims each shown by a test of its own, no test failing on the
+careful branch, twelve completions, four minutes, $1.26 for both readings. GLM-5.3-prime: three of six by
+tests that separate the branches, no answer written on either branch, the round limit hit twice, nine and
+ten minutes, $2.71. One sample of each; GLM answered in 46 completions on a different day, so its result
+varies. The model that declined the review outright is not in the table.
+
 ### Why GLM-5.3-prime used all sixty rounds and wrote no answer (row 121)
 
 Both its readings in the first bake-off ended at the round limit with no answer, and the records say why;
