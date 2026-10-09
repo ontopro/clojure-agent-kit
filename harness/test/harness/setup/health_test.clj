@@ -241,7 +241,8 @@
                                              :run (fn [_ _ _] {:exit 1 :out "" :err "Firefox did not start: timeout"})})]
         (is (false? (:ok? r)))
         (is (str/includes? (:detail r) "Firefox did not start"))
-        (is (str/includes? (:detail r) "grant it the permission")))
+        (is (str/includes? (:detail r) "Privacy & Security > Files & Folders"))
+        (is (str/includes? (:detail r) "run `bb health` again")))
       (let [r (health/check-browser subject {:available? (constantly true)
                                              :run (fn [_ _ _] {:exit 0 :out "" :err ""})})]
         (is (false? (:ok? r)))

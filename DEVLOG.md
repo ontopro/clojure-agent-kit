@@ -64,6 +64,17 @@ the KIT has moved and lists nothing to act on.
 
 ## 2026-10-09
 
+### A browser that may not start says how to allow it (plan 6.2)
+
+In `0.6.2`'s first tag run Firefox could not start: the application the session ran in was not
+allowed to read Firefox's folder. `bb health` said only "run once from a terminal and grant it the
+permission", which named neither where the permission is nor what to grant it to. The health
+check's detail, the browser pack's printed message and its README now give the steps: on macOS,
+System Settings > Privacy & Security > Files & Folders (or Full Disk Access) > the application the
+session runs in - Terminal, iTerm, the IDE, the Claude app - allowed, or the check run once from
+that application and its prompt answered; then the check run again. With access granted, the
+rerun was 9 of 9 on both platforms.
+
 ### The KIT session's routine is a skill (plan 6.2)
 
 The commands this plan added each check one step; the order the steps come in - start a session

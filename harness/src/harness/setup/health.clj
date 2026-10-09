@@ -501,7 +501,10 @@
                         (when line (str "\n" (str/trim line)))))
                  (str "the browser pack's check exited " exit (when-not (fs/exists? shot) ", no screenshot written")
                       (when (str/includes? (str out err) "did not start")
-                        "; Firefox did not start - on macOS, run once from a terminal and grant it the permission")
+                        (str "; Firefox did not start - the application this runs in is not allowed to use it. "
+                             "On macOS: System Settings > Privacy & Security > Files & Folders (or Full Disk Access) > "
+                             "the application the session runs in (Terminal, iTerm, the IDE, the Claude app) > allow it, "
+                             "or run the check once from that application and answer the prompt; then run `bb health` again"))
                       "\n" tail)))))))
 
 ;; ---------------------------------------------------------------------------

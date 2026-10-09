@@ -82,8 +82,10 @@
                            :size [width height]})
                (catch Exception ex
                  (println "Firefox did not start:" (ex-message ex))
-                 (println "If this is a shell under a daemon on macOS, the terminal application has not been"
-                          "granted the permission to use Firefox; run once from a terminal and answer the prompt.")
+                 (println (str "The application this runs in is not allowed to use Firefox. On macOS: System Settings > "
+                               "Privacy & Security > Files & Folders (or Full Disk Access) > the application the session "
+                               "runs in (Terminal, iTerm, the IDE, the Claude app) > allow it - or run the check once from "
+                               "that application and answer the prompt. Then run the check again."))
                  (throw ex)))]
     (try (f d)
          (finally (e/quit d) (fs/delete-tree profile)))))

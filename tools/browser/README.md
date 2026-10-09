@@ -47,8 +47,10 @@ and one that cannot is told.
 - **The permission is the terminal application's.** macOS grants the right to use Firefox to
   the application that asks. A shell under a daemon gets no question and a silent refusal:
   Firefox starts, never launches its content process, and geckodriver gives up after 60 s.
-  `geckodriver --version` passes all the same. Run the checks from a terminal once and answer
-  the prompt.
+  `geckodriver --version` passes all the same. To grant it on macOS: System Settings > Privacy &
+  Security > Files & Folders (or Full Disk Access) > the application the session runs in
+  (Terminal, iTerm, the IDE, the Claude app) > allow it - or run the checks once from that
+  application and answer the prompt. Then run them again. A failed start prints these steps.
 - **A screenshot is of the viewport.** The window is made as tall as the page before the shot.
 - **Key actions leak between checks.** A key held by one check has been seen to change the
   focus behaviour of the next even after `release-actions`; `open-page` releases and goes
