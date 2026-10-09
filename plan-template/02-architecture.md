@@ -71,7 +71,7 @@ of it matters, and §15 where each threat is answered.
 | CSRF | Every request but GET, HEAD and OPTIONS carries the anti-forgery token - a form's `__anti-forgery-token` field or an `X-CSRF-Token` header - or is refused with 403; `reitit-extras.core/csrf-token-html` and `csrf-token-json` write it into a page | `server.clj` `ring-handler` (`wrap-anti-forgery`) |
 | Headers | On every response the application makes, a page not found, a static file and an error page included: `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Strict-Transport-Security` (a year, subdomains), `X-XSS-Protection: 0`, `Referrer-Policy: strict-origin-when-cross-origin` | `server.clj` `ring-handler` (the handler-wide `:middleware`), `wrap-referrer-policy` |
 | Errors | A handler that throws, a response that fails its coercion and a request body that fails to decode answer the error page (500, 400) and nothing of the error; the log has the exception with the request's method and path | `server.clj` `exception-middleware`, first of the route middleware |
-| SQL | Queries are HoneySQL data, formatted with every value a parameter and every identifier quoted; a raw SQL string or `[:raw …]` is outside that. Migrations are Ragtime's SQL files | `db.clj` `exec!`, `exec-one!`; `resources/migrations/` |
+| SQL | Queries are HoneySQL data, formatted with every value a parameter and every identifier quoted; a raw SQL string or `[:raw …]` is outside that, and so is a map where a value belongs (below). Migrations are Ragtime's SQL files | `db.clj` `exec!`, `exec-one!`; `resources/migrations/` |
 | Static files | Served from `resources/public/` under `/assets/`, with no directory listing and no path out of the folder; cached for a year under `:prod` | `server.clj` `ring-handler` (`create-resource-handler-cached`); `config.edn` `:cache-assets?` |
 | HTML | Hiccup 2 escapes every string it renders; `hiccup2.core/raw` is the way past it | `handlers.clj`, through `reitit-extras.core/render-html` |
 | Dependencies | No published advisory for any library on the runtime classpath on the day the pin was made; Jetty and Jackson are pinned over the versions Ring and jsonista bring, which lagged their fixes | `deps.edn`, the block after `ragtime` |
@@ -80,8 +80,15 @@ Not given:
 
 - **No `Content-Security-Policy`.** The shipped Alpine build needs `'unsafe-eval'` and htmx
   injects inline styles, so any policy is a choice, and §8 makes it.
-- **No session expiry on the server.** A session lasts until the browser closes, and a copied
-  cookie is good until the secret changes.
+- **No session expiry on the server, and no logout that ends one.** A session lasts until the
+  browser closes, and a copied cookie is good until the secret changes: the session is the cookie
+  and the server keeps no copy, so a logout that clears the browser's cookie leaves every copy a
+  login. An application whose logout must end the session checks something it keeps on every
+  request - a session generation on the account that a logout advances is one way.
+- **A form field can arrive as a map.** Ring's nested parameters are on (`server.clj`
+  `wrap-nested-params`), so `name[x]=…` reaches a handler as `{:x …}`, and HoneySQL formats a map
+  where a value belongs as SQL, not as a parameter. A request value that reaches a query is
+  checked to be the type the query expects - a string, a number - before it does.
 - **No accounts.** The KIT generates none.
 - **An htmx request that is not a GET needs the token added**, as a header from
   `csrf-token-json` on the page; the base view does not add it.

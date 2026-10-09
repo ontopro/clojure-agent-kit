@@ -51,6 +51,15 @@ the template fork's tags and version the template, not the KIT.
 
 ## 2026-10-08
 
+### Two more limits of the template, said where a project reads them (row 121)
+
+The two flaws the security reviewer found in the fixture were a template default meeting a feature, so any
+project with accounts can meet them. The person decided to record them, not to change the template: the
+architecture template's §4 now says, under "Not given", that a logout cannot end a session the server keeps
+no copy of, and that a form field can arrive as a map, which HoneySQL formats as SQL; its SQL row points
+there. Checked against the pin's HoneySQL: a map in a value's place is formatted as SQL, a vector of strings
+stays parameters, so the line names maps only.
+
 ### Bake-off 1 re-scored by the final rule (row 121)
 
 Its fourth reading scored, no model call: GPT-6 Astra 6 of 6, every claim shown by its tests, none failing
