@@ -367,12 +367,13 @@ Proved one seat at a time, portability being the design:
 
 | | seat `claude` | seat `agy-ide` |
 |---|---|---|
-| coder | `anthropic` · `anthropic/claude-fable-5.1` (effort low; cache asked for) · OpenRouter pinned `anthropic` · `:openai` | `google` · `gemini-3.8-flash` · OpenRouter · `:openai` |
+| coder | `anthropic` · `anthropic/claude-sonnet-5.5` (effort medium, from 2026-10-02; cache asked for) · OpenRouter pinned `anthropic` · `:openai` | `google` · `gemini-3.8-flash` · OpenRouter · `:openai` |
 | tester | `google` · `gemini-3.8-flash` (effort medium) · OpenRouter · `:openai` | `openai` · `gpt-5.6-sol` · OpenRouter · `:openai` |
-| reviewer | `openai` · `gpt-6.1-sol` (effort high, from 2026-10-07; `gpt-5.6-sol` before) · OpenRouter · `:openai` | `anthropic` · `claude-fable-5-1` (effort medium, from 2026-09-18) · direct · `:anthropic` |
-| spec-reviewer | `openai` · `gpt-6.1-sol` (effort high, from 2026-10-07) · OpenRouter · `:openai` | `anthropic` · `claude-fable-5-1` (effort low) · direct · `:anthropic` |
+| reviewer | `openai` · `gpt-6.1-sol` (effort high, from 2026-10-07; `gpt-5.6-sol` before) · OpenRouter · `:openai` | `anthropic` · `claude-opus-5-5` (effort high) · direct · `:anthropic` |
+| spec-reviewer | `openai` · `gpt-6.1-sol` (effort high, from 2026-10-07) · OpenRouter · `:openai` | `anthropic` · `claude-opus-5-5` (effort high) · direct · `:anthropic` |
 | plan-reviewer | the spec reviewer's selection, block for block (its own role since 2026-10-06; the profile's comment says why) | the spec reviewer's selection, block for block |
-| orchestrator | `anthropic` · `anthropic/claude-fable-5.1` (effort low, from 2026-09-18; high before) · OpenRouter pinned `anthropic` · `:openai` | `google` · `gemini-3.8-flash` (effort high) · OpenRouter · `:openai` |
+| security-reviewer | `openai` · `gpt-6-astra` (effort high, from 2026-10-08) · OpenRouter pinned `openai` · `:openai` | the same |
+| orchestrator | `anthropic` · `anthropic/claude-opus-5.5` (effort medium, from 2026-10-02; Fable 5.1 before) · OpenRouter pinned `anthropic` · `:openai` | `google` · `gemini-3.8-flash` (effort high) · OpenRouter · `:openai` |
 
 *(The `claude` seat's Tester and Reviewer swapped on 2026-09-16, after bake-offs measured
 both seats' candidates. Those bake-offs' records are not in this repository; what the selections rest on is in

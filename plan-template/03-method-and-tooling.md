@@ -41,6 +41,7 @@ the loop. The constraints are the contract and are fixed; which model fills each
 | **Reviewer** | **≠ A** | yes, on green | Read-only: a diff, the slice, the gate report |
 | **Spec reviewer** | ≠ the Architect's family | yes, before every dispatch (`start` runs it) | Read-only: the spec, its context, the rules; no tools |
 | **Plan reviewer** | ≠ the Architect's family | yes, in every stage's plan step (`bb plan-review`) | Read-only: the plan's documents and the stage plan; no tools |
+| **Security reviewer** | **≠ A** | yes, at every stage's end (`bb security-review`) | Reads the merged application, writes and runs tests of its own, sends requests to it, in a sandbox with no network; changes nothing of the application |
 | **Orchestrator** | none — it verifies nothing | software; a model for triage only, on a red gate or a note | Dispatch and triage; no code, no eval |
 | **Architect** | none | no — the seat, at the workspace root | Produces the blueprint; no REPL |
 | **DevOps** | none | no — the seat | Whatever a task needs, scoped narrowly |
@@ -271,6 +272,7 @@ written down — the rule source's own first rule says it outranks the others:
 | Reviewer | <≠ A> | | | |
 | Spec reviewer | <≠ the Architect's> | | | |
 | Plan reviewer | <≠ the Architect's> | | | the spec reviewer's selection unless a bake-off on the plan says otherwise |
+| Security reviewer | <≠ A> | | | chosen by `bb security-bake-off` on the KIT's planted-fault fixture |
 | Orchestrator (triage) | <any> | | | may share family A — it verifies nothing — but say so |
 | Architect | the seat | | — | |
 

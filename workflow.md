@@ -98,7 +98,7 @@ once.
 
 ## The reviews, by the step of a stage they belong to
 
-Four readings, four reviewer roles, in every stage from 0 to the last pre-release stage; the
+Five readings, five reviewer roles, in every stage from 0 to the last pre-release stage; the
 release runs the first two. The plan reviewer is the spec reviewer's selection in the shipped
 profiles - the two readings differ in the checklist sent, not in the kind of reader - and a role
 of its own so a project can set it apart.
@@ -109,6 +109,7 @@ of its own so a project can set it apart.
 | blueprint review, `bb blueprint-review` | plan | the stage's blueprint whole, with its stage plan | `:blueprint-reviewer` | a reading; the person's sign-off is the gate |
 | spec review, inside `bb run-loop start` | implement, per packet | one packet's contract, cold | `:spec-reviewer` | a stop if a target can be read two ways |
 | code review, inside the loop | implement, per packet | the diff and the gate report of green code | `:reviewer` | a stop on rejection; triage names the owner |
+| security review, `bb security-review` then `bb security-route` | stage's end | the merged application, with tools in a sandbox with no network; a finding is a test of its own that fails | `:security-reviewer` | a reading; a reproduced finding keeps the stage open until it is fixed or decided, and triage names who acts |
 
 ## Three things the diagram says that prose tends to lose
 

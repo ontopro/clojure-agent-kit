@@ -38,7 +38,7 @@
   (is (= {"00-overview.md" 19
           "01-requirements.md" 14
           "02-architecture.md" 35
-          "03-method-and-tooling.md" 49
+          "03-method-and-tooling.md" 50
           "04-decision-log.md" 12
           "05-lessons.md" 11
           "README.md" 1
