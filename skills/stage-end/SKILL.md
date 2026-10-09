@@ -24,6 +24,7 @@ exit criteria and says what is kept.
 | `method.md` | `Exit criteria, and what happens when a gate fails` |
 | `method.md` | `Scope is three lists, revised at every stage's end` |
 | `method.md` | `Rank risks, then order the stages by them` |
+| `method.md` | `Security is a decision in stage 0 and a signature before release, not a gate` |
 | `plan-template/05-lessons.md` | `Stage <N> — <name>` |
 | `plan-template/01-requirements.md` | `6b. The index — every requirement, by the stage that wrote it` |
 | `plan-template/01-requirements.md` | `10. Scope — three lists, revised at every stage's end` |
@@ -62,7 +63,18 @@ docs/stages/stage-N-security-deps.edn` and `secrets --from stage-<N-1> --routes
 docs/security-routes.edn --record docs/stages/stage-N-security-secrets.edn` (`--all` at the first
 stage's end, which has no tag before it) - no failing row in any of the three and every warn
 read with the person; an advisory accepted or a hit allowed goes in the routes file with its
-reason, never around it, and a secret found is rotated, not only removed. Then the serve command for "deployed locally". Then the owner's walk, page by page or
+reason, never around it, and a secret found is rotated, not only removed. Then the security review, once the person
+agrees to its cost (a real model call: $0.46 to $1.50 a reading of the KIT's small fixture, more for a larger application): from the KIT's `harness/`, on a fresh clone of the
+application's merged tip, `bb security-review <clone> --stance tracer --base stage-<N-1> --out
+<name>-build/docs/stages/stage-N-security-review` (the application's first commit for `--base` at the first stage's
+end), which reads the profile's `:security-reviewer`; then `bb security-route <the record it wrote> <clone> --out
+<name>-build/docs/stages/stage-N-security-review`, which asks triage about each reproduced finding. A review the
+model declined or left without an answer is said as that and is not a clean review. Go through every finding with
+the person: a `coder` route's draft in `security-fixes.md` is completed into this stage's Blueprint as a packet,
+signed and run, and the stage does not close until the security reviewer's test kept beside it passes on the merged
+tip; an `architect` route is a change to the design - `docs/02-architecture.md`, the Blueprint, a decision - and
+then a packet, or a risk accepted in its words; a `human` route is a line of §15 the person accepts or declines; and
+every hypothesis is read and written into §15, answered or open with the stage that answers it. Then the serve command for "deployed locally". Then the owner's walk, page by page or
 function by function: ask the person for every page or function the stage made what is wrong,
 record each thing said as one line, and settle each now - fixed before the stage closes, or
 moved to the deferred list with the stage that takes it. For a pre-release stage, then the
@@ -94,7 +106,9 @@ the map re-ranked, the next stage named with its cap proposed; for a pre-release
 gates record's `:security/signed` with the date, written by the person, before its
 `:stage/closed` with the date, written by the person; the tag `stage-N` on the application's
 merged tip. Not this skill's: the run records and `RUNS.md` (`record` writes them per run) and
-the screenshots (the work folder, uncommitted); the security pack's records
+the screenshots (the work folder, uncommitted); the security review's folder
+`docs/stages/stage-N-security-review/` - its record, the tests it wrote, `security-routing.edn` and any
+`security-fixes.md` - is the commands', committed with the stage; the security pack's records
 `docs/stages/stage-N-security.edn`, `-security-deps.edn` and `-security-secrets.edn` are the
 pack's, committed with the stage. Then say the next step: `bb next`, and the
 `stage-plan` skill for the stage pulled, in a fresh session if the person likes.
@@ -102,7 +116,8 @@ pack's, committed with the stage. Then say the next step: `bb next`, and the
 ## Done when
 
 Every exit criterion of §11 has its evidence written beside it; the security pack's three
-records are beside the stage plan with no failing row; the walk's record has no line
+records are beside the stage plan with no failing row; every reproduced finding of the security review is
+fixed with its test passing, or decided in the design or in §15, and every hypothesis is a line of §15; the walk's record has no line
 without a resolution; the lessons section is closed with its date, cost and runs; the decision
 log has no provisional entry this stage gated; a pre-release stage's gates record says
 `:security/signed`; the gates record says `:stage/closed`; the tag

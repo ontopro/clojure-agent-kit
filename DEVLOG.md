@@ -51,6 +51,17 @@ the template fork's tags and version the template, not the KIT.
 
 ## 2026-10-08
 
+### Every stage's end reads the code for what a request cannot show (row 121 fixed)
+
+The security pack tries from outside what a request can; the security reviewer now reads the merged
+application at every stage's end for the rest. The `stage-end` skill runs it on a fresh clone of the merged
+tip, its change measured from the previous stage's tag, with the person's agreement to its cost; routes what
+it reproduced; and goes through every finding with the person. A fix drafted for the coder becomes a packet of
+the stage, and the stage does not close until the security reviewer's own test passes on the merged tip. A
+gap in the design is the Architect's, a risk is the owner's to accept or decline in the threat model, and a
+hypothesis is always a line there. The method's security paragraph says what the security reviewer reads and
+why its findings are routed rather than fixed; the roles table and the roster carry it.
+
 ### The security reviewer is a profile role (row 121)
 
 The eighth role, and required, as the plan reviewer was when it became one: a profile without it is

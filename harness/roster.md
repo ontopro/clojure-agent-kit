@@ -27,6 +27,8 @@ prints the live model behind each role there.
 | Code review | per run, after the gates are green | model read | `:reviewer` | `openai/gpt-6.1-sol`, high | a diff, the contract slice, the green gate report; a contract that keeps drawing findings goes to a person |
 | The person | approvals, stops, merges | human | none | — | the scope, the plan, each Blueprint's sign-off, every merge, the money |
 | Stage-end checks | at each stage's end | human, in a browser | none | — | screenshots and the interaction check, outside the loop (`method.md` §04; the plan template's `03` §17) |
+| Security review | at each stage's end | model with tools, in a sandbox | `:security-reviewer` | `openai/gpt-6-astra`, high | `bb security-review <clone of the merged tip> --stance tracer --base stage-<N-1>`: the whole application read with five tools in a container with no network; a finding is `reproduced` only when a test it wrote fails, else a `hypothesis`. Its family is held to differ from the Coder's. A real model call, never a gate |
+| Security routing | after the security review | model read | `:orchestrator` | as Triage above | `bb security-route <review.edn> <clone>`: one triage call per reproduced finding - `coder` (a fix packet drafted for the Architect), `architect`, `human`; hypotheses listed for the threat model; nothing dispatched |
 
 Three things the table makes visible. The independence rule is three roles, not three models:
 `:coder`, `:tester` and `:reviewer` are held to three families by `bb profile`, whatever the
