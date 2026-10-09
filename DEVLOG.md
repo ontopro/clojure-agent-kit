@@ -51,6 +51,12 @@ the template fork's tags and version the template, not the KIT.
 
 ## 2026-10-08
 
+### Bake-off 1 re-scored by the final rule (row 121)
+
+Its fourth reading scored, no model call: GPT-6 Astra 6 of 6, every claim shown by its tests, none failing
+on the careful branch, $1.26 and 9:55 of work; GLM-5.3-prime 3 of 6, the round limit on both branches, $2.71
+and 26:52. The figures first given as provisional stand.
+
 ### Two flaws in the fixture's careful feature, found by the security reviewer (row 121)
 
 The careful branch is meant to have nothing to find, and a reviewer's test that fails there is either a
