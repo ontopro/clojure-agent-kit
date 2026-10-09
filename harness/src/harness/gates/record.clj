@@ -14,6 +14,8 @@
   `bb commit-check`, which the clone's pre-commit hook runs, refuses a commit
   when there is no record, when it is red, or when the tree it names is not the
   tree being committed (`git write-tree` of the index the commit is made from).
+  And it refuses code staged without a document: a change under `harness/src/`,
+  `tools/`, `skills/` or `plan-template/` stages `DEVLOG.md` or `NOTES.md` too.
   So \"`bb repair && bb gates` green before committing\" is a fact the commit
   checks, not a step remembered. The KIT's own development only: nothing here
   is shipped to a workspace."
@@ -245,14 +247,42 @@
          " - a file edited since, a partial commit, or an untracked file at gates time: "
          run-gates)))
 
+(def code-paths
+  "Where a staged change is code (or a skill, or the plan template) that a
+  document has to carry: what changed and why in `DEVLOG.md`, or what is still
+  open in `NOTES.md`."
+  ["harness/src/" "tools/" "skills/" "plan-template/"])
+
+(def documents #{"DEVLOG.md" "NOTES.md"})
+
+(defn document-refusal
+  "Why a commit of the staged `paths` (repo-relative) is refused for want of a
+  document, or nil: a path under `code-paths` staged with neither of
+  `documents`. Pure."
+  [paths]
+  (let [code (filter (fn [p] (some #(str/starts-with? p %) code-paths)) paths)]
+    (when (and (seq code) (not (some documents paths)))
+      (str "code is staged without a document - " (str/join ", " (take 3 code))
+           (when (> (count code) 3) (str " and " (- (count code) 3) " more"))
+           ": a finding is not finished until DEVLOG.md or NOTES.md carries it; stage the entry with it"))))
+
+(defn staged-paths
+  "The paths the commit changes, from the index git names."
+  [root]
+  (some-> (git root ["diff" "--cached" "--name-only" "-z"])
+          (str/split #"\u0000")
+          (->> (remove str/blank?))))
+
 (defn commit-check-main
-  "`bb commit-check`: the pre-commit hook's one command. Exit 1 with the reason
-  when the commit is refused; `git commit --no-verify` skips it, which is said,
-  not hidden."
+  "`bb commit-check`: the pre-commit hook's one command. Exit 1 with every
+  reason when the commit is refused; `git commit --no-verify` skips it, which
+  is said, not hidden."
   [& _]
   (let [root (or (repo-root ".") (do (println "commit-check: not in a git repository") (System/exit 1)))
-        rec (read-record root)]
-    (if-let [why (refusal rec (staged-tree root))]
-      (do (println (str "commit refused: " why))
+        rec (read-record root)
+        whys (keep identity [(refusal rec (staged-tree root))
+                             (document-refusal (staged-paths root))])]
+    (if (seq whys)
+      (do (doseq [why whys] (println (str "commit refused: " why)))
           (System/exit 1))
       (println (str "commit-check: gates green on this tree (" (:ended rec) ")")))))

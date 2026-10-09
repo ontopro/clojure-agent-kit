@@ -51,6 +51,16 @@ the template fork's tags and version the template, not the KIT.
 
 ## 2026-10-09
 
+### Code is committed with its document (plan 6.2, item 3)
+
+"A finding is not finished until a document carries it" was a working rule, and it was broken
+within the hour it was written: two findings went into a commit message and nowhere else. The
+commit check now holds it for the commits it can see. A staged change under `harness/src/`,
+`tools/`, `skills/` or `plan-template/` is refused unless `DEVLOG.md` or `NOTES.md` is staged
+with it, and the refusal names the paths. It cannot tell whether the entry is about the code,
+only that one was written in the same commit; tests, records and the other documents are not
+asked for one.
+
 ### A flaky test is named, not rerun until it passes (plan 6.2, item 2)
 
 A test that fails and then passes on a rerun of the same code was, until now, seen once by

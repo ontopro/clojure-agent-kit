@@ -95,3 +95,25 @@
               "flaky: a/y failed earlier on this tree and passed in this run"]
              (record/flaky-now green [red-a green])))
       (is (empty? (record/flaky-now (run "2026-10-09T10:06:00Z" "T2") [red-a green]))))))
+
+(deftest code-is-committed-with-a-document
+  (testing "no code staged: nothing asked"
+    (is (nil? (record/document-refusal ["README.md" "harness/health/records/macos.edn" "harness/test/x_test.clj"]))))
+  (testing "code with DEVLOG.md or NOTES.md: carried"
+    (is (nil? (record/document-refusal ["harness/src/harness/a.clj" "DEVLOG.md"])))
+    (is (nil? (record/document-refusal ["skills/plan/SKILL.md" "NOTES.md"]))))
+  (testing "code alone, each kind of path: refused, the paths named"
+    (doseq [p ["harness/src/harness/a.clj" "tools/security/check.bb" "skills/plan/SKILL.md" "plan-template/docs/01.md"]]
+      (is (str/includes? (str (record/document-refusal [p])) p))))
+  (testing "a document only counts at the root"
+    (is (some? (record/document-refusal ["tools/x.bb" "tools/DEVLOG.md"]))))
+  (testing "a long list is cut at three"
+    (is (str/includes? (record/document-refusal (map #(str "tools/f" % ".bb") (range 5))) "and 2 more"))))
+
+(deftest staged-paths-are-what-the-commit-changes
+  (let [dir (repo-with-one-commit)]
+    (spit (str (fs/path dir "b c.txt")) "b\n")
+    (spit (str (fs/path dir "a.txt")) "changed\n")
+    (is (empty? (record/staged-paths dir)))
+    (git! dir "add" "-A")
+    (is (= #{"a.txt" "b c.txt"} (set (record/staged-paths dir))))))

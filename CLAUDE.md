@@ -50,7 +50,8 @@ benefit. It is also a product artifact, and also not addressed to you.
   finished* — and within the hour two findings that were not runs went into a
   commit message and nowhere else, which is the exact failure it was added to
   stop. A commit message is not a document; nobody greps for a fact they do not
-  know exists.
+  know exists. The commit check holds the part it can see: code staged under `harness/src/`,
+  `tools/`, `skills/` or `plan-template/` without `DEVLOG.md` or `NOTES.md` is refused.
 - **A number or a capability claim names the command that produced it, and the command
   has been run.** Not "this is checkable" — the check, executed, over every case the
   sentence covers rather than the one example in front of you. Every false claim this
