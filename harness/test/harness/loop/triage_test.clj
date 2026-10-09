@@ -467,3 +467,16 @@
   (let [[r _] (ask (security-finding) (text-reply (block {:route "tester" :reason "x"})))]
     (is (= :human (:route r)))
     (is (str/includes? (:triage/fallback r) "route tester is not open on this security-finding"))))
+
+(deftest a-refusal-is-said-as-one-and-goes-to-a-person
+  ;; Cut off by the model's own safeguard partway through a verdict it had begun.
+  (let [cut (str "```json\n{\"route\": \"coder\", \"reason\": \"the contract says so\", \"guidance\": \"The contract")
+        [r _] (ask (security-finding) {:id "gen-1" :model "m-served"
+                                       :choices [{:message {:content cut}
+                                                  :finish_reason "content_filter"
+                                                  :native_finish_reason "refusal"}]
+                                       :usage {:prompt_tokens 5 :completion_tokens 3}})]
+    (is (= :human (:route r)))
+    (is (true? (:refused? r)))
+    (is (str/includes? (:triage/fallback r) "declined to answer"))
+    (is (= cut (:answer r)) "what it wrote before it stopped is kept")))

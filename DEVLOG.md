@@ -51,6 +51,16 @@ the template fork's tags and version the template, not the KIT.
 
 ## 2026-10-08
 
+### Security triage tried: the model declined one call in four, and triage now says so (row 121)
+
+`bb security-route` ran twice for real over the two flaws the security reviewer found in the fixture, with
+the shipped triage model. The logout finding went to the architect both times - the design never said a
+logout ends a session. The login finding went to the coder once, citing the architecture's sentence that a
+request value reaching a query is checked for its type; the second time the model stopped partway through
+the same verdict, its finish reason `content_filter` and its native one `refusal`. Triage had read that as an
+answer with no verdict in it. It now reports a refusal as one, and the finding goes to a person as before;
+the check is shared with the security review. The prompt was not reworded to get past it.
+
 ### A reproduced security finding is routed, not fixed (row 121)
 
 A security finding is a blocker only when the security reviewer reproduced it, and even then the next step

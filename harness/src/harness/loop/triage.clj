@@ -538,9 +538,17 @@
                                     {:dir (or (get-in trigger [:worktrees :coder]) ".")}
                                     (merge {:max-iterations 1} opts {:tools #{}}))
                  m (measured r (- (System/currentTimeMillis) t0))
-                 v (if (= :failed (:status r))
+                 v (cond
+                     (= :failed (:status r))
                      (fallback trigger (str "the triage call failed: "
                                             (pr-str (select-keys (:error r) [:status :message :stop-reason]))))
+                     ;; A REFUSAL IS SAID AS ONE. Opus 5.5 declined one of the first four security
+                     ;; findings it was asked to route, partway through a verdict it had begun to
+                     ;; write; read as an answer with no JSON block, it looked like a malformed reply.
+                     (agent/refused? (:steps r))
+                     (assoc (fallback trigger "the triage model declined to answer (finish reason content_filter / refusal) - its own safeguard, not a failure of the call")
+                            :refused? true)
+                     :else
                      (let [v (verdict trigger (parse-verdict (:text r)))]
                        (if (:triage/fallback v)
                          (fallback trigger (:triage/fallback v))

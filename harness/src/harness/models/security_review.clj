@@ -107,7 +107,7 @@
   safeguard speaking, not a failure of the call, and a review in which it happened has said
   nothing - it is reported as a refusal, never as a clean review or an empty answer."
   [steps]
-  (boolean (some #(or (= "refusal" (:native-finish-reason %)) (= "content_filter" (:finish-reason %))) steps)))
+  (agent/refused? steps))
 
 (defn parse-findings
   "The findings in the security reviewer's final text, from its last ```json block: the vector (empty for

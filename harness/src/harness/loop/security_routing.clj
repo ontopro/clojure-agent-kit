@@ -113,7 +113,8 @@
   `security-fixes.md` into `out`. Returns `{:routed [{:finding :verdict}] :hypotheses [finding]
   :files [written]}`."
   [{:keys [review-file clone architecture triage-fn out]}]
-  (let [review (edn/read-string (slurp (str review-file)))
+  (let [review-file (str (fs/normalize (fs/absolutize review-file)))
+        review (edn/read-string (slurp review-file))
         tests-dir (fs/path (fs/parent review-file) (str (fs/strip-ext (fs/file-name review-file)) "-tests"))
         findings (:findings review)
         routed (vec (for [f findings
@@ -122,7 +123,9 @@
                                              [rel (read-text (fs/path clone rel))]))
                                 v (triage-fn (trigger-for f (read-text (some->> (:test f) (fs/path tests-dir))) files architecture))]]
                       {:finding f
-                       :verdict (select-keys v [:route :reason :guidance :impl :target :triage/fallback :cost :prompt :answer])}))
+                       :verdict (assoc (select-keys v [:route :reason :guidance :impl :target :triage/fallback :refused? :prompt :answer])
+                                       :cost (get-in v [:result :cost])
+                                       :generation-ids (get-in v [:result :runner/meta :generation-ids]))}))
         hypotheses (vec (remove #(= :reproduced (:kind %)) findings))
         coders (filter #(= :coder (get-in % [:verdict :route])) routed)
         routing-file (str (fs/path out "security-routing.edn"))
@@ -162,7 +165,9 @@
           :else (recur more (update m :positional (fnil conj []) a)))))
 
 (defn- print-result [{:keys [routed hypotheses files]}]
-  (println (str "\n  " (count routed) " reproduced finding(s) routed, " (count hypotheses) " hypothesis(es) for the threat model"))
+  (println (str "\n  " (count routed) " reproduced finding(s) routed, " (count hypotheses) " hypothesis(es) for the threat model"
+                (let [cs (map (comp :cost :verdict) routed)]
+                  (when (seq cs) (if (every? some? cs) (format ", $%.3f" (double (reduce + cs))) ", cost not yet reported for every call")))))
   (doseq [{:keys [finding verdict]} routed]
     (println (str "  - [" (name (:route verdict)) "] " (:title finding)))
     (println (str "      " (:reason verdict) (when (:triage/fallback verdict) (str " (fallback: " (:triage/fallback verdict) ")"))))

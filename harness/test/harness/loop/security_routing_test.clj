@@ -63,7 +63,8 @@
         triage-fn (fn [t]
                     (swap! seen conj t)
                     (if (= "A" (get-in t [:payload :finding :title]))
-                      {:route :coder :reason "ra" :impl "src/app/web.clj" :target "ta" :prompt "p" :answer "a"}
+                      {:route :coder :reason "ra" :impl "src/app/web.clj" :target "ta" :prompt "p" :answer "a"
+                       :result {:cost 0.012 :runner/meta {:generation-ids ["gen-a"]}}}
                       {:route :architect :reason "rb" :guidance "gb"}))
         r (routing/route! {:review-file record :clone clone :architecture "## 4. arch" :triage-fn triage-fn :out dir})]
     (is (= 2 (count @seen)) "one triage call per reproduced finding, none for the hypothesis")
@@ -76,6 +77,8 @@
         (is (nil? (get-in b [:payload :test-text])) "a test the record does not hold is said to be missing")
         (is (= [["src/app/none.clj" nil]] (get-in b [:payload :files])))))
     (is (= [:coder :architect] (map (comp :route :verdict) (:routed r))))
+    (is (= 0.012 (get-in r [:routed 0 :verdict :cost])) "what the call cost, from the result triage returns")
+    (is (= ["gen-a"] (get-in r [:routed 0 :verdict :generation-ids])) "and its ids, for a cost that lagged")
     (is (= ["C"] (map :title (:hypotheses r))))
     (testing "the routing is recorded, and the coder's finding drafted"
       (let [rec (edn/read-string (slurp (str (fs/path dir "security-routing.edn"))))]

@@ -38,6 +38,14 @@
    ;; requests inside 75s, and every one of them was a failed dispatch.
    :retry {:attempts 4 :interval-ms 2000}})
 
+(defn refused?
+  "Whether the model declined: a completion in `steps` whose host finish reason is
+  `content_filter` or whose native one is `refusal` (Anthropic's word). That is the model's own
+  safeguard speaking, not a failure of the call - and it can stop an answer halfway, so a reply
+  cut off by it reads like one with no verdict in it unless this is asked."
+  [steps]
+  (boolean (some #(or (= "refusal" (:native-finish-reason %)) (= "content_filter" (:finish-reason %))) steps)))
+
 (defn last-json-block
   "The LAST fenced ```json block in `text`, parsed with keyword keys; nil when
   there is none, when it does not parse, or when it is not an object. Last,
