@@ -11,14 +11,7 @@
                               (str/replace "/" ".")
                               (str/replace "_" "-")
                               symbol)))
-                   sort))
-            (defn run-test-nses! [nses]
-              (require '[clojure.test])
-              (apply require nses)
-              (let [{:keys [fail error]}
-                    (apply (resolve 'clojure.test/run-tests) nses)]
-                (when (pos? (+ fail error))
-                  (System/exit 1)))))
+                   sort)))
 
   dev {:doc "Start a bb nREPL server for REPL-first development"
        :task (babashka.nrepl.server/start-server! {:host "localhost" :port 1667})}
@@ -35,7 +28,9 @@
         ;; dev/ too: dev/example.clj has its own test through `bb example`. And the security
         ;; pack's judgements, which are pure and tested here: the pack runs on its own bb.edn
         :extra-paths ["test" "dev" "../tools/security/src"]
-        :task (run-test-nses! (test-nses))}
+        ;; a failure throws with the failing tests by name, which `gates` writes into its record
+        :requires ([harness.gates.record :as record])
+        :task (record/run-tests! (test-nses))}
 
   fmt {:doc "Format with cljfmt"
        :task (shell "cljfmt fix src test dev ../tools/security/src")}
@@ -205,18 +200,25 @@
 
   ;; The doctor decides on the GATES tier here: the KIT's own gates need no JVM, and a
   ;; machine without one must still be able to run them (`bb doctor` alone judges the loop tier).
-  gates {:doc "Quality gates, cheap first: doctor -> format -> lint -> rules -> skills -> health block -> reports and bake-offs (a workspace's) -> test"
-         :task (do (shell "bb" "doctor" "--tier" "gates") (run 'fmt-check) (run 'lint)
-                   ;; the harness under its own gate 4: layers.edn here, against src/
-                   (shell "bb" "boundary")
-                   (run 'rules-check)
-                   (shell "bb" "skills-sync" "--check")
-                   (shell "bb" "inventory-sync" "--check")
-                   (shell "bb" "health-sync" "--check")
-                   (shell "bb" "report-check")
-                   (shell "bb" "stage-report" "--check")
-                   (shell "bb" "bake-off-check")
-                   (run 'test))}
+  ;; Every run, green or red, writes the gates record (.local/gates/last.edn at the repository
+  ;; root): the working tree it ran on, HEAD, the exit, the failed step and tests. The clone's
+  ;; pre-commit hook (`bb commit-check` at the root) refuses a commit the record does not back.
+  gates {:doc "Quality gates, cheap first: doctor -> format -> lint -> rules -> skills -> health block -> reports and bake-offs (a workspace's) -> test; writes the gates record the commit check reads"
+         :requires ([harness.gates.record :as record])
+         :task (record/recorded!
+                [["doctor" (fn [] (shell "bb" "doctor" "--tier" "gates"))]
+                 ["fmt-check" (fn [] (run 'fmt-check))]
+                 ["lint" (fn [] (run 'lint))]
+                 ;; the harness under its own gate 4: layers.edn here, against src/
+                 ["boundary" (fn [] (shell "bb" "boundary"))]
+                 ["rules-check" (fn [] (run 'rules-check))]
+                 ["skills-sync" (fn [] (shell "bb" "skills-sync" "--check"))]
+                 ["inventory-sync" (fn [] (shell "bb" "inventory-sync" "--check"))]
+                 ["health-sync" (fn [] (shell "bb" "health-sync" "--check"))]
+                 ["report-check" (fn [] (shell "bb" "report-check"))]
+                 ["stage-report" (fn [] (shell "bb" "stage-report" "--check"))]
+                 ["bake-off-check" (fn [] (shell "bb" "bake-off-check"))]
+                 ["test" (fn [] (run 'test))]])}
 
   run-loop {:doc "Drive one task: run <run-dir>, or a single step — <start|check|retry|amend|mutation|continue|record|merge|teardown> <run-dir> ..."
             :requires ([harness.loop.orchestrate])

@@ -23,6 +23,7 @@
  harness.contract.targets   #{}
  harness.gates.boundary     #{}
  harness.gates.forms        #{}
+ harness.gates.record       #{}
  harness.gates.run          #{}
  harness.loop.log           #{}
  harness.models.adapter     #{}

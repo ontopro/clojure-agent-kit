@@ -49,6 +49,24 @@ the template fork's tags and version the template, not the KIT.
 
 ---
 
+## 2026-10-09
+
+### A commit the gates did not pass is refused (plan 6.2, item 1)
+
+"`bb repair && bb gates` green before committing" was a working rule, and a rule a session has
+to remember is the kind this repository keeps finding broken. `bb gates` now writes a record of
+every run, green or red, to `.local/gates/last.edn` at the repository root: the tree it ran on,
+the step that failed and the tests that failed by name, HEAD, the start and the end. The tree is
+the working tree as git would commit it with `git add -A`, taken before and after the run, so
+an untracked file counts and an edit made while the gates ran is seen. A pre-commit hook,
+committed in `.githooks/` and switched on once per clone by `bb hooks-install`, runs `bb
+commit-check`, which refuses a commit when there is no record, when it is red, or when the tree it
+names is not the tree being committed. So a file edited after the gates, a partial commit, or a
+stray untracked file at gates time is refused until what was gated and what is committed are the
+same. A git hook rather than an agent client's hook because it holds every commit, made by a
+session started in any folder or by hand. `git commit --no-verify` skips it; that is said here,
+not hidden. A container's clone writes its own record, which nothing reads.
+
 ## 0.6.1 — plan 6.1's boundary: security asked and tried
 
 A workspace made before `0.6.1` lacks the security reviewer role in its profile, has the application

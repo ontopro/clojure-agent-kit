@@ -25,7 +25,7 @@ bb skills-sync # the fifth part, skills/, rendered to the clone's own .claude/sk
 bb next       # the workflow's next step, its owner and the command or skill, read off the build's files; scoping before a workspace exists
 bb stage-report <stage-plan.md> # a stage's figures from its records, into its plan's exit-criteria section; --check holds the block to the records (in gates)
 bb spec-from-blueprint <blueprint.md> <task-id> [<out.edn>]  # a task's spec.edn out of the Blueprint, its named shapes inlined from §1; pipes into bb sigs
-bb gates      # the KIT's own gates: doctor -> format -> lint -> rules -> reports -> health block -> test
+bb gates      # the KIT's own gates: doctor -> format -> lint -> rules -> reports -> health block -> test; writes .local/gates/last.edn, which the pre-commit hook reads
 bb repair     # gate 0 over the Clojure files you changed (run before bb gates)
 bb example    # the whole loop shape in one run: no model calls, no network
 ```
@@ -53,7 +53,7 @@ the source by name: a namespace the source has that the table never mentions fai
 
 <!-- harness-inventory:begin -->
 
-50 namespaces, rendered from `src/harness/` by `bb inventory-sync` (`--check` in `bb gates`): `harness.setup` (14: the machine and the workspace), `harness.loop` (6: the steps and the loop), `harness.contract` (7: the packet, the shapes, the checks on a spec), `harness.gates` (4: the runner, gate 0, the boundary gate), `harness.models` (14: runners, adapters, profiles, provenance), `harness.money` (4: balance, the reports, repricing), and `harness.rules` on its own. The group is the folder, what a namespace is about; the layer is its place in the dependency order `layers.edn` declares and `bb boundary` holds - 0 requires nothing of the harness, 8 is the top - computed as one more than the deepest layer of what it may require.
+51 namespaces, rendered from `src/harness/` by `bb inventory-sync` (`--check` in `bb gates`): `harness.setup` (14: the machine and the workspace), `harness.loop` (6: the steps and the loop), `harness.contract` (7: the packet, the shapes, the checks on a spec), `harness.gates` (5: the runner, gate 0, the boundary gate), `harness.models` (14: runners, adapters, profiles, provenance), `harness.money` (4: balance, the reports, repricing), and `harness.rules` on its own. The group is the folder, what a namespace is about; the layer is its place in the dependency order `layers.edn` declares and `bb boundary` holds - 0 requires nothing of the harness, 8 is the top - computed as one more than the deepest layer of what it may require.
 
 | Namespace | Group | Layer | The first line of its docstring |
 |---|---|---|---|
@@ -87,6 +87,7 @@ the source by name: a namespace the source has that the table never mentions fai
 | `harness.contract.targets` | contract | 0 | The spec's `:property-targets`, checked against the tests the Tester wrote. |
 | `harness.gates.boundary` | gates | 0 | Gate 4: the architecture-boundary check (method §09), against a project's |
 | `harness.gates.forms` | gates | 0 | The top-level forms of a Clojure file, as a table: kind, name, line range, |
+| `harness.gates.record` | gates | 0 | The KIT's gates record and the commit check that reads it. |
 | `harness.gates.repair` | gates | 1 | Gate 0: mechanical repair, before the gates run. |
 | `harness.gates.run` | gates | 0 | The gate runner. |
 | `harness.models.adapter` | models | 0 | One request shape per model family, and one parsed shape out. |
@@ -160,6 +161,7 @@ the model as shipped — is [`roster.md`](roster.md).
 | `harness.contract.packet` | Cuts a role-specific packet from a task spec | The Tester's context excludes the Coder's impl — **mechanically**, not by asking a Blueprint author to remember. |
 | `harness.gates.run` + `harness.gates.repair` + `harness.contract.targets` | Ordered, short-circuiting gate runner; gate 0 | Cheap before expensive; a failing gate returns *what it said*, not just which one; a broken gate config fails the gate, not the run. |
 | `harness.gates.forms` | A Clojure file's top-level forms as a table (kind, name, lines, hash) and the difference between two tables | A change to an existing file reports what it did at the level of forms - lost, gained, changed by name - while the author is still there; the same table is the check a MODIFY packet will need. Silent when a file does not parse. |
+| `harness.gates.record` | The KIT's gates record and the commit check: `bb gates` runs its steps through it and writes `.local/gates/last.edn` at the repository root, green or red - the working tree as a git tree id (a temporary index, `git add -A`, `git write-tree`) before and after the run, HEAD, the exit, the step and the tests that failed by name, the start and the end; `bb commit-check` at the root, which the clone's pre-commit hook (`.githooks/pre-commit`, `bb hooks-install`) runs, refuses a commit with no record, a red one, or one for another tree than the index being committed. The KIT's own development; nothing of it reaches a workspace | "`bb repair && bb gates` green before committing" was a rule a session had to remember, and nothing held a commit to it. A record of the tree checked, read against the tree committed, makes it a fact the commit refuses on |
 | `harness.models.runner` + `harness.models.runner-check` | The `AgentRunner` seam, a `ManualRunner`, and a conformance check | Ship the mechanics first with a human at the invocation point. Then check every runner you add against the same contract. |
 | `harness.rules` | One rule source, rendered into prompts *and* into `AGENTS.md`, with a gate on drift | Prompt rules beat retry feedback. A rule written in two places rots; a rule written only in a file never reaches a model family that doesn't read files. |
 | `harness.loop.provision` | Three worktrees per task, each with its own nREPL; assembly as a filter | Isolation asserted is isolation absent. Only a role's declared `:files/target` crosses into the gate workspace, and anything else is refused by name. |

@@ -1,0 +1,198 @@
+(ns harness.gates.record
+  "The KIT's gates record and the commit check that reads it.
+
+  `bb gates` runs its steps through `recorded!`, which writes
+  `.local/gates/last.edn` at the repository root, green or red: the tree the
+  gates ran on, HEAD, the exit, the step that failed and the tests that failed
+  by name, the start and the end. The tree is the WORKING tree as a git tree
+  id - a temporary index, `git add -A`, `git write-tree` - so an untracked file
+  counts, and it is taken before and after the run, so a file edited while the
+  gates ran is seen.
+
+  `bb commit-check`, which the clone's pre-commit hook runs, refuses a commit
+  when there is no record, when it is red, or when the tree it names is not the
+  tree being committed (`git write-tree` of the index the commit is made from).
+  So \"`bb repair && bb gates` green before committing\" is a fact the commit
+  checks, not a step remembered. The KIT's own development only: nothing here
+  is shipped to a workspace."
+  (:require
+   [babashka.fs :as fs]
+   [babashka.process :as p]
+   [clojure.edn :as edn]
+   [clojure.pprint :as pprint]
+   [clojure.string :as str]
+   [clojure.test :as t]))
+
+(def record-path
+  "Where the record lives, from the repository root. Under `.local/`, so it is
+  never committed and a container's clone writes its own."
+  ".local/gates/last.edn")
+
+;; ---------------------------------------------------------------- git
+
+(defn- git
+  "`git args...` in `dir`, trimmed out, or nil when it exits non-zero."
+  ([dir args] (git dir {} args))
+  ([dir extra-env args]
+   (let [{:keys [exit out]} (apply p/shell {:dir (str dir) :out :string :err :string
+                                            :continue true :extra-env extra-env}
+                                   "git" args)]
+     (when (zero? exit) (str/trim out)))))
+
+(defn repo-root
+  "The top of the git repository `dir` is in, or nil outside one."
+  [dir]
+  (git dir ["rev-parse" "--show-toplevel"]))
+
+(defn head
+  "HEAD's commit, or nil (a repository with no commit yet)."
+  [root]
+  (git root ["rev-parse" "--verify" "-q" "HEAD"]))
+
+(defn working-tree
+  "The working tree as a git tree id: the index copied to a temporary file (so
+  the stat cache keeps it fast), `git add -A` into it, `git write-tree`. The
+  real index is not touched; untracked files that are not ignored count."
+  [root]
+  (let [tmp (fs/create-temp-file {:prefix "kit-gates-index"})
+        index (some->> (git root ["rev-parse" "--git-path" "index"]) (fs/path root))]
+    (try
+      (if (and index (fs/exists? index))
+        (fs/copy index tmp {:replace-existing true})
+        (fs/delete tmp))
+      (let [env {"GIT_INDEX_FILE" (str tmp)}]
+        (when (git root env ["add" "-A"])
+          (git root env ["write-tree"])))
+      (finally (fs/delete-if-exists tmp)))))
+
+(defn staged-tree
+  "The tree a commit would record: `git write-tree` of the index git names -
+  the real one, or the temporary one `git commit -a` and `git commit <paths>`
+  hand their hooks through GIT_INDEX_FILE."
+  [root]
+  (git root ["write-tree"]))
+
+;; ---------------------------------------------------------------- tests by name
+
+(defn- test-name []
+  (if-let [v (first t/*testing-vars*)]
+    (let [{:keys [ns name]} (meta v)]
+      (str (ns-name ns) "/" name))
+    "(outside a test: a fixture or a namespace load)"))
+
+(defn run-tests!
+  "Run clojure.test over `nses` and throw when anything failed or erred, the
+  failing tests BY NAME in the exception's data (`:failed-tests`) for the
+  record, `:babashka/exit 1` so `bb test` alone exits as it always did."
+  [nses]
+  (apply require nses)
+  (let [failed (atom [])
+        report t/report
+        {:keys [fail error]}
+        (binding [t/report (fn [m]
+                             (when (#{:fail :error} (:type m))
+                               (swap! failed conj (test-name)))
+                             (report m))]
+          (apply t/run-tests nses))]
+    (when (pos? (+ fail error))
+      (throw (ex-info (str (+ fail error) " test assertion(s) failed or erred")
+                      {:babashka/exit 1
+                       :failed-tests (vec (distinct @failed))})))))
+
+;; ---------------------------------------------------------------- the record
+
+(defn- exit-of [e]
+  (let [d (ex-data e)]
+    (or (:babashka/exit d) (:exit d) 1)))
+
+(defn outcome
+  "What one run of `steps` ended as: {:exit 0} or {:exit n :step name ...}.
+  `steps` is [[name thunk] ...], run in order, stopping at the first throw -
+  a `shell` that exits non-zero throws, and so does `run-tests!`."
+  [steps]
+  (reduce (fn [_ [step f]]
+            (try (f) {:exit 0}
+                 (catch Exception e
+                   (reduced (cond-> {:exit (exit-of e) :step step}
+                              (:failed-tests (ex-data e)) (assoc :failed-tests (:failed-tests (ex-data e)))
+                              (not (ex-data e)) (assoc :error (str (class e) ": " (ex-message e))))))))
+          {:exit 0}
+          steps))
+
+(defn record
+  "The record written for one gates run. Pure."
+  [{:keys [tree tree-after head started ended]} result]
+  (merge {:tree tree :tree-after tree-after :head head
+          :started started :ended ended}
+         result))
+
+(defn read-record
+  "The record at `root`, or nil when there is none."
+  [root]
+  (let [f (fs/path root record-path)]
+    (when (fs/exists? f)
+      (edn/read-string (slurp (str f))))))
+
+(defn- write-record! [root rec]
+  (let [f (fs/path root record-path)]
+    (fs/create-dirs (fs/parent f))
+    (spit (str f) (with-out-str (pprint/pprint rec)))
+    (str f)))
+
+(defn recorded!
+  "Run the gates' `steps` ([[name thunk] ...]) and write the record, red or
+  green; then exit with the run's exit when it is not 0. Outside a git
+  repository there is no tree to name, and nothing is written."
+  [steps]
+  (let [root (repo-root ".")
+        tree (some-> root working-tree)
+        started (str (java.time.Instant/now))
+        result (outcome steps)]
+    (if root
+      (let [rec (record {:tree tree :tree-after (working-tree root) :head (head root)
+                         :started started :ended (str (java.time.Instant/now))}
+                        result)]
+        (println (str "gates record: " (fs/relativize (fs/absolutize ".") (write-record! root rec))
+                      (if (zero? (:exit result)) " (green)" (str " (RED at " (:step result) ")")))))
+      (println "gates record: not in a git repository, none written"))
+    (when-not (zero? (:exit result))
+      (some->> (:error result) (println "error:"))
+      (System/exit (:exit result)))))
+
+;; ---------------------------------------------------------------- the commit check
+
+(def ^:private run-gates "run `bb repair && bb gates` in harness/ on exactly what is committed")
+
+(defn refusal
+  "Why a commit of `staged` (a tree id) is refused on `rec` (the gates record,
+  or nil), or nil when it is not. Pure."
+  [rec staged]
+  (cond
+    (nil? rec)
+    (str "no gates record (" record-path "): " run-gates)
+
+    (not (zero? (:exit rec)))
+    (str "the last gates run was red, at " (:step rec)
+         (when-let [ts (seq (:failed-tests rec))] (str " - " (str/join ", " ts)))
+         ": fix it and " run-gates)
+
+    (not= (:tree rec) (:tree-after rec))
+    (str "the working tree changed while the gates ran (" (:started rec) "): " run-gates)
+
+    (not= (:tree rec) staged)
+    (str "the gates ran on tree " (some-> (:tree rec) (subs 0 7))
+         " and this commit is tree " (some-> staged (subs 0 7))
+         " - a file edited since, a partial commit, or an untracked file at gates time: "
+         run-gates)))
+
+(defn commit-check-main
+  "`bb commit-check`: the pre-commit hook's one command. Exit 1 with the reason
+  when the commit is refused; `git commit --no-verify` skips it, which is said,
+  not hidden."
+  [& _]
+  (let [root (or (repo-root ".") (do (println "commit-check: not in a git repository") (System/exit 1)))
+        rec (read-record root)]
+    (if-let [why (refusal rec (staged-tree root))]
+      (do (println (str "commit refused: " why))
+          (System/exit 1))
+      (println (str "commit-check: gates green on this tree (" (:ended rec) ")")))))

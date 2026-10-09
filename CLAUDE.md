@@ -34,7 +34,12 @@ benefit. It is also a product artifact, and also not addressed to you.
 
 - **Run `bb repair && bb gates` in `harness/` before committing.** `repair` is gate 0
   over the Clojure files you changed; `gates` is doctor → format → lint → the harness's own boundary gate → rules → skills → inventory → health block → the records → test. Fast,
-  and the only thing checking this repo — there is no CI.
+  and the only thing checking this repo — there is no CI. **A commit holds you to it:** run
+  `bb hooks-install` once per clone, and the pre-commit hook (`bb commit-check`) refuses a
+  commit unless the last `bb gates` was green on exactly the tree being committed (its record,
+  `.local/gates/last.edn`, names the tree). The tree gated is the whole working tree, untracked
+  files included, so a commit is `git add -A` of what was gated; work not being committed is set
+  aside before the gates run, not after. Never `--no-verify` to get past it; fix the cause.
 - **Before a tag, the checklist at the head of `DEVLOG.md`**, in its order: the health records on
   the committed tree, the tag's documents, then the gates and `bb docker-gates` on the commit the
   tag will name.

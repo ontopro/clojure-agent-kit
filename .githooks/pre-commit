@@ -1,0 +1,4 @@
+#!/bin/sh
+# The KIT's pre-commit hook: a commit the last `bb gates` run does not back is refused.
+# `bb hooks-install` points git here, once per clone; `git commit --no-verify` skips it.
+exec bb commit-check

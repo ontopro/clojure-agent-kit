@@ -22,7 +22,15 @@
 ;;
 ;; Both log to .local/gates/, both mount the repository READ-ONLY and clone inside, so what is
 ;; checked is what is committed and nothing the container writes reaches this tree.
-{:tasks
+;;
+;; And two for the KIT's own development, never shipped to a workspace:
+;;
+;;   bb hooks-install   once per clone: git's hooks are read from .githooks/, committed here
+;;   bb commit-check    what .githooks/pre-commit runs: refuses a commit unless the last
+;;                      `bb gates` (.local/gates/last.edn, written green or red) was green on
+;;                      exactly the tree being committed. `git commit --no-verify` skips it
+{:paths ["harness/src"]
+ :tasks
  {:requires ([babashka.fs :as fs]
              [clojure.edn :as edn]
              [clojure.string :as str])
@@ -96,8 +104,16 @@
   health {:doc "The health check: the selfcheck project and an application generated from the pinned template - gates, breakers, one loop run, serve. Minutes; starts JVMs. [--selfcheck-only] [--keep]"
           :task (apply harness "health" *command-line-args*)}
 
-  gates {:doc "The KIT's own quality gates, cheap first: doctor -> format -> lint -> rules -> reports -> test"
+  gates {:doc "The KIT's own quality gates, cheap first: doctor -> format -> lint -> rules -> reports -> test; writes the gates record .local/gates/last.edn"
          :task (harness "gates")}
+
+  hooks-install {:doc "Point this clone's git hooks at .githooks/ (core.hooksPath), so the pre-commit hook runs `bb commit-check`. Once per clone"
+                 :task (do (shell "git" "config" "core.hooksPath" ".githooks")
+                           (println "core.hooksPath = .githooks: every commit now runs `bb commit-check`"))}
+
+  commit-check {:doc "The pre-commit hook's check: refuse unless the last `bb gates` record is green and names the tree being committed"
+                :requires ([harness.gates.record :as record])
+                :task (record/commit-check-main)}
 
   docker-gates {:doc "The fresh-machine check: build the toolchain image from the Dockerfile (every version from harness/resources/known-good.edn), clone HEAD inside from a read-only mount, run bb gates there, require a clean tree after. Log: .local/gates/docker-gates.log. Needs Docker running"
                 :task (in-container! "docker-gates"
