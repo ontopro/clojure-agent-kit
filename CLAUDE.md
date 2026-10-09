@@ -42,7 +42,8 @@ benefit. It is also a product artifact, and also not addressed to you.
   aside before the gates run, not after. Never `--no-verify` to get past it; fix the cause.
 - **Before a tag, the checklist at the head of `DEVLOG.md`**, in its order: the health records on
   the committed tree, the tag's documents, then the gates and `bb docker-gates` on the commit the
-  tag will name.
+  tag will name. `bb tag-check <tag>` checks it (`--run` does what is stale, `--landed` after the
+  push); a tag is proposed to the person only when every line says ok.
 - **A finding is not finished until a document carries it.** Anything still open goes in
   `NOTES.md`'s register; what changed and why goes in `DEVLOG.md`; a health run that
   certifies a machine goes in `harness/health/records/` by `bb health --record`. Write it up in

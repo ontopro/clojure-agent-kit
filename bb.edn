@@ -23,12 +23,14 @@
 ;; Both log to .local/gates/, both mount the repository READ-ONLY and clone inside, so what is
 ;; checked is what is committed and nothing the container writes reaches this tree.
 ;;
-;; And two for the KIT's own development, never shipped to a workspace:
+;; And three for the KIT's own development, never shipped to a workspace:
 ;;
 ;;   bb hooks-install   once per clone: git's hooks are read from .githooks/, committed here
 ;;   bb commit-check    what .githooks/pre-commit runs: refuses a commit unless the last
 ;;                      `bb gates` (.local/gates/last.edn, written green or red) was green on
 ;;                      exactly the tree being committed. `git commit --no-verify` skips it
+;;   bb tag-check <tag> whether the pre-tag checklist (DEVLOG.md's head) holds for a tag on HEAD;
+;;                      never tags. --run does what is stale, --landed checks origin after the push
 {:paths ["harness/src"]
  :tasks
  {:requires ([babashka.fs :as fs]
@@ -115,13 +117,20 @@
                 :requires ([harness.gates.record :as record])
                 :task (record/commit-check-main)}
 
-  docker-gates {:doc "The fresh-machine check: build the toolchain image from the Dockerfile (every version from harness/resources/known-good.edn), clone HEAD inside from a read-only mount, run bb gates there, require a clean tree after. Log: .local/gates/docker-gates.log. Needs Docker running"
-                :task (in-container! "docker-gates"
-                                     (str clone-head
-                                          "cd /work/kit/harness\n"
-                                          "bb doctor --tier gates\n"
-                                          "bb gates\n"
-                                          (tree-clean)))}
+  tag-check {:doc "bb tag-check <tag> [--run | --landed]: whether the pre-tag checklist holds for <tag> on HEAD - tree, health records fresh on both platforms, the DEVLOG heading, the README, the tag absent, the pin's tag on the fork, a secrets scan since the last tag, the gates and docker-gates records for HEAD. Never tags. --run does what is stale first (health, then a stop for the commit; gates, docker-gates); --landed checks origin after the push"
+             :requires ([harness.gates.tag-check :as tag-check])
+             :task (apply tag-check/-main *command-line-args*)}
+
+  docker-gates {:doc "The fresh-machine check: build the toolchain image from the Dockerfile (every version from harness/resources/known-good.edn), clone HEAD inside from a read-only mount, run bb gates there, require a clean tree after. Log: .local/gates/docker-gates.log; record (the commit, the exit), red or green: .local/gates/docker-gates.edn, which `bb tag-check` reads. Needs Docker running"
+                :requires ([harness.gates.tag-check :as tag-check])
+                :task (tag-check/docker-recorded!
+                       (fn []
+                         (in-container! "docker-gates"
+                                        (str clone-head
+                                             "cd /work/kit/harness\n"
+                                             "bb doctor --tier gates\n"
+                                             "bb gates\n"
+                                             (tree-clean)))))}
 
   docker-health {:doc "bb health --record in the same container; the container platform's record is copied out to harness/health/records/ for `bb health-sync` (the known-good set stays the host run's). Log: .local/gates/docker-health.log. Minutes; needs Docker running"
                  :task (let [out (str (fs/absolutize ".local/docker/out"))]

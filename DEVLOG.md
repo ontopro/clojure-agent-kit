@@ -47,9 +47,34 @@ the template fork's tags and version the template, not the KIT.
    toolchain, which is the fresh-machine check until a workflow runs it on push.
 5. The merge, the tag and the push, by the person.
 
+`bb tag-check <tag>` at the root is this list's mechanism: a line per check and no tag unless
+every one holds. `bb tag-check <tag> --run` does steps 2 and 4 where they are stale, stopping for
+the commit between them; `--landed` checks origin after step 5. bear-claw's secrets scan stays a
+step by hand, named there.
+
 ---
 
 ## 2026-10-09
+
+### A tag is checked before it is cut (plan 6.2, item 10)
+
+The pre-tag checklist at the head of this file was five steps in an order a session had to keep.
+`bb tag-check <tag>` reads each one off the repository and prints a line per check: the tree clean
+on a plan branch or `main`; the health records fresh on both platforms; the tag's heading here and
+its line; the root README naming it; the tag absent here and on origin; the pinned template's tag
+on the fork at the pinned commit; the security pack's secrets scan over the commits since the last
+tag; the gates record green for HEAD's tree; and the fresh-machine container green for HEAD. It
+never cuts the tag. A health record is stale when anything `bb health` exercises - the harness's
+source, resources and health folder, its `bb.edn`, `tools/`, the `Dockerfile`, the root `bb.edn` -
+changed between the commit it names and HEAD; the records' own commit changes none of that, so a
+record committed after its run stays fresh. `bb docker-gates` now writes a record of the commit it
+cloned and its exit, red or green, which is what the last check reads; it says when the tree had
+uncommitted changes the container did not see. `--run` does what is stale in the checklist's
+order and stops at the first red; after new health records it stops, since the containers clone
+HEAD and the records must be committed first, and a second `--run` goes on to the gates and the
+container. `--landed`, after the person's push, checks that origin's tag and `main` are both at
+the tag's commit. Tried on a clone at `0.6.1`: every check of content held, and the three it
+could not pass there - the tag exists, a fresh clone has no gates records - said so.
 
 ### A project's name is refused at commit (plan 6.2, item 5)
 
