@@ -61,6 +61,19 @@ costs its readers more than a missed one; an answer with no findings block is re
 nothing, not as a clean review. The tests it wrote are collected from the clone and kept beside the
 record. The command is a real model call and says so before it spends.
 
+### Bake-off 2, scored: Astra 5 of 6, GLM-5.3-prime 3 of 6; one reviewer for now (row 121)
+
+Same two models, tracer only, sixty rounds, with a review able to rewrite its own tests and its tests run in
+a fresh copy. GPT-6 Astra: five of six planted faults (it missed the race), thirteen completions on the
+faulted branch, $2.41 and 18 minutes of work for both readings, 598,185 tokens. GLM-5.3-prime: three of six
+(the same three as every earlier run), no answer on either branch, $2.85 and 43 minutes of work,
+2,415,005 tokens; its careful-branch reading alone took 34 minutes and $2.37 and hit the round limit with
+nothing to find. Whole run $5.26, 3.01M tokens, 1:01 of work. Across the six faulted runs scored so far
+GLM never found a fault Astra missed and wrote no answer in half of them, so the person decided on ONE
+reviewer for now - Astra - with GLM kept as a recorded result, not erased. Bake-off 1 was being re-scored
+by the rule below when it was stopped, three readings of four done; the figures first printed for
+bake-off 2 are superseded by these.
+
 ### A namespace ran or it did not (row 121)
 
 The scorer's test for "does not compile" scanned a run's whole output for compile-error text, and was wrong
