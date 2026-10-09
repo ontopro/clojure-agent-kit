@@ -5,7 +5,7 @@ profile, a person, a script, or nothing. `method.md` §05 says what each role is
 `portability.md` says how a seat reaches them, and [`workflow.md`](../workflow.md) says in what
 order the acts happen; this document is the map between an act and its actor, which none of those
 holds. The Model column is the shipped `claude` example
-(`resources/profiles/claude.edn`) as of 2026-10-07 — every role over OpenRouter, pinned to its
+(`resources/profiles/claude.edn`) as of 2026-10-08 — every role over OpenRouter, pinned to its
 provider with no fallback; a project's own profile is `<name>-build/profile.edn`, and `bb profile`
 prints the live model behind each role there.
 
@@ -20,9 +20,9 @@ prints the live model behind each role there.
 | Blueprint review | per stage, before sign-off | model read, then the human gate | `:blueprint-reviewer` | `anthropic/claude-opus-5.5`, high | `bb blueprint-review <blueprint.md>`; the stage document and the Blueprint whole, against `method.md` §07 step 2 (over-engineered?) and §06's rules for shapes and targets; findings to the plan's `reviews/<stage>/`, resolved in the stage document before the sign-off. Not a gate. The seat's family, by decision (`NOTES.md` row 71); the Blueprint's packets are still read one at a time by the spec review below |
 | The spec | per task | the seat's session | the seat (`:seat`) | the session's own; not in the profile | `bb spec-from-blueprint`, `bb sigs`; the spec review's findings read at the `:spec-reviewed` stop, the contract amended or left |
 | Spec review | per task, before dispatch | model read, cold, no tools | `:spec-reviewer` | `openai/gpt-6.1-sol`, high | `start` runs it for a spec with no current review and stops `:spec-reviewed`; two reviews that found something, then a person (`:spec-review/max`) |
-| Coding | per run | dispatched role | `:coder` | `anthropic/claude-fable-5.1`, low | its own worktree and nREPL; the cache asked for on this role alone |
+| Coding | per run | dispatched role | `:coder` | `anthropic/claude-sonnet-5.5`, medium | its own worktree and nREPL; the cache asked for on this role alone |
 | Testing | per run | dispatched role | `:tester` | `google/gemini-3.8-flash`, medium | tests from the contract; never sees the implementation |
-| Triage | on a red gate or a note | model read | `:orchestrator` | `anthropic/claude-fable-5.1`, low | one call, no tools; routes to coder, tester, architect, tooling or human |
+| Triage | on a red gate, a note or a rejected review | model read | `:orchestrator` | `anthropic/claude-opus-5.5`, medium | one call, no tools; routes to coder, tester, architect, tooling or human; also a stage-end security finding (Security routing below) |
 | The Architect's stops | when the loop routes `architect` | the seat's session | the seat (`:seat`) | the session's own; not in the profile | a contract that keeps drawing findings, a triage that names the contract; the decision written before the retry |
 | Code review | per run, after the gates are green | model read | `:reviewer` | `openai/gpt-6.1-sol`, high | a diff, the contract slice, the green gate report; a contract that keeps drawing findings goes to a person |
 | The person | approvals, stops, merges | human | none | — | the scope, the plan, each Blueprint's sign-off, every merge, the money |
