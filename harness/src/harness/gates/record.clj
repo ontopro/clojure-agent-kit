@@ -7,7 +7,9 @@
   by name, the start and the end. The tree is the WORKING tree as a git tree
   id - a temporary index, `git add -A`, `git write-tree` - so an untracked file
   counts, and it is taken before and after the run, so a file edited while the
-  gates ran is seen.
+  gates ran is seen. Every run's record is also kept under `.local/gates/runs/`,
+  so a test that failed on a tree and passed on the same tree later - flaky,
+  since nothing changed - is named after the run that shows it.
 
   `bb commit-check`, which the clone's pre-commit hook runs, refuses a commit
   when there is no record, when it is red, or when the tree it names is not the
@@ -133,11 +135,67 @@
     (when (fs/exists? f)
       (edn/read-string (slurp (str f))))))
 
-(defn- write-record! [root rec]
-  (let [f (fs/path root record-path)]
-    (fs/create-dirs (fs/parent f))
-    (spit (str f) (with-out-str (pprint/pprint rec)))
+(def runs-dir
+  "Every run's record, kept, one file per run named by its start, beside `last.edn`."
+  ".local/gates/runs")
+
+(defn- write-record!
+  "`last.edn`, and the run's own copy under `runs/`, every one kept."
+  [root rec]
+  (let [f (fs/path root record-path)
+        run (fs/path root runs-dir (str (str/replace (:started rec) ":" "-") ".edn"))
+        text (with-out-str (pprint/pprint rec))]
+    (fs/create-dirs (fs/parent run))
+    (spit (str run) text)
+    (spit (str f) text)
     (str f)))
+
+(defn read-runs
+  "Every kept run record at `root`; a file that does not read is skipped."
+  [root]
+  (let [dir (fs/path root runs-dir)]
+    (when (fs/exists? dir)
+      (keep (fn [f] (try (edn/read-string (slurp (str f))) (catch Exception _ nil)))
+            (fs/glob dir "*.edn")))))
+
+;; ---------------------------------------------------------------- flaky tests
+
+(defn- tests-ran?
+  "Whether a run reached the test step: green, or red at it."
+  [rec]
+  (or (zero? (:exit rec)) (= "test" (:step rec))))
+
+(defn flaky
+  "The tests that failed in one run and passed in a later run on the SAME tree:
+  [{:test :tree :failed :passed}], the times of the failing run and the first
+  later one it passed in. A fix changes the tree, so a fixed test is never
+  here. Pure."
+  [records]
+  (let [ordered (sort-by :started (filter tests-ran? records))]
+    (->> ordered
+         (mapcat (fn [rec]
+                   (for [t (:failed-tests rec)
+                         :let [later (->> ordered
+                                          (filter #(and (= (:tree %) (:tree rec))
+                                                        (pos? (compare (:started %) (:started rec)))
+                                                        (not (some #{t} (:failed-tests %)))))
+                                          first)]
+                         :when later]
+                     {:test t :tree (:tree rec) :failed (:started rec) :passed (:started later)})))
+         distinct
+         vec)))
+
+(defn flaky-now
+  "The lines `bb gates` prints after run `rec`: each test that failed earlier on
+  this tree and passed in this run. Pure."
+  [rec records]
+  (when (tests-ran? rec)
+    (->> (flaky records)
+         (filter #(and (= (:tree %) (:tree rec))
+                       (not (some #{(:test %)} (:failed-tests rec)))))
+         (map :test)
+         distinct
+         (map #(str "flaky: " % " failed earlier on this tree and passed in this run")))))
 
 (defn recorded!
   "Run the gates' `steps` ([[name thunk] ...]) and write the record, red or
@@ -153,7 +211,9 @@
                          :started started :ended (str (java.time.Instant/now))}
                         result)]
         (println (str "gates record: " (fs/relativize (fs/absolutize ".") (write-record! root rec))
-                      (if (zero? (:exit result)) " (green)" (str " (RED at " (:step result) ")")))))
+                      (if (zero? (:exit result)) " (green)" (str " (RED at " (:step result) ")"))))
+        (doseq [line (flaky-now rec (read-runs root))]
+          (println line)))
       (println "gates record: not in a git repository, none written"))
     (when-not (zero? (:exit result))
       (some->> (:error result) (println "error:"))

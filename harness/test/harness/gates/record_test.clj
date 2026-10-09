@@ -70,3 +70,28 @@
                        "changed while the gates ran"))
     (is (str/includes? (record/refusal green "1234567890")
                        "gates ran on tree abcdef1 and this commit is tree 1234567"))))
+
+(deftest flaky-is-a-failure-then-a-pass-on-the-same-tree
+  (let [run (fn [started tree & {:keys [exit step failed]}]
+              (cond-> {:started started :tree tree :exit (or exit 0)}
+                step (assoc :step step)
+                failed (assoc :failed-tests failed)))
+        red-a (run "2026-10-09T10:00:00Z" "T1" :exit 1 :step "test" :failed ["a/x" "a/y"])
+        green (run "2026-10-09T10:05:00Z" "T1")]
+    (testing "failed, then passed on the same tree"
+      (is (= [{:test "a/x" :tree "T1" :failed (:started red-a) :passed (:started green)}
+              {:test "a/y" :tree "T1" :failed (:started red-a) :passed (:started green)}]
+             (record/flaky [green red-a]))))
+    (testing "a pass on another tree is a fix, not a flake"
+      (is (empty? (record/flaky [red-a (run "2026-10-09T10:05:00Z" "T2")]))))
+    (testing "a later run red before the tests proves nothing"
+      (is (empty? (record/flaky [red-a (run "2026-10-09T10:05:00Z" "T1" :exit 1 :step "lint")]))))
+    (testing "still failing later is not flaky; another test passing is"
+      (is (= ["a/y"] (map :test (record/flaky [red-a (run "2026-10-09T10:05:00Z" "T1" :exit 1 :step "test" :failed ["a/x"])])))))
+    (testing "a pass BEFORE the failure is not counted"
+      (is (empty? (record/flaky [(run "2026-10-09T09:00:00Z" "T1") red-a]))))
+    (testing "the lines printed after the run that passed"
+      (is (= ["flaky: a/x failed earlier on this tree and passed in this run"
+              "flaky: a/y failed earlier on this tree and passed in this run"]
+             (record/flaky-now green [red-a green])))
+      (is (empty? (record/flaky-now (run "2026-10-09T10:06:00Z" "T2") [red-a green]))))))

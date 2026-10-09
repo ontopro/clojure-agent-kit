@@ -51,6 +51,16 @@ the template fork's tags and version the template, not the KIT.
 
 ## 2026-10-09
 
+### A flaky test is named, not rerun until it passes (plan 6.2, item 2)
+
+A test that fails and then passes on a rerun of the same code was, until now, seen once by
+whoever reran it and then forgotten. `bb gates` now keeps every run's record under
+`.local/gates/runs/` beside `last.edn`, and after a run that reached the tests it names each test
+that failed in an earlier run on the same tree and passed in this one: the same tree means nothing
+changed but the run, so the test is flaky. A pass on another tree is a fix and is not counted, nor
+is a later run that stopped before the tests. The check is one function, which the item-end report
+planned for this plan will call as well. The records are kept, all of them.
+
 ### A commit the gates did not pass is refused (plan 6.2, item 1)
 
 "`bb repair && bb gates` green before committing" was a working rule, and a rule a session has
