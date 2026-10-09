@@ -54,6 +54,14 @@ step by hand, named there.
 
 ---
 
+## 0.6.2 — plan 6.2's boundary: the KIT's own development checked
+
+A workspace made before `0.6.2` needs nothing: this plan changed only how the KIT itself is
+developed - a commit check, an item's-end report and a tag check, run from the KIT's root and never
+copied into a workspace - and nothing a workspace takes from the KIT changed (`git diff 0.6.1 0.6.2
+-- skills plan-template harness/resources tools` is empty), so `bb doctor` run in one says how far
+the KIT has moved and lists nothing to act on.
+
 ## 2026-10-09
 
 ### The KIT session's routine is a skill (plan 6.2)

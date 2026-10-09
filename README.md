@@ -22,7 +22,7 @@ something narrower each time:
 > project's workspace next to the application it generates from a pinned template, upgraded
 > with `git pull`, and nothing of the project is written into it; `bb doctor` run in the
 > workspace then says what the pulled KIT expects that the workspace, made at an earlier commit,
-> lacks. The KIT carries a version tag at each plan's boundary - `0.6.1` is the current one, and
+> lacks. The KIT carries a version tag at each plan's boundary - `0.6.2` is the current one, and
 > the DEVLOG's heading for it says in a line what a workspace made before it needs; `bb init`
 > records the version beside the commit. There is no library to require; there is one commit
 > of one template that a dated health check certifies with it.
@@ -105,8 +105,8 @@ disagree. The date is the claim; nothing here says it still holds today.
 
 | Platform | Run on | KIT commit | Template | Checks | Time |
 |---|---|---|---|---|---|
-| Linux Ubuntu 24.04.5 LTS arm64 | 2026-10-09 | `26791bb` | `kit-v1.2` (`9ca4b7b`) | 9 of 9 ok: selfcheck gates, selfcheck red, selfcheck loop, app gates, app red, app loop, app serve, app browser, app security | 84s |
-| macOS 27.0.1 arm64 | 2026-10-09 | `26791bb` | `kit-v1.2` (`9ca4b7b`) | 9 of 9 ok: selfcheck gates, selfcheck red, selfcheck loop, app gates, app red, app loop, app serve, app browser, app security | 78s |
+| Linux Ubuntu 24.04.5 LTS arm64 | 2026-10-09 | `102541b` | `kit-v1.2` (`9ca4b7b`) | 9 of 9 ok: selfcheck gates, selfcheck red, selfcheck loop, app gates, app red, app loop, app serve, app browser, app security | 93s |
+| macOS 27.0.1 arm64 | 2026-10-09 | `102541b` | `kit-v1.2` (`9ca4b7b`) | 9 of 9 ok: selfcheck gates, selfcheck red, selfcheck loop, app gates, app red, app loop, app serve, app browser, app security | 79s |
 
 One record per platform actually run, the latest run on it; a platform not in the table has none. `bb health --record` on such a machine writes one - commit it, and `bb health-sync`.
 
