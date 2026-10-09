@@ -341,7 +341,7 @@ git clone https://github.com/ontopro/clojure-agent-kit     # into the folder the
 cd clojure-agent-kit
 bb doctor        # every tool, its version, what fixes a miss; two verdicts - run it, follow it, run it again
 bb health        # once: the KIT, on this machine, with the template it pins - minutes, starts JVMs
-bb init xyx      # the workspace: xyx-app (generated, two commits), xyx-plan (the documents, the rules overlay, the profile, run defaults, runs/), work/
+bb init xyx      # the workspace: xyx-app (generated, two commits), xyx-build (the documents, the rules overlay, the profile, run defaults, runs/), work/
 cd ../xyx-app && bb serve                                   # http://localhost:8000
 ```
 

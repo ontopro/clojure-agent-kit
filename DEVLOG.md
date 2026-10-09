@@ -56,6 +56,15 @@ step by hand, named there.
 
 ## 2026-10-09
 
+### The build repository is `<name>-build` everywhere it is named (plan 6.3)
+
+Row 87 renamed `bb init`'s second repository from `<name>-plan` to `<name>-build` on 2026-10-06,
+and these still said the old name: both `bb.edn`s' `init` help (the root's said the default folders
+were `<name>-app` and `<name>-plan`), `CLAUDE.md`'s line on where a project's records go,
+`method.md`'s step 1 block, and `plan-template/`'s `02` and `03` - which `bb init` copies into every
+new workspace. Found while fixing row 123. `NOTES.md`'s rows and this file keep the old name where
+they record what was so.
+
 ### `bb init --brief` works from the KIT's root (plan 6.3)
 
 Walking through how an adopter starts a project, the first command after scoping failed: `bb init

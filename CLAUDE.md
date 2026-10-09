@@ -73,7 +73,7 @@ benefit. It is also a product artifact, and also not addressed to you.
   repository, and no document here cites one by name or path: a lesson is written in the
   KIT's own words ("the first project built with the KIT"). The mechanism stays: the driver's `record` writes `run.edn`, `bb
   report` renders it, and `bb report-check` holds a document that publishes such tables to its
-  records - for a project, `<name>-plan/runs/` and `<name>-plan/RUNS.md`, which `workspace.edn`
+  records - for a project, `<name>-build/runs/` and `<name>-build/RUNS.md`, which `workspace.edn`
   names and `record` copies into, so the check runs with no arguments from the workspace's
   clone (`bb gates` there runs it; here, in no workspace, it has nothing to check). A run's
   own directory — `spec.edn`, `loop.edn`, `state.edn`, packets, full transcripts — is

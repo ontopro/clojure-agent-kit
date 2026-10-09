@@ -114,7 +114,7 @@ Not given:
 > Every layer this project adds - a domain model, a service layer, an ingestion path - is one
 > row here AND one entry in `<name>-app/layers.edn`, in the same change, with the decision that
 > introduced it. The template's six are in §2 and are not repeated. The direction of the whole
-> graph is also the `:layer-boundaries` rule in `<name>-plan/rules.edn`, where every role reads it.
+> graph is also the `:layer-boundaries` rule in `<name>-build/rules.edn`, where every role reads it.
 > No dispatched role writes `layers.edn`: the Architect puts the edited file in the run directory's
 > `arch/` and names it in the run's `loop.edn` as `:architecture {:from "arch" :files ["layers.edn"]}`;
 > assembly copies it into the gate worktree beside the roles' files, so the entry and the namespace
@@ -138,7 +138,7 @@ Not given:
 > establishes — validated here and nowhere else, distinct ids, exactly one of something — is
 > invisible to every role past it unless it is written where they read: a role handed a bare
 > vector reads the shapes, finds nothing forbidding the bad input, and is right to object. Copy
-> this column into the `:data-conventions` rule of `<name>-plan/rules.edn`
+> this column into the `:data-conventions` rule of `<name>-build/rules.edn`
 > (`03-method-and-tooling.md` §11).
 > A seam is not only where data enters: a value handed INTO a function crosses one too. If a
 > function's targets only hold for arguments its callers never pass — a tree that carries none of

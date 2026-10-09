@@ -124,13 +124,13 @@ a `human` or `tooling` route, a dead REPL, a provider refusing for credit.
 cd <the folder this project lives in> && git clone https://github.com/ontopro/clojure-agent-kit
 cd clojure-agent-kit && bb doctor      # follow it, run it again, until both verdicts say yes
 bb health                              # the KIT, this machine, the pinned template: certified together
-bb init <name>                         # <name>-app (generated, committed untouched), <name>-plan, work/
+bb init <name>                         # <name>-app (generated, committed untouched), <name>-build, work/
 cd ../<name>-app && bb serve           # answers on localhost:8000
 ```
 
-Three sibling repositories in a plain folder - the KIT, the application, the plan - and
+Three sibling repositories in a plain folder - the KIT, the application, the build - and
 `workspace.edn` naming which is which. Nothing of this project is written into the KIT's clone:
-the rules overlay, the profile, the loop defaults and the run records are all in `<name>-plan/`,
+the rules overlay, the profile, the loop defaults and the run records are all in `<name>-build/`,
 and `git pull` in the clone is the upgrade. Project-specific adaptation — stripping the example
 domain, defining protocols, the datastore swap — is **stage 0's first task**; the boundary gate is
 already live with the template's own graph in `<name>-app/layers.edn`.
@@ -201,7 +201,7 @@ a stub that imports it - one marker block, one drift target). `bb rules-sync` re
 mirror; **`bb rules-check` runs inside `bb gates`** and fails on drift.
 
 This project never edits the source. It fills the source's placeholders and adds rules of its own
-in `<name>-plan/rules.edn`, the overlay (§11), which every rendering reads merged over the source;
+in `<name>-build/rules.edn`, the overlay (§11), which every rendering reads merged over the source;
 an overlay entry that would change one of the KIT's own rules is refused by name. Hand-written
 content in `AGENTS.md` goes outside the markers and survives sync — orientation, the task surface,
 pointers. **Rules never do:** one written out there reaches only clients that read the file,
@@ -227,7 +227,7 @@ written down — the rule source's own first rule says it outranks the others:
 
 # Part 2 — Chosen: decided once, in Foundation, recorded in the log (P0-n)
 
-## 11. The rules overlay — `<name>-plan/rules.edn`
+## 11. The rules overlay — `<name>-build/rules.edn`
 
 > `bb init` wrote it with the rule source's three placeholders, text as shipped; `start` lists any
 > still standing, and an unfilled one reaches every role as literal text. Fill them **before the
@@ -248,7 +248,7 @@ written down — the rule source's own first rule says it outranks the others:
 - **Project rules of its own** — <none yet, or one line per rule, by its id>. A rule of a new id is
   added whole (`:group`, `:audience`, `:title`, `:text`).
 
-## 12. Models per role — `<name>-plan/profile.edn`
+## 12. Models per role — `<name>-build/profile.edn`
 
 > The **family assignment is the binding contract**; the model column is a dated selection.
 > Re-selecting is a new log entry, not an edit, and it is measured, not preferred: `bb bake-off`
@@ -327,7 +327,7 @@ justifies the extra call, or the reason it isn't justified here>.
   have one beyond the KIT's 21: XTDB v2, for example, documents a minimum of 21, and its early
   releases failed at class-load on newer JDKs.> Watch for `JAVA_HOME` disagreeing with the `java`
   on PATH; `bb doctor` flags the divergence.
-- **Verified API notes for young dependencies:** `<name>-plan/docs/api-notes/<lib>.md` — the API
+- **Verified API notes for young dependencies:** `<name>-build/docs/api-notes/<lib>.md` — the API
   actually smoke-tested at the pinned version. Models hallucinate confidently about new libraries.
 - **For any locally-served model:** sampling profile **and chat template** version-controlled at `<path>`.
 
@@ -397,7 +397,7 @@ intention. Record them here; `method.md` §03's checklist is what they close.
    profile checked (`bb profile` green), the numbers in the log as P0-n.
 4. **The loop has run end to end on one deliberately trivial task with this project's models**,
    run `<id>` on <YYYY-MM-DD>, to `:awaiting-merge` — and **torn down, not merged**: `record`
-   first, so `<name>-plan/runs/<id>.edn` keeps the evidence, then `teardown`. The machine is
+   first, so `<name>-build/runs/<id>.edn` keeps the evidence, then `teardown`. The machine is
    proved and nothing of the rehearsal is left in the application.
 
 Then stage 0's first packet dispatches against it.
