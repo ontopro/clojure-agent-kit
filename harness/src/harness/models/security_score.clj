@@ -41,22 +41,21 @@
       (str/replace "/" ".")
       (str/replace "_" "-")))
 
-(def compile-error
-  "What a namespace that will not load says. NOT the word `Compiler`: a test that fails with an
-  exception has `clojure.lang.Compiler` frames in its stack trace, and a first scoring took such a
-  run for one that does not compile and threw away four findings that held."
-  #"(?i)syntax error|Unable to resolve symbol|Could not locate .* on classpath|No such namespace|No such var|Unable to resolve classname")
-
 (defn status
-  "How one test namespace ended: `:passes`, `:fails`, `:does-not-compile`, or `:no-tests` (a
-  helper namespace with no test in it). `result` is `{:exit :out}`."
+  "How one test namespace ended: `:passes`, `:fails`, `:does-not-compile` (it never ran), or
+  `:no-tests` (a helper namespace with no test in it). `result` is `{:exit :out}`.
+
+  BY WHETHER THE RUN RAN, NOT BY WHAT ITS OUTPUT SAYS. A namespace that loads and runs prints `Ran N
+  tests`; one that does not load prints no such line. Scanning the output for compile-error text
+  was wrong twice: a stack trace of an ordinary failure names `clojure.lang.Compiler`, and the
+  application's own log lines in a run's output can say `Unable to resolve symbol` of a request,
+  so tests that ran and failed were called not compiling."
   [{:keys [exit out]}]
-  (let [out (str out)]
+  (let [ran (some-> (re-find #"Ran (\d+) tests" (str out)) second parse-long)]
     (cond
-      (and (zero? (or exit 1)) (re-find #"Ran 0 tests" out)) :no-tests
-      (zero? (or exit 1)) :passes
-      (re-find compile-error out) :does-not-compile
-      :else :fails)))
+      (zero? (or exit 1)) (if (= 0 ran) :no-tests :passes)
+      (and ran (pos? ran)) :fails
+      :else :does-not-compile)))
 
 (defn why
   "The first failure in a test run's output, as a few lines: what to show a person deciding what

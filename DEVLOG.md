@@ -61,6 +61,16 @@ costs its readers more than a missed one; an answer with no findings block is re
 nothing, not as a clean review. The tests it wrote are collected from the clone and kept beside the
 record. The command is a real model call and says so before it spends.
 
+### A namespace ran or it did not (row 121)
+
+The scorer's test for "does not compile" scanned a run's whole output for compile-error text, and was wrong
+a third time: in bake-off 2 five of Astra's careful-branch tests that ran and failed with ordinary
+assertions (`expected 200, actual 500`) were called not compiling, because the application's own log
+lines in the same output can say `Unable to resolve symbol` of a request. A namespace that loads and runs
+prints `Ran N tests`; one that does not prints no such line. The status is now read from that: ran with a
+failure is a failure, never ran is not compiling. No output text is guessed at. Every score is re-made
+again; the bake-off 2 figures first printed are superseded.
+
 ### The report is two tables (row 121)
 
 The person asked to see the bake-off report as a table and to make that the default. The report was a
