@@ -62,9 +62,15 @@
   dispatch*. On a red gate only when the driver's proposal says the failing
   namespaces are nobody's in the run: offering it on every red gate would
   hand the model an exit from every hard call. A rejection never offers it -
-  the gates were green."
+  the gates were green.
+
+  A SECURITY FINDING offers three: the stage is merged and no Tester is in a run, so
+  `coder` here is a fix packet drafted for the Architect to sign, not a dispatch;
+  `architect` the contract or the authorisation model; `human` a risk the owner
+  accepts or declines in the threat model."
   [{:keys [trigger payload spec dependents]}]
   (case trigger
+    :security-finding #{:coder :architect :human}
     :rejection #{:coder :tester :architect :human}
     :red-gate (cond-> #{:coder :tester :architect :human}
                 (= :tooling (:owner (driver/propose-routing spec dependents (:gate-result payload))))
@@ -75,10 +81,13 @@
 (defn verdict
   "`parsed`, the JSON block as a map, as `{:route kw :reason str :guidance
   str|nil}` — or `{:triage/fallback why}` when it is not a verdict the
-  trigger can act on. Pure, so the shape of a refusal is testable without a
-  model."
+  trigger can act on. A security finding routed `coder` also keeps `:impl`
+  (the one file a fix changes) and `:target` (the promise it must keep),
+  which the fix packet's draft is written from. Pure, so the shape of a
+  refusal is testable without a model."
   [trigger parsed]
-  (let [route (some-> (:route parsed) str str/trim str/lower-case not-empty keyword)]
+  (let [route (some-> (:route parsed) str str/trim str/lower-case not-empty keyword)
+        text (fn [k] (not-empty (str/trim (str (get parsed k)))))]
     (cond
       (nil? parsed) {:triage/fallback "no JSON verdict in the answer"}
       (nil? route) {:triage/fallback "the verdict names no route"}
@@ -86,9 +95,11 @@
       {:triage/fallback (str "route " (name route) " is not open on this "
                              (name (:trigger trigger)) " — one of "
                              (str/join ", " (sort (map name (open-routes trigger)))))}
-      :else {:route route
-             :reason (str/trim (str (:reason parsed)))
-             :guidance (not-empty (str/trim (str (:guidance parsed))))})))
+      :else (cond-> {:route route
+                     :reason (str/trim (str (:reason parsed)))
+                     :guidance (text :guidance)}
+              (and (= :security-finding (:trigger trigger)) (= :coder route))
+              (assoc :impl (text :impl) :target (text :target))))))
 
 ;; ---------------------------------------------------------------------------
 ;; pure: the prompt
@@ -222,8 +233,65 @@
            "read the implementation, so none of its text may reach the Tester. Say which "
            "target or which case of the contract is untested, in the contract's own words."))))
 
-(defn render-prompt
-  "The whole triage prompt for one trigger:
+(def ^:private security-route-lines
+  {:coder (str "- coder: the contract already requires what the test shows broken - the architecture's "
+               "security sections or the stage's Blueprint say it - and the code departs from it. A fix "
+               "packet is drafted from your answer for the Architect to sign; nothing is dispatched")
+   :architect (str "- architect: the contract or the authorisation model is wrong or silent - a check no "
+                   "target asked for, a rule placed on one route, method or path and not on another that "
+                   "reaches the same data, an input the design never limited. The Architect amends the design")
+   :human (str "- human: a risk for the owner to accept or decline, written into the threat model; or a "
+               "finding you judge mistaken, which a person reads and decides")})
+
+(defn- render-security-prompt
+  [{:keys [payload]}]
+  (let [{:keys [finding test-text files architecture]} payload]
+    (str
+     "You are the Orchestrator's triage step in a multi-agent Clojure build. A stage has ended, its "
+     "packets merged, and the security reviewer - a model that read the merged application with tools - "
+     "reported a finding and REPRODUCED it: a test of its own that fails on this code. Decide who acts next.\n\n"
+     "Routes:\n"
+     (str/join "\n" (map security-route-lines [:coder :architect :human]))
+     "\n\n"
+     ;; THE PERSON'S DECISION, 2026-10-08: a finding that reaches the security reviewer has passed
+     ;; the per-task code reviews, the gates and the stage's tests, so it is rarely a slip a Coder
+     ;; patches. Routing it straight to a fix task would hide the gap in the design it came through.
+     "WHERE THIS FINDING CAME FROM matters to the route. Every packet of the stage passed its gates, "
+     "its tests and a code reviewer's reading of its diff before it was merged, and the stage's own "
+     "tests pass. A defect that survived all of that is usually not a slip in one function: it is a "
+     "gap in the contract or the design - a check nobody asked for, or one placed where it does not "
+     "cover every way in. Lean to architect for a missing or misplaced check. Route coder only when "
+     "you can point to the sentence of the contract below that the code breaks.\n\n"
+     (if-let [dc (data-conventions)]
+       (str "This project's data conventions, as every role was given them:\n" dc "\n\n")
+       "This project has stated no data conventions.\n\n")
+     "The architecture's security sections (what the template gives, what this project chose, the threat model):\n"
+     (if (str/blank? architecture) "[not given]" (clipped architecture max-output-chars))
+     "\n\nThe finding:\n"
+     "Title: " (:title finding) "\n"
+     "Where: " (:where finding) "\n"
+     "Why: " (:why finding) "\n\n"
+     "--- the security reviewer's test: " (:test finding) " ---\n"
+     (if (str/blank? test-text) "[not found]" (clipped test-text max-file-chars))
+     "\n\n"
+     (str/join "\n" (for [[rel text] files]
+                      (str "--- " rel ", as merged ---\n"
+                           (if text (clipped text max-file-chars) "[not in the application]"))))
+     "\n\nIF YOU ROUTE CODER, name the one source file a fix changes, and the promise the fix must "
+     "keep as one checkable sentence in the contract's own words. A Tester who has not seen the code "
+     "will write a test from that sentence, so it may name routes, requests, responses and data, never "
+     "a function, a variable or how the code is written.\n\n"
+     "Reply with exactly one fenced JSON block and nothing else:\n"
+     "```json\n"
+     "{\"route\": \"architect|coder|human\","
+     " \"reason\": \"one sentence\","
+     " \"guidance\": \"for the Architect or the person: what is wrong in the design or what the risk is, <= 120 words\","
+     " \"impl\": \"coder only: the source file a fix changes\","
+     " \"target\": \"coder only: the promise the fix must keep, one checkable sentence\"}\n"
+     "```")))
+
+(defn- render-task-prompt
+  "The triage prompt for a trigger inside a run:
 
     {:trigger    :red-gate | :note | :rejection
      :spec       the effective task spec
@@ -284,6 +352,22 @@
      " \"guidance\": \"concrete, actionable instructions for the routed role, <= 120 words;"
      " empty for architect, tooling, human or continue\"}\n"
      "```")))
+
+(defn render-prompt
+  "The whole triage prompt for one trigger: a run's red gate, note or rejection (`render-task-prompt`
+  says their shape), or a security finding at a stage's end:
+
+    {:trigger :security-finding
+     :payload {:finding      {:title :where :why :test}  ; as the security review's record has it
+               :test-text    the security reviewer's test
+               :files        [[path text-or-nil]]       ; the files the finding names, as merged
+               :architecture the architecture's security sections}}
+
+  Everything the verdict rests on is in this string."
+  [trg]
+  (if (= :security-finding (:trigger trg))
+    (render-security-prompt trg)
+    (render-task-prompt trg)))
 
 (def system-prompt
   "Minimal on purpose: the rules are for roles that write, and this one reads
@@ -366,8 +450,8 @@
   "What triage says when the model could not: on a red gate, the driver's
   own proposal — the mechanical half, which was the whole of triage before
   this namespace — with `:triage/fallback` naming why; on a note or a
-  rejection, a person, because the mechanical proposal reads a gate's output
-  and neither of those has one."
+  rejection or a security finding, a person, because the mechanical proposal
+  reads a gate's output and none of those has one."
   [{:keys [trigger spec dependents payload]} why]
   (case trigger
     :red-gate (let [p (driver/propose-routing spec dependents (:gate-result payload))]
@@ -383,7 +467,11 @@
     :rejection {:route :human
                 :reason "the Reviewer rejected, and the triage model did not say whose it is"
                 :guidance nil
-                :triage/fallback why}))
+                :triage/fallback why}
+    :security-finding {:route :human
+                       :reason "a reproduced security finding, and the triage model did not say whose it is"
+                       :guidance nil
+                       :triage/fallback why}))
 
 (defn- measured
   "The call's cost and provenance, shaped as an AgentResult so the loop can

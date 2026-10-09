@@ -71,6 +71,10 @@
                      :requires ([harness.models.security-bake-off :as security-bake-off])
                      :task (apply security-bake-off/-main *command-line-args*)}
 
+  security-route {:doc "bb security-route <review.edn> <clone> [--profile <profile.edn>] [--architecture <02-architecture.md>] [--out <dir>]: who acts on what a security review reproduced - each reproduced finding to triage's :security-finding trigger, one call to the profile's :orchestrator, routed coder (a fix packet DRAFTED in the Blueprint's format for the Architect to sign; nothing dispatched), architect (the contract or the authorisation model) or human (a risk for the threat model); hypotheses listed for 02 §15, never routed. Writes security-routing.edn and security-fixes.md beside the review. Spends money. Never in `bb gates`"
+                  :requires ([harness.loop.security-routing :as security-routing])
+                  :task (apply security-routing/-main *command-line-args*)}
+
   security-fixture {:doc "bb security-fixture <dir>: build the security reading's planted-fault fixture into an empty <dir> - the application from the pin, a feature on two branches, clean and with six faults (health/security-fixture/), which is which in <dir>/cases.edn outside the repository - and verify its key: every reference test passes on the clean feature, exactly the faults' fail on the faulted one"
                     :requires ([harness.setup.security-fixture :as security-fixture])
                     :task (apply security-fixture/-main *command-line-args*)}

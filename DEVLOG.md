@@ -51,6 +51,20 @@ the template fork's tags and version the template, not the KIT.
 
 ## 2026-10-08
 
+### A reproduced security finding is routed, not fixed (row 121)
+
+A security finding is a blocker only when the security reviewer reproduced it, and even then the next step
+is not obvious: the finding passed every packet's gates, tests and code reviewer, and the stage's own
+tests, so it is more often a gap in the contract - a check nobody asked for, or one on the wrong route or
+method - than a slip a Coder patches. Turning it straight into a fix task would hide the gap. Triage gets a
+fourth trigger, `:security-finding`, with three routes - `coder`, `architect`, `human` - and a prompt that
+carries the finding, the security reviewer's test, the files the finding names as merged and the
+architecture's security sections, and says where the finding came through. `bb security-route` asks it
+for each reproduced finding of a review. Nothing is dispatched: a `coder` route writes a fix packet's
+draft in the Blueprint's format, with the file and the promise triage named and the slice left for the
+Architect; the security reviewer's test is the fix's acceptance check, never the Tester's context, since
+it was written from the code. A hypothesis is listed for the threat model and never routed.
+
 ### Two more limits of the template, said where a project reads them (row 121)
 
 The two flaws the security reviewer found in the fixture were a template default meeting a feature, so any

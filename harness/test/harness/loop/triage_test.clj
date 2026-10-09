@@ -411,3 +411,59 @@
     (is (str/includes? prompt "An ambiguous contract is FIXED, not interpreted"))
     (is (str/includes? triage/system-prompt "TYPES ARE FOLLOWED AS THE LANGUAGE DEFINES THEM"))
     (is (str/includes? triage/system-prompt "has the order of its construction"))))
+
+;; ---------------------------------------------------------------------------
+;; a security finding at a stage's end
+;; ---------------------------------------------------------------------------
+
+(defn- security-finding []
+  {:trigger :security-finding
+   :payload {:finding {:title "Logout does not end the session"
+                       :where "src/app/web.clj: logout!"
+                       :why "a copied cookie still reads a private note after logout"
+                       :test "test/app/logout_review_test.clj"}
+             :test-text "(deftest replayed-cookie-after-logout (is (= 302 (:status replay))))"
+             :files [["src/app/web.clj" "(defn logout! [_] (assoc (redirect \"/login\") :session nil))"]
+                     ["src/app/gone.clj" nil]]
+             :architecture "## 4. Security, as the template gives it\nNo session expiry on the server."}})
+
+(deftest a-security-finding-offers-coder-architect-and-human
+  (is (= #{:coder :architect :human} (triage/open-routes (security-finding)))))
+
+(deftest a-security-finding-s-prompt-carries-the-finding-and-leans-to-the-architect
+  (let [[r reqs] (ask (security-finding) (text-reply (block {:route "architect"
+                                                             :reason "no target says a logout ends a session"
+                                                             :guidance "decide whether logout must end every copy"})))]
+    (is (= :architect (:route r)))
+    (is (nil? (:impl r)) "no draft is written from an architect route")
+    (let [prompt (get-in (first reqs) [:body :messages 1 :content])]
+      (is (str/includes? prompt "REPRODUCED it") "a reproduced finding, not a hypothesis")
+      (is (str/includes? prompt "Lean to architect for a missing or misplaced check"))
+      (is (str/includes? prompt "a code reviewer's reading of its diff") "where the finding came through")
+      (is (str/includes? prompt "Logout does not end the session"))
+      (is (str/includes? prompt "a copied cookie still reads a private note"))
+      (is (str/includes? prompt "replayed-cookie-after-logout") "the security reviewer's test in full")
+      (is (str/includes? prompt "(defn logout! [_]") "the file the finding names, as merged")
+      (is (str/includes? prompt "--- src/app/gone.clj, as merged ---\n[not in the application]"))
+      (is (str/includes? prompt "No session expiry on the server.") "the architecture's security sections")
+      (is (str/includes? prompt "\"route\": \"architect|coder|human\""))
+      (is (not (str/includes? prompt "- tester:")) "no Tester is in a run at a stage's end"))))
+
+(deftest a-security-finding-routed-coder-keeps-the-file-and-the-promise
+  (let [[r _] (ask (security-finding) (text-reply (block {:route "coder"
+                                                          :reason "02 §8 says a logout ends the session"
+                                                          :guidance ""
+                                                          :impl "src/app/web.clj"
+                                                          :target "After POST /logout, a request carrying the session cookie from before it is answered as one with no login"})))]
+    (is (= :coder (:route r)))
+    (is (= "src/app/web.clj" (:impl r)))
+    (is (str/starts-with? (:target r) "After POST /logout"))
+    (is (nil? (:guidance r)) "an empty guidance is none")))
+
+(deftest a-security-finding-the-model-cannot-route-is-a-persons
+  (let [[r _] (ask (security-finding) (text-reply "Probably the coder."))]
+    (is (= :human (:route r)))
+    (is (= "no JSON verdict in the answer" (:triage/fallback r))))
+  (let [[r _] (ask (security-finding) (text-reply (block {:route "tester" :reason "x"})))]
+    (is (= :human (:route r)))
+    (is (str/includes? (:triage/fallback r) "route tester is not open on this security-finding"))))
