@@ -56,6 +56,20 @@ step by hand, named there.
 
 ## 2026-10-09
 
+### An item's end is reported, not remembered (plan 6.2, items 7, 8, 9, with 2 and 6)
+
+At the end of each piece of work there were things to look at - whether the health records still
+covered the code, whether a test had flaked, which register rows the plan had opened and left,
+whether the plan's own log had been written, whether working folders said what they held - and
+each was looked at when someone remembered to. `bb kit-status` prints all five, each `ok` or a
+list, and never refuses: an item's end is a judgement, and a row left on watch can be right. The
+health report is `bb tag-check`'s own check; the flaky tests are the gates' kept runs since the
+last version tag; the register's rows are those `NOTES.md` has that it did not have at that tag,
+still open or on watch; the plan is the file the `plan-v*` branch names, behind when it was last
+written before HEAD's commit; and every `.local/` folder in the clone is asked for a `README.md`
+that names each entry in it. Its first run found eight working folders the KIT's own `.local/`
+README did not name; they are named now.
+
 ### A tag is checked before it is cut (plan 6.2, item 10)
 
 The pre-tag checklist at the head of this file was five steps in an order a session had to keep.

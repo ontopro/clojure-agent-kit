@@ -37,6 +37,7 @@
  harness.rules              #{harness.setup.workspace}
  harness.gates.repair       #{harness.setup.doctor}
  harness.gates.tag-check    #{harness.gates.record}
+ harness.gates.kit-status   #{harness.gates.record harness.gates.tag-check}
  harness.models.tools       #{harness.gates.forms harness.gates.repair harness.setup.doctor}
  harness.models.profile     #{harness.contract.shapes harness.models.catalogue harness.setup.doctor harness.setup.workspace}
  harness.money.report       #{harness.contract.shapes harness.setup.workspace}

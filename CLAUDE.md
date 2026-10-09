@@ -51,7 +51,8 @@ benefit. It is also a product artifact, and also not addressed to you.
   finished* — and within the hour two findings that were not runs went into a
   commit message and nowhere else, which is the exact failure it was added to
   stop. A commit message is not a document; nobody greps for a fact they do not
-  know exists. The commit check holds the part it can see: code staged under `harness/src/`,
+  know exists. At an item's end, `bb kit-status` lists what is stale or left hanging - read it
+  before calling the item done. The commit check holds the part it can see: code staged under `harness/src/`,
   `tools/`, `skills/` or `plan-template/` without `DEVLOG.md` or `NOTES.md` is refused, and a
   staged `NOTES.md` whose `**Updated <date> <time>` stamp was not moved past HEAD's, to no later
   than the clock, is refused.
