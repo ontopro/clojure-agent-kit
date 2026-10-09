@@ -36,6 +36,7 @@
    [harness.rules :as rules]
    [harness.setup.app :as app]
    [harness.setup.doctor :as doctor]
+   [harness.setup.init-args :as init-args]
    [harness.setup.skills :as skills]
    [harness.setup.template :as template]
    [harness.setup.workspace :as workspace]))
@@ -545,22 +546,6 @@
          "\n  " (count (filter #(str/includes? (:path %) "/docs/") entries))
          " plan documents under " (some #(when (:dir? %) (:path %)) entries) "/docs/\n")))
 
-(def ^:private valued-flags
-  "The flags that take the next argument as their value, each to its key."
-  {"--seat" :seat "--app" :app "--build" :build "--brief" :brief})
-
-(defn parse-args
-  "`bb init`'s arguments as a map: `:positional` (name, dir), `:seat`, `:app`
-  `:build` and `:brief` (the value after each flag), `:dry-run?`. The valued flags are
-  parsed here and not by looking for a leading `--`."
-  [args]
-  (loop [[a & more] args, m {:positional []}]
-    (cond
-      (nil? a) m
-      (valued-flags a) (recur (rest more) (assoc m (valued-flags a) (first more)))
-      (= a "--dry-run") (recur more (assoc m :dry-run? true))
-      :else (recur more (update m :positional conj a)))))
-
 (defn -main
   "bb init <name> [dir] [--seat <name>] [--app <folder>] [--build <folder>] [--brief <file>] [--dry-run]
 
@@ -578,7 +563,7 @@
   no template. `KIT_TEMPLATE_LOCAL`, a local clone of the template, replaces the
   pinned commit for someone developing it."
   [& args]
-  (let [{:keys [positional seat dry-run?] app-folder :app build-folder :build brief-file :brief} (parse-args args)
+  (let [{:keys [positional seat dry-run?] app-folder :app build-folder :build brief-file :brief} (init-args/parse-args args)
         [project dir] positional
         kit-dir (str (fs/parent (fs/normalize (fs/absolutize "."))))]
     (when-not project

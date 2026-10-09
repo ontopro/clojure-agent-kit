@@ -54,6 +54,19 @@ step by hand, named there.
 
 ---
 
+## 2026-10-09
+
+### `bb init --brief` works from the KIT's root (plan 6.3)
+
+Walking through how an adopter starts a project, the first command after scoping failed: `bb init
+<name> --brief <file>` at the clone's root printed "`--brief --dry-run is not a file`". The root
+`bb.edn` parsed `init`'s arguments with its own loop, which knew only `--seat` as a flag with a
+value, so the brief's path was taken for the workspace folder; from `harness/` it worked, and
+`workflow.md`'s diagram shows the root form. Now one parse serves both: `harness.setup.init-args`,
+which requires nothing so that the root (no dependencies on its classpath) can load it, parses for
+`init` and builds what the root hands on, with the folder AND the brief made absolute - a relative
+brief typed at the root would otherwise be read from `harness/`. Row 123, fixed.
+
 ## 0.6.2 — plan 6.2's boundary: the KIT's own development checked
 
 A workspace made before `0.6.2` needs nothing: this plan changed only how the KIT itself is

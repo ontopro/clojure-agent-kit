@@ -9,6 +9,7 @@
    [harness.money.report :as report]
    [harness.rules :as rules]
    [harness.setup.init :as init]
+   [harness.setup.init-args :as init-args]
    [harness.setup.skills :as skills]
    [harness.setup.workspace :as workspace]))
 
@@ -313,12 +314,21 @@
 
 (deftest init-s-arguments-are-parsed-as-name-dir-seat-and-dry-run
   (is (= {:positional ["xyx" "/w"] :seat "agy-ide" :dry-run? true}
-         (init/parse-args ["xyx" "--seat" "agy-ide" "/w" "--dry-run"]))
+         (init-args/parse-args ["xyx" "--seat" "agy-ide" "/w" "--dry-run"]))
       "--seat takes the next argument, wherever it sits")
-  (is (= {:positional ["xyx"]} (init/parse-args ["xyx"])))
+  (is (= {:positional ["xyx"]} (init-args/parse-args ["xyx"])))
   (is (= {:positional ["xyx"] :app "xyx-site" :build "xyx-build-docs" :brief "brief.md"}
-         (init/parse-args ["xyx" "--app" "xyx-site" "--build" "xyx-build-docs" "--brief" "brief.md"]))
+         (init-args/parse-args ["xyx" "--app" "xyx-site" "--build" "xyx-build-docs" "--brief" "brief.md"]))
       "--app and --build take the next argument too"))
+
+(deftest the-root-hands-init-its-arguments-with-both-paths-absolute
+  (let [abs #(str "/root/" %)]
+    (is (= ["xyx" "--brief" "/root/brief.md" "--dry-run"]
+           (init-args/root-args ["xyx" "--brief" "brief.md" "--dry-run"] abs))
+        "--brief's file is its value, not the workspace folder")
+    (is (= ["xyx" "/root/ws" "--seat" "agy-ide" "--app" "a" "--build" "b" "--brief" "/root/x.md"]
+           (init-args/root-args ["xyx" "--app" "a" "ws" "--brief" "x.md" "--build" "b" "--seat" "agy-ide"] abs)))
+    (is (= [] (init-args/root-args [] abs)))))
 
 (deftest the-repositories-folders-can-be-named-and-the-name-stays-the-namespace
   ;; A real project calls its repositories what it calls them; the experiments never
