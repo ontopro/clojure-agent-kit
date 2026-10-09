@@ -56,6 +56,16 @@ step by hand, named there.
 
 ## 2026-10-09
 
+### The KIT session's routine is a skill (plan 6.2)
+
+The commands this plan added each check one step; the order the steps come in - start a session
+from the plan's task list, commit an item through the gates and its document, read `bb kit-status`
+at its end, take a tag through `bb tag-check --run`, the documents, the person's merge, tag and
+push and `--landed` - was still in whoever remembered it. It is now the `kit-session` skill in the
+clone's own `.claude/skills/`. It is not one of the KIT's shipped skills: those live in `skills/`,
+which is what `bb init` renders into a workspace and `bb skills-sync` holds to the method, and
+this one is about developing the KIT, which no workspace does.
+
 ### An item's end is reported, not remembered (plan 6.2, items 7, 8, 9, with 2 and 6)
 
 At the end of each piece of work there were things to look at - whether the health records still

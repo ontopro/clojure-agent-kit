@@ -111,5 +111,8 @@ benefit. It is also a product artifact, and also not addressed to you.
 
 ## Before changing anything
 
+The `kit-session` skill (`.claude/skills/kit-session/`, never shipped) is these rules in the
+order a session applies them: the start, an item, an item's end, a tag.
+
 `NOTES.md` — known limitations and what is deliberately deferred.
 `harness/PROVENANCE.md` — what came from where, and why each divergence exists.
