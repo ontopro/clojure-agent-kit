@@ -440,7 +440,7 @@
   "The declarations for `names` in one shape's vocabulary. Same tools, two
   spellings — OpenAI nests them under `function`, Anthropic does not. A third
   argument names another registry than `specs` (the review tools, in
-  `harness.models.review-tools`), same shape: name -> {:description :schema :fn}."
+  `harness.models.security-review-tools`), same shape: name -> {:description :schema :fn}."
   (fn [shape & _] shape))
 
 (defn- selected [registry names]

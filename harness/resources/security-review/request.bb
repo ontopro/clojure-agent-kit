@@ -4,7 +4,7 @@
 ;; as one JSON object {"status" "headers" [[name value] ...] "body"}, or {"error" "..."}.
 ;;
 ;; A socket and HTTP/1.0, not an HTTP client: a client tidies a path (resolves `..`, refuses a
-;; bad escape) and the requests a reviewer needs are the untidy ones. HTTP/1.0 also keeps the
+;; bad escape) and the requests a security reviewer needs are the untidy ones. HTTP/1.0 also keeps the
 ;; answer unchunked and the connection closed. The target is the loopback port the application
 ;; was started on; nothing else is reachable from the sandbox. The caller (the harness) has
 ;; already refused a request that is more than one, so this script only sends.

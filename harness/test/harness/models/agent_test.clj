@@ -116,7 +116,7 @@
     (is (= (count (tools/for-role :coder)) (count (get-in (first reqs) [:body :tools]))))))
 
 (deftest another-registry-replaces-the-coders-tools-for-one-conversation
-  ;; the security reviewer's tools (`harness.models.review-tools`) ride on this option
+  ;; the security reviewer's tools (`harness.models.security-review-tools`) ride on this option
   (let [registry {"echo" {:description "Say it back."
                           :schema {:type "object" :properties {:text {:type "string"}} :required ["text"]}
                           :fn (fn [_ctx {:keys [text]}] (tools/ok (str "echo: " text)))}}

@@ -1,4 +1,4 @@
-(ns harness.models.review-sandbox
+(ns harness.models.security-review-sandbox
   "The container a security review runs in: a clone of the application under review, the
   application running on its loopback port, no network.
 
@@ -7,10 +7,10 @@
   own dependencies, then `clojure -P` for each of `:dev:test`, `:test` and the `-X:test` run.
   The second has `--network none`, the cache read-only, the clone mounted, and limits on memory,
   processes and processors; the application is started in it with `bb serve` and everything
-  the reviewer's tools do - a request, a test run - is a `docker exec` into it. Nothing in the
+  the security reviewer's tools do - a request, a test run - is a `docker exec` into it. Nothing in the
   second phase can reach anything but its own loopback.
 
-  The clone is scratch, made by the caller; the reviewer's tests are the new files below its
+  The clone is scratch, made by the caller; the security reviewer's tests are the new files below its
   `test/`, found there when the review is over. The model's own API calls are the harness's,
   made outside; only the tools' commands run in here.
 
@@ -79,7 +79,7 @@
 
 (def pristine-copy
   "Copy the application into an empty folder and run there: the files git tracks, and the files it
-  does not but would not ignore - so the reviewer's new tests come along, and `target/`, `db/` and
+  does not but would not ignore - so the security reviewer's new tests come along, and `target/`, `db/` and
   `.cpcache/` (all ignored) do not. A run in the clone itself saw what earlier runs had left: a
   test that wrote into `target/` passed in the review only because a whole-suite run had made the
   folder, and failed in a fresh clone. Every run now starts from the same tree a fresh clone has."
@@ -91,7 +91,7 @@
 (defn tests-argv
   "The application's tests in the container, in a pristine copy of it: all of them as its own `test`
   task runs them, or one namespace through `clojure.test`, exiting non-zero when it fails. The
-  namespace is a name `review-tools` has already checked, which is why it can go in a command."
+  namespace is a name `security-review-tools` has already checked, which is why it can go in a command."
   [name ns-name]
   (exec-argv name "bash" "-c"
              (str pristine-copy
@@ -150,7 +150,7 @@
   (let [image (or image (image-tag kit))
         name (container-name)
         spec {:image image :clone (str clone) :name name
-              :review (str (fs/path kit "harness" "resources" "review"))}
+              :review (str (fs/path kit "harness" "resources" "security-review"))}
         step! (fn [what argv opts]
                 (let [r (run argv opts)]
                   (when-not (zero? (:exit r))

@@ -1,21 +1,21 @@
 (ns harness.models.security-review
-  "A security review of an application: a model in the reviewer's seat, a clone of the
+  "A security review of an application: a model in the security reviewer's seat, a clone of the
   application, the five review tools, and the sandbox they run in. It reads the code, finds
   what it believes is wrong, and checks each belief by writing a test and running it. Its
   answer is a list of findings, each saying whether a test of its own failed on this code.
 
-  A FINDING IS A FAILING TEST. A concern the reviewer could state as a test and see fail is
+  A FINDING IS A FAILING TEST. A concern the security reviewer could state as a test and see fail is
   `reproduced`; one it could not is a `hypothesis`, for a person to read and not a reason to
   stop anything. \"Nothing found\" is a complete answer and the prompts say so, because a
-  reviewer told only to find problems finds some.
+  security reviewer told only to find problems finds some.
 
   TWO STANCES, SAME TOOLS. The `:tracer` is given the repository and follows requests through
-  the routes, the middleware and the state they share; the `:diff` reviewer is given the
+  the routes, the middleware and the state they share; the `:diff` security reviewer is given the
   stage's change and asks of each new route, query and file operation what reaches it. The
   tools are the same for both so that a comparison of models measures the models.
 
   PURE UP TO THE EDGE: `system-prompt`, `opening` and `parse-findings` are functions of data;
-  `review!` starts the sandbox, runs the conversation and reads what the reviewer left."
+  `review!` starts the sandbox, runs the conversation and reads what the security reviewer left."
   (:require
    [babashka.fs :as fs]
    [babashka.process :as p]
@@ -23,11 +23,11 @@
    [clojure.string :as str]
    [harness.models.agent :as agent]
    [harness.models.catalogue :as catalogue]
-   [harness.models.review-sandbox :as sandbox]
-   [harness.models.review-tools :as review-tools]))
+   [harness.models.security-review-sandbox :as sandbox]
+   [harness.models.security-review-tools :as security-review-tools]))
 
 ;; ---------------------------------------------------------------------------
-;; what the reviewer is told
+;; what the security reviewer is told
 ;; ---------------------------------------------------------------------------
 
 (def system-prompt
@@ -60,7 +60,7 @@
        "with an empty list when you found nothing."))
 
 (def stances
-  "The two ways a review is begun: what the reviewer is given and what it is asked to look at."
+  "The two ways a review is begun: what the security reviewer is given and what it is asked to look at."
   {:tracer
    {:label "architecture tracer"
     :task (str "You are given the whole repository. Follow requests through the application: which "
@@ -83,8 +83,8 @@
 (def max-diff 60000)
 
 (defn opening
-  "The first message: the stance's task, the repository's files, and for the change reviewer
-  the diff. `files` is the clone's tracked file paths; `diff` its change from the base."
+  "The first message: the stance's task, the repository's files, and for the change
+  stance the diff. `files` is the clone's tracked file paths; `diff` its change from the base."
   [stance {:keys [files diff scans]}]
   (let [{:keys [label task]} (get stances stance)
         shown (take max-listing files)]
@@ -110,7 +110,7 @@
   (boolean (some #(or (= "refusal" (:native-finish-reason %)) (= "content_filter" (:finish-reason %))) steps)))
 
 (defn parse-findings
-  "The findings in the reviewer's final text, from its last ```json block: the vector (empty for
+  "The findings in the security reviewer's final text, from its last ```json block: the vector (empty for
   an honest nothing), or nil when there was no block - a review with no block says nothing and
   must not read as a clean one."
   [text]
@@ -131,9 +131,9 @@
     (:out r)))
 
 (defn review-clone!
-  "A clone of `branch` of the repository at `source` for a reviewer to be handed: that branch only,
+  "A clone of `branch` of the repository at `source` for a security reviewer to be handed: that branch only,
   no tags and no remote, with the revision its change is from tagged `base`. Nothing in it says
-  where it came from or what the other branches are - a reviewer that can read `.git` would
+  where it came from or what the other branches are - a security reviewer that can read `.git` would
   otherwise read the answer key's neighbourhood."
   [source branch dest]
   (let [g (fn [dir & args]
@@ -154,7 +154,7 @@
    :diff (git clone "diff" "--no-color" (str base "..HEAD"))})
 
 (defn reproductions
-  "The test files the reviewer wrote: the clone's untracked files below `test/`, path -> text."
+  "The test files the security reviewer wrote: the clone's untracked files below `test/`, path -> text."
   [clone]
   (into (sorted-map)
         (for [rel (remove str/blank? (str/split-lines (git clone "ls-files" "--others" "--exclude-standard" "test")))]
@@ -170,7 +170,7 @@
 
 (def default-max-tokens
   "The most a completion may write, its reasoning included. A route's own limit is sized for
-  an answer; a reviewer thinking at high effort over a dozen files can spend 16,000 tokens
+  an answer; a security reviewer thinking at high effort over a dozen files can spend 16,000 tokens
   before it writes a word, and a completion cut off there returns nothing - which a first review
   did. Fable 5.1 takes 128,000; this is what the review asks for."
   64000)
@@ -192,13 +192,13 @@
   "Review the application cloned in `clone`: start the sandbox, run `role` (a role block) in the
   stance `stance` with the five tools, stop the sandbox whatever happens. Options: `:kit`
   (this KIT's folder), `:base` (the revision the change is from, default \"base\"), `:rounds`,
-  `:requests`, `:max-tokens`, `:scans` (text for the reviewer to weigh), `:sandbox` (a started one,
+  `:requests`, `:max-tokens`, `:scans` (text for the security reviewer to weigh), `:sandbox` (a started one,
   for a test).
 
   Returns `{:stance :status :findings :no-block? :tests :text :calls :iterations :capped? :ms
   :sandbox-ms :model :cost :generation-ids ...}` (`:ms` the conversation, `:sandbox-ms` the time
   to start the sandbox before it): `:findings` as `parse-findings` reads them, `:tests` the
-  files the reviewer wrote, `:calls` the tool calls it made as `[name ms error?]`."
+  files the security reviewer wrote, `:calls` the tool calls it made as `[name ms error?]`."
   [role stance clone {:keys [kit base rounds requests max-tokens scans sandbox]
                       :or {base "base" rounds default-rounds requests default-requests max-tokens default-max-tokens}}]
   (let [role (assoc-in role [:params :max_tokens] max-tokens)
@@ -209,7 +209,7 @@
     (try
       (let [ctx {:dir (str clone) :sandbox sb :request-budget (atom requests) :written (atom #{})}
             r (agent/converse! role system-prompt (opening stance facts) ctx
-                               {:registry review-tools/specs :tools (set (keys review-tools/specs))
+                               {:registry security-review-tools/specs :tools (set (keys security-review-tools/specs))
                                 :max-iterations rounds :timeout-ms 600000})
             findings (parse-findings (:text r))]
         (merge {:stance stance

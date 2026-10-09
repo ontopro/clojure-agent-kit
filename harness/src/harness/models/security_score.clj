@@ -1,13 +1,13 @@
 (ns harness.models.security-score
   "Scoring a security review against the fixture's answer key: `bb security-score <review.edn>
-  <fixture-dir>`. No model reads anything here; the tests the reviewer wrote are run.
+  <fixture-dir>`. No model reads anything here; the tests the security reviewer wrote are run.
 
   A TEST IS RUN ON ITS OWN, ON EACH BRANCH THAT MATTERS, AND JUDGED BY THE `deftest`. The faulted
   branch (all six faults), the careful one (none), and for each fault the variant with only that
   fault reverted. A test that fails on the faulted branch and passes on the careful one
   DISCRIMINATES; of the variants, the ones on which it passes are the faults it detects, because
   reverting just that fault was enough. That is a hit, and it needs nobody's opinion. The unit is
-  the `deftest`, not the file: a reviewer that bundles seven checks in one file has not made seven
+  the `deftest`, not the file: a security reviewer that bundles seven checks in one file has not made seven
   files' worth of mistakes, and no single revert makes a whole bundle pass.
 
   What does not discriminate is classified, not judged: a test that fails on both branches is
@@ -25,8 +25,8 @@
    [clojure.edn :as edn]
    [clojure.pprint :as pp]
    [clojure.string :as str]
-   [harness.models.review-sandbox :as sandbox]
-   [harness.models.review-tools :as review-tools]))
+   [harness.models.security-review-sandbox :as sandbox]
+   [harness.models.security-review-tools :as security-review-tools]))
 
 ;; ---------------------------------------------------------------------------
 ;; pure
@@ -61,7 +61,7 @@
   "The first failure in a test run's output, as a few lines: what to show a person deciding what
   a failing test means. Cleaned of the runner's decoration and cut short."
   [out]
-  (let [lines (str/split-lines (review-tools/clean-output out))
+  (let [lines (str/split-lines (security-review-tools/clean-output out))
         from (first (keep-indexed (fn [i l] (when (re-find #"^(FAIL|ERROR) in " l) i)) lines))]
     (when from
       (let [s (str/join " | " (take 4 (drop from lines)))]
@@ -162,7 +162,7 @@
 
 (defn- run-branch!
   "The test namespaces `nses` run one at a time in the sandbox, on a fresh single-branch clone of
-  `branch` with the reviewer's test files copied in: ns -> {:status _ :why _ :units {test status}}."
+  `branch` with the security reviewer's test files copied in: ns -> {:status _ :why _ :units {test status}}."
   [kit app-dir branch files nses]
   (let [scratch (str (fs/create-temp-dir {:prefix "kit-score"}))
         clone (str (fs/path scratch "app"))]
@@ -185,8 +185,8 @@
       (finally (fs/delete-tree scratch)))))
 
 (defn outcomes!
-  "Run the reviewer's tests where they matter. `cases` is the fixture's cases.edn, `files` the
-  reviewer's tests (path -> text). Returns `ns/test` -> `{:faulted s :clean s :variants {fault s}
+  "Run the security reviewer's tests where they matter. `cases` is the fixture's cases.edn, `files` the
+  security reviewer's tests (path -> text). Returns `ns/test` -> `{:faulted s :clean s :variants {fault s}
   :why _}`, one entry per `deftest`. The variants are run only for the namespaces with a test that
   discriminates."
   [kit app-dir cases files]

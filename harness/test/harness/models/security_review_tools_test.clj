@@ -1,17 +1,17 @@
-(ns harness.models.review-tools-test
+(ns harness.models.security-review-tools-test
   "The security reviewer's tools, tried on a small temporary tree. The tools that start a
   process take a sandbox, which these tests replace with a recording stand-in."
   (:require
    [babashka.fs :as fs]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
-   [harness.models.review-tools :as rt]
+   [harness.models.security-review-tools :as rt]
    [harness.models.tools :as tools]))
 
 (defn- tree!
   "A temporary folder holding `files` (path -> text); its path."
   [files]
-  (let [dir (str (fs/create-temp-dir {:prefix "kit-review-tools"}))]
+  (let [dir (str (fs/create-temp-dir {:prefix "kit-security-review-tools"}))]
     (doseq [[rel text] files]
       (fs/create-dirs (fs/parent (fs/path dir rel)))
       (spit (str (fs/path dir rel)) text))

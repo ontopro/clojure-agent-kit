@@ -1,10 +1,10 @@
-(ns harness.models.review-tools
+(ns harness.models.security-review-tools
   "The tools a security reviewer works with, over a clone of the application under review.
 
-  A reviewer reads the code, and checks a concern by writing a test for it and seeing the test
+  A security reviewer reads the code, and checks a concern by writing a test for it and seeing the test
   fail. Its tools are those of a test harness and nothing more: read a file, search the tree,
   send one request to the application under test, write a test, run the tests. There is no
-  REPL (`nrepl_eval` is a shell, and a reviewer needs none) and no tool that writes anywhere
+  REPL (`nrepl_eval` is a shell, and a security reviewer needs none) and no tool that writes anywhere
   but `test/`.
 
   The tools are the same for every model that fills the role, so that a comparison of models
@@ -88,11 +88,11 @@
 (def max-test-bytes (* 50 1024))
 
 (defn- test-path-problem
-  "Why `path` is not a place a reviewer may write, or nil: a `*_test.clj` file below `test/` that
+  "Why `path` is not a place a security reviewer may write, or nil: a `*_test.clj` file below `test/` that
   is either new or one this review wrote itself (`written`, an atom of the paths it has
-  written, relative to the root). The application's own tests are not the reviewer's to change
+  written, relative to the root). The application's own tests are not the security reviewer's to change
   - a test changed to pass would hide the very thing it was written to show - but its own are:
-  a test that turns out to be wrong has to be fixable in place, and when it was not, a reviewer
+  a test that turns out to be wrong has to be fixable in place, and when it was not, a security reviewer
   wrote `authz`, `authz2` … `authz5` and left the broken ones behind. Every file below `test/`
   is loaded as a namespace by the runner, so a file that is not a test namespace would break the
   whole suite."

@@ -1,4 +1,4 @@
-(ns harness.models.review-sandbox-test
+(ns harness.models.security-review-sandbox-test
   "The review sandbox's commands and the order of its steps, with a recording stand-in for the
   function that runs a command. Starting a real container is tried by hand and by
   `bb security-review`, never in the gates."
@@ -7,7 +7,7 @@
    [cheshire.core :as json]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
-   [harness.models.review-sandbox :as sb]))
+   [harness.models.security-review-sandbox :as sb]))
 
 (def kit (str (fs/normalize (fs/absolutize ".."))))
 

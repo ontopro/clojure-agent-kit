@@ -51,6 +51,15 @@ the template fork's tags and version the template, not the KIT.
 
 ## 2026-10-08
 
+### The security reviewer is named as one (row 121)
+
+`reviewer` is the code reviewer, the `:reviewer` role every task's patch passes; the security reading's
+names had grown up beside it without saying which reviewer they meant. Its tools and its sandbox are now
+`harness.models.security-review-tools` and `harness.models.security-review-sandbox`, the request script
+lives in `resources/security-review/` (the container still mounts it at `/review`), and the docstrings,
+task docs, inventory rows and register row say "security reviewer" where they said "reviewer". New names
+for it start `security-`. The prompts the model reads are unchanged, so the bake-offs' figures stand.
+
 ### `bb security-review`: a review whose findings are failing tests (row 121)
 
 The reviewer is a model with the five tools in the sandbox, in one of two stances: the tracer, given the
