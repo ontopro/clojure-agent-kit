@@ -16,6 +16,8 @@
   tree being committed (`git write-tree` of the index the commit is made from).
   And it refuses code staged without a document: a change under `harness/src/`,
   `tools/`, `skills/` or `plan-template/` stages `DEVLOG.md` or `NOTES.md` too.
+  And a staged `NOTES.md` must have bumped its `**Updated <date> <time>` stamp
+  past HEAD's, to no later than the clock.
   So \"`bb repair && bb gates` green before committing\" is a fact the commit
   checks, not a step remembered. The KIT's own development only: nothing here
   is shipped to a workspace."
@@ -266,6 +268,34 @@
            (when (> (count code) 3) (str " and " (- (count code) 3) " more"))
            ": a finding is not finished until DEVLOG.md or NOTES.md carries it; stage the entry with it"))))
 
+(def ^:private stamp-re #"(?m)^\*\*Updated (\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})")
+
+(defn stamp
+  "The `**Updated <date> <time>` stamp at the head of a `NOTES.md` text, as a
+  local date-time, or nil when it has none."
+  [text]
+  (when-let [[_ d t] (some->> text (re-find stamp-re))]
+    (java.time.LocalDateTime/parse (str d "T" t))))
+
+(defn stamp-refusal
+  "Why a staged `NOTES.md` is refused for its stamp, or nil: it has none, it is
+  not later than HEAD's (`head-text` nil for a new file), or it is later than
+  `now` (a local date-time; the stamp is read to the minute). Pure."
+  [head-text staged-text now]
+  (let [new (stamp staged-text)
+        old (stamp head-text)]
+    (cond
+      (nil? new)
+      "NOTES.md is staged with no `**Updated <date> <time>` stamp at its head"
+
+      (and old (not (.isAfter new old)))
+      (str "NOTES.md is staged and its stamp was not bumped (" new ", HEAD has " old
+           "): every edit moves `**Updated` to the time of the edit")
+
+      (.isAfter new (.truncatedTo now java.time.temporal.ChronoUnit/MINUTES))
+      (str "NOTES.md's stamp " new " is later than the clock ("
+           (.truncatedTo now java.time.temporal.ChronoUnit/MINUTES) ")"))))
+
 (defn staged-paths
   "The paths the commit changes, from the index git names."
   [root]
@@ -280,8 +310,14 @@
   [& _]
   (let [root (or (repo-root ".") (do (println "commit-check: not in a git repository") (System/exit 1)))
         rec (read-record root)
+        paths (staged-paths root)
+        notes (when (some #{"NOTES.md"} paths) (git root ["show" ":NOTES.md"]))
         whys (keep identity [(refusal rec (staged-tree root))
-                             (document-refusal (staged-paths root))])]
+                             (document-refusal paths)
+                             ;; a NOTES.md the commit deletes has no stamp to bump
+                             (when notes
+                               (stamp-refusal (git root ["show" "HEAD:NOTES.md"]) notes
+                                              (java.time.LocalDateTime/now)))])]
     (if (seq whys)
       (do (doseq [why whys] (println (str "commit refused: " why)))
           (System/exit 1))

@@ -51,7 +51,9 @@ benefit. It is also a product artifact, and also not addressed to you.
   commit message and nowhere else, which is the exact failure it was added to
   stop. A commit message is not a document; nobody greps for a fact they do not
   know exists. The commit check holds the part it can see: code staged under `harness/src/`,
-  `tools/`, `skills/` or `plan-template/` without `DEVLOG.md` or `NOTES.md` is refused.
+  `tools/`, `skills/` or `plan-template/` without `DEVLOG.md` or `NOTES.md` is refused, and a
+  staged `NOTES.md` whose `**Updated <date> <time>` stamp was not moved past HEAD's, to no later
+  than the clock, is refused.
 - **A number or a capability claim names the command that produced it, and the command
   has been run.** Not "this is checkable" — the check, executed, over every case the
   sentence covers rather than the one example in front of you. Every false claim this

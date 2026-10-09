@@ -51,6 +51,14 @@ the template fork's tags and version the template, not the KIT.
 
 ## 2026-10-09
 
+### A NOTES.md edit moves its stamp (plan 6.2, item 4)
+
+`NOTES.md` opens with `**Updated <date> <time>`, and the stamp is how a reader knows the register
+is current; an edit that leaves it behind says the register is older than it is. The commit check
+now reads the staged `NOTES.md` and refuses it when its stamp is not later than HEAD's, when it is
+later than the clock (to the minute, in local time, as the stamp is written), or when there is
+none. A commit that deletes the file is not asked. What the stamp's summary says is not checked.
+
 ### Code is committed with its document (plan 6.2, item 3)
 
 "A finding is not finished until a document carries it" was a working rule, and it was broken

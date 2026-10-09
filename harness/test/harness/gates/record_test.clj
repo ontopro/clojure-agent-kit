@@ -117,3 +117,22 @@
     (is (empty? (record/staged-paths dir)))
     (git! dir "add" "-A")
     (is (= #{"a.txt" "b c.txt"} (set (record/staged-paths dir))))))
+
+(deftest a-staged-notes-bumps-its-stamp
+  (let [notes (fn [stamp] (str "# Notes\n\n" stamp " (row 1: something)**\n\nbody\n"))
+        at (fn [s] (java.time.LocalDateTime/parse s))
+        now (at "2026-10-09T10:30:41")
+        head (notes "**Updated 2026-10-08 23:32")]
+    (is (= (at "2026-10-08T23:32") (record/stamp head)))
+    (testing "bumped, to now or before: carried"
+      (is (nil? (record/stamp-refusal head (notes "**Updated 2026-10-09 10:30") now)))
+      (is (nil? (record/stamp-refusal head (notes "**Updated 2026-10-09 09:00") now))))
+    (testing "a new NOTES.md needs only a stamp not in the future"
+      (is (nil? (record/stamp-refusal nil (notes "**Updated 2026-10-09 10:00") now))))
+    (testing "the same stamp, or an older one: not bumped"
+      (is (str/includes? (record/stamp-refusal head head now) "not bumped"))
+      (is (str/includes? (record/stamp-refusal head (notes "**Updated 2026-10-01 10:00") now) "not bumped")))
+    (testing "later than the clock"
+      (is (str/includes? (record/stamp-refusal head (notes "**Updated 2026-10-09 10:31") now) "later than the clock")))
+    (testing "no stamp at all"
+      (is (str/includes? (record/stamp-refusal head "# Notes\nUpdated 2026-10-09 10:00\n" now) "no `**Updated")))))
