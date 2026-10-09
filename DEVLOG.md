@@ -61,6 +61,18 @@ costs its readers more than a missed one; an answer with no findings block is re
 nothing, not as a clean review. The tests it wrote are collected from the clone and kept beside the
 record. The command is a real model call and says so before it spends.
 
+### A stack trace is not a compile error (row 121)
+
+The scorer called a test file "does not compile" when its output said `Compiler`. A test that fails with
+an exception has `clojure.lang.Compiler` frames in its stack trace, so GLM-5.3-prime's change-A review -
+five tests that fail properly on the faulted branch, one with an error - scored 0 of 6 with every test
+"does not compile", and its four findings looked not reproduced. Run in the clone it was written in, and
+again in a fresh clone of the faulted branch, the file loads and fails as the model said. The check now
+looks for what a namespace that will not load actually says (a syntax error, an unresolved symbol, a
+namespace or class that cannot be found), with a test for a run whose trace names the compiler. The
+second scoring bug of the day; both undercounted a model, which is how they were found. Every score made
+before this is re-made: the table below the next heading was scored with this check and is superseded.
+
 ### The first security bake-off, scored: six of six against three of six (row 121)
 
 Tracer only, the fixed fixture, sixty rounds, each model on the faulted branch and on the careful one; the

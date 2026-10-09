@@ -41,6 +41,12 @@
       (str/replace "/" ".")
       (str/replace "_" "-")))
 
+(def compile-error
+  "What a namespace that will not load says. NOT the word `Compiler`: a test that fails with an
+  exception has `clojure.lang.Compiler` frames in its stack trace, and a first scoring took such a
+  run for one that does not compile and threw away four findings that held."
+  #"(?i)syntax error|Unable to resolve symbol|Could not locate .* on classpath|No such namespace|No such var|Unable to resolve classname")
+
 (defn status
   "How one test namespace ended: `:passes`, `:fails`, `:does-not-compile`, or `:no-tests` (a
   helper namespace with no test in it). `result` is `{:exit :out}`."
@@ -49,7 +55,7 @@
     (cond
       (and (zero? (or exit 1)) (re-find #"Ran 0 tests" out)) :no-tests
       (zero? (or exit 1)) :passes
-      (re-find #"(?i)syntax error|Unable to resolve symbol|Could not locate|Compiler|compiling" out) :does-not-compile
+      (re-find compile-error out) :does-not-compile
       :else :fails)))
 
 (defn why

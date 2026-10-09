@@ -13,7 +13,10 @@
   (is (= :passes (score/status {:exit 0 :out "Ran 3 tests containing 8 assertions.\n0 failures, 0 errors."})))
   (is (= :no-tests (score/status {:exit 0 :out "Testing notes.review-support-test\nRan 0 tests containing 0 assertions."})))
   (is (= :fails (score/status {:exit 1 :out "FAIL in notes.x-test/a (x.clj:5)\nexpected: 1"})))
-  (is (= :does-not-compile (score/status {:exit 1 :out "Syntax error compiling at (notes/x_test.clj:16:9).\nUnable to resolve symbol: stored-hash"}))))
+  (is (= :does-not-compile (score/status {:exit 1 :out "Syntax error compiling at (notes/x_test.clj:16:9).\nUnable to resolve symbol: stored-hash"})))
+  (testing "a test that fails with an exception is a failure, though its stack trace names the compiler"
+    (is (= :fails (score/status {:exit 1 :out (str "FAIL in (a-test) (x.clj:5)\nERROR in (b-test) (x.clj:9)\nexpected: nil\n  actual: java.lang.NullPointerException\n"
+                                                   "\tat clojure.lang.Compiler.eval(Compiler.java:7700)\n\tat clojure.lang.Compiler.load(Compiler.java:7756)\n")})))))
 
 (deftest the-first-failure-is-quoted-for-a-person-to-read
   (let [out (str "Running task: test\n  3/15    20% [==========     ]  ETA: 00:03 \rFAIL in notes.x-test/a (x.clj:5)\n"
