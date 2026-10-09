@@ -61,6 +61,19 @@ costs its readers more than a missed one; an answer with no findings block is re
 nothing, not as a clean review. The tests it wrote are collected from the clone and kept beside the
 record. The command is a real model call and says so before it spends.
 
+### The reviewer's tests run in a fresh copy, not in the clone they were written in (row 121)
+
+One of GLM-5.3-prime's tests wrote a decoy file into `target/` and threw `FileNotFoundException` when scored
+in a fresh clone. In the review it had passed that line, because the model's own whole-suite run (completion
+ten) had made `target/coverage` there; the clone also held the live application's database, an `exports/`
+folder and a `.cpcache/` from earlier steps. So the evidence a model gathered for "reproduced" came from a
+different tree from the one that is scored: a test could pass in the review and fail fresh. Every test run
+in the sandbox now starts by copying the application into an empty folder - the files git tracks plus the
+untracked ones it does not ignore, so the reviewer's own tests come along and `target/`, `db/` and
+`.cpcache/` do not - and runs there. Tried on the dirty clone: the same `5 failures, 1 errors` and the same
+`FileNotFoundException` the scorer sees, and the clone's folders unchanged by the runs. The live
+application, which the `request` tool talks to, still runs in the clone.
+
 ### A stack trace is not a compile error (row 121)
 
 The scorer called a test file "does not compile" when its output said `Compiler`. A test that fails with

@@ -77,15 +77,28 @@
   [name]
   ["docker" "exec" "-d" "-w" app-dir name "bash" "-c" "bb serve > /tmp/serve.log 2>&1"])
 
+(def pristine-copy
+  "Copy the application into an empty folder and run there: the files git tracks, and the files it
+  does not but would not ignore - so the reviewer's new tests come along, and `target/`, `db/` and
+  `.cpcache/` (all ignored) do not. A run in the clone itself saw what earlier runs had left: a
+  test that wrote into `target/` passed in the review only because a whole-suite run had made the
+  folder, and failed in a fresh clone. Every run now starts from the same tree a fresh clone has."
+  (str "set -e\n"
+       "rm -rf /tmp/run && mkdir -p /tmp/run\n"
+       "git -c safe.directory='*' ls-files -co --exclude-standard -z | tar --null -cf - -T - | tar -xf - -C /tmp/run\n"
+       "cd /tmp/run\n"))
+
 (defn tests-argv
-  "The application's tests in the container: all of them as its own `test` task runs them, or
-  one namespace through `clojure.test`, exiting non-zero when it fails."
+  "The application's tests in the container, in a pristine copy of it: all of them as its own `test`
+  task runs them, or one namespace through `clojure.test`, exiting non-zero when it fails. The
+  namespace is a name `review-tools` has already checked, which is why it can go in a command."
   [name ns-name]
-  (if ns-name
-    (exec-argv name "clojure" "-Srepro" "-M:test" "-e"
-               (str "(require '" ns-name ") (let [r (clojure.test/run-tests '" ns-name ")] "
-                    "(System/exit (if (clojure.test/successful? r) 0 1)))"))
-    (exec-argv name "clojure" "-Srepro" "-X:test")))
+  (exec-argv name "bash" "-c"
+             (str pristine-copy
+                  (if ns-name
+                    (str "exec clojure -Srepro -M:test -e \"(require '" ns-name ") (let [r (clojure.test/run-tests '" ns-name ")] "
+                         "(System/exit (if (clojure.test/successful? r) 0 1)))\"")
+                    "exec clojure -Srepro -X:test"))))
 
 (defn request-argv
   "One request, as the script in the container sends it; the request is one JSON argument, so no

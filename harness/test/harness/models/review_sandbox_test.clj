@@ -33,12 +33,19 @@
     (is (str/includes? (last argv) "-X:test"))
     (is (str/includes? (last argv) "bb tasks") "the application's own bb dependencies too")))
 
-(deftest tests-run-all-of-them-or-one-namespace-and-a-request-is-one-json-argument
-  (is (= ["clojure" "-Srepro" "-X:test"] (drop 5 (sb/tests-argv "n" nil))))
-  (let [argv (sb/tests-argv "n" "app.review-notes-test")]
-    (is (= ["clojure" "-Srepro" "-M:test" "-e"] (subvec (vec argv) 5 9)))
-    (is (str/includes? (last argv) "(clojure.test/run-tests 'app.review-notes-test)"))
-    (is (str/includes? (last argv) "System/exit")))
+(deftest tests-run-in-a-pristine-copy-all-of-them-or-one-namespace-and-a-request-is-one-json-argument
+  (let [all (sb/tests-argv "n" nil)
+        one (sb/tests-argv "n" "app.review-notes-test")]
+    (is (= ["bash" "-c"] (subvec (vec all) 5 7)))
+    (is (str/ends-with? (last all) "exec clojure -Srepro -X:test"))
+    (is (str/includes? (last one) "exec clojure -Srepro -M:test -e"))
+    (is (str/includes? (last one) "(clojure.test/run-tests 'app.review-notes-test)"))
+    (is (str/includes? (last one) "System/exit"))
+    (testing "each starts from the files a fresh clone has"
+      (doseq [script [(last all) (last one)]]
+        (is (str/includes? script "rm -rf /tmp/run"))
+        (is (str/includes? script "ls-files -co --exclude-standard") "tracked, plus untracked and not ignored: the reviewer's tests, not target/ or db/")
+        (is (str/includes? script "cd /tmp/run")))))
   (let [argv (sb/request-argv "n" {:method "POST" :path "/a b?x='1" :headers {"X-A" "1"} :body "t\"x"})]
     (is (= ["bb" "/review/request.bb"] (subvec (vec argv) 5 7)))
     (is (= {"method" "POST" "path" "/a b?x='1" "headers" {"X-A" "1"} "body" "t\"x"} (json/parse-string (last argv)))
