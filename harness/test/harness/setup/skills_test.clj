@@ -29,8 +29,8 @@
     (is (= [] (skills/citation-problems kit-dir nm (slurp (skills/source-path kit-dir nm)))) nm)))
 
 (deftest a-citation-is-a-file-and-a-heading-it-carries
-  (let [text "## Reads\n\n| File | Heading |\n|---|---|\n| `method.md` | `Step 0 — Scoping, before anything is set up` |\n| `method.md` | `No such heading` |\n| `nowhere.md` | `Anything` |\n\n| Other | Table |\n|---|---|\n| a | b |\n"]
-    (is (= [["method.md" "Step 0 — Scoping, before anything is set up"] ["method.md" "No such heading"] ["nowhere.md" "Anything"]]
+  (let [text "## Reads\n\n| File | Heading |\n|---|---|\n| `method.md` | `Step 1 — Scoping, the first conversation in the workspace` |\n| `method.md` | `No such heading` |\n| `nowhere.md` | `Anything` |\n\n| Other | Table |\n|---|---|\n| a | b |\n"]
+    (is (= [["method.md" "Step 1 — Scoping, the first conversation in the workspace"] ["method.md" "No such heading"] ["nowhere.md" "Anything"]]
            (skills/citations text))
         "the Reads table only, backticks stripped")
     (is (= ["skills/x/SKILL.md cites the heading \"No such heading\" of method.md, which the file no longer carries"

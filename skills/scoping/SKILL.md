@@ -18,7 +18,7 @@ seat's, and `bb init` renders them into the workspace's `.claude/skills/`.
 
 | File | Heading |
 |---|---|
-| `method.md` | `Step 0 — Scoping, before anything is set up` |
+| `method.md` | `Step 1 — Scoping, the first conversation in the workspace` |
 | `plan-template/source.md` | `1. What was handed over` |
 
 Read the method's section whole before the first question: it has the six groups, the two

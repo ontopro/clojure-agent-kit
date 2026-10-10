@@ -42,7 +42,7 @@
           "04-decision-log.md" 12
           "05-lessons.md" 11
           "README.md" 1
-          "source.md" 11
+          "source.md" 10
           "stages/stage-0-spike-template.md" 12
           "stages/stage-N-blueprint-template.md" 9
           "stages/stage-N-gates-template.edn" 2

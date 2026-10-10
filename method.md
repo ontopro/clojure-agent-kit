@@ -88,7 +88,7 @@ The method uses a small vocabulary and means one thing by each word. A reader wh
 
 | Word | Means |
 |---|---|
-| **brief** | the person's one-page ask, in their words: who it is for, what it shows or does, what material exists, what must be proved early, the first thing worth seeing, the money (§02, step 0) |
+| **brief** | the person's one-page ask, in their words: who it is for, what it shows or does, what material exists, what must be proved early, the first thing worth seeing, the money (§02, step 1) |
 | **source** | what was handed over, recorded in `source.md` and numbered so that a requirement can cite the observation it rests on |
 | **content** | the part of the source the product shows, named apart from the rest — a site has content, a library has none |
 | **requirement** | one thing the product must do or be, with a permanent ID; written when the stage that builds it is pulled, never earlier |
@@ -186,9 +186,13 @@ graph LR
 
 ## 02 — Phase A — Plan
 
-### Step 0 — Scoping, before anything is set up
+### Step 0 — Setup, the machine and the workspace
 
-The plan starts as a conversation between the person who wants the thing and the session that will write the plan, before a workspace exists and before any document is opened. Its output is the **brief**: the person's one-page ask, in their words, kept as the plan's first record. Six groups of questions, and only these:
+Before the first conversation, the place it happens: a project folder, KIT cloned into it, `bb self-check` until the machine is ready, and `bb init`, which makes the workspace - the application, the build repository with the plan's documents, `work/` - beside the clone, named after the folder. The README's *How to use KIT* gives the steps, and §03's *Step 1* the detail. Every session of the project from here on opens in the workspace folder, and every command is run from there.
+
+### Step 1 — Scoping, the first conversation in the workspace
+
+The plan starts as a conversation between the person who wants the thing and the session that will write the plan, the first in the new workspace and before any of the plan's documents is opened. Its output is the **brief**: the person's one-page ask, in their words, kept as the plan's first record. Six groups of questions, and only these:
 
 - **Who it is for.** Who uses it, and what do they come to do - one sentence per kind of user. Who owns it, decides what is right, and signs off; is that the person asking?
 - **What it shows or does.** The product in one paragraph as a user would see it, not as a system. The one thing it must do on day one for it to be worth having at all. What it does not do - with the reason, because an exclusion is a decision (see *The MVP boundary is scoping*, below).
@@ -197,7 +201,7 @@ The plan starts as a conversation between the person who wants the thing and the
 - **The first thing worth seeing.** The smallest thing that, shown in a browser or at a REPL, would tell the person the project is real: a page, a command, a function with its output. Named before any requirement is written, because it is what stage 1 builds. Who walks through it, and what would make them say it is wrong.
 - **The money and the stops.** How much for stage 0, and what stops the build early. Who pays, and who sees the spend.
 
-Two rules. **The answers are recorded as they were given**, numbered, in `source.md` §1, with the brief as its appendix - so that a requirement can later cite the observation it rests on, and so that a reader can tell what the person said from what the plan made of it. Scoping happens before a workspace exists, so the brief is written to a file wherever the person likes, and `bb init <name> --brief <file>` files it: §1's first row names it and Appendix A carries it verbatim. **A question the person cannot answer is not a blocker**: it becomes a risk with a stage that will prove it, or an open decision with an owner. That is the lean move, and the one the rest of this section is built on.
+Two rules. **The answers are recorded as they were given**, numbered, in `source.md` §1, with the brief as its appendix - so that a requirement can later cite the observation it rests on, and so that a reader can tell what the person said from what the plan made of it. The brief is written to the workspace's `work/brief.md`, and `bb brief` files it: §1's first row names it and Appendix A carries it verbatim. **A question the person cannot answer is not a blocker**: it becomes a risk with a stage that will prove it, or an open decision with an owner. That is the lean move, and the one the rest of this section is built on.
 
 What scoping does not ask: a list of features, a data model, a stack choice. Those come out of stage 0 and stage 1, not out of the conversation before them.
 
@@ -337,12 +341,15 @@ checks the machine before anything is generated. Nothing is copied by hand and n
 installed for you.
 
 ```bash
-git clone https://github.com/ontopro/clojure-agent-kit     # into the folder the project will live in
-cd clojure-agent-kit
-bb doctor        # every tool, its version, what fixes a miss; two verdicts - run it, follow it, run it again
-bb health        # once: the KIT, on this machine, with the template it pins - minutes, starts JVMs
-bb init xyx      # the workspace: xyx-app (generated, two commits), xyx-build (the documents, the rules overlay, the profile, run defaults, runs/), work/
-cd ../xyx-app && bb serve                                   # http://localhost:8000
+mkdir xyx && cd xyx                                          # the project folder: it becomes the workspace
+git clone https://github.com/ontopro/clojure-agent-kit.git KIT
+cd KIT
+bb self-check    # bb doctor - every tool, its version, what fixes a miss - then, when it says yes, bb health:
+                 # KIT, on this machine, with the template it pins - minutes, starts JVMs
+bb init          # the workspace, named after the folder: xyx-app (generated, two commits), xyx-build (the
+                 # documents, the rules overlay, the profile, run defaults, runs/), work/, and bb.edn
+cd ..            # every session and command of the project from here
+cd xyx-app && bb serve                                       # http://localhost:8000
 ```
 
 The three installs the doctor cannot do for you - JDK 21, the Clojure CLI, Babashka - are the
@@ -567,7 +574,7 @@ The method is Kanban's shape with two of Scrum's ceremonies attached to the gate
 | learning | retrospective | none fixed | the lessons at a stage's close, the decision log |
 | smallest item | story or task | card | the task packet, one run through the loop (§06) |
 
-Backlog and story stay out: the stage map and the task packet already mean exactly what they mean, and a story's shape — *as a user I want* — is the brief's job at step 0, not the packet's.
+Backlog and story stay out: the stage map and the task packet already mean exactly what they mean, and a story's shape — *as a user I want* — is the brief's job at step 1, not the packet's.
 
 ### Pre-release and release
 
@@ -1110,8 +1117,14 @@ Two things to get right early because they're cheap now and expensive later: **a
 
 ## 13 — Quick start
 
+**Setup** *(§02, step 0: the machine and the workspace, before the first conversation)*
+- [ ] Install JDK 21, the Clojure CLI and Babashka
+- [ ] A project folder, KIT cloned into it as `KIT/`; `bb self-check` until the doctor says yes and the health check passes
+- [ ] `bb init` - the application generated and committed untouched, the build repository, the workspace, named after the folder
+- [ ] Open the session in the workspace folder; every session and command of the project starts there
+
 **Phase A — Plan** *(commit to stage 0 and nothing after it)*
-- [ ] Scope first (§02, step 0): the six groups of questions and only those; the answers recorded as given in `source.md`, the content named apart; the first thing worth seeing named
+- [ ] Scope first (§02, step 1), in the workspace: the `scoping` skill writes `work/brief.md`, `bb brief` files it; the six groups of questions and only those; the answers recorded as given in `source.md`, the content named apart; the first thing worth seeing named
 - [ ] Write the three scope lists — ships first, deferred with its stage, out of scope with its reason — and treat every exclusion as a decision
 - [ ] Rank the risks; name which ones stage 0 proves, each with a pass criterion and a fallback written before it runs
 - [ ] Put the candidate architecture in the log as PROVISIONAL entries gated by those criteria; open everything else OPEN-with-an-owner
@@ -1121,9 +1134,6 @@ Two things to get right early because they're cheap now and expensive later: **a
 - [ ] Confirm no decision is ownerless; approve stage 0 with its cap
 
 **Phase B — Foundation** *(inside stage 0: build the minimum machine, then prove it)*
-- [ ] Install JDK 21, the Clojure CLI and Babashka; `bb doctor` until both verdicts say yes
-- [ ] `bb health` once - the KIT, this machine, the pinned template, certified together
-- [ ] `bb init <name>` - the application generated and committed untouched, the build repository, the workspace
 - [ ] Choosing XTDB v2 instead? Pin the library *and* the JDK, decide whether migrations are needed, write the thin SQL write layer, and check the stateless-transaction constraint against your access patterns
 - [ ] Put the datastore behind a protocol before writing the first feature
 - [ ] One REPL per workspace - the harness provisions them; never share one

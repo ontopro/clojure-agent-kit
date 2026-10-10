@@ -122,7 +122,7 @@
 
   ;; The workflow's next step, read off the build's files - the loop's `next-action` one level
   ;; up, so the hand-off between steps lives in no skill. Information: exit 0 always.
-  next {:doc "bb next [--workspace <dir>]: the workflow's next step, its owner and the command or skill to run, from five facts that are files - a workspace, the plan check, the stage's gates record, its blueprint's review and sign-off, its packets' merged records; scoping before a workspace exists"
+  next {:doc "bb next [--workspace <dir>]: the workflow's next step, its owner and the command or skill to run, from five facts that are files - a workspace, the plan check, the stage's gates record, its blueprint's review and sign-off, its packets' merged records; setup before a workspace exists, scoping in one with no brief yet"
         :requires ([harness.setup.next :as next])
         :task (apply next/-main *command-line-args*)}
 

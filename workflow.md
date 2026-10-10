@@ -9,13 +9,13 @@ implement, deploy locally - and the reviews belong to those steps, not to a plac
 
 ```mermaid
 flowchart TD
-  subgraph SCOPING["Step 0 — scoping: the person and an Architect session, before anything exists"]
-    Z1["the six groups of questions, and only those (method §02, step 0)"] --> Z2["the brief, written to a file"]
+  subgraph SETUP["Step 0 — setup: the person, once, in KIT's clone"]
+    S1["bb self-check: the doctor, then the health check"] --> S3["bb init"]
+    S3 --> S4["xyx-app/ · xyx-build/ (docs, rules.edn, profile.edn, loop.edn) · work/ · workspace.edn · bb.edn"]
   end
 
-  subgraph SETUP["Setup — the person, once"]
-    S1["bb doctor"] --> S2["bb health"] --> S3["bb init xyx --brief the-brief.md"]
-    S3 --> S4["xyx-app/ · xyx-build/ (docs with the brief filed, rules.edn, profile.edn, loop.edn) · work/ · workspace.edn"]
+  subgraph SCOPING["Step 1 — scoping: the person and an Architect session, in the workspace"]
+    Z1["the six groups of questions, and only those (method §02, step 1)"] --> Z2["the brief, to work/brief.md"] --> Z3["bb brief: filed as source.md §1 and Appendix A"]
   end
 
   subgraph PLAN["Phase A — the plan, for stage 0: the Architect's session"]
@@ -60,8 +60,8 @@ flowchart TD
     R1["pre-release: what release needs and nothing earlier; the deploy path rehearsed on a throwaway host"] --> R2["release: package → deploy on the server, or publish for download; started as packaged on an empty home; the previous release's data opened"]
   end
 
-  Z2 --> S1
-  S4 --> P1
+  S4 --> Z1
+  Z3 --> P1
   P9 --> Z0
   F6 --> C0
   C5 --> L1
@@ -80,8 +80,8 @@ once.
 
 | # | Step | Who | The question it answers | What runs | What exists afterwards |
 |---|---|---|---|---|---|
-| 0 | Scoping | the person, with an Architect session | Who is it for, what does it show or do, what material exists and which part is content, what must be proved early, what is the first thing worth seeing, what is the money? | the `scoping` skill, from the KIT's clone (`skills/`; the other seats follow the method's section by hand) | the brief, in a file: the six groups' answers as given (`method.md` §02, step 0) |
-| 1 | Setup | the person | Can this machine run the KIT, and where does the project live? | `bb doctor`, `bb health`, `bb init <name> --brief <file>` | the workspace: the application (two commits), the build repository (the documents with the brief filed as `source.md`'s first row and Appendix A, the rules overlay, the profile, run defaults), `work/`, `workspace.edn` with the KIT's commit |
+| 0 | Setup | the person | Can this machine run KIT, and where does the project live? | in KIT's clone: `bb self-check`, `bb init` | the workspace: the application (two commits), the build repository (the plan's documents, the rules overlay, the profile, run defaults), `work/`, `workspace.edn` with KIT's commit, `bb.edn` - every session and command from here in the workspace folder |
+| 1 | Scoping | the person, with an Architect session | Who is it for, what does it show or do, what material exists and which part is content, what must be proved early, what is the first thing worth seeing, what is the money? | the `scoping` skill, in the workspace's session (the other seats follow the method's section by hand); then `bb brief` | the brief, filed as `source.md`'s first row and Appendix A: the six groups' answers as given (`method.md` §02, step 1) |
 | 2 | The plan, for stage 0 | the Architect's session | What are we building, from what evidence, which risks does stage 0 prove and against what criteria, and what have we deliberately not decided yet? | the `plan` skill | the seven documents, in order, `source.md` first and `05-lessons.md` empty: the scope lists; stage 1's requirements and no more; the candidate architecture as provisional decisions, each with a pass criterion; the stage map by kind, a cap on stage 0 alone; the overlay's three placeholders filled with the method document |
 | 3 | The plan review | `bb plan-review` | Where does the plan contradict itself, decide too early, write a requirement for a stage not pulled, or leave a risk with no owning stage? | one call to the profile's `:plan-reviewer` with `method.md` §02's checklist | findings in `reviews/plan-review.edn`, each resolved in the overview's findings table |
 | 4 | The plan check | `bb plan-check` | Is anything of the template still standing, does every requirement cite an observation or say it is inferred, and are the given parts intact? | mechanical | exit 0, or the list of what still stands; then the inferred requirements, for the approval, and the observations nothing cites, for the stage's end |

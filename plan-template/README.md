@@ -8,7 +8,7 @@ repository's first commit, the way it generates `<name>-app/` from the KIT's app
 ```
 <name>-build/
   docs/
-    source.md                 ← write it first; what the plan derives from, and never revised; the brief is its first row and Appendix A (`bb init --brief`)
+    source.md                 ← write it first; what the plan derives from, and never revised; the brief is its first row and Appendix A (`bb brief`)
     00-overview.md            ← start here; write it last, revise it at every stage's end
     01-requirements.md        ← the scope lists and the index, revised at every stage's end; stage 1's requirements
     02-architecture.md        ← evolves; references decisions by ID, never restates them
@@ -34,8 +34,8 @@ the records); `reviews/` appears with the first `bb plan-review` and `bake-offs/
 `bb bake-off new`. All of it is the rest of what a project decides or produces: the plan
 repository holds all of it, and the KIT's clone none.
 
-**Order of writing.** Scoping first, before any of this exists: the brief, which `bb init
---brief` files (`method.md` §02, step 0). Then source → requirements (the scope lists; stage 1's
+**Order of writing.** Scoping first, before any of this is written: the brief, which the `scoping`
+skill writes to `work/brief.md` and `bb brief` files (`method.md` §02, step 1). Then source → requirements (the scope lists; stage 1's
 requirements, no more) → architecture (candidates, provisional) → method → decision log (each
 candidate with the pass criterion stage 0 applies) → overview (the stage map by kind, a cap on
 stage 0 alone), and the overlay's three placeholders in `rules.edn` with the method. Then `bb

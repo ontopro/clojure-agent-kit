@@ -56,6 +56,18 @@ step by hand, named there.
 
 ## 2026-10-09
 
+### The documents give the steps as How to use KIT does (plan 6.3, item 5b)
+
+With scoping in the workspace (5a), every document that gives the steps now gives them in the same
+order as the README's *How to use KIT*. `method.md` §02 opens with *Step 0 — Setup, the machine and
+the workspace* and then *Step 1 — Scoping, the first conversation in the workspace*, whose brief
+`bb brief` files; its quick start puts setup first, out of Foundation; §03's Step 1 block is the
+README's: a project folder, KIT cloned into it as `KIT/`, `bb self-check`, `bb init`, `cd ..`.
+`workflow.md`'s diagram and its table's rows 0 and 1, the plan template's README and `source.md`,
+the root README's `skills/` and `workflow.md` rows and its commands block, `harness/README.md`'s
+command block and inventory row, `harness/AGENTS.md`'s task table and the `next` task's doc follow;
+the `scoping` skill cites the renamed heading.
+
 ### Scoping in the workspace: `bb brief`, and `--brief` gone (plan 6.3, item 5a)
 
 Scoping is the project's, so it runs in the workspace, the first conversation there, and KIT
