@@ -56,6 +56,17 @@ step by hand, named there.
 
 ## 2026-10-09
 
+### `bb self-check`: the doctor, then the health check (plan 6.3)
+
+The README's setup checks the machine in one step. `bb self-check`, at the clone's root, runs
+`bb doctor` and, only when its loop verdict says yes - a JVM included, what a project needs - `bb
+health`, which takes minutes and starts JVMs and so is not started on a machine that cannot pass it.
+On a no it says to fix what the doctor's table shows and run it again, and exits with the doctor's
+code; flags are passed on to the health check (`--keep`, `--selfcheck-only`). A setup command, so
+in the clone's `bb.edn` and not the workspace's front door. Checked: `bb self-check` here - both
+verdicts yes, then healthy, 9 checks in 81s, exit 0, nothing left listening on port 8000; the
+doctor's no path by reading it, not run.
+
 ### The workspace's front door: every command run from `<xyx>/` (plan 6.3)
 
 A project's session sits in the workspace folder, but its commands ran in KIT's `harness/` - two

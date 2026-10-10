@@ -175,6 +175,7 @@ link to it.
 ### The commands
 
 ```bash
+bb self-check # from the root of the clone: bb doctor, then - when it says yes - bb health
 bb doctor     # from the root of the clone: every tool, its version, and for anything unusable
               # the command or page that fixes it. Run it, follow it, run it again - until both
               # verdicts say yes: "The KIT's gates can run here" and "A loop can run here"

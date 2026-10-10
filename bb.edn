@@ -1,5 +1,7 @@
 ;; The KIT's front door. An adopter's first commands are run HERE, at the root of the clone:
 ;;
+;;   bb self-check is this KIT ready on this machine? both of the next two, in order - the
+;;                 doctor first, and the health check only when it says yes
 ;;   bb doctor     is this machine ready? what is missing, and what is it for?
 ;;   bb init xyx   create the workspace a project is built in, its application generated from
 ;;                 the pinned template (`--dry-run` shows it first)
@@ -85,6 +87,17 @@
                      "echo; echo \"the tree after the run (nothing expected):\"\n"
                      "git status --porcelain -- " spec "\n"
                      "[ -z \"$(git status --porcelain -- " spec ")\" ]\n"))))
+
+  ;; Setup's one check: the doctor's loop verdict (a JVM included - what a project needs), and
+  ;; only on a yes the health check, which takes minutes and starts JVMs. Exit: the first no.
+  self-check {:doc "Is this KIT ready on this machine? `bb doctor`, then - when it says yes - `bb health` (flags passed on: --keep, --selfcheck-only); minutes, starts JVMs. Run from the clone, before `bb init`"
+              :task (let [{:keys [exit]} (shell {:dir "harness" :continue true} "bb" "doctor")]
+                      (when-not (zero? exit)
+                        (println (str "\nself-check: the doctor says this machine is not ready - the table above says "
+                                      "what to fix; then run `bb self-check` again. `bb health` was not run."))
+                        (System/exit exit))
+                      (let [{:keys [exit]} (apply shell {:dir "harness" :continue true} "bb" "health" *command-line-args*)]
+                        (System/exit exit)))}
 
   doctor {:doc "Is this machine ready? The toolchain: tool, version, status, what it is for (--edn for a pins map); in a workspace, what a pulled KIT expects that the workspace lacks"
           :task (apply harness "doctor" *command-line-args*)}
