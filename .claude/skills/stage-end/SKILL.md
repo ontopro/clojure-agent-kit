@@ -65,7 +65,7 @@ docs/security-routes.edn --record docs/stages/stage-N-security-secrets.edn` (`--
 stage's end, which has no tag before it) - no failing row in any of the three and every warn
 read with the person; an advisory accepted or a hit allowed goes in the routes file with its
 reason, never around it, and a secret found is rotated, not only removed. Then the security review, once the person
-agrees to its cost (a real model call: $0.46 to $1.50 a reading of the KIT's small fixture, more for a larger application): from the KIT's `harness/`, on a fresh clone of the
+agrees to its cost (a real model call: $0.46 to $1.50 a reading of the KIT's small fixture, more for a larger application): from the workspace folder, on a fresh clone of the
 application's merged tip, `bb security-review <clone> --stance tracer --base stage-<N-1> --out
 <name>-build/docs/stages/stage-N-security-review` (the application's first commit for `--base` at the first stage's
 end), which reads the profile's `:security-reviewer`; then `bb security-route <the record it wrote> <clone> --out

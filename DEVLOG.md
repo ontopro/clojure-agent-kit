@@ -56,6 +56,25 @@ step by hand, named there.
 
 ## 2026-10-09
 
+### The workspace's front door: every command run from `<xyx>/` (plan 6.3)
+
+A project's session sits in the workspace folder, but its commands ran in KIT's `harness/` - two
+folders, and a relative path meaning a different file in each. `bb init` now writes `<xyx>/bb.edn`,
+generated (`harness.setup.front-door`): one task per command a project runs - `bb next`,
+`bb plan-check`, `bb plan-review`, `bb run-loop`, `bb profile` and the rest, each with the harness
+task's own doc - handing on to the same task in KIT's `harness/`, which it must run in (it reads
+`resources/` and finds KIT as the folder above), with `KIT_WORKSPACE` set to the workspace and every
+argument that looks like a path made absolute from it. KIT's folder is read from `workspace.edn`
+when a task runs, so the workspace may move and the clone be renamed; a command's exit is the task's.
+The KIT's own development tasks - the gates, the syncs, the security fixture, the tour, `init` and
+`health` - are not offered, and a test holds every harness task to exactly one of the two lists, so
+a new command cannot miss the front door unnoticed. `bb init`'s closing message, the workspace
+`CLAUDE.md` and the `stage-end` skill say "from the workspace folder" - which also makes the security
+review's relative `--out <name>-build/…` mean the build repository, where from `harness/` it meant a
+folder inside KIT's clone. Checked: a real `bb init` in a scratch `probe-site/`, then from there
+`bb next` (exit 0), `bb plan-check` (exit 1 on an unfilled plan, passed through) and a relative
+path resolved inside the workspace.
+
 ### `bb init` with no name: the project is named after its folder (plan 6.3)
 
 The README's setup is a project folder, KIT cloned into it, and `bb init`. Until now `init` needed

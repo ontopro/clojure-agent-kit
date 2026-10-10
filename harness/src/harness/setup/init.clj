@@ -36,6 +36,7 @@
    [harness.rules :as rules]
    [harness.setup.app :as app]
    [harness.setup.doctor :as doctor]
+   [harness.setup.front-door :as front-door]
    [harness.setup.init-args :as init-args]
    [harness.setup.skills :as skills]
    [harness.setup.template :as template]
@@ -187,7 +188,7 @@
        "- `" work "/` - scratch, in no repository: `runs/<id>/`, `worktrees/`.\n"
        "- `workspace.edn` - which folder is which, for the harness.\n\n"
        "Where to read: the method is `" kit "/method.md`; the loop's commands are in\n"
-       "`" kit "/harness/README.md` and are run from that folder; Clojure written by hand, outside\n"
+       "`" kit "/harness/README.md` and are run from HERE - this folder's `bb.edn` hands each on; Clojure written by hand, outside\n"
        "the loop, is the role in `.claude/agents/interactive-programmer.md`.\n"))
 
 (defn- plan-readme [project {:workspace/keys [kit]}]
@@ -313,7 +314,7 @@
   `:dir? true`, `:content string`, `:copy-from abs`, or `:app? true` (the
   application's folder: created only by an `:app-fn`). `:repos` are the folders
   that become repositories."
-  [{:keys [kit-dir dir plan-template skills rule-mirrors seat brief today kit-commit kit-version] project :name defaults :loop/defaults
+  [{:keys [kit-dir dir plan-template skills rule-mirrors seat brief today kit-commit kit-version harness-tasks] project :name defaults :loop/defaults
     app-folder :app build-folder :build}]
   (let [ws-dir (str (fs/normalize (or dir (fs/parent kit-dir))))
         seat (or seat default-seat)
@@ -340,6 +341,8 @@
      (vec (concat
            [{:path "workspace.edn" :what "which folder is which, for the harness"
              :content (workspace-edn ws)}
+            {:path "bb.edn" :what "the front door: every command a project runs, run from here"
+             :content (front-door/render harness-tasks)}
             {:path "README.md" :what "one screen on the folders"
              :content (workspace-readme project ws)}
             {:path "CLAUDE.md" :what "orientation for a session started here (no rules, no import)"
@@ -608,6 +611,7 @@
                :kit-version (kit-version kit-dir)
                :plan-template (plan-template-files kit-dir)
                :skills (skills/sources kit-dir)
+               :harness-tasks (front-door/harness-tasks (slurp (str (fs/path kit-dir "harness" "bb.edn"))))
                ;; THE MIRROR FOLLOWS THE FOLDER, not the name: it is a path in workspace.edn.
                :rule-mirrors [(str app-folder "/AGENTS.md")]
                :loop/defaults (:loop/defaults pin)}
@@ -635,5 +639,6 @@
                                    "; remove it before running `bb init` again."))
                      (System/exit 1)))]
           (println (str "Created. " (fs/path ws-dir workspace/file-name) " says which folder is which.\n"
-                        "Start sessions in " ws-dir ". To see the application:\n\n"
+                        "Start sessions in " ws-dir ", and run every command from there: `bb next` says what comes next.\n"
+                        "To see the application:\n\n"
                         "  cd " (fs/path ws-dir app) " && bb serve     # http://localhost:8000")))))))
