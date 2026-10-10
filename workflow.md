@@ -3,7 +3,7 @@
 [`method.md`](method.md) says what each phase is for and why; [`harness/roster.md`](harness/roster.md)
 says who acts at each step and on which model. This document is the sequence: from a conversation
 about what to build to a release, which command runs when, and who stops for whom. Every box below
-is either a command in the KIT's `harness/`, a document in the build repository, or a person's
+is either a KIT command, run from the workspace folder, a document in the build repository, or a person's
 decision; the diamonds are the human gates. Every stage has the same four steps - scope, plan,
 implement, deploy locally - and the reviews belong to those steps, not to a place in the sequence.
 

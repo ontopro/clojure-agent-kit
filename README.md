@@ -55,7 +55,7 @@ There are basically 2 steps to use KIT:
     - the name must be lowercase letters, digits and single hyphens, starting with a letter -
       for example `my-site` - because `bb init` takes it as the project's name, and it becomes
       folder names and the application's namespace.
-    - It will have a number of directories and files but only one of which you will manually create in step 3.
+    - The only thing you put in it yourself is KIT's clone, in step 3; `bb init` makes the rest.
 
 3. Open a terminal and `cd` into the newly created `<xyx>`. Clone this repo into it with:
 
@@ -79,7 +79,7 @@ There are basically 2 steps to use KIT:
     ```
 
     - Initialize the workspace for the build process.
-      By default `init` will use the `<xyx>` to create the
+      By default `init` will use the `<xyx>` (`bb init <name>` names it otherwise) to create the
       `<xyx>-app` and `<xyx>-build` plus a few other
       directories and files in the parent `<xyx>` folder.
     ```shell

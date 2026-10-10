@@ -153,9 +153,11 @@
        "| Folder | What it is |\n|---|---|\n"
        "| `" kit "` | the KIT (the Clojure Agent Kit): the method and the harness. Upgraded with `git pull`; nothing of this project is written into it |\n"
        "| `" app "/` | the application. No harness code and no planning documents |\n"
-       "| `" build "/` | the build: the plan's documents in `docs/` from the KIT's template, `rules.edn` this project's rules over the KIT's rule source, `profile.edn` the models per role, `loop.edn` defaults for runs, and `runs/` the run records with `RUNS.md` their published tables. Read before the first dispatch by `bb plan-check` in the KIT's `harness/` |\n"
+       "| `" build "/` | the build: the plan's documents in `docs/` from the KIT's template, `rules.edn` this project's rules over the KIT's rule source, `profile.edn` the models per role, `loop.edn` defaults for runs, and `runs/` the run records with `RUNS.md` their published tables. Read before the first dispatch by `bb plan-check`, run from this folder |\n"
        "| `" work "/` | scratch, in no repository: `runs/<id>/` and `worktrees/`. Safe to delete between runs |\n"
-       "| `workspace.edn` | which folder is which, for the harness |\n\n"
+       "| `workspace.edn` | which folder is which, for the harness |\n"
+       "| `bb.edn` | the front door: every KIT command a project runs is run from this folder |\n"
+       "| `CLAUDE.md`, `.claude/` | orientation for a session started here, and the skills and the off-loop role it loads |\n\n"
        "Start sessions HERE, not inside one of the repositories. One workspace is one project.\n"))
 
 (defn- workspace-claude-md
@@ -189,7 +191,7 @@
        "- `" work "/` - scratch, in no repository: `runs/<id>/`, `worktrees/`.\n"
        "- `workspace.edn` - which folder is which, for the harness.\n\n"
        "Where to read: the method is `" kit "/method.md`; the loop's commands are in\n"
-       "`" kit "/harness/README.md` and are run from HERE - this folder's `bb.edn` hands each on; Clojure written by hand, outside "
+       "`" kit "/harness/README.md` and are run from HERE - this folder's `bb.edn` hands each on; the application's own, such as `bb serve`, in its folder; Clojure written by hand, outside "
        "the loop, is the role in `.claude/agents/interactive-programmer.md`.\n"))
 
 (defn- plan-readme [project {:workspace/keys [kit]}]
@@ -674,6 +676,6 @@
                                  "; remove it before running `bb init` again."))
                    (System/exit 1)))]
         (println (str "Created. " (fs/path ws-dir workspace/file-name) " says which folder is which.\n"
-                      "Start sessions in " ws-dir ", and run every command from there: `bb next` says what comes next.\n"
-                      "To see the application:\n\n"
+                      "Start sessions in " ws-dir ", and run KIT's commands from there: `bb next` says what comes next.\n"
+                      "The application's own commands run in its folder - to see it:\n\n"
                       "  cd " (fs/path ws-dir app) " && bb serve     # http://localhost:8000"))))))

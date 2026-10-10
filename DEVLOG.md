@@ -56,6 +56,21 @@ step by hand, named there.
 
 ## 2026-10-09
 
+### What a newcomer's walk-through of How to use KIT found, fixed (plan 6.3, item 7)
+
+A fresh agent with none of plan 6.3's context followed the README's *How to use KIT* from an empty
+folder on the branch tip: section A for real (`bb self-check` healthy in 79s, `bb init` named after
+the folder), section B as the first session would, through `kit-start`'s orientation to the
+hand-over to scoping. No blocker; sixteen findings. Fixed here: `bb init` shown with a name where
+the README runs it without (the clone's `bb.edn` header, the plan template's README; the README now
+says `bb init <name>` names it otherwise); the workspace's generated `README.md` sending `bb
+plan-check` to "the KIT's `harness/`", and listing neither `bb.edn`, `CLAUDE.md` nor `.claude/`;
+"every command from there" beside `cd <xyx>-app && bb serve` - KIT's commands run from the workspace,
+the application's own in its folder, as `init`'s message, method §03 and the workspace `CLAUDE.md`
+now say; the roster's "six documents" (seven), its "stage document" (stage plan) and "(below)" for a
+paragraph above; `workflow.md`'s "a command in the KIT's `harness/`"; and README A.2's sentence on
+what the person makes in the folder. Left for the person: §02's and §03's two "Step 1"s.
+
 ### `kit-start`: the orientation a project's first session begins with (plan 6.3)
 
 A new workspace had no way in: the README's *How to use KIT* says to start a session there and

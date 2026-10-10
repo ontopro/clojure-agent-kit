@@ -3,8 +3,9 @@
 ;;   bb self-check is this KIT ready on this machine? both of the next two, in order - the
 ;;                 doctor first, and the health check only when it says yes
 ;;   bb doctor     is this machine ready? what is missing, and what is it for?
-;;   bb init xyx   create the workspace a project is built in, its application generated from
-;;                 the pinned template (`--dry-run` shows it first)
+;;   bb init       create the workspace a project is built in, named after the folder this clone
+;;                 is in (`bb init <name>` names it otherwise), its application generated from the
+;;                 pinned template (`--dry-run` shows it first)
 ;;   bb health     is the KIT healthy here, with the template it pins? minutes, starts JVMs
 ;;   bb gates      the KIT's own quality gates
 ;;
