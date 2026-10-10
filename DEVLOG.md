@@ -56,6 +56,23 @@ step by hand, named there.
 
 ## 2026-10-09
 
+### Scoping in the workspace: `bb brief`, and `--brief` gone (plan 6.3, item 5a)
+
+Scoping is the project's, so it runs in the workspace, the first conversation there, and KIT
+guides it. `bb init` no longer takes `--brief`: it copies `source.md` as shipped. The `scoping`
+skill runs in the workspace's session - refusing where there is no `workspace.edn`, and saying setup
+is step 0 - and writes the brief to `work/brief.md`; the new `bb brief`, on the workspace's front
+door, files it into the build's `docs/source.md` as §1's first row and Appendix A, in the format
+`--brief` used, and refuses a missing file, a missing `source.md`, and a second filing - scoping
+runs once. `bb next` says setup (`bb self-check`, `bb init` in KIT's clone) outside a workspace and
+scoping in one with no brief: setup is step 0, scoping step 1. KIT's clone no longer carries a
+rendering of the four shipped skills - only a workspace does - and `bb skills-sync --check` there
+checks every skill's citations and says nothing is rendered. The `plan` skill and `skills/README.md`
+follow. Checked: a real `bb init` in a scratch `probe-site/`, then from there `bb next` (step 1,
+scoping), `bb brief` with no file (refused), with one (filed), again (refused), `bb next` (step 2,
+the plan). The method, `workflow.md` and the other documents that give the steps follow in 5b; until
+then the `scoping` skill still cites the method's old heading for step 0.
+
 ### `bb self-check`: the doctor, then the health check (plan 6.3)
 
 The README's setup checks the machine in one step. `bb self-check`, at the clone's root, runs

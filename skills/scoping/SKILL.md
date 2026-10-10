@@ -1,18 +1,18 @@
 ---
 name: scoping
-description: Step 0 of the KIT's workflow - the scoping conversation before any workspace exists. Use when a person has a project to build on the KIT and no brief yet, or says "scope", "start a project", "what are we building". Asks the method's six groups of questions and writes the brief to a file.
+description: Step 1 of the KIT's workflow - the scoping conversation, the first in a new workspace. Use when a person has a workspace made by `bb init` and no brief yet, or says "scope", "start a project", "what are we building". Asks the method's six groups of questions, writes the brief to the workspace's `work/brief.md`, and `bb brief` files it.
 ---
 
-# Scoping - the conversation before anything is set up
+# Scoping - the first conversation in the workspace
 
 The method is the source: this skill asks the questions `method.md` asks, in its order, and
 restates none of them. Open the section, then run the conversation from it.
 
 ## When it runs
 
-Workflow step 0, before `bb init` and before a workspace exists. Once per project, in the
-session the person opens in the KIT's clone - the skills are the `claude` seat's, and this one
-is loaded from the clone itself so that nothing has to be set up first.
+Workflow step 1, the first thing in a workspace made by `bb init` (step 0, setup). Once per
+project, in the session the person opens in the workspace folder - the skills are the `claude`
+seat's, and `bb init` renders them into the workspace's `.claude/skills/`.
 
 ## Reads
 
@@ -27,8 +27,10 @@ decision, never a blocker), and what scoping does not ask.
 
 ## Refuses when
 
-- A brief already exists at the path the person names, or `<name>-build/docs/source.md` already
-  carries one: say so and stop. Scoping runs once; a change to the brief is a decision in the
+- No workspace: there is no `workspace.edn` in the session's folder. Say that setup is step 0 -
+  `bb self-check` and `bb init` in KIT's clone, as the README's *How to use KIT* says - and stop.
+- `<name>-build/docs/source.md` already carries a brief (§1's first row no longer says
+  `<the brief>`): say so and stop. Scoping runs once; a change to the brief is a decision in the
   decision log, not a second scoping.
 - The person wants a feature list, a data model or a stack choice from this conversation: the
   method's section says those come out of stage 0 and stage 1. Say so, and keep to the six
@@ -45,17 +47,17 @@ the person did not say.
 
 ## Writes
 
-One file, the brief, wherever the person names - a Markdown file with the ask in the person's
-words as one page, then the numbered answers under the six group names, then the risks and open
-decisions the conversation produced, then the first thing worth seeing, named. Nothing else is
-written: no workspace, no plan document.
+One file, the brief, at the workspace's `work/brief.md` - a Markdown file with the ask in the
+person's words as one page, then the numbered answers under the six group names, then the risks
+and open decisions the conversation produced, then the first thing worth seeing, named. Nothing
+else is written: no plan document.
 
-Then say the next command: `bb init <name> --brief <file>` in the KIT's `harness/`, which
-files the brief as `source.md`'s §1 row and Appendix A (the method's section says so), and
-`bb next` after it.
+Then run `bb brief` from the workspace folder, which files the brief as `source.md`'s §1 row and
+Appendix A (the method's section says so); the person commits it in the build repository; then
+`bb next`.
 
 ## Done when
 
-The brief file exists, the person has read it back and said it is theirs, every one of the six
+The brief is filed in `source.md`, the person has read it back and said it is theirs, every one of the six
 groups has either answers or a named risk or open decision, and the first thing worth seeing is
 named in one sentence.

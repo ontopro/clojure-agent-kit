@@ -14,7 +14,8 @@
   (`docs/stages/stage-N-gates.edn`, the record the person writes); is its
   blueprint written, reviewed, signed; which of its packets have a merged
   record under the build's `runs/`. Before a workspace exists the next action
-  is scoping, which is what the clone's own `scoping` skill is for.
+  is setup (`bb self-check`, `bb init` in KIT's clone); in a workspace whose
+  `source.md` names no brief yet, scoping - the `scoping` skill, then `bb brief`.
 
   A first cut, and said so: it reads merged records and nothing of a run in
   flight beyond its last recorded status, it does not read the plan review's
@@ -37,7 +38,7 @@
 
 (def steps
   "The workflow's steps by number, as `workflow.md` numbers them."
-  {0 "scoping" 1 "setup" 2 "the plan, for stage 0" 3 "the plan review" 4 "the plan check"
+  {0 "setup" 1 "scoping" 2 "the plan, for stage 0" 3 "the plan review" 4 "the plan check"
    5 "approval, for stage 0" 6 "stage 0" 7 "the stage plan" 8 "the blueprint"
    9 "the blueprint review" 10 "sign-off" 11 "a packet" 12 "the loop" 13 "the merge"
    14 "the stage's end"})
@@ -143,11 +144,11 @@
   [{:keys [workspace? brief? plan-problems stage]}]
   (cond
     (not workspace?)
-    (action 0 (str person ", with an Architect session") "the scoping skill, then bb init <name> --brief <file>"
+    (action 0 person "in KIT's clone: bb self-check, then bb init; then a session in the workspace folder"
             "no workspace.edn at or above here")
 
     (not brief?)
-    (action 2 architect "file the brief as source.md's §1 row and Appendix A (bb init --brief does it at init), then the plan skill"
+    (action 1 (str person ", with an Architect session") "the scoping skill - it writes work/brief.md - then bb brief files it"
             "docs/source.md §1 still says <the brief>")
 
     (seq plan-problems)

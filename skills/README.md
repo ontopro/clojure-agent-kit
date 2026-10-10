@@ -1,7 +1,7 @@
 # skills/ - the KIT's fifth part
 
 One skill per step of the workflow that is a conversation with a person and has a defined
-output: `scoping` (step 0), `plan` (step 2), `stage-plan` (steps 6 and 7), `stage-end` (step
+output: `scoping` (step 1), `plan` (step 2), `stage-plan` (steps 6 and 7), `stage-end` (step
 14). The loop's steps run without a person and stay commands. [`workflow.md`](../workflow.md)
 has the steps; [`method.md`](../method.md) has the substance.
 
@@ -23,19 +23,16 @@ fresh session; `stage-end` writes enough for `stage-plan` to start cold.
 `portability.md` says so where the seats are listed. The skills are for the Architect's session,
 never for a dispatched role: the generated rule mirror is the roles' and stays separate.
 
-**Where they are loaded from.** Two places, both renderings of this folder, held to it by
-`bb skills-sync --check`:
-
-- the KIT's clone's own `.claude/skills/`, committed, so that a session opened in the clone has
-  `scoping` before any workspace exists - step 0 comes before step 1;
-- a workspace's `.claude/skills/`, written by `bb init` and updated by `bb skills-sync` after a
-  `git pull`; each copy says it is generated and from which KIT commit, and `bb doctor` in the
-  workspace reports a copy that no longer matches.
+**Where they are loaded from.** A workspace's `.claude/skills/`, a rendering of this folder held
+to it by `bb skills-sync --check`: written by `bb init` and updated by `bb skills-sync` after a
+`git pull`; each copy says it is generated and from which KIT commit, and `bb doctor` in the
+workspace reports a copy that no longer matches. The clone carries no rendering: a project's
+sessions open in the workspace, and scoping, step 1, is the first of them.
 
 A project may add a skill of its own under another name beside these; the sync leaves it alone.
 
 **The split with the harness.** The skill is the conversation; a `bb` task is the record it
-writes or reads: `scoping` ends in `bb init --brief`, `plan` and `stage-plan` in `bb
+writes or reads: `scoping` ends in `bb brief`, `plan` and `stage-plan` in `bb
 plan-review` and `bb plan-check`, `stage-end` in the browser pack and the records. The hand-offs
 between steps are not inside the skills: `bb next` says what comes next, and a skill ends by
 saying to run it.

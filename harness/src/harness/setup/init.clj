@@ -272,7 +272,7 @@
   "| S-1 | <the brief> | <text / file / link> | <YYYY-MM-DD> | <who> |")
 
 (defn source-with-brief
-  "`source.md` as `bb init --brief` writes it: the template's text with §1's
+  "`source.md` as `bb brief` writes it: the template's text with §1's
   first row naming the brief - received `today`, from the person, as Appendix A -
   and the brief appended verbatim as that appendix. Everything else the
   template leaves to fill is left: the appendix is the record, §2 is the
@@ -284,6 +284,49 @@
   (str (str/replace template-text brief-row
                     (str "| S-1 | the brief | text, Appendix A below | " today " | the person |"))
        "\n---\n\n## Appendix A — The brief, as given\n\n" (str/trim brief) "\n"))
+
+(def brief-file
+  "Where the `scoping` skill writes the brief, in the workspace's `work/`: scratch,
+  since `bb brief` files it verbatim into `source.md`."
+  "brief.md")
+
+(defn file-brief
+  "`bb brief`: the brief at `brief-path` filed into the build's `source.md` as §1's
+  first row and Appendix A (`source-with-brief`), received `today`. Returns
+  `{:ok source-path}` or `{:refused why}`: no brief file, no `source.md`, or one
+  whose §1 already names a brief - scoping runs once, and a change to the brief
+  is a decision in the log, not a second filing."
+  [ws brief-path today]
+  (let [source (fs/path (:workspace/build ws) "docs" "source.md")]
+    (cond
+      (not (fs/regular-file? brief-path))
+      {:refused (str brief-path " is not a file - the scoping skill writes it")}
+      (not (fs/exists? source))
+      {:refused (str source " is missing")}
+      (not (str/includes? (slurp (str source)) brief-row))
+      {:refused (str source " already names a brief in §1: scoping runs once; a change to it is a decision in the log")}
+      :else
+      (do (spit (str source) (source-with-brief (slurp (str source)) (slurp (str brief-path)) today))
+          {:ok (str source)}))))
+
+(defn brief-main
+  "bb brief [<file>] [--workspace <dir>]
+
+  Files the brief the scoping skill wrote - by default the workspace's
+  `work/brief.md` - into the build's `docs/source.md` as §1's first row and
+  Appendix A. Run from the workspace folder, its front door hands it on."
+  [& args]
+  (let [ws (or (workspace/current-or-exit args)
+               (do (println "bb brief: no workspace here - `bb init` makes it first")
+                   (System/exit 1)))
+        file (or (first (remove #(str/starts-with? % "--") (:args (workspace/split-args args))))
+                 (str (fs/path (:workspace/work ws) brief-file)))
+        {:keys [ok refused]} (file-brief ws (fs/absolutize file) (str (java.time.LocalDate/now)))]
+    (if ok
+      (println (str "Filed the brief as §1's first row and Appendix A of " ok
+                    ".\nCommit it in the build repository; then `bb next`."))
+      (do (println (str "bb brief: " refused "; nothing was written"))
+          (System/exit 1)))))
 
 (defn layout
   "Everything `bb init` would create, as data - nothing is touched.
@@ -298,9 +341,8 @@
 
   `:kit-commit`, when given, is the KIT's commit, recorded in `workspace.edn` so
   that `bb doctor` run in the workspace can say what a later KIT expects of it
-  (`harness.setup.upgrade`). `:brief`, when given, is the brief's text, written into `source.md` as §1's
-  first row and Appendix A (`source-with-brief`), received `:today`; without it
-  `source.md` is copied as shipped, for the brief to be filed by hand.
+  (`harness.setup.upgrade`). `source.md` is copied as shipped: the brief is
+  filed after, by `bb brief`, once scoping has run in the workspace.
 
   `:app` and `:build` name the two repositories' folders; nil means
   `<name>-app` and `<name>-build`. THE FOLDER IS NOT THE NAME: the name is the
@@ -314,7 +356,7 @@
   `:dir? true`, `:content string`, `:copy-from abs`, or `:app? true` (the
   application's folder: created only by an `:app-fn`). `:repos` are the folders
   that become repositories."
-  [{:keys [kit-dir dir plan-template skills rule-mirrors seat brief today kit-commit kit-version harness-tasks] project :name defaults :loop/defaults
+  [{:keys [kit-dir dir plan-template skills rule-mirrors seat kit-commit kit-version harness-tasks] project :name defaults :loop/defaults
     app-folder :app build-folder :build}]
   (let [ws-dir (str (fs/normalize (or dir (fs/parent kit-dir))))
         seat (or seat default-seat)
@@ -353,8 +395,8 @@
            ;; THE SKILLS, RENDERED: the fifth part's four conversational steps as Claude Code
            ;; loads them, each copy a rendering of `<kit>/skills/<name>/SKILL.md` noting the
            ;; KIT commit, held to its source by `bb skills-sync --check` and reported by the
-           ;; doctor when a pulled KIT's differ. `scoping` ran before this folder existed, from
-           ;; the clone's own copy; it is here so the workspace's session has the same set.
+           ;; doctor when a pulled KIT's differ. The workspace is the only place they are
+           ;; rendered: `scoping` is the first of them a project's session runs.
            (for [[nm text] skills]
              {:path (str skills/target-dir "/" nm "/" skills/file-name)
               :what (str "the " nm " skill, rendered from the KIT's skills/")
@@ -377,11 +419,8 @@
             {:path (str build "/RUNS.md") :what "the records' tables, published; bb report-check holds it to runs/"
              :content (runs-md project ws)}]
            (for [s (sort plan-template)]
-             (if (and brief (= s "source.md"))
-               {:path (str build "/docs/" s) :what "the source: the brief filed as §1 and Appendix A"
-                :content (source-with-brief (slurp (kit-path "plan-template/source.md")) brief today)}
-               {:path (str build "/docs/" s) :what "a plan document, from the template"
-                :copy-from (kit-path (str "plan-template/" s))}))
+             {:path (str build "/docs/" s) :what "a plan document, from the template"
+              :copy-from (kit-path (str "plan-template/" s))})
            [{:path app :what "the application (its own repository)" :app? true}
             {:path "work" :what "scratch, in no repository: runs/<id>/, worktrees/" :dir? true}
             {:path "work/runs" :what "one folder per run" :dir? true}]))}))
@@ -570,7 +609,7 @@
          " plan documents under " (some #(when (:dir? %) (:path %)) entries) "/docs/\n")))
 
 (defn -main
-  "bb init [<name> [dir]] [--seat <name>] [--app <folder>] [--build <folder>] [--brief <file>] [--dry-run]
+  "bb init [<name> [dir]] [--seat <name>] [--app <folder>] [--build <folder>] [--dry-run]
 
   With no name the project is named after the folder the KIT's clone is in, and
   that folder is the workspace: `bb init` alone. With no `dir` the workspace is
@@ -579,8 +618,8 @@
   root `bb.edn` makes it absolute first, so there it means what was typed.
   `--seat` picks which shipped profile the build gets (default `claude`).
   `--app` and `--build` name the two repositories' folders (default `<name>-app`
-  and `<name>-build`); the name stays the application's namespace. `--brief <file>` files
-  the brief scoping wrote (`method.md` §02, step 0) as `source.md`'s §1 row and Appendix A.
+  and `<name>-build`); the name stays the application's namespace. The brief is
+  filed after, by `bb brief`, once scoping has run in the workspace.
   `--dry-run` prints what would be created, and any refusal, and writes nothing.
 
   THE TWO PARTS MEET HERE AND NOWHERE ELSE: the pin's `:loop/defaults`, the
@@ -588,57 +627,52 @@
   no template. `KIT_TEMPLATE_LOCAL`, a local clone of the template, replaces the
   pinned commit for someone developing it."
   [& args]
-  (let [{:keys [positional seat dry-run?] app-folder :app build-folder :build brief-file :brief} (init-args/parse-args args)
+  (let [{:keys [positional seat dry-run?] app-folder :app build-folder :build} (init-args/parse-args args)
         [named dir] positional
         kit-dir (str (fs/parent (fs/normalize (fs/absolutize "."))))
-        project (project-name named kit-dir)]
-    (when (and brief-file (not (fs/regular-file? brief-file)))
-      (println (str "bb init: --brief " brief-file " is not a file; nothing was written"))
-      (System/exit 1))
-    (let [pin (template/pin (template/load-pins))
-          local-root (some-> (System/getenv "KIT_TEMPLATE_LOCAL") not-empty fs/absolutize fs/normalize str)
-          app-folder (or app-folder (str project "-app"))
-          req {:name project
-               :name/from-folder? (nil? named)
-               :kit-dir kit-dir
-               :dir (some-> dir fs/absolutize fs/normalize str)
-               :seat seat
-               :app app-folder
-               :build build-folder
-               :brief (some-> brief-file slurp)
-               :today (str (java.time.LocalDate/now))
-               :kit-commit (kit-commit kit-dir)
-               :kit-version (kit-version kit-dir)
-               :plan-template (plan-template-files kit-dir)
-               :skills (skills/sources kit-dir)
-               :harness-tasks (front-door/harness-tasks (slurp (str (fs/path kit-dir "harness" "bb.edn"))))
+        project (project-name named kit-dir)
+        pin (template/pin (template/load-pins))
+        local-root (some-> (System/getenv "KIT_TEMPLATE_LOCAL") not-empty fs/absolutize fs/normalize str)
+        app-folder (or app-folder (str project "-app"))
+        req {:name project
+             :name/from-folder? (nil? named)
+             :kit-dir kit-dir
+             :dir (some-> dir fs/absolutize fs/normalize str)
+             :seat seat
+             :app app-folder
+             :build build-folder
+             :kit-commit (kit-commit kit-dir)
+             :kit-version (kit-version kit-dir)
+             :plan-template (plan-template-files kit-dir)
+             :skills (skills/sources kit-dir)
+             :harness-tasks (front-door/harness-tasks (slurp (str (fs/path kit-dir "harness" "bb.edn"))))
                ;; THE MIRROR FOLLOWS THE FOLDER, not the name: it is a path in workspace.edn.
-               :rule-mirrors [(str app-folder "/AGENTS.md")]
-               :loop/defaults (:loop/defaults pin)}
-          lay (layout req)
-          no (refusals req lay (survey req lay #(doctor/ok? (doctor/report) :loop)))]
-      (println (render-layout lay true))
-      (cond
-        (seq no) (do (println "bb init: nothing was written.\n")
-                     (doseq [r no] (println (str "  - " r)))
-                     (System/exit 1))
-        dry-run? (println "bb init --dry-run: nothing was written.")
-        :else
-        (let [_ (println (str "Generating the application from " (:template pin) " "
-                              (if local-root (str "- LOCAL CLONE " local-root) (:git/tag pin))
-                              ": a JVM starts, and the first run fetches the template…"))
-              {ws-dir :workspace/dir {:workspace/keys [app]} :workspace}
+             :rule-mirrors [(str app-folder "/AGENTS.md")]
+             :loop/defaults (:loop/defaults pin)}
+        lay (layout req)
+        no (refusals req lay (survey req lay #(doctor/ok? (doctor/report) :loop)))]
+    (println (render-layout lay true))
+    (cond
+      (seq no) (do (println "bb init: nothing was written.\n")
+                   (doseq [r no] (println (str "  - " r)))
+                   (System/exit 1))
+      dry-run? (println "bb init --dry-run: nothing was written.")
+      :else
+      (let [_ (println (str "Generating the application from " (:template pin) " "
+                            (if local-root (str "- LOCAL CLONE " local-root) (:git/tag pin))
+                            ": a JVM starts, and the first run fetches the template…"))
+            {ws-dir :workspace/dir {:workspace/keys [app]} :workspace}
               ;; A folder that cannot be written, a git with no identity, a generation that
               ;; failed: a sentence, not a stack trace - and the truth about what is left behind.
-              (try (create! lay {:app-fn (app/app-fn pin {:app-name project
-                                                          :build-folder (get-in lay [:workspace :workspace/build])
-                                                          :local-root local-root})})
-                   (catch Exception e
-                     (println (str "bb init: stopped - " (.getSimpleName (class e)) ": " (ex-message e)
-                                   "\nWhat was written before that is still in " (:workspace/dir lay)
-                                   "; remove it before running `bb init` again."))
-                     (System/exit 1)))]
-          (println (str "Created. " (fs/path ws-dir workspace/file-name) " says which folder is which.\n"
-                        "Start sessions in " ws-dir ", and run every command from there: `bb next` says what comes next.\n"
-                        "To see the application:\n\n"
-                        "  cd " (fs/path ws-dir app) " && bb serve     # http://localhost:8000")))))))
+            (try (create! lay {:app-fn (app/app-fn pin {:app-name project
+                                                        :build-folder (get-in lay [:workspace :workspace/build])
+                                                        :local-root local-root})})
+                 (catch Exception e
+                   (println (str "bb init: stopped - " (.getSimpleName (class e)) ": " (ex-message e)
+                                 "\nWhat was written before that is still in " (:workspace/dir lay)
+                                 "; remove it before running `bb init` again."))
+                   (System/exit 1)))]
+        (println (str "Created. " (fs/path ws-dir workspace/file-name) " says which folder is which.\n"
+                      "Start sessions in " ws-dir ", and run every command from there: `bb next` says what comes next.\n"
+                      "To see the application:\n\n"
+                      "  cd " (fs/path ws-dir app) " && bb serve     # http://localhost:8000"))))))

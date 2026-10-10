@@ -28,7 +28,7 @@
 
 (def tasks
   "The harness tasks the front door offers, by name."
-  ["next" "doctor" "plan-check" "plan-review" "blueprint-review" "spec-from-blueprint" "sigs"
+  ["next" "brief" "doctor" "plan-check" "plan-review" "blueprint-review" "spec-from-blueprint" "sigs"
    "run-loop" "stage-report" "profile" "models" "balance" "bake-off" "rules-sync" "rules-check"
    "rules-prompt" "skills-sync" "boundary" "report" "report-check" "reprice"
    "security-review" "security-route"])

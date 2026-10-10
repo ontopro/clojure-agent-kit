@@ -22,16 +22,21 @@
 (defn- with-stage [m] (update ready :stage merge m))
 (defn- gate [m k v] (assoc-in m [:stage :gates k] v))
 
-(deftest before-a-workspace-the-next-action-is-scoping-from-the-clone
+(deftest before-a-workspace-the-next-action-is-setup
   (let [a (next/next-action {:workspace? false})]
     (is (= 0 (:step a)))
-    (is (= "scoping" (:name a)))
+    (is (= "setup" (:name a)))
+    (is (str/includes? (:run a) "bb self-check, then bb init"))
+    (is (str/includes? (next/render a) "next: step 0 - setup\n  owner:   the person"))))
+
+(deftest a-workspace-with-no-brief-is-scoped-there
+  (let [a (next/next-action {:workspace? true :brief? false})]
+    (is (= [1 "scoping"] [(:step a) (:name a)]))
     (is (str/includes? (:run a) "the scoping skill"))
-    (is (str/includes? (:run a) "bb init <name> --brief"))
-    (is (str/includes? (next/render a) "next: step 0 - scoping\n  owner:   the person"))))
+    (is (str/includes? (:run a) "bb brief"))))
 
 (deftest the-plan-comes-before-any-stage
-  (is (= [2 "the Architect's session"] (step {:workspace? true :brief? false :plan-problems ["x"]})) "no brief: say so first")
+  (is (= [1 "the person, with an Architect session"] (step {:workspace? true :brief? false :plan-problems ["x"]})) "no brief: scoping first")
   (is (str/includes? (:because (next/next-action {:workspace? true :brief? false})) "<the brief>"))
   (let [a (next/next-action {:workspace? true :brief? true :plan-problems ["a" "b"]})]
     (is (= 2 (:step a)))
@@ -138,7 +143,7 @@
       (is (true? (:workspace? f)))
       (is (false? (:brief? f)) "the template's mark still stands")
       (is (nil? (:stage f)))
-      (is (= 2 (:step (next/next-action f)))))
+      (is (= 1 (:step (next/next-action f))) "no brief yet: scoping, in the workspace"))
     (spit (str (fs/path build "docs" "source.md")) "# Source\n\n| S-1 | the brief, received |\n")
     (spit (str (fs/path stages "stage-N-template.md")) "# a template\n")
     (spit (str (fs/path stages "stage-N-gates-template.edn")) "{:stage/id \"<N>\"}")

@@ -35,13 +35,13 @@ skill's.
 | `plan-template/04-decision-log.md` | `5. Validation spikes (R)` |
 
 And the workspace's own files, never the conversation: `<name>-build/docs/source.md` (the
-brief, filed by `bb init --brief`), the material it names, and the rules overlay
+brief, filed by `bb brief` after scoping), the material it names, and the rules overlay
 `<name>-build/rules.edn`.
 
 ## Refuses when
 
-- `docs/source.md` §1 still says `<the brief>`: there is no brief. Say that scoping is step 0
-  and stop; `bb init --brief <file>` files one.
+- `docs/source.md` §1 still says `<the brief>`: there is no brief. Say that scoping is step 1
+  and stop; the `scoping` skill writes one and `bb brief` files it.
 - The person asks for every requirement, a complete architecture, the MVP or a cap per stage:
   the method's "Decide as little as possible" says what the plan commits to - stage 0 and
   nothing after it. Say so and keep to that depth.

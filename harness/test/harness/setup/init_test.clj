@@ -51,9 +51,8 @@
     (is (= ["xyx-build"] (:repos lay)) "the application is not this part's to create")))
 
 (deftest a-brief-is-filed-as-source-md-s-first-row-and-its-appendix
-  ;; Step 0 happens before a workspace exists, so its output - the brief - had nowhere to go
-  ;; but by hand. With `:brief`, source.md is written, not copied: §1's row names it and
-  ;; Appendix A carries it verbatim; everything else the template leaves to fill is left.
+  ;; Scoping runs in the workspace, after `bb init`; `bb brief` files what it wrote: §1's row
+  ;; names it and Appendix A carries it verbatim; everything else the template leaves is left.
   (let [filed (init/source-with-brief (slurp (str (fs/path kit-dir "plan-template" "source.md")))
                                       "Build me a site.\n\nFor patients." "2026-10-06")]
     (is (str/includes? filed "| S-1 | the brief | text, Appendix A below | 2026-10-06 | the person |"))
@@ -61,12 +60,25 @@
     (is (not (str/includes? filed init/brief-row)) "the template's row is replaced, not kept beside")
     (is (str/includes? filed "<what it shows>") "§2 stays the Architect's to fill"))
   (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no S-1 row" (init/source-with-brief "# no row" "x" "d")))
-  (let [with (init/layout (request {:brief "Build me a site." :today "2026-10-06" :plan-template ["source.md" "00-overview.md"]}))
-        without (init/layout (request {:plan-template ["source.md"]}))
-        entry (fn [lay p] (first (filter #(= p (:path %)) (:entries lay))))]
-    (is (str/includes? (:content (entry with "xyx-build/docs/source.md")) "## Appendix A") "written, with the brief")
-    (is (:copy-from (entry with "xyx-build/docs/00-overview.md")) "the other documents are still copied")
-    (is (:copy-from (entry without "xyx-build/docs/source.md")) "without a brief, source.md is copied as shipped")))
+  (let [lay (init/layout (request {:plan-template ["source.md"]}))
+        entry (first (filter #(= "xyx-build/docs/source.md" (:path %)) (:entries lay)))]
+    (is (:copy-from entry) "init copies source.md as shipped: the brief comes after"))
+  (let [ws-dir (fs/create-temp-dir)
+        source (fs/path ws-dir "xyx-build" "docs" "source.md")
+        brief (fs/path ws-dir "work" init/brief-file)
+        ws {:workspace/build (str (fs/path ws-dir "xyx-build"))}]
+    (try
+      (fs/create-dirs (fs/parent source))
+      (fs/create-dirs (fs/parent brief))
+      (spit (str source) (slurp (str (fs/path kit-dir "plan-template" "source.md"))))
+      (is (str/includes? (:refused (init/file-brief ws brief "2026-10-09")) "is not a file") "no brief yet")
+      (spit (str brief) "Build me a site.\n")
+      (is (= (str source) (:ok (init/file-brief ws brief "2026-10-09"))))
+      (is (str/includes? (slurp (str source)) "| S-1 | the brief | text, Appendix A below | 2026-10-09 | the person |"))
+      (is (str/ends-with? (slurp (str source)) "## Appendix A — The brief, as given\n\nBuild me a site.\n"))
+      (is (str/includes? (:refused (init/file-brief ws brief "2026-10-09")) "already names a brief") "scoping runs once")
+      (is (str/includes? (:refused (init/file-brief {:workspace/build (str (fs/path ws-dir "none"))} brief "d")) "is missing"))
+      (finally (fs/delete-tree ws-dir)))))
 
 (deftest an-explicit-folder-is-used-as-given-and-the-kit-may-be-elsewhere
   (let [lay (init/layout (request {:kit-dir "/tools/clojure-agent-kit" :dir "/projects/xyx"}))]
@@ -333,17 +345,16 @@
          (init-args/parse-args ["xyx" "--seat" "agy-ide" "/w" "--dry-run"]))
       "--seat takes the next argument, wherever it sits")
   (is (= {:positional ["xyx"]} (init-args/parse-args ["xyx"])))
-  (is (= {:positional ["xyx"] :app "xyx-site" :build "xyx-build-docs" :brief "brief.md"}
-         (init-args/parse-args ["xyx" "--app" "xyx-site" "--build" "xyx-build-docs" "--brief" "brief.md"]))
+  (is (= {:positional ["xyx"] :app "xyx-site" :build "xyx-build-docs"}
+         (init-args/parse-args ["xyx" "--app" "xyx-site" "--build" "xyx-build-docs"]))
       "--app and --build take the next argument too"))
 
-(deftest the-root-hands-init-its-arguments-with-both-paths-absolute
+(deftest the-root-hands-init-its-arguments-with-the-folder-absolute
   (let [abs #(str "/root/" %)]
-    (is (= ["xyx" "--brief" "/root/brief.md" "--dry-run"]
-           (init-args/root-args ["xyx" "--brief" "brief.md" "--dry-run"] abs))
-        "--brief's file is its value, not the workspace folder")
-    (is (= ["xyx" "/root/ws" "--seat" "agy-ide" "--app" "a" "--build" "b" "--brief" "/root/x.md"]
-           (init-args/root-args ["xyx" "--app" "a" "ws" "--brief" "x.md" "--build" "b" "--seat" "agy-ide"] abs)))
+    (is (= ["xyx" "--dry-run"] (init-args/root-args ["xyx" "--dry-run"] abs)))
+    (is (= ["xyx" "/root/ws" "--seat" "agy-ide" "--app" "a" "--build" "b"]
+           (init-args/root-args ["xyx" "--app" "a" "ws" "--build" "b" "--seat" "agy-ide"] abs))
+        "a valued flag travels with its value, wherever it sits")
     (is (= [] (init-args/root-args [] abs)))))
 
 (deftest the-repositories-folders-can-be-named-and-the-name-stays-the-namespace

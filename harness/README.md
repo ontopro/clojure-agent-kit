@@ -70,7 +70,7 @@ the source by name: a namespace the source has that the table never mentions fai
 | `harness.setup.plan` | setup | 2 | What the harness knows about a plan's documents: the template the KIT ships |
 | `harness.setup.plan-review` | setup | 4 | The plan-review pass of `method.md` §02, run: `bb plan-review [<plan-dir> | <stage-plan.md>]`. |
 | `harness.setup.security-fixture` | setup | 1 | `bb security-fixture <dir>`: the application a security reading is measured on - generated |
-| `harness.setup.skills` | setup | 1 | The KIT's fifth part, `skills/`, and the two places it is rendered to: |
+| `harness.setup.skills` | setup | 1 | The KIT's fifth part, `skills/`, and where it is rendered to - a workspace: |
 | `harness.setup.template` | setup | 0 | The template the KIT brings with it: read the pin, and build the command that |
 | `harness.setup.upgrade` | setup | 2 | What a pulled KIT expects that this workspace lacks - a report, never a |
 | `harness.setup.workspace` | setup | 0 | Where things are: the workspace a path is in, and what its `workspace.edn` says. |
