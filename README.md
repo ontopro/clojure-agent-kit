@@ -52,6 +52,9 @@ There are basically 2 steps to use KIT:
 1. Set up your development environment as described in the [Before anything: three installs](#before-anything-three-installs) section above.
 2. Create project folder `<xyx>`. This will be the main working directory where all the work will be done.
     - recommend using a short name for the `<xyx>`.
+    - the name must be lowercase letters, digits and single hyphens, starting with a letter -
+      for example `my-site` - because `bb init` takes it as the project's name, and it becomes
+      folder names and the application's namespace.
     - It will have a number of directories and files but only one of which you will manually create in step 3.
 
 3. Open a terminal and `cd` into the newly created `<xyx>`. Clone this repo into it with:

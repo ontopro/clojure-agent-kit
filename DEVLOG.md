@@ -56,6 +56,29 @@ step by hand, named there.
 
 ## 2026-10-09
 
+### `bb init` with no name: the project is named after its folder (plan 6.3)
+
+The README's setup is a project folder, KIT cloned into it, and `bb init`. Until now `init` needed
+the name typed again; with none it now takes the name of the folder the clone is in - the folder
+that is already its default workspace - so `bb init` alone makes `<xyx>-app` and `<xyx>-build` in
+`<xyx>/`. A name given still wins. A folder name that cannot be a project's (lowercase letters,
+digits, single hyphens, starting with a letter: it becomes folder names and the application's
+namespace) is refused in a sentence that says to rename the folder, with a name made from it
+(`MyProject` → `myproject`), or to give one; the default folders made from a bad name are no longer
+refused a second time. README A.2 states the rule. Checked: `bb init --dry-run` in a folder named
+`probe-site` lays out `probe-site-app` and `probe-site-build`; in this clone's folder, `KIT`, it
+refuses once and suggests `kit`.
+
+### The roster recommends a model for the Architect's session (plan 6.3)
+
+The acts done in the seat's own session - the plan, each stage document, each Blueprint, each spec,
+the loop's `architect` stops - said only "the session's own; not in the profile", so an adopter
+starting a project was given no model for the session that does them. `harness/roster.md` now
+recommends **Opus 5.5, effort high**: what KIT was built and tried with, for acts where a weaker
+model's mistakes become the contract every dispatched role follows. Still not in the profile - the
+session is the person's to start - and `kit-start` (plan 6.3, item 6) says so at a project's first
+session.
+
 ### How to use KIT: the README for adopters first (plan 6.3)
 
 Starting a project took eight steps across four documents. The README now opens, after its

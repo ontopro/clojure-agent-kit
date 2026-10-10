@@ -20,7 +20,7 @@
           :requires ([harness.setup.upgrade :as upgrade])
           :task (apply upgrade/doctor-main *command-line-args*)}
 
-  init {:doc "bb init <name> [dir] [--seat <name>] [--app <folder>] [--build <folder>] [--brief <file>] [--dry-run]: create the workspace a project is built in - the application from the pinned template, the build repository (the plan, its rules, profile and loop defaults), work/, workspace.edn. Default dir: the folder this clone is in; default seat claude; default folders <name>-app and <name>-build. Never overwrites"
+  init {:doc "bb init [<name> [dir]] [--seat <name>] [--app <folder>] [--build <folder>] [--brief <file>] [--dry-run]: create the workspace a project is built in - the application from the pinned template, the build repository (the plan, its rules, profile and loop defaults), work/, workspace.edn. No name: the project is named after the folder this clone is in. Default dir: the folder this clone is in; default seat claude; default folders <name>-app and <name>-build. Never overwrites"
         :requires ([harness.setup.init :as init])
         :task (apply init/-main *command-line-args*)}
 

@@ -152,6 +152,22 @@
       (is (= 3 (count (init/refusals (assoc req :name "X") lay
                                      (assoc clean :existing ["work"] :doctor/ok? false))))))))
 
+(deftest with-no-name-the-project-is-named-after-the-folder
+  (is (= "my-site" (init/project-name nil "/w/my-site/KIT")) "bb init alone: the folder the clone is in")
+  (is (= "shop" (init/project-name "shop" "/w/my-site/KIT")) "a given name wins")
+  (is (= "my-project" (init/suggested-name "My Project")))
+  (is (= "myproject" (init/suggested-name "MyProject")))
+  (is (= "site-2" (init/suggested-name "Site_2")))
+  (is (nil? (init/suggested-name "2024")) "no letter to start with: no suggestion")
+  (let [req (request {:kit-dir "/w/MyProject/KIT" :name "MyProject" :name/from-folder? true})
+        lay (init/layout req)
+        clean {:kit? true :existing [] :other-repos [] :workspaces-below [] :seats ["claude"] :doctor/ok? true}
+        why (str/join "\n" (init/refusals req lay clean))]
+    (is (str/includes? why "the folder name \"MyProject\" cannot be the project's name"))
+    (is (str/includes? why "Rename the folder - for example to `myproject` - and run `bb init` again"))
+    (is (str/includes? why "or give the name: `bb init <name>`"))
+    (is (= 1 (count (init/refusals req lay clean))) "the default folders it makes are not refused again")))
+
 (deftest the-survey-sees-what-is-there
   (let [ws (tmp)
         kit (str (fs/path ws "clojure-agent-kit"))

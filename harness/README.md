@@ -18,7 +18,7 @@ that is the part you cannot reconstruct from the code.
 ```bash
 bb doctor     # every tool, its version, what fixes a miss; two verdicts: the gates, a loop
 bb health     # the KIT, this machine, the pinned template - certified together (minutes, JVMs)
-bb init xyx   # the workspace: the application generated from the pin, the build, work/
+bb init       # the workspace, named after the folder the clone is in (or bb init <name>): the application generated from the pin, the build, work/
 bb plan-check  # the filled plan, before Foundation: no mark, no instruction, the overlay filled, the given parts intact
 bb plan-review # method.md §02's review pass, run: the plan read cold by the :plan-reviewer; a reading, not a gate
 bb skills-sync # the fifth part, skills/, rendered to the clone's own .claude/skills/ and a workspace's; --check holds both to the source and every cited heading to the method (in gates)
@@ -62,7 +62,7 @@ the source by name: a namespace the source has that the table never mentions fai
 | `harness.setup.blueprint-review` | setup | 5 | A stage's Blueprint, read cold before sign-off: `bb blueprint-review <blueprint.md>`. |
 | `harness.setup.doctor` | setup | 0 | Toolchain doctor: what this stack needs, whether it is here, and what it does. |
 | `harness.setup.health` | setup | 8 | `bb health` - the KIT's health check: does this KIT, on this machine, with the |
-| `harness.setup.init` | setup | 3 | `bb init <name> [dir]` - create the workspace a project is built in. |
+| `harness.setup.init` | setup | 3 | `bb init [<name> [dir]]` - create the workspace a project is built in. |
 | `harness.setup.init-args` | setup | 0 | `bb init`'s arguments, parsed - here and not in `harness.setup.init`, because |
 | `harness.setup.inventory` | setup | 2 | The harness's namespaces, rendered into its README from the source: |
 | `harness.setup.next` | setup | 3 | What comes next in the workflow, read off the build's files: `bb next`. |

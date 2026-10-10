@@ -1,5 +1,5 @@
 (ns harness.setup.init
-  "`bb init <name> [dir]` - create the workspace a project is built in.
+  "`bb init [<name> [dir]]` - create the workspace a project is built in.
 
   A workspace is a plain folder, NOT a repository, holding sibling repositories:
   the KIT's clone, the application, the build - and `work/`, scratch that belongs
@@ -49,6 +49,19 @@
   "A project name becomes folder names and, in the application, a namespace
   segment: lowercase, starting with a letter, digits and single hyphens after."
   #"[a-z][a-z0-9]*(-[a-z0-9]+)*")
+
+(defn suggested-name
+  "A name `name-pattern` accepts made from a folder's name - lowercased, every run
+  of other characters one hyphen - or nil when even that is not one."
+  [folder]
+  (let [s (-> (str folder) str/lower-case (str/replace #"[^a-z0-9]+" "-") (str/replace #"^-+|-+$" ""))]
+    (when (re-matches name-pattern s) s)))
+
+(defn project-name
+  "The project's name: the one given, else the name of the folder the KIT's clone
+  `kit-dir` is in - the workspace `bb init` alone makes."
+  [named kit-dir]
+  (or named (str (fs/file-name (fs/parent (fs/normalize kit-dir))))))
 
 (defn- inside? [dir path]
   (fs/starts-with? (fs/normalize path) (fs/normalize dir)))
@@ -384,15 +397,22 @@
   a KIT cloned into a folder of unrelated repositories would have a project
   scattered among them. An explicit `dir` is not second-guessed - except one
   inside the KIT's clone, where nothing of a project is ever written."
-  [{project :name :keys [kit-dir seat]} {:keys [default?] ws-dir :workspace/dir {:workspace/keys [app build]} :workspace} facts]
+  [{project :name from-folder? :name/from-folder? :keys [kit-dir seat]} {:keys [default?] ws-dir :workspace/dir {:workspace/keys [app build]} :workspace} facts]
   (cond-> []
     (not (and project (re-matches name-pattern project)))
-    (conj (str "the name " (pr-str project) " cannot be used: lowercase letters, digits and single "
-               "hyphens, starting with a letter (it becomes folder names and a namespace)"))
+    (conj (if from-folder?
+            (str "the folder name " (pr-str project) " cannot be the project's name: lowercase letters, digits "
+                 "and single hyphens, starting with a letter (it becomes folder names and a namespace). "
+                 "Rename the folder" (some->> (suggested-name project) (format " - for example to `%s` -"))
+                 " and run `bb init` again, or give the name: `bb init <name>`")
+            (str "the name " (pr-str project) " cannot be used: lowercase letters, digits and single "
+                 "hyphens, starting with a letter (it becomes folder names and a namespace)")))
 
     ;; A chosen folder is held to the same pattern as the name it replaces: a path, a
-    ;; space or a capital in `workspace.edn` reaches every task that reads it.
-    (not (and app build (re-matches name-pattern app) (re-matches name-pattern build)))
+    ;; space or a capital in `workspace.edn` reaches every task that reads it. Asked only
+    ;; of a good name: a bad one makes bad default folders, and is said once, above.
+    (and (re-matches name-pattern (str project))
+         (not (and app build (re-matches name-pattern app) (re-matches name-pattern build))))
     (conj (str "a folder name cannot be used (--app " (pr-str app) ", --build " (pr-str build)
                "): lowercase letters, digits and single hyphens, starting with a letter"))
 
@@ -547,9 +567,11 @@
          " plan documents under " (some #(when (:dir? %) (:path %)) entries) "/docs/\n")))
 
 (defn -main
-  "bb init <name> [dir] [--seat <name>] [--app <folder>] [--build <folder>] [--brief <file>] [--dry-run]
+  "bb init [<name> [dir]] [--seat <name>] [--app <folder>] [--build <folder>] [--brief <file>] [--dry-run]
 
-  With no `dir` the workspace is the folder the KIT's clone is in. Run from
+  With no name the project is named after the folder the KIT's clone is in, and
+  that folder is the workspace: `bb init` alone. With no `dir` the workspace is
+  the folder the KIT's clone is in. Run from
   `harness/`, a relative `dir` is relative to `harness/`; the KIT's
   root `bb.edn` makes it absolute first, so there it means what was typed.
   `--seat` picks which shipped profile the build gets (default `claude`).
@@ -564,11 +586,9 @@
   pinned commit for someone developing it."
   [& args]
   (let [{:keys [positional seat dry-run?] app-folder :app build-folder :build brief-file :brief} (init-args/parse-args args)
-        [project dir] positional
-        kit-dir (str (fs/parent (fs/normalize (fs/absolutize "."))))]
-    (when-not project
-      (println "usage: bb init <name> [dir] [--seat <name>] [--app <folder>] [--build <folder>] [--brief <file>] [--dry-run]")
-      (System/exit 1))
+        [named dir] positional
+        kit-dir (str (fs/parent (fs/normalize (fs/absolutize "."))))
+        project (project-name named kit-dir)]
     (when (and brief-file (not (fs/regular-file? brief-file)))
       (println (str "bb init: --brief " brief-file " is not a file; nothing was written"))
       (System/exit 1))
@@ -576,6 +596,7 @@
           local-root (some-> (System/getenv "KIT_TEMPLATE_LOCAL") not-empty fs/absolutize fs/normalize str)
           app-folder (or app-folder (str project "-app"))
           req {:name project
+               :name/from-folder? (nil? named)
                :kit-dir kit-dir
                :dir (some-> dir fs/absolutize fs/normalize str)
                :seat seat
