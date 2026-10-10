@@ -2,7 +2,9 @@
 
 One skill per step of the workflow that is a conversation with a person and has a defined
 output: `scoping` (step 1), `plan` (step 2), `stage-plan` (steps 6 and 7), `stage-end` (step
-14). The loop's steps run without a person and stay commands. [`workflow.md`](../workflow.md)
+14). The loop's steps run without a person and stay commands. Beside them, `kit-start` is the
+orientation a project's first session begins with - not a step, and it writes nothing: it walks the
+person through KIT and hands over to `scoping`. [`workflow.md`](../workflow.md)
 has the steps; [`method.md`](../method.md) has the substance.
 
 **The method is the source.** A skill is a thin layer that names its method section, asks its

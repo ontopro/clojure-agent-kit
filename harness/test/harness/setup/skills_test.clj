@@ -9,8 +9,8 @@
 
 (def kit-dir (str (fs/parent (fs/real-path "."))))
 
-(deftest the-four-skills-ship-in-the-one-anatomy
-  (is (= ["plan" "scoping" "stage-end" "stage-plan"] (skills/shipped kit-dir)))
+(deftest the-five-skills-ship-in-the-one-anatomy
+  (is (= ["kit-start" "plan" "scoping" "stage-end" "stage-plan"] (skills/shipped kit-dir)))
   (doseq [nm (skills/shipped kit-dir)
           :let [text (slurp (skills/source-path kit-dir nm))
                 [fm body] (skills/split-frontmatter text)]]

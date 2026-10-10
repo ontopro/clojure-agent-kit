@@ -148,7 +148,7 @@
             "no workspace.edn at or above here")
 
     (not brief?)
-    (action 1 (str person ", with an Architect session") "the scoping skill - it writes work/brief.md - then bb brief files it"
+    (action 1 (str person ", with an Architect session") "kit-start, then the scoping skill - it writes work/brief.md - then bb brief files it"
             "docs/source.md §1 still says <the brief>")
 
     (seq plan-problems)

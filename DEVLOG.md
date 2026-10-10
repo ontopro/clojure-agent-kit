@@ -56,6 +56,23 @@ step by hand, named there.
 
 ## 2026-10-09
 
+### `kit-start`: the orientation a project's first session begins with (plan 6.3)
+
+A new workspace had no way in: the README's *How to use KIT* says to start a session there and
+type `/kit-start`, and nothing answered. `kit-start` is a fifth shipped skill, rendered into every
+workspace by `bb init`: it walks the person through the workspace's folders, KIT's approach (the
+opening of `method.md`, to the "Distilled from…" callout), the steps in order (`workflow.md`), and
+the roles and the models they run on, with the roster's recommendation for this session - Opus 5.5,
+effort high, set with `/model` and `/effort`, the person deciding - then hands over to `scoping`, or
+names `bb next` once a brief is filed. Not a step of the workflow, and it writes nothing, but in the
+one anatomy the other four keep (its walk-through is its *Asks*, its *Writes* is nothing). The
+workspace's `CLAUDE.md` routes a first message to it while no brief is filed, and says the
+commands it names are run from the workspace, not "in the KIT's `harness/`" (three places item 3
+missed). `bb next`'s step 1, `workflow.md`'s row 1, `skills/README.md` and the README's `skills/`
+row name it. Checked: a real `bb init` in a scratch folder renders `kit-start` beside the four, its
+`CLAUDE.md` (28 lines) carries the routing line, and `bb next` there says "kit-start, then the
+scoping skill"; the walk-through itself is item 7's to try, in a fresh session.
+
 ### The documents give the steps as How to use KIT does (plan 6.3, item 5b)
 
 With scoping in the workspace (5a), every document that gives the steps now gives them in the same

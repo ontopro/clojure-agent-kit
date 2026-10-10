@@ -38,7 +38,7 @@
            (:workspace lay))
         "the KIT is named relatively, so the workspace can be moved whole")
     (is (= #{"workspace.edn" "bb.edn" "README.md" "CLAUDE.md" ".claude/agents/interactive-programmer.md"
-             ".claude/skills/plan/SKILL.md" ".claude/skills/scoping/SKILL.md"
+             ".claude/skills/kit-start/SKILL.md" ".claude/skills/plan/SKILL.md" ".claude/skills/scoping/SKILL.md"
              ".claude/skills/stage-end/SKILL.md" ".claude/skills/stage-plan/SKILL.md"
              "xyx-app" "xyx-build" "xyx-build/README.md" "xyx-build/rules.edn" "xyx-build/profile.edn"
              "xyx-build/loop.edn" "xyx-build/runs" "xyx-build/RUNS.md"
@@ -255,7 +255,7 @@
       (testing "a second run refuses, naming what is there"
         (let [facts (init/survey req lay (constantly true))]
           (is (= ["workspace.edn" "bb.edn" "README.md" "CLAUDE.md" ".claude/agents/interactive-programmer.md"
-                  ".claude/skills/plan/SKILL.md" ".claude/skills/scoping/SKILL.md"
+                  ".claude/skills/kit-start/SKILL.md" ".claude/skills/plan/SKILL.md" ".claude/skills/scoping/SKILL.md"
                   ".claude/skills/stage-end/SKILL.md" ".claude/skills/stage-plan/SKILL.md"
                   "xyx-build" "work"]
                  (:existing facts)))
