@@ -56,6 +56,22 @@ step by hand, named there.
 
 ## 2026-10-09
 
+### How to use KIT: the README for adopters first (plan 6.3)
+
+Starting a project took eight steps across four documents. The README now opens, after its
+introduction, with **For adopters**: the three installs, then *How to use KIT* in two steps - A. set
+up the workspace (a project folder, KIT cloned into it as `KIT/`, `bb self-check`, `bb init`) and B.
+build the application (a Claude Code session in the project folder, `/kit-start`) - then where KIT
+was last shown to work, whether it is worth it, and its known limitations. **For KIT developers**
+follows: the five parts, the commands, and where things live. The section was written with the
+person as the TARGET: `bb self-check`, `bb init` with no name, `/kit-start` and the roster's
+recommendation for the Architect's session are plan 6.3's items, built next. The table of lowercase
+`kit` uses is gone: the template is named in full, `ontopro/clojure-stack-lite` at tag `kit-v1.2`,
+and the table's two other facts - the clone may be renamed or kept outside the workspace; the
+fork's `kit` branch is KIT's line and its `master` the upstream mirror - are under "Where things
+live". `CLAUDE.md`'s Vocabulary rule is sub-bullets and says **KIT**, with no article; the README's
+prose follows.
+
 ### The build repository is `<name>-build` everywhere it is named (plan 6.3)
 
 Row 87 renamed `bb init`'s second repository from `<name>-plan` to `<name>-build` on 2026-10-06,

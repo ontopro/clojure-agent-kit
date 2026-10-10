@@ -101,13 +101,15 @@ benefit. It is also a product artifact, and also not addressed to you.
   it - a section that is all callouts has none. The first is the harness README's
   "Folders say topic; layers say dependency order." Not inside `plan-template/`: the plan check
   reads every blockquote line there as a template instruction the project deletes.
-- Vocabulary: this repo says **rule source**, never "corpus". And it says **the KIT** — short for
-  *the Clojure Agent Kit*, a name and not an acronym — for itself. Lowercase `kit` is left to the
-  three machine-facing things the root `README.md` lists: a workspace's `clojure-agent-kit/` folder, the `kit`
-  branch of the template fork, and that fork's `kit-vN` tags, which version THE TEMPLATE and not
-  the KIT. Older prose that says "the kit" is not swept: `DEVLOG.md` is history, `NOTES.md` is
-  summarised before it reaches `main`, and the adopter-facing documents change when they are next
-  rewritten.
+- Vocabulary:
+  - **rule source**, never "corpus".
+  - **KIT** for this repository - short for *the Clojure Agent Kit*, a name and not an acronym.
+  - The template is named in full, with the tag that applies: `ontopro/clojure-stack-lite` at tag
+    `kit-v1.2`. Its `kit-vN` tags version THE TEMPLATE, not the KIT.
+  - A workspace's clone of the KIT is `KIT/`.
+  - Older prose that says "the kit" is not swept: `DEVLOG.md` is history, `NOTES.md` is
+    summarised before it reaches `main`, and the adopter-facing documents change when they are
+    next rewritten.
 
 ## Before changing anything
 
