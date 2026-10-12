@@ -6,6 +6,7 @@
    [babashka.process :as p]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [harness.setup.front-door :as front-door]
    [harness.setup.skills :as skills]
    [harness.setup.upgrade :as upgrade]
    [harness.setup.workspace :as workspace]))
@@ -120,7 +121,9 @@
       (is (nil? (:profile f)) "no :workspace/build, so no profile is found - which the renamed-key line explains")
       (let [lines (upgrade/expectations f)]
         (is (some #(str/includes? % "which is where the KIT is") lines))
-        (is (some #(str/includes? % ":workspace/plan, which the harness no longer reads") lines))))
+        (is (some #(str/includes? % ":workspace/plan, which the harness no longer reads") lines))
+        (is (some #(str/includes? % "no bb.edn at the workspace root") lines) "made with no front door")))
+    (front-door/sync! kit-dir ws)
     (testing "with the key renamed, the profile is found and has every role"
       (spit (str (fs/path ws "workspace.edn"))
             (pr-str {:workspace/kit "k" :workspace/app "xyx-app" :workspace/build "xyx-build" :workspace/work "work"
@@ -141,3 +144,17 @@
           (is (= bump? (boolean (some pin-line? (upgrade/expectations f)))))
           (spit (str (fs/path ws ".claude" "skills" "plan" "SKILL.md")) "edited\n")
           (is (= ["plan"] (:skills-drifted (upgrade/facts (workspace/find-workspace ws) kit-dir))) "an edited copy drifts"))))))
+
+(deftest the-front-door-missing-or-behind-the-kit-is-said-with-the-command-that-writes-it
+  (is (= ["made at KIT commit abc, which is where the KIT is"]
+         (upgrade/expectations (assoc complete :front-door {:existed? true :generated? true :missing []})))
+      "a front door that offers every task: nothing to say")
+  (let [lines (upgrade/expectations (assoc complete :front-door {:existed? false :generated? true :missing ["next"]}))]
+    (is (some #(str/includes? % "no bb.edn at the workspace root") lines))
+    (is (some #(str/includes? % "bb front-door-sync --workspace /w") lines) "with no front door, the command runs in the KIT's harness/"))
+  (let [lines (upgrade/expectations (assoc complete :front-door {:existed? true :generated? true :missing ["front-door-sync" "brief"]}))]
+    (is (some #(str/includes? % "the front door (bb.edn) lacks front-door-sync, brief") lines))
+    (is (some #(str/includes? % "run `bb front-door-sync` from the workspace folder") lines)))
+  (is (= ["made at KIT commit abc, which is where the KIT is"]
+         (upgrade/expectations (assoc complete :front-door {:existed? true :generated? false :missing ["next"]})))
+      "a bb.edn the project wrote is its own: not a front door to report on"))

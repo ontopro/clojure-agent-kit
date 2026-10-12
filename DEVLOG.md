@@ -56,6 +56,22 @@ step by hand, named there.
 
 ## 2026-10-09
 
+### The front door: a slug is not a path, `bb next` prints paths that run, and `bb front-door-sync` (plan 6.3, item 7)
+
+The code-and-documents audit before the tag found three faults in what plan 6.3 added. The front
+door made every argument with a `/` a path under the workspace, so `bb models openai/gpt-6.1-sol`,
+`--model "anthropic/… high"` and `--base origin/main` reached the harness as workspace paths; an
+argument is now a path when it exists, when it has a `/` and its folder exists (a file a command
+writes), or when it is a bare `.md` or `.edn` name - never when absolute - and a test runs the front
+door's own code over each case. `bb next` printed `docs/stages/…` in the commands it gives, which do
+not resolve from the workspace folder where they are run; it now puts every `docs/` path under the
+build folder (`xyx-build/docs/stages/…`), and the stage-plan and stage-end skills do the same. And a
+workspace kept the front door `bb init` wrote: a command the KIT added later never reached it, and
+nothing said so. `bb front-door-sync` writes it again from the pulled KIT (from the workspace, or
+with `--workspace` in the KIT's `harness/` for a workspace with none), refusing a `bb.edn` that `bb
+init` did not write; `bb doctor` in a workspace says when the front door is missing or lacks a task
+this KIT offers.
+
 ### `plan-template/` is `build-docs/` (plan 6.3, item 7)
 
 The folder holds the templates of every document the build keeps - the seven of the project plan,

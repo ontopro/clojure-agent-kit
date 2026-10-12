@@ -101,6 +101,10 @@
   ;; The fifth part, skills/, rendered to the clone's own .claude/skills/ and a workspace's - each
   ;; copy a rendering held to its source, as the rule mirrors are; and every skill's cited headings
   ;; held to the method. `gates` runs the check.
+  front-door-sync {:doc "bb front-door-sync [--check] [--workspace <dir>]: write the workspace's bb.edn - its front door - again from this KIT's task list, so a command added since bb init reaches it; from the workspace folder, or in the KIT's harness/ with --workspace for one with no front door yet; --check only compares, a difference is exit 1; a bb.edn bb init did not write is refused"
+                   :requires ([harness.setup.front-door :as front-door])
+                   :task (apply front-door/-main *command-line-args*)}
+
   skills-sync {:doc "bb skills-sync [--check] [--workspace <dir>]: hold every skill's cited headings to the files they name, then render skills/ into the clone's own .claude/skills/ and the workspace's (where this runs in one), each copy noting the KIT commit; --check only compares, drift is exit 1"
                :requires ([harness.setup.skills :as skills])
                :task (apply skills/-main *command-line-args*)}

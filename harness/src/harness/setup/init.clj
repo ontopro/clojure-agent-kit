@@ -156,7 +156,7 @@
        "| `" build "/` | the build: the plan's documents in `docs/` from the KIT's template, `rules.edn` this project's rules over the KIT's rule source, `profile.edn` the models per role, `loop.edn` defaults for runs, and `runs/` the run records with `RUNS.md` their published tables. Read before the first dispatch by `bb plan-check`, run from this folder |\n"
        "| `" work "/` | scratch, in no repository: `runs/<id>/` and `worktrees/`. Safe to delete between runs |\n"
        "| `workspace.edn` | which folder is which, for the harness |\n"
-       "| `bb.edn` | the front door: every KIT command a project runs is run from this folder |\n"
+       "| `bb.edn` | the front door: every KIT command a project runs is run from this folder; after a `git pull` of KIT, `bb front-door-sync` writes it again |\n"
        "| `CLAUDE.md`, `.claude/` | orientation for a session started here, and the skills and the off-loop role it loads |\n\n"
        "Start sessions HERE, not inside one of the repositories. One workspace is one project.\n"))
 

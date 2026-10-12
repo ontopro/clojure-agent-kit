@@ -1,5 +1,6 @@
 (ns harness.setup.front-door-test
   (:require
+   [babashka.fs :as fs]
    [clojure.edn :as edn]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -26,3 +27,57 @@
       (is (= "(kit \"next\" *command-line-args*)" (pr-str (:task (get-in m [:tasks 'next])))))
       (is (= (get harness "next") (:doc (get-in m [:tasks 'next])))))
     (is (str/includes? (pr-str (get-in m [:tasks :init])) "KIT_WORKSPACE"))))
+
+(deftest a-path-is-what-exists-or-would-be-written-here-never-a-slug
+  ;; The front door's own `path-like?`, evaluated as the workspace's bb.edn runs
+  ;; it: `here` is the folder of the bb.edn babashka was given.
+  (let [ws (str (fs/real-path (fs/create-temp-dir {:prefix "front-door-"})))
+        prop "babashka.config"
+        before (System/getProperty prop)]
+    (fs/create-dirs (fs/path ws "work" "runs"))
+    (spit (str (fs/path ws "work" "brief.md")) "a brief")
+    (try
+      (System/setProperty prop (str (fs/path ws "bb.edn")))
+      (let [path-like? (do (binding [*ns* (create-ns 'front-door-eval)]
+                             (refer-clojure)
+                             (require '[babashka.fs :as fs] '[clojure.edn :as edn] '[clojure.string :as str])
+                             (load-string (str/replace @#'front-door/init-form "(apply shell" "(apply list")))
+                           (ns-resolve 'front-door-eval 'path-like?))]
+        (testing "a path: it exists, its folder exists, or it is a bare .md or .edn name"
+          (is (path-like? "work/brief.md"))
+          (is (path-like? "work/runs/r1") "a run directory to be made, in a folder that exists")
+          (is (path-like? "decision.edn")))
+        (testing "not a path: a model slug, a git rev, a flag, a word, an absolute path"
+          (is (not (path-like? "openai/gpt-6.1-sol")))
+          (is (not (path-like? "anthropic/claude-opus-5.5 high")))
+          (is (not (path-like? "origin/main")))
+          (is (not (path-like? "--model")))
+          (is (not (path-like? "opus")))
+          (is (not (path-like? (str (fs/path ws "work" "brief.md")))) "absolute already: handed on as typed")))
+      (finally
+        (if before (System/setProperty prop before) (System/clearProperty prop))
+        (remove-ns 'front-door-eval)))))
+
+(deftest front-door-sync-writes-the-kits-front-door-and-never-a-projects-own-bb-edn
+  (let [kit-dir (str (fs/parent (fs/real-path ".")))
+        want (front-door/render harness)
+        ws (str (fs/real-path (fs/create-temp-dir {:prefix "front-door-sync-"})))
+        bb-edn (str (fs/path ws "bb.edn"))]
+    (testing "none there: missing every task, written unless checking"
+      (let [r (front-door/sync! kit-dir ws :check? true)]
+        (is (= [false true true] ((juxt :existed? :generated? :changed?) r)))
+        (is (= front-door/tasks (:missing r)))
+        (is (not (fs/exists? bb-edn)) "--check writes nothing"))
+      (front-door/sync! kit-dir ws)
+      (is (= want (slurp bb-edn))))
+    (testing "an older front door: the tasks it lacks, and written again"
+      (spit bb-edn (str/replace want "\n  brief {" "\n  brief-gone {"))
+      (is (= ["brief"] (:missing (front-door/sync! kit-dir ws :check? true))))
+      (front-door/sync! kit-dir ws)
+      (is (= want (slurp bb-edn)))
+      (is (false? (:changed? (front-door/sync! kit-dir ws :check? true)))))
+    (testing "a bb.edn bb init did not write is the project's, and is left as it is"
+      (spit bb-edn "{:tasks {serve (shell \"bb serve\")}}")
+      (let [r (front-door/sync! kit-dir ws)]
+        (is (false? (:generated? r)))
+        (is (= "{:tasks {serve (shell \"bb serve\")}}" (slurp bb-edn)))))))

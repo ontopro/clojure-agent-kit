@@ -136,11 +136,7 @@
                             (gates-file (inc id)) ", then the stage-plan skill")
               (str "stage " id " is closed")))))
 
-(defn next-action
-  "The next step from `facts`: `:workspace?`; `:brief?` (source.md §1 names
-  one); `:plan-problems` (what `bb plan-check` reports, or nil when it could
-  not run); `:stage` the stage in progress as `stage-action` reads it, or nil
-  when docs/stages/ has none. Returns `{:step :name :owner :run :because}`."
+(defn- step-action
   [{:keys [workspace? brief? plan-problems stage]}]
   (cond
     (not workspace?)
@@ -160,6 +156,25 @@
             "the plan passes its check and docs/stages/ has no stage yet")
 
     :else (stage-action stage)))
+
+(defn- in-build
+  "`s` with every `docs/` path put under the build folder `build`, so a command
+  printed runs from the workspace folder, where every command is run; `s` as is
+  when `build` is nil."
+  [build s]
+  (if build (str/replace s #"(?<![\w./<>-])docs/" (str build "/docs/")) s))
+
+(defn next-action
+  "The next step from `facts`: `:workspace?`; `:brief?` (source.md §1 names
+  one); `:plan-problems` (what `bb plan-check` reports, or nil when it could
+  not run); `:stage` the stage in progress as `stage-action` reads it, or nil
+  when docs/stages/ has none; `:build` the build folder as the workspace names
+  it, which every `docs/` path printed is put under. Returns `{:step :name
+  :owner :run :because}`."
+  [{:keys [build] :as facts}]
+  (-> (step-action facts)
+      (update :run (partial in-build build))
+      (update :because (partial in-build build))))
 
 ;; ---------------------------------------------------------------------------
 ;; the edge: facts
@@ -217,6 +232,7 @@
           packets (when-let [bp (:blueprint files)]
                     (mapv :task/id (blueprint/packets (slurp (str (fs/path build "docs" "stages" bp))))))]
       {:workspace? true
+       :build (str (fs/relativize (fs/absolutize (:workspace/dir ws)) (fs/absolutize build)))
        :brief? (and (fs/exists? source) (not (str/includes? (slurp (str source)) "<the brief>")))
        :plan-problems (:problems (plan/check build ws))
        :stage (when id

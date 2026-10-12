@@ -24,6 +24,7 @@
    [harness.models.profile :as profile]
    [harness.rules :as rules]
    [harness.setup.doctor :as doctor]
+   [harness.setup.front-door :as front-door]
    [harness.setup.skills :as skills]
    [harness.setup.template :as template]
    [harness.setup.workspace :as workspace]))
@@ -88,11 +89,13 @@
     :profile-missing  roles the KIT's profile shape names and the profile lacks
     :skills-missing   skills the KIT ships that the workspace's `.claude/skills/` lacks
     :skills-drifted   skills whose workspace copy is not the rendering of the KIT's
+    :front-door       the workspace's `bb.edn` against what this KIT writes
+                      (`front-door/sync!`, checked): `{:existed? :generated? :missing}`
 
   Each line names what is expected, what is here, and the command that shows
   the difference. An empty vector means nothing is missing."
-  [{:keys [kit keys-present made-at made-version head head-version behind template-changed pin-moved guidance-changed
-           mirrors-drifted profile profile-missing skills-missing skills-drifted]}]
+  [{:keys [dir kit keys-present made-at made-version head head-version behind template-changed pin-moved guidance-changed
+           mirrors-drifted profile profile-missing skills-missing skills-drifted front-door]}]
   (let [present (set keys-present)
         ;; the version beside the commit where one is known: a tag at a plan's boundary, for a person
         at (fn [commit version] (str commit (when version (str " (version " version ")"))))]
@@ -154,6 +157,14 @@
       (conj (str ".claude/skills/ lacks the KIT's " (str/join ", " skills-missing)
                  " skill" (when (not= 1 (count skills-missing)) "s")
                  " (bb init writes them since 2026-10-07): run `bb skills-sync` in the KIT's harness/"))
+
+      (and front-door (not (:existed? front-door)))
+      (conj (str "no bb.edn at the workspace root - the front door every KIT command is run through (bb init writes it since 0.6.3): "
+                 "run `bb front-door-sync --workspace " dir "` in the KIT's harness/"))
+
+      (and front-door (:existed? front-door) (:generated? front-door) (seq (:missing front-door)))
+      (conj (str "the front door (bb.edn) lacks " (str/join ", " (:missing front-door))
+                 ", which this KIT offers: run `bb front-door-sync` from the workspace folder"))
 
       (seq skills-drifted)
       (into (for [s skills-drifted]
@@ -255,7 +266,8 @@
      :profile profile-path
      :profile-missing (profile-missing profile-path)
      :skills-missing (vec (for [r (skills/sync! kit-dir (:workspace/dir ws) :check? true) :when (not (:existed? r))] (:name r)))
-     :skills-drifted (vec (for [r (skills/sync! kit-dir (:workspace/dir ws) :check? true) :when (and (:existed? r) (:changed? r))] (:name r)))}))
+     :skills-drifted (vec (for [r (skills/sync! kit-dir (:workspace/dir ws) :check? true) :when (and (:existed? r) (:changed? r))] (:name r)))
+     :front-door (select-keys (front-door/sync! kit-dir (:workspace/dir ws) :check? true) [:existed? :generated? :missing])}))
 
 (defn report
   "The report for the workspace a command runs in, or nil outside one. `kit-dir`

@@ -63,7 +63,7 @@ the routes the security pack tries (`docs/security-routes.edn`) gain the stage's
 routes that need a login.
 The exit criteria are things a person can check, "deployed locally" among them from stage 1
 on, and the cap is proposed to the person. Then run `bb plan-review
-docs/stages/stage-N-<name>.md` and read the findings cold with the person, resolving each in
+<name>-build/docs/stages/stage-N-<name>.md` and read the findings cold with the person, resolving each in
 the overview's findings table and the stage plan; then `bb plan-check`.
 
 ## Writes

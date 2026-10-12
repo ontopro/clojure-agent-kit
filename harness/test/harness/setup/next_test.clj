@@ -171,4 +171,8 @@
       (is (= {"t2" :awaiting-merge} (:runs s)) "the latest record's status, by its start")
       (is (seq (:plan-problems f)) "the plan check ran, and this workspace has no overlay, no layers.edn, no loop.edn")
       (is (= 2 (:step (next/next-action f))) "so the plan comes first")
-      (is (= 13 (:step (next/next-action (assoc f :plan-problems [])))) "with the plan passing: t2's run awaits its merge"))))
+      (is (= 13 (:step (next/next-action (assoc f :plan-problems [])))) "with the plan passing: t2's run awaits its merge")
+      (is (= "xyx-build" (:build f)) "the build folder, as the workspace names it")
+      (let [a (next/next-action (-> f (assoc :plan-problems []) (assoc-in [:stage :merged] #{})))]
+        (is (str/includes? (:run a) "bb spec-from-blueprint xyx-build/docs/stages/stage-1-blueprint.md t1")
+            "a printed command runs from the workspace folder, where every command is run")))))
