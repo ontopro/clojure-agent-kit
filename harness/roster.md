@@ -30,16 +30,16 @@ role follows. `kit-start` says so at a project's first session.
 | Coding | per run | dispatched role | `:coder` | `anthropic/claude-sonnet-5.5`, medium | its own worktree and nREPL; the cache asked for on this role alone |
 | Testing | per run | dispatched role | `:tester` | `google/gemini-3.8-flash`, medium | tests from the contract; never sees the implementation |
 | Triage | on a red gate, a note or a rejected review | model read | `:orchestrator` | `anthropic/claude-opus-5.5`, medium | one call, no tools; routes to coder, tester, architect, tooling or human; also a stage-end security finding (Security routing below) |
-| The Architect's stops | when the loop routes `architect` | the seat's session | the seat (`:seat`) | the session's own, not in the profile - recommended: Opus 5.5, effort high (above) | a contract that keeps drawing findings, a triage that names the contract; the decision written before the retry |
-| Code review | per run, after the gates are green | model read | `:reviewer` | `openai/gpt-6.1-sol`, high | a diff, the contract slice, the green gate report; a contract that keeps drawing findings goes to a person |
+| The Architect's stops | when the loop routes `architect` | the seat's session | the seat (`:seat`) | the session's own, not in the profile - recommended: Opus 5.5, effort high (above) | the spec review's findings, a triage that names the contract; the decision written before the retry |
+| Code review | per run, after the gates are green | model read | `:reviewer` | `openai/gpt-6.1-sol`, high | a diff, the contract slice, the green gate report; a rejection goes to triage, under the retry cap |
 | The person | approvals, stops, merges | human | none | — | the scope, the plan, each Blueprint's sign-off, every merge, the money |
-| Stage-end checks | at each stage's end | human, in a browser | none | — | screenshots and the interaction check, outside the loop (`method.md` §04; the build docs's `03` §17) |
+| Stage-end checks | at each stage's end | human, in a browser | none | — | screenshots and the interaction check, outside the loop (`method.md` §04; the build docs' `03` §17) |
 | Security review | at each stage's end | model with tools, in a sandbox | `:security-reviewer` | `openai/gpt-6-astra`, high | `bb security-review <clone of the merged tip> --stance tracer --base stage-<N-1>`: the whole application read with five tools in a container with no network; a finding is `reproduced` only when a test it wrote fails, else a `hypothesis`. Its family is held to differ from the Coder's. A real model call, never a gate |
 | Security routing | after the security review | model read | `:orchestrator` | as Triage above | `bb security-route <review.edn> <clone>`: one triage call per reproduced finding - `coder` (a fix packet drafted for the Architect), `architect`, `human`; hypotheses listed for the threat model; nothing dispatched |
 
-Three things the table makes visible. The independence rule is three roles, not three models:
-`:coder`, `:tester` and `:reviewer` are held to three families by `bb profile`, whatever the
-models are. In the shipped example every review of words and of code but the Blueprint's — the
+Three things the table makes visible. The independence rule is about roles, not models: `bb
+profile` holds every verifier - `:tester`, `:reviewer`, `:spec-reviewer`, `:plan-reviewer`,
+`:security-reviewer` - to a family other than the `:coder`'s, whatever the models are. In the shipped example every review of words and of code but the Blueprint's — the
 plan, each spec, each diff — is one model read three ways; whether that is the right economy is a
 bake-off's question (`NOTES.md` row 46), not a rule. And the Blueprint's reader is the seat's own
 family, which the rule's reasoning would forbid: an accepted exception from a measurement, written

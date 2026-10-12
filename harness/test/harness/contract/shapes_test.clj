@@ -20,7 +20,7 @@
       (is (not (contains? d :gates)) "computed in resolve-config")))
   (testing "an unknown key is found by name, a derived one is known"
     (is (= [:spec-review?] (shapes/unknown-loop-keys {:run/id "x" :spec-review? true :records/dir "r"}))))
-  (testing "the build docs's §13 names only keys the table describes"
+  (testing "the build docs' §13 names only keys the table describes"
     (let [text (slurp "../build-docs/03-method-and-tooling.md")
           named (map #(keyword (subs (second %) 1)) (re-seq #"`(:[a-z/?-]+)` in `loop.edn`" text))]
       (is (seq named) "§13 names at least one loop.edn key")

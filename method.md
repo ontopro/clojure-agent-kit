@@ -910,11 +910,15 @@ flowchart LR
     B --> C["Gate 0<br/>mechanical repair"]
     C --> D{"Quality gates<br/>cheap → expensive"}
     D -- pass --> E["Code reviewer<br/>different model family"]
-    D -- fail --> F{"Triage<br/>route to owner"}
-    F -- under cap --> B
-    F -- cap reached --> H["Escalate<br/>human, worktree kept"]
+    D -- fail --> K{"Retry cap<br/>spent?"}
+    E -- reject --> K
+    K -- no --> F{"Triage<br/>route to owner"}
+    K -- yes --> H["Stop for a person<br/>worktrees kept"]
+    F -- coder or tester --> B
+    F -- architect --> J["Stop for the Architect<br/>amend the contract"]
+    J -- amended --> C
+    F -- human or tooling --> H
     E -- approve --> G{"Human merge gate"}
-    E -- reject --> F
     G -- approve --> I["Merge + teardown"]
     G -- deny --> H
 ```
@@ -1053,7 +1057,7 @@ Thirteen things that only showed up from running the loop repeatedly against rea
 13. **Report time and money from timestamps and per-step measurements, never from a running counter — and separate waiting from working.** A wall time accumulated across invocations once printed below the sum of its own steps. The seed's report derives total, waiting-on-a-person and active time from events' absolute stamps, groups cost by provider, role and model, and puts the provider's own balance at start and end beside the summed costs; an estimate of how long something took, repeated after the fact, is not a measurement.
 12. **A rule the agent has already read is not fixed by writing it again.** When an instruction is ignored rather than unknown, a second copy changes nothing — the question is whether anything fires at the moment of action. Gates cannot help here: they run on artifacts, and a process that reached a clean artifact by the wrong route leaves them nothing to see. That is review's job, and it is why the Reviewer reads the diff rather than the result. Before adding a rule, check whether the one you want already exists somewhere the agent had open.
 
-**Triage is worth a model call.** A deterministic heuristic has to assume something — usually that the tests are right and the implementation is wrong. A model that reads the failing gate output against the contract *and* both agents' files can tell the difference between a faithful implementation and a test whose generator violates the contract's own preconditions. Put it behind the deterministic path as a seam, so it can **degrade, never block**. The seed carries this as `harness.loop.triage`: one call with no tools, on a red gate and on a note, routed on from the first run with the mechanical proposal as its fallback — and with two safeties the prompt alone does not give you: a route to the Architect or a human *stops* the loop rather than dispatching, and guidance bound for the Tester is held to the same leak check as a typed retry.
+**Triage is worth a model call.** A deterministic heuristic has to assume something — usually that the tests are right and the implementation is wrong. A model that reads the failing gate output against the contract *and* both agents' files can tell the difference between a faithful implementation and a test whose generator violates the contract's own preconditions. Put it behind the deterministic path as a seam, so it can **degrade, never block**. The harness carries this as `harness.loop.triage`: one call with no tools, on a red gate, on a note and on a rejected review, routed on from the first run with the mechanical proposal as its fallback — and with two safeties the prompt alone does not give you: a route to the Architect or a human *stops* the loop rather than dispatching, and guidance bound for the Tester is held to the same leak check as a typed retry.
 
 ---
 

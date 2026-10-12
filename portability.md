@@ -204,8 +204,9 @@ through the back door. An agent staring at a test it just wrote going red will a
 until it passes, deriving from behaviour instead of the contract. Correctness hazard, not
 efficiency.
 
-What prevents it is §07's dispatch, into isolated workspaces: Coder and Tester run **concurrently** and
-*"do not share each other's output."* `:no-gates` is belt-and-braces over that. Provisioning
+What prevents it is §07's dispatch, into isolated workspaces: Coder and Tester each work in a worktree
+of their own and *"do not share each other's output"* - the method lets them run concurrently, and the
+harness runs them one after the other. `:no-gates` is belt-and-braces over that. Provisioning
 is what keeps the Tester independent structurally.
 
 The shape, decided:
@@ -333,16 +334,16 @@ parameters:
                     :key-env "OPENROUTER_API_KEY"
                     :params {:reasoning_effort "medium"
                              :provider {:only ["openai"] :allow_fallbacks false}}}
-         :reviewer {:family :anthropic :model "claude-fable-5-1" :shape :anthropic
+         :reviewer {:family :anthropic :model "claude-opus-5-5" :shape :anthropic
                     :endpoint "https://api.anthropic.com"
                     :key-env "ANTHROPIC_API_KEY"
                     :params {:output_config {:effort "high"} :max_tokens 32000}
                     ;; optional: list prices for an endpoint that reports no cost,
                     ;; USD per million tokens, with where and when they were read
-                    :pricing {:per-mtok {:in 10 :out 50 :cache-write-5m 12.5
-                                         :cache-write-1h 20 :cache-read 0.25}
+                    :pricing {:per-mtok {:in 4 :out 20 :cache-write-5m 5
+                                         :cache-write-1h 8 :cache-read 0.4}
                               :source "https://platform.claude.com/docs/en/about-claude/pricing"
-                              :as-of "2026-09-14"}}}}
+                              :as-of "2026-10-05"}}}}
 ```
 
 The seat is a Google client, so Gemini writes the code and Anthropic verifies
@@ -393,25 +394,28 @@ and a single committed profile reads as *your* configuration, which is exactly
 how the first version was misread.
 
 **The whole role table for the `claude` seat**, in the shape method §05 asks for — the
-family as the binding contract, the model as a dated selection underneath it. Four rows
-are the profile's and the harness dispatches them; two are the seat's, where the human
+family as the binding contract, the model as a dated selection underneath it. Eight rows
+are the profile's and the harness calls them; two are the seat's, where the human
 works, and no packet reaches them:
 
-| Role | Constraint | Family | Model (as of 2026-09-16; the route as of 2026-09-25) | Dispatched? | Notes |
+| Role | Constraint | Family | Model (as the shipped `claude.edn` has it, 2026-10-12) | Dispatched? | Notes |
 |---|---|---|---|---|---|
-| **Coder** | — (family A) | Anthropic | `anthropic/claude-fable-5.1` over OpenRouter pinned to `anthropic`, effort low, the cache asked for | yes, every task | The seat's family, by convention: one story between the human and the code. |
+| **Coder** | — (family A) | Anthropic | `anthropic/claude-sonnet-5.5` over OpenRouter pinned to `anthropic`, effort medium (from 2026-10-02), the cache asked for | yes, every task | The seat's family, by convention: one story between the human and the code. |
 | **Tester** | **≠ A** | Google | `gemini-3.8-flash`, effort medium | yes, every task | Chosen by its tests, not its price; the cheapest model in the hardest seat lost a run. |
 | **Reviewer** | **≠ A** | OpenAI | `gpt-6.1-sol`, effort high | yes, on green | Third family; only Coder-divergence is required, a third adds blind-spot diversity. |
 | **Spec reviewer** | **≠ A** | OpenAI | `gpt-6.1-sol`, effort high | yes, once per spec, before `start` | Reads the Architect's contract cold — every place a target can be read two ways, every input no target mentions — and the Architect is the seat, family A. Added 2026-09-18; same model as the Reviewer because that is the configuration measured. |
+| **Plan reviewer** | **≠ A** | OpenAI | `gpt-6.1-sol`, effort high | yes, in every stage's plan step (`bb plan-review`) | The spec reviewer's selection by default; its own role since 2026-10-06, so a project can set it apart. |
+| **Security reviewer** | **≠ A** | OpenAI | `gpt-6-astra`, effort high | yes, at every stage's end (`bb security-review`) | Reads the merged application with tools, in a sandbox with no network; a finding counts only when a test of its own fails. Added 2026-10-08. |
 | **Blueprint reviewer** | none — family A, accepted by decision | Anthropic | `anthropic/claude-opus-5.5` over OpenRouter pinned to `anthropic`, effort high | yes, once per Blueprint, before sign-off | Reads the stage document and the Blueprint whole against §07, the blueprint, and §06's rules (`bb blueprint-review`). The rule's reasoning reaches it as it reaches the spec reviewer; the exception is from a measurement — on one build this family, reading Blueprints cold, alone found each round's load-bearing defect — written in the profile's comment and watched in `NOTES.md`. Added 2026-09-25. |
-| **Orchestrator** | none | software; Anthropic for triage | `anthropic/claude-fable-5.1` over OpenRouter pinned to `anthropic`, effort low (high until 2026-09-18: saved verdicts re-asked at low gave the same routes for a little less) — triage calls only | yes, on a red gate or a note | Dispatch is `harness.loop.orchestrate`; the model enters at triage and shares the Coder's family by decision — it verifies nothing, so §05 does not reach it. Watched in `NOTES.md`. |
+| **Orchestrator** | none | software; Anthropic for triage | `anthropic/claude-opus-5.5` over OpenRouter pinned to `anthropic`, effort medium (from 2026-10-02; Fable 5.1 before) — triage calls only | yes, on a red gate, a note or a rejected review | Dispatch is `harness.loop.orchestrate`; the model enters at triage and shares the Coder's family by decision — it verifies nothing, so §05 does not reach it. Watched in `NOTES.md`. |
 | **Architect** | none | Anthropic — the seat | the session's model, chosen per session | no — seat-side | Writes the spec and amends it at a stop; does not verify Coder output. |
 | **DevOps** | none | Anthropic — the seat | the session's model, chosen per session | no — seat-side | Config, docs, release prep; the interactive-programmer role in `harness/agents/`. |
 
-The independence rule is `harness.models.profile/verifiers`, and it names exactly the three
-rows marked **≠ A** — the Spec reviewer's author is the Architect, who is the seat, whose
+The independence rule is `harness.models.profile/verifiers`, and it names exactly the five
+rows marked **≠ A**, each held to a family other than the Coder's — the spec and plan reviewers'
+author is the Architect, who is the seat, whose
 family is A by the convention above. The Orchestrator is in the profile because the harness reaches
-it over HTTP like the other four; it is not a verifier, and `bb profile` does not
+it over HTTP like the other roles; it is not a verifier, and `bb profile` does not
 check its family against the Coder's; nor the Blueprint reviewer's, by the decision above. The same
 roles by the act each performs — every review, gate and dispatch in a build — is
 [`harness/roster.md`](harness/roster.md). A model in this table is replaced by a measurement:

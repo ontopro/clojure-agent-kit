@@ -26,5 +26,5 @@ the browser checks for a day; it reached one kind of project of the three, and c
 | [`svg/`](svg/README.md) | a check of the SVG files a project produces - the icons it draws or recolours by script: each rasterised with Apache Batik in the JVM, no browser; renders, draws something, and how much of it is the colour asked for | a JDK (the loop's); Batik is fetched on the first run, about ten megabytes |
 | [`security/`](security/README.md) | the security checks a request can try, sent to the running application from outside: response headers, cookie flags, a POST without its token, the routes that need a login (a list the project types), error pages that name nothing of the error, static folders that neither list nor let a path out, TLS on an https base; a table, a record a stage cites, exit 1 on a failing row. Serves through the browser pack's `server.clj`. Beside it two scans over the source, `deps` (the resolved libraries' published advisories, from OSV) and `secrets` (a secret in the commits' added lines, its value never printed) | nothing beyond `bb`; the browser pack beside it; `deps` needs the Clojure CLI and the network |
 
-A pack is optional and says what it is for; the build docs's `03-method-and-tooling.md`
+A pack is optional and says what it is for; the build docs' `03-method-and-tooling.md`
 §14 and §17 are where a project names the ones it uses.

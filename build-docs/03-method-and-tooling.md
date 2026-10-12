@@ -39,10 +39,10 @@ the loop. The constraints are the contract and are fixed; which model fills each
 | **Coder** | family A | yes, every task | Full read/eval/write, in its own worktree |
 | **Tester** | **≠ A** | yes, every task | Eval for authoring only; never runs the full suite |
 | **Reviewer** | **≠ A** | yes, on green | Read-only: a diff, the slice, the gate report |
-| **Spec reviewer** | ≠ the Architect's family | yes, before every dispatch (`start` runs it) | Read-only: the spec, its context, the rules; no tools |
-| **Plan reviewer** | ≠ the Architect's family | yes, in every stage's plan step (`bb plan-review`) | Read-only: the plan's documents and the stage plan; no tools |
+| **Spec reviewer** | **≠ A** (the Architect's family, which the Coder shares by convention) | yes, once per spec, at `start` | Read-only: the spec, its context, the rules; no tools |
+| **Plan reviewer** | **≠ A** (the Architect's family, which the Coder shares by convention) | yes, in every stage's plan step (`bb plan-review`) | Read-only: the plan's documents and the stage plan; no tools |
 | **Security reviewer** | **≠ A** | yes, at every stage's end (`bb security-review`) | Reads the merged application, writes and runs tests of its own, sends requests to it, in a sandbox with no network; changes nothing of the application |
-| **Orchestrator** | none — it verifies nothing | software; a model for triage only, on a red gate or a note | Dispatch and triage; no code, no eval |
+| **Orchestrator** | none — it verifies nothing | software; a model for triage only, on a red gate, a note or a rejected review | Dispatch and triage; no code, no eval |
 | **Architect** | none | no — the seat, at the workspace root | Produces the blueprint; no REPL |
 | **DevOps** | none | no — the seat | Whatever a task needs, scoped narrowly |
 | **Interactive programmer** *(off the loop)* | none | no | Full read/eval/write, by hand: harness work, modelling, the worktree an escalation left behind. No packet, no retry cap; inherits the rule source and **runs the gates itself**, since nothing else is gating it |
@@ -70,15 +70,15 @@ gate.
 
 ## 3. Workspace isolation
 
-**Three worktrees per task, each with its own nREPL server** — not one server with several
-nREPL *sessions*, which share a JVM, so two supposedly isolated agents can redefine the same var.
+**Three worktrees per task - the Coder's, the Tester's and the gate's - and an nREPL server for
+each role's** — not one server with several nREPL *sessions*, which share a JVM, so two supposedly isolated agents can redefine the same var.
 The harness provisions them (`harness.loop.provision`): per task it creates the worktrees under
-the workspace's `work/`, starts one nREPL each (`clojure -Srepro -M:test:nrepl`, the command the
+the workspace's `work/`, starts one nREPL for each of the two roles (`clojure -Srepro -M:test:nrepl`, the command the
 plan's `loop.edn` names), records the ports and hands each role its own in the packet. Only a
 role's declared `:files/target` crosses into the gate worktree; anything else is refused by name.
 
-Gates run in that worktree's **already-warm** REPL — no cold JVM per attempt. And this is what
-makes auto-approving an agent's edits safe: it never touches the main checkout.
+Gates run in the gate worktree as the commands `loop.edn` names, each a process of its own; the
+roles' REPLs stay warm across attempts. And this is what makes auto-approving an agent's edits safe: it never touches the main checkout.
 
 ## 4. The gates, in order
 
@@ -101,14 +101,16 @@ months later; a project that changes the sequence keeps the keys.
 
 ## 5. Triage, the retry cap, and the stops
 
-`method.md` §07. On a red gate or a note, the Orchestrator's triage call reads the gate's own
+`method.md` §07. On a red gate, a note or a rejected review, the Orchestrator's triage call reads the gate's own
 output and routes to the owning role — `coder` (an implementation bug), `tester` (a defective
 test), `architect` (a design flaw or an ambiguous contract), `human`, or `tooling` (the machine is
 at fault, not the run: a merged file no role owns, the build, the harness) — with a mechanical
-proposal as its fallback. The decision is written **before** the retry it justifies. A run has a
-retry cap per role (the number is §13); on hitting it the loop stops, hands off whatever was
-produced, and leaves the worktrees in place for inspection. The spec review runs before every
-dispatch and stops for the Architect when it finds something (§13 caps how often).
+proposal as its fallback. The decision is written **before** the retry it justifies. A task has a
+retry cap (the number is §13), spent in dispatch rounds - the first, and one per triage decision,
+whichever role it went to; on hitting it the loop stops, hands off whatever was
+produced, and leaves the worktrees in place for inspection. The spec review runs once per spec,
+at `start`, and stops for the Architect when it finds something; an edited spec is read again (§13
+caps how often).
 
 **Every stop has an owner, and the loop says which.** A stop whose answer is an amendment to the
 contract is the Architect's: the seat session amends or leaves it and carries on. Before reading a
@@ -286,7 +288,7 @@ justifies the extra call, or the reason it isn't justified here>.
 
 | What | Where | Default | This project | Why |
 |---|---|---|---|---|
-| Retry cap, attempts per role per task | `:gates {:retry-cap n}` in a task spec (`packet/default-gates`) | 3 | <n> | <…> |
+| Retry cap, dispatch rounds per task | `:gates {:retry-cap n}` in a task spec (`packet/default-gates`) | 3 | <n> | <…> |
 | Rounds per dispatch - completions before the harness stops a role | `:max-rounds n` in the role's block in `profile.edn` | the harness's 24 | <Coder n / Tester n> | <…; the Tester writes a test per target and takes more> |
 | Spec reviews that found something before a person reads them | `:spec-review/max` in `loop.edn` | 2 | <n> | <…> |
 | Money cap for a stage, and the floor a run must not start below | held by the person; `bb balance` before and after every run | — | <$cap / $floor> | <…> |

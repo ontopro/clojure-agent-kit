@@ -56,6 +56,20 @@ step by hand, named there.
 
 ## 2026-10-09
 
+### The loop as the code runs it (plan 6.3, item 7)
+
+The audit's B findings, older than plan 6.3: documents described the loop as it is not. The retry
+cap is per task, spent in dispatch rounds - the first and one per triage decision - not per role.
+A task has three worktrees and two nREPLs, the Coder's and the Tester's; the gates run in the gate
+worktree as the commands `loop.edn` names, not in a warm REPL. `bb profile` holds every verifier to
+a family other than the Coder's, not three families or the seat's. A code reviewer's rejection goes
+to triage under the cap, as a red gate does, and the spec review's limit stops for the person, not
+the Architect. Triage fires on a red gate, a note or a rejected review; the spec review runs once
+per spec, at `start`; `record` copies the run record, and `RUNS.md` is published with `bb report`.
+`method.md` §07's quality-loop diagram checks the cap before triage and draws triage's routes - a
+retry, the Architect's stop, the person's. `portability.md` says the harness runs Coder and Tester
+one after the other, and its `claude` role table and `agy-ide` example are the shipped profiles'.
+
 ### The gate order, said the same everywhere (plan 6.3, item 7)
 
 The audit's D1: four places gave `bb gates`' order short or wrong - the README and the root

@@ -49,13 +49,13 @@ flowchart TD
 
   subgraph LOOP["the loop, per task — bb run-loop"]
     L1["start: plan-check once per workspace, then the spec review"] --> L2{"Architect reads the findings, amends or continues"}
-    L2 --> L3["provision three worktrees and nREPLs; dispatch Coder and Tester"]
+    L2 --> L3["provision three worktrees, an nREPL each for Coder and Tester; dispatch them"]
     L3 --> L4["assemble → gate 0 → gates"]
     L4 -- red --> L5["triage (orchestrator) → retry, or a stop"]
     L5 --> L4
     L4 -- green --> L6["code review (Reviewer)"]
     L6 -- reject --> L5
-    L6 -- approve --> L7{"the person merges; record → &lt;xyx&gt;-build/runs/, RUNS.md"}
+    L6 -- approve --> L7{"the person merges; record → &lt;xyx&gt;-build/runs/"}
   end
 
   subgraph RELEASE["D · PRE-RELEASE, then E · RELEASE — stages like any other"]
@@ -95,7 +95,7 @@ once.
 | 10 | Sign-off | the person | Do these packets dispatch as written? | — | the blueprint signed, recorded in `stage-N-gates.edn`; packets may dispatch |
 | 11 | A packet | `bb spec-from-blueprint`, `bb sigs` | What exactly does this task's Coder and Tester receive, and do its signatures match the source they name? | the packet pulled out of the blueprint, §1's shapes inlined, its signatures checked | `spec.edn` in the run directory |
 | 12 | The loop | `bb run-loop start` and its steps | Can a contract be read two ways? Does the code satisfy it? Does the review approve? If not, whose problem is it? | plan-check once; the spec review; provisioning; dispatch; gate 0; the gates; triage; the code review | a run stopped at `:awaiting-merge`, or stopped for a person with the owner named |
-| 13 | The merge | the person | Do the bytes the gates passed and the Reviewer read go in? | `bb run-loop merge`, `record` | the gate worktree merged; the record in `<name>-build/runs/`, its tables in `RUNS.md` |
+| 13 | The merge | the person | Do the bytes the gates passed and the Reviewer read go in? | `bb run-loop merge`, `record` | the gate worktree merged; the record copied to `<name>-build/runs/`; its table published in `RUNS.md` with `bb report`, held there by `bb report-check` |
 | 14 | The stage's end | the Architect's session, then the person | Is it deployed locally and do the exit criteria hold, in a browser and not only in the gates; what did this stage teach the plan; and what is pulled next? | the `stage-end` skill: served from a clean checkout; the browser pack; the owner's walk | the exit criteria checked and the stage closed in `stage-N-gates.edn`; the stage's section of `05-lessons.md`, each lesson ending as a rule, a line in the next stage plan, or a decision; the requirements indexed; the scope lists revised against the source; the stage map re-ranked; the next stage pulled by kind - an increment, a pre-release stage, or the release - and, at the first boundary where "could we ship?" is yes, the MVP named |
 
 ## The reviews, by the step of a stage they belong to
@@ -110,7 +110,7 @@ of its own so a project can set it apart.
 | plan review, `bb plan-review` | plan | the stage plan and the documents it revised, cold; in stage 0 the whole set | `:plan-reviewer` | a reading; `bb plan-check` is the gate |
 | blueprint review, `bb blueprint-review` | plan | the stage's blueprint whole, with its stage plan | `:blueprint-reviewer` | a reading; the person's sign-off is the gate |
 | spec review, inside `bb run-loop start` | implement, per packet | one packet's contract, cold | `:spec-reviewer` | a stop if a target can be read two ways |
-| code review, inside the loop | implement, per packet | the diff and the gate report of green code | `:reviewer` | a stop on rejection; triage names the owner |
+| code review, inside the loop | implement, per packet | the diff and the gate report of green code | `:reviewer` | a rejection goes to triage, under the retry cap: a retry, or a stop with its owner named |
 | security review, `bb security-review` then `bb security-route` | stage's end | the merged application, with tools in a sandbox with no network; a finding is a test of its own that fails | `:security-reviewer` | a reading; a reproduced finding keeps the stage open until it is fixed or decided, and triage names who acts |
 
 ## Three things the diagram says that prose tends to lose
