@@ -9,16 +9,17 @@ implement, deploy locally - and the reviews belong to those steps, not to a plac
 
 ```mermaid
 flowchart TD
-  subgraph SETUP["Step 0 — setup: the person, once, in KIT's clone"]
+  subgraph SETUP["A · SETUP — not a stage: the person, once, in KIT's clone"]
     S1["bb self-check: the doctor, then the health check"] --> S3["bb init"]
     S3 --> S4["&lt;xyx&gt;-app/ · &lt;xyx&gt;-build/ (docs, rules.edn, profile.edn, loop.edn) · work/ · workspace.edn · bb.edn"]
   end
 
-  subgraph SCOPING["Step 1 — scoping: the person and an Architect session, in the workspace"]
-    Z1["the six groups of questions, and only those (method §02, step 1)"] --> Z2["the brief, to work/brief.md"] --> Z3["bb brief: filed as source.md §1 and Appendix A"]
+  subgraph PROVE["B · PROVE — stage 0, the spike: scope ▶ plan ▶ implement ▶ deploy locally"]
+  subgraph SCOPING["scope: the person and an Architect session, in the workspace"]
+    Z1["the six groups of questions, and only those (method §03, scope)"] --> Z2["the brief, to work/brief.md"] --> Z3["bb brief: filed as source.md §1 and Appendix A"]
   end
 
-  subgraph PLAN["Phase A — the plan, for stage 0: the Architect's session"]
+  subgraph PLAN["plan: the project plan and stage 0's own, the Architect's session"]
     P1["source.md: what was read, the content named apart"] --> P2["01 requirements: the scope lists; stage 1's, no more"] --> P3["02 architecture: candidates, provisional"] --> P4["03 method"] --> P5["04 decision log: each candidate with the pass criterion stage 0 applies"] --> P6["00 overview: the stage map by kind, a cap on stage 0 alone"]
     P4 -.-> P4a["rules.edn: the three placeholders"]
     P6 --> P7["bb plan-review — the whole set read cold; findings to reviews/, resolved in the overview"]
@@ -26,14 +27,15 @@ flowchart TD
     P8 --> P9{"the person approves stage 0 and sets its cap → stage-0-gates.edn"}
   end
 
-  subgraph STAGE0["Stage 0 — the spike: Foundation, then the risks proved"]
+  subgraph STAGE0["implement ▶ deploy locally: the loop proved with your models, then the risks"]
     Z0["the stage 0 plan: the risks it proves, their pass criteria and fallbacks"] --> F1["profile.edn edited · bb profile"] --> F2["bb rules-sync → &lt;xyx&gt;-app/AGENTS.md"] --> F3["gates as loop.edn names them"]
-    F3 --> F4["stage 0's first packet through the loop with real models — the machine proved"]
+    F3 --> F4["stage 0's first packet through the loop with real models — the loop proved"]
     F4 --> F5["the spike's packets: each pass criterion answered, pass or fallback; running software"]
-    F5 --> F6["readiness checklist closed against live evidence; what is kept, said; decisions settled"]
+    F5 --> F6["deploy locally: working software, however small; decisions confirmed or reversed; what is kept, said; the person closes stage 0"]
+  end
   end
 
-  subgraph STAGE["A stage from 1 on — pulled when the last one ends: scope ▶ plan ▶ implement ▶ deploy locally"]
+  subgraph STAGE["C · BUILD — a stage from 1 on, pulled when the last one ends: scope ▶ plan ▶ implement ▶ deploy locally"]
     C0["scope: the previous stage's §12 and 05-lessons.md read first; the scope lists revised"] --> C1["the stage plan, just in time: the requirements it adds, its exit criteria, its cap"]
     C1 --> C1r["bb plan-review — the stage plan and what it revised, read cold"]
     C1r --> C1g{"the person approves the stage with its cap → stage-N-gates.edn"}
@@ -56,7 +58,7 @@ flowchart TD
     L6 -- approve --> L7{"the person merges; record → &lt;xyx&gt;-build/runs/, RUNS.md"}
   end
 
-  subgraph RELEASE["pre-release stages, then release — stages like any other"]
+  subgraph RELEASE["D · PRE-RELEASE, then E · RELEASE — stages like any other"]
     R1["pre-release: what release needs and nothing earlier; the deploy path rehearsed on a throwaway host"] --> R2["release: package → deploy on the server, or publish for download; started as packaged on an empty home; the previous release's data opened"]
   end
 
@@ -74,19 +76,19 @@ flowchart TD
 
 ## The steps, and what each produces
 
-Steps 2 to 6 are stage 0's, once; steps 7 to 14 are every stage from 1 on - the increments, the
-pre-release stages, the release. The numbers say the order inside a pass, not that a step happens
+Step 0 is phase A, setup - not a stage. Steps 1 to 6 are stage 0's, phase B, once; steps 7 to 14
+are every stage from 1 on - phases C, D and E: the increments, the pre-release stages, the release. The numbers say the order inside a pass, not that a step happens
 once.
 
 | # | Step | Who | The question it answers | What runs | What exists afterwards |
 |---|---|---|---|---|---|
 | 0 | Setup | the person | Can this machine run KIT, and where does the project live? | in KIT's clone: `bb self-check`, `bb init` | the workspace: the application (two commits), the build repository (the plan's documents, the rules overlay, the profile, run defaults), `work/`, `workspace.edn` with KIT's commit, `bb.edn` - every session and command from here in the workspace folder |
-| 1 | Scoping | the person, with an Architect session | Who is it for, what does it show or do, what material exists and which part is content, what must be proved early, what is the first thing worth seeing, what is the money? | `kit-start` (the orientation), then the `scoping` skill, in the workspace's session (the other seats follow the method's section by hand); then `bb brief` | the brief, filed as `source.md`'s first row and Appendix A: the six groups' answers as given (`method.md` §02, step 1) |
+| 1 | Scoping | the person, with an Architect session | Who is it for, what does it show or do, what material exists and which part is content, what must be proved early, what is the first thing worth seeing, what is the money? | `kit-start` (the orientation), then the `scoping` skill, in the workspace's session (the other seats follow the method's section by hand); then `bb brief` | the brief, filed as `source.md`'s first row and Appendix A: the six groups' answers as given (`method.md` §03, scope) |
 | 2 | The plan, for stage 0 | the Architect's session | What are we building, from what evidence, which risks does stage 0 prove and against what criteria, and what have we deliberately not decided yet? | the `plan` skill | the seven documents, in order, `source.md` first and `05-lessons.md` empty: the scope lists; stage 1's requirements and no more; the candidate architecture as provisional decisions, each with a pass criterion; the stage map by kind, a cap on stage 0 alone; the overlay's three placeholders filled with the method document |
-| 3 | The plan review | `bb plan-review` | Where does the plan contradict itself, decide too early, write a requirement for a stage not pulled, or leave a risk with no owning stage? | one call to the profile's `:plan-reviewer` with `method.md` §02's checklist | findings in `reviews/plan-review.edn`, each resolved in the overview's findings table |
+| 3 | The plan review | `bb plan-review` | Where does the plan contradict itself, decide too early, write a requirement for a stage not pulled, or leave a risk with no owning stage? | one call to the profile's `:plan-reviewer` with `method.md` §03's checklist | findings in `reviews/plan-review.edn`, each resolved in the overview's findings table |
 | 4 | The plan check | `bb plan-check` | Is anything of the template still standing, does every requirement cite an observation or say it is inferred, and are the given parts intact? | mechanical | exit 0, or the list of what still stands; then the inferred requirements, for the approval, and the observations nothing cites, for the stage's end |
 | 5 | Approval, for stage 0 | the person | Do we run the spike, and for how much? | — | stage 0 approved with its cap, recorded in `stages/stage-0-gates.edn` |
-| 6 | Stage 0 | the Architect's session | Does the machine work here, with these models, and do the foundational choices hold against their pass criteria? | the stage 0 plan from its template; `bb profile`, `bb rules-sync`, the gates; the spike's packets through the loop, the first of them the machine's proving run | Foundation built and its readiness checklist closed against a live run; every pass criterion answered, pass or fallback, in the decision log; running software; what is kept, said; stage 0's section of `05-lessons.md` |
+| 6 | Stage 0 | the Architect's session | Does the loop work on this machine, with these models, and do the foundational choices hold against their pass criteria? | the stage 0 plan from its template; `bb profile`, `bb rules-sync`, the gates; the spike's packets through the loop, the first of them the machine's proving run | the loop proved by its first packet with these models; every pass criterion answered, pass or fallback, in the decision log; working software deployed locally, however small; what is kept, said; stage 0's section of `05-lessons.md` |
 | 7 | The stage plan | the Architect's session | What and why, for this stage: its kind, the requirements it adds, the risks it retires, what it proves and shows and deliberately does not, the seams, the exit criteria, its cap, and a dependency-ordered task list | the `stage-plan` skill (stage 0's plan too, at step 6); `bb plan-review` over the stage plan and the documents it revised | `docs/stages/stage-N-<name>.md`, written with the previous stage's §12 and the lessons read first, reviewed cold, approved by the person with its cap in `stage-N-gates.edn` |
 | 8 | The blueprint | the Architect's session | How, precisely enough for two agents who never compare notes: which shapes, which signatures, which namespaces, which packets in which order? | — | `docs/stages/stage-N-blueprint.md`: shapes, interfaces, namespaces, packets of ten to twenty targets |
 | 9 | The blueprint review | `bb blueprint-review` | Is it over-engineered? Do its shapes and targets follow §06's rules? Does it match its stage plan? | one call to the profile's `:blueprint-reviewer` with the stage plan, the blueprint and the method's two sections | findings in `reviews/<stage>/blueprint-review.edn`, each resolved in the stage plan |
@@ -118,7 +120,8 @@ of its own so a project can set it apart.
   the spec review reads every packet before it dispatches; each is a reading, and a reading that
   found nothing proves nothing. The one gate on the plan is `bb plan-check`, free and mechanical,
   and `start` refuses the first dispatch until it passes.
-- **Stage 0's first packet is the machine's proving run, and stage 0 owes decisions, not code.**
+- **Stage 0's first packet is the loop's proving run, and stage 0 owes decisions and working
+  software, however small.**
   A spike's packets are real questions with pass criteria written before they run; what passed is
   kept, the rest is rewritten by stage 1 with no obligation. A rehearsal on a trivial task is still
   an option, torn down and never merged: two projects merged theirs and one paid a run to clean up

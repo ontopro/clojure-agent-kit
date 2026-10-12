@@ -35,12 +35,12 @@ the records); `reviews/` appears with the first `bb plan-review` and `bake-offs/
 repository holds all of it, and the KIT's clone none.
 
 **Order of writing.** Scoping first, before any of this is written: the brief, which the `scoping`
-skill writes to `work/brief.md` and `bb brief` files (`method.md` §02, step 1). Then source → requirements (the scope lists; stage 1's
+skill writes to `work/brief.md` and `bb brief` files (`method.md` §03, scope). Then source → requirements (the scope lists; stage 1's
 requirements, no more) → architecture (candidates, provisional) → method → decision log (each
 candidate with the pass criterion stage 0 applies) → overview (the stage map by kind, a cap on
 stage 0 alone), and the overlay's three placeholders in `rules.edn` with the method. Then `bb
-plan-check` (the gate) and the plan-review pass (`method.md` §02; `bb plan-review` runs it), the
-person's approval of stage 0 with its cap, then the stage 0 plan - which builds Foundation - and
+plan-check` (the gate) and the plan-review pass (`method.md` §03; `bb plan-review` runs it), the
+person's approval of stage 0 with its cap, then the stage 0 plan - whose first packet proves the loop - and
 stage 0 itself. **The plan commits to stage 0 and nothing after it.** Every later stage's plan is
 written when that stage is pulled, with the previous stage's §12 and `05-lessons.md` read first,
 and the plan review reads it before its blueprint is cut; do not write stage 2's plan while stage
@@ -54,7 +54,7 @@ is what lets `01-requirements.md` stay the contract.
 **Three parts in the two documents the KIT has already half-written.** `02-architecture.md` and
 `03-method-and-tooling.md` are each in three parts: *Given* — what adopting the KIT fixed, stated
 as references to where the KIT says it and not as questions; *Chosen* — what this project decides
-once, in Foundation, and records in the decision log; *Theirs* — the domain. Angle brackets appear
+once, in stage 0's plan, and records in the decision log; *Theirs* — the domain. Angle brackets appear
 only in the last two. A given part is not edited; changing one leaves the certified pair, and
 `bb plan-check` reads nothing in one as an instruction - a blockquote there is the KIT's prose,
 kept as written.
@@ -66,7 +66,7 @@ findings and their resolutions and nothing else; a comparison of four readers th
 project's overview belonged here. `bb plan-review` writes its findings here too.
 
 **Who fills them: the Architect's session** - the person, or the model they work with in the
-session started at the workspace root - in Phase A, before any loop exists. No dispatched role
+session started at the workspace root - in stage 0's plan step, before any loop exists. No dispatched role
 ever writes a plan document. **Angle brackets** `<like this>` mark things to replace. Delete
 every instructional blockquote once you've acted on it — a document left half-filled reads as a
 decision, and an angle bracket left standing reaches whoever reads the plan next as literal text.

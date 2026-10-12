@@ -156,20 +156,20 @@
                 :requires ([harness.money.report :as report])
                 :task (apply report/check-main *command-line-args*)}
 
-  ;; The gate on a filled plan, before Foundation: what `start` runs once per workspace before its
+  ;; The gate on a filled plan, before the first dispatch: what `start` runs once per workspace before its
   ;; first dispatch. Cheap and mechanical; `plan-review` is the reading, and not a gate.
   plan-check {:doc "bb plan-check [<plan-dir>] [--workspace <dir>]: what a filled plan still carries - marks, the template's instructions, a requirement citing no observation (S-n.m) and not marked (inferred), the overlay's placeholders - and whether its given parts are intact (the KIT's rules, layers.edn, the gate keys). Exit 1 with the list; then, failing nothing, the inferred requirements for the stage's approval and the observations nothing cites for the stage's end. The workspace's plan by default"
               :requires ([harness.setup.plan :as plan])
               :task (apply plan/-main *command-line-args*)}
 
-  plan-review {:doc "bb plan-review [<plan-dir> | <stage-plan.md>] [--profile <profile.edn>] [--workspace <dir>]: method.md §02's plan-review pass, run in every stage's plan step - stage 0's reading is the plan's documents, a later stage's its stage plan first with the documents after, read cold by the profile's :plan-reviewer with §02's checklist (a requirement for a stage not pulled, a risk with no owning stage, a lesson unanswered, and the faults that recur), one call; findings printed with the cost and written to <plan>/reviews/plan-review.edn, or reviews/<stage>/ for a stage plan. Not a gate"
+  plan-review {:doc "bb plan-review [<plan-dir> | <stage-plan.md>] [--profile <profile.edn>] [--workspace <dir>]: method.md §03's plan-review pass, run in every stage's plan step - stage 0's reading is the plan's documents, a later stage's its stage plan first with the documents after, read cold by the profile's :plan-reviewer with §03's checklist (a requirement for a stage not pulled, a risk with no owning stage, a lesson unanswered, and the faults that recur), one call; findings printed with the cost and written to <plan>/reviews/plan-review.edn, or reviews/<stage>/ for a stage plan. Not a gate"
                :requires ([harness.setup.plan-review :as plan-review])
                :task (apply plan-review/-main *command-line-args*)}
 
-  ;; A stage's Blueprint, read whole before the human signs it off: method.md §07 step 2's question
+  ;; A stage's Blueprint, read whole before the human signs it off: method.md §07's blueprint question
   ;; (is it over-engineered?) and §06's rules for shapes and targets, to the profile's
   ;; :blueprint-reviewer. The spec review still reads every packet cut from it. Not a gate.
-  blueprint-review {:doc "bb blueprint-review <blueprint.md> [--profile <profile.edn>] [--workspace <dir>]: a stage's Blueprint and its stage document read cold by the profile's :blueprint-reviewer against method.md §07 step 2 and §06's rules, one call; findings printed with the cost and written to <plan>/reviews/<stage>/blueprint-review.edn. Not a gate"
+  blueprint-review {:doc "bb blueprint-review <blueprint.md> [--profile <profile.edn>] [--workspace <dir>]: a stage's Blueprint and its stage document read cold by the profile's :blueprint-reviewer against method.md §07, the blueprint, and §06's rules, one call; findings printed with the cost and written to <plan>/reviews/<stage>/blueprint-review.edn. Not a gate"
                     :requires ([harness.setup.blueprint-review :as blueprint-review])
                     :task (apply blueprint-review/-main *command-line-args*)}
 

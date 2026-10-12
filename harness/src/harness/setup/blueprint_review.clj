@@ -1,7 +1,7 @@
 (ns harness.setup.blueprint-review
   "A stage's Blueprint, read cold before sign-off: `bb blueprint-review <blueprint.md>`.
 
-  `method.md` §07 step 2 says the Orchestrator reviews the Blueprint before
+  `method.md` §07, the blueprint, says the Orchestrator reviews the Blueprint before
   the human signs it off - if it is over-engineered, it goes back to the
   Architect - and §06 says what its shapes and targets must be. Nothing ran
   either question: the harness's orchestrator role is triage, and a
@@ -87,12 +87,12 @@
 
 (defn checklist
   "The two sections of `method-text` (`method.md`) the review sends: §07's
-  strategic-planning step, which asks whether the Blueprint is over-engineered,
+  blueprint step, which asks whether the Blueprint is over-engineered,
   and §06 from its data-shapes-first rule through the rules for writing
   property targets, up to the per-role deltas. Throws when either heading is
   missing."
   [method-text]
-  (str (section method-text "### Step 2 · Strategic planning" "\n### Step 2½"
+  (str (section method-text "### The blueprint — the plan step's end" "\n### The spec review"
                 "the step that asks whether a Blueprint is over-engineered")
        "\n\n"
        (section method-text "### Data shapes first" "\n### Per-role deltas"
@@ -121,7 +121,7 @@
   (str "=== " (or stage-name "the stage document") (when-not stage-text " (not found)") " ===\n"
        (or stage-text "")
        "\n\n=== " blueprint-name " ===\n" blueprint-text
-       "\n\n=== THE CHECKLIST (method.md §07 step 2, and §06's rules for shapes and targets) ===\n"
+       "\n\n=== THE CHECKLIST (method.md §07, the blueprint, and §06's rules for shapes and targets) ===\n"
        checklist))
 
 (defn plan-dir-of

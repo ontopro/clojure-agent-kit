@@ -13,14 +13,14 @@
 (def kit-dir (str (fs/parent (fs/real-path "."))))
 (def method-path (str (fs/path kit-dir "method.md")))
 
-(deftest the-checklist-is-section-02s-plan-review-pass-read-from-the-method
+(deftest the-checklist-is-section-03s-plan-review-pass-read-from-the-method
   (let [c (pr/checklist (slurp method-path))]
-    (is (str/starts-with? c "### The plan-review pass"))
+    (is (str/starts-with? c "#### The plan-review pass"))
     (is (str/includes? c "Direct contradictions between documents"))
     (is (str/includes? c "Decided too much, too early"))
-    (is (str/includes? c "Exit criteria for Phase A"))
-    (is (not (str/includes? c "## 03")) "it ends with the section"))
-  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no '### The plan-review pass'" (pr/checklist "# a method without it"))))
+    (is (str/includes? c "The plan step is done when"))
+    (is (not (str/includes? c "### Implement")) "it ends with the plan step"))
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no '#### The plan-review pass'" (pr/checklist "# a method without it"))))
 
 (deftest the-checklist-names-the-three-findings-of-a-stages-plan-step
   ;; The three the plan step is for, in the method and in the prompt's kinds:
@@ -36,7 +36,7 @@
 (deftest the-input-is-every-document-in-order-then-the-checklist
   (let [text (pr/review-input [["source.md" "the brief"] ["00-overview.md" nil]] "- check this")]
     (is (< (str/index-of text "=== source.md ===\nthe brief") (str/index-of text "=== 00-overview.md (not written) ===")))
-    (is (str/ends-with? text "=== THE CHECKLIST (method.md §02, the plan-review pass) ===\n- check this"))))
+    (is (str/ends-with? text "=== THE CHECKLIST (method.md §03, the plan-review pass) ===\n- check this"))))
 
 (deftest a-stage-plan-is-read-first-and-keyed-by-its-stage
   (let [text (pr/review-input ["stage-1-skeleton.md" "the skeleton"] [["source.md" "the brief"]] "- check this")]

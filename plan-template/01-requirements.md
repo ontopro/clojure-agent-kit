@@ -10,7 +10,7 @@
 > is marked as the Architect's inference, *FR-7 (inferred)*, and is shown to the person at the
 > stage's approval.
 >
-> **Requirements are written per stage, when the stage is pulled** (`method.md` §02): the
+> **Requirements are written per stage, when the stage is pulled** (`method.md` §03): the
 > stage plan that builds a requirement writes it, in its §2, and this document keeps the index
 > of every requirement by the stage that wrote it (§6b). Stage 1's are written here as well,
 > since the plan is read before stage 1's plan exists. A requirement written here for a stage
@@ -104,7 +104,7 @@
 > requirement, deferral or exclusion claims are the backlog nobody decided on, and the stage's
 > end is where they are decided.
 >
-> **The MVP is named afterwards, not here** (`method.md` §02): the first stage boundary where
+> **The MVP is named afterwards, not here** (`method.md` §03): the first stage boundary where
 > "could we ship after this one?" is yes, marked in the stage map when it comes. A spike is
 > not scope either — "the smallest thing that proves the design" is stage 0's job.
 

@@ -4,12 +4,12 @@
 **Kind:** spike
 **Version:** 0.1 · **Last updated:** <YYYY-MM-DD>
 **Companion to:** `../00-overview.md` §4a · `../02-architecture.md` · `../04-decision-log.md`
-**Builds:** the Foundation (`../03-method-and-tooling.md`), before its first packet dispatches
+**Proves:** the loop with this project's models (`../03-method-and-tooling.md`), by its first packet
 
 > The **stage 0 plan**. Stage 0 is a spike over the foundational choices (`method.md` §04):
-> it proves the architecture's provisional decisions, the stack and the machine against pass
+> it proves the architecture's provisional decisions, the stack and the loop against pass
 > criteria written before it runs, and it ends in running software. **What it owes is
-> decisions confirmed or reversed, not code:** stage 1 keeps what passed its criterion and
+> decisions confirmed or reversed, and working software however small:** stage 1 keeps what passed its criterion and
 > rewrites the rest with no obligation. The project plan commits to this stage and nothing after
 > it. Delete this note.
 
@@ -33,19 +33,19 @@
 | R1 | D-n *(PROVISIONAL: <selection>)* | <what must be shown, checkable> | <x> behind `<Protocol>` | <pass · fallback, YYYY-MM-DD> |
 | R2 | | | | |
 
-## 3. The Foundation
+## 3. Method and tooling, proved
 
-> Built here, inside stage 0: `bb doctor`, `bb health`, `bb init` done at setup; the profile
-> and the rules overlay filled; the gate sequence read; the readiness checklist
+> `bb doctor`, `bb health` and `bb init` were done at setup (`method.md` §02); here the profile
+> and the rules overlay are filled, the gate sequence read, and the readiness record
 > (`../03-method-and-tooling.md` §18) closed against a live run. **Stage 0's first packet is
-> that run** - a small packet with a real question - and Foundation is ready when it dispatches,
-> not before and not after.
+> that run** - a small packet with a real question - and it proves the loop with this
+> project's models.
 
 | Readiness item | Closed by | Date |
 |---|---|---|
-| `bb doctor`, both verdicts yes | | |
+| `bb doctor`, both verdicts yes (at setup) | | |
 | `bb plan-check` passes | | |
-| `bb health` on this machine | | |
+| `bb health` on this machine (at setup) | | |
 | the first packet through the loop with this project's models | | |
 
 ## 4. What runs at its end
@@ -77,8 +77,8 @@ early>. Recorded in `stage-0-gates.edn` beside this plan.
 
 - **Every pass criterion of §2 answered** - pass, or the fallback executed - and the decision
   log says which, dated
-- **The Foundation's readiness checklist closed** against the live run (§3)
-- **Running software at its end** (§4), served or evaluated by the project's own command
+- **The loop proved with this project's models**, the readiness record closed against the live run (§3)
+- **Working software at its end, deployed locally** (§4), however small, served or evaluated by the project's own command
 - **What is kept, said** (§6); the rest owed to nobody
 - **The stage's end written:** stage 0's section of `../05-lessons.md`; the scope lists and the
   stage map revised; stage 1's plan pulled next, from this one's §8

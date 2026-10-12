@@ -1,5 +1,5 @@
 (ns harness.setup.plan-review
-  "The plan-review pass of `method.md` §02, run: `bb plan-review [<plan-dir> | <stage-plan.md>]`.
+  "The plan-review pass of `method.md` §03, run: `bb plan-review [<plan-dir> | <stage-plan.md>]`.
 
   THE PASS RUNS IN EVERY STAGE'S PLAN STEP. In stage 0 it reads the whole
   set - the seven documents `source.md`, `00`…`04` and `05-lessons.md` - and in
@@ -8,7 +8,7 @@
   which carries the stage's requirements and its cap, is read cold before the
   blueprint is cut from it. Cold, as an artifact, by the profile's
   `:plan-reviewer` role: a model that did not write them (`bb profile` holds
-  it to a family other than the seat's), one completion, no tools, with §02's
+  it to a family other than the seat's), one completion, no tools, with §03's
   own checklist of the findings that recur - among them the three a stage's
   plan step is for: a requirement written for a stage not pulled, a risk with
   no owning stage, a lesson of the last stage this plan does not answer. What
@@ -38,13 +38,13 @@
    [harness.setup.workspace :as workspace]))
 
 (def documents
-  "The Phase A documents, in the order they are written and read; the lessons
+  "The project plan's documents, in the order they are written and read; the lessons
   last, empty before stage 0 ends and read for the stage it does not answer after."
   ["source.md" "00-overview.md" "01-requirements.md" "02-architecture.md"
    "03-method-and-tooling.md" "04-decision-log.md" "05-lessons.md"])
 
 (def kinds
-  "The findings §02 names as the ones that recur, as the `kind` the answer
+  "The findings §03 names as the ones that recur, as the `kind` the answer
   uses; the prompt lists them, the checklist explains them. The first three
   are the stage's plan step's own - what a plan that commits to one stage at
   a time gets wrong - and the rest recur in any plan."
@@ -89,17 +89,18 @@
        "\"kind\" is one of: " (str/join ", " kinds) ", or \"other\"."))
 
 (defn checklist
-  "§02's plan-review pass from `method-text` (`method.md`): from its heading to
-  the rule that ends the section - the findings that recur, by name, and the
-  exit criteria. Throws when the heading is not there: a review without the
+  "§03's plan-review pass from `method-text` (`method.md`): from its heading to
+  the end of the plan step - the findings that recur, by name, and what the plan
+  step is done when. Throws when the heading is not there: a review without the
   checklist is a different review."
   [method-text]
-  (let [from (str/index-of method-text "### The plan-review pass")
-        to (some-> from (as-> i (str/index-of method-text "\n---" i)))]
+  (let [heading "#### The plan-review pass"
+        from (str/index-of method-text heading)
+        ends (when from (keep #(str/index-of method-text % (+ from (count heading))) ["\n### " "\n---"]))]
     (when-not from
-      (throw (ex-info "method.md has no '### The plan-review pass' heading - the checklist the review sends"
+      (throw (ex-info (str "method.md has no '" heading "' heading - the checklist the review sends")
                       {:plan-review/error :no-checklist})))
-    (str/trim (subs method-text from (or to (count method-text))))))
+    (str/trim (subs method-text from (if (seq ends) (apply min ends) (count method-text))))))
 
 (defn stage-key
   "The folder under `reviews/` a stage plan's read is written to: the
@@ -121,7 +122,7 @@
           (str "=== stages/" nm " (THE STAGE PLAN UNDER REVIEW) ===\n" text "\n\n"))
         (str/join "\n\n" (for [[nm text] docs]
                            (str "=== " nm (when-not text " (not written)") " ===\n" (or text ""))))
-        "\n\n=== THE CHECKLIST (method.md §02, the plan-review pass) ===\n" checklist)))
+        "\n\n=== THE CHECKLIST (method.md §03, the plan-review pass) ===\n" checklist)))
 
 (defn parse-findings
   "The findings vector from the answer's last json block; nil when there is no

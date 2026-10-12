@@ -4,7 +4,7 @@
 **Kind:** <walking skeleton · increment> (stage 0 is the spike, `stage-0-spike-template.md`; pre-release and release have templates of their own)
 **Version:** 0.1 · **Last updated:** <YYYY-MM-DD>
 **Companion to:** `../02-architecture.md` · `../04-decision-log.md` · `../05-lessons.md`
-**Runs through:** the Foundation (`../03-method-and-tooling.md`) — this plan is the
+**Runs through:** the loop, as `../03-method-and-tooling.md` sets it — this plan is the
 Architect's blueprint input
 
 > The **stage plan**: the project plan's slice for this stage. Written **just-in-time**, when
@@ -26,7 +26,7 @@ Architect's blueprint input
 
 ## 2. Requirements this stage adds
 
-> Written here, when the stage is pulled (`method.md` §02) — not in `01-requirements.md`
+> Written here, when the stage is pulled (`method.md` §03) — not in `01-requirements.md`
 > ahead of time. One row per requirement, each with a permanent ID that is never reused, the
 > source observation it rests on (`S-n.m`) or `(inferred)` for the Architect's own, and its
 > priority. The inferred ones are what the person is shown at this stage's approval. At the
@@ -43,7 +43,7 @@ Architect's blueprint input
 |---|---|
 | <Datastore> | **<selection>** *(PROVISIONAL, D-n; gate R-n runs here)* — fallback: <x> |
 | <Macro-architecture> | |
-| <Scaffold> | Generated in the Foundation, adapted in stage 0 (P0-n) |
+| <Scaffold> | Generated at setup, adapted in stage 0 (P0-n) |
 
 ## 4. What the stage proves — and what it deliberately doesn't
 

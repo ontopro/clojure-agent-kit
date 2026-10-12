@@ -204,7 +204,7 @@ through the back door. An agent staring at a test it just wrote going red will a
 until it passes, deriving from behaviour instead of the contract. Correctness hazard, not
 efficiency.
 
-What prevents it is §07 Step 3's isolated workspaces: Coder and Tester run **concurrently** and
+What prevents it is §07's dispatch, into isolated workspaces: Coder and Tester run **concurrently** and
 *"do not share each other's output."* `:no-gates` is belt-and-braces over that. Provisioning
 is what keeps the Tester independent structurally.
 
@@ -252,7 +252,7 @@ the design above.
   the *gate* workspace, which has no scope check.
 - **The nREPL must see `test/`, not only `src/`**, or the Tester cannot load
   the test namespace it just wrote and `:repl-first` is unsatisfiable a second
-  way. §03 step 2: the REPL starts *ready to work*.
+  way. §02: the REPL starts ready to work.
 - **A declared thing with no consumer is invisible to every tool.** True of
   `:shapes`, then `:deps-sigs`, then §05's independence rule. Each is now
   something code can fail on — `harness.contract.stub`, `harness.contract.sigs`,
@@ -403,7 +403,7 @@ works, and no packet reaches them:
 | **Tester** | **≠ A** | Google | `gemini-3.8-flash`, effort medium | yes, every task | Chosen by its tests, not its price; the cheapest model in the hardest seat lost a run. |
 | **Reviewer** | **≠ A** | OpenAI | `gpt-6.1-sol`, effort high | yes, on green | Third family; only Coder-divergence is required, a third adds blind-spot diversity. |
 | **Spec reviewer** | **≠ A** | OpenAI | `gpt-6.1-sol`, effort high | yes, once per spec, before `start` | Reads the Architect's contract cold — every place a target can be read two ways, every input no target mentions — and the Architect is the seat, family A. Added 2026-09-18; same model as the Reviewer because that is the configuration measured. |
-| **Blueprint reviewer** | none — family A, accepted by decision | Anthropic | `anthropic/claude-opus-5.5` over OpenRouter pinned to `anthropic`, effort high | yes, once per Blueprint, before sign-off | Reads the stage document and the Blueprint whole against §07 step 2 and §06's rules (`bb blueprint-review`). The rule's reasoning reaches it as it reaches the spec reviewer; the exception is from a measurement — on one build this family, reading Blueprints cold, alone found each round's load-bearing defect — written in the profile's comment and watched in `NOTES.md`. Added 2026-09-25. |
+| **Blueprint reviewer** | none — family A, accepted by decision | Anthropic | `anthropic/claude-opus-5.5` over OpenRouter pinned to `anthropic`, effort high | yes, once per Blueprint, before sign-off | Reads the stage document and the Blueprint whole against §07, the blueprint, and §06's rules (`bb blueprint-review`). The rule's reasoning reaches it as it reaches the spec reviewer; the exception is from a measurement — on one build this family, reading Blueprints cold, alone found each round's load-bearing defect — written in the profile's comment and watched in `NOTES.md`. Added 2026-09-25. |
 | **Orchestrator** | none | software; Anthropic for triage | `anthropic/claude-fable-5.1` over OpenRouter pinned to `anthropic`, effort low (high until 2026-09-18: saved verdicts re-asked at low gave the same routes for a little less) — triage calls only | yes, on a red gate or a note | Dispatch is `harness.loop.orchestrate`; the model enters at triage and shares the Coder's family by decision — it verifies nothing, so §05 does not reach it. Watched in `NOTES.md`. |
 | **Architect** | none | Anthropic — the seat | the session's model, chosen per session | no — seat-side | Writes the spec and amends it at a stop; does not verify Coder output. |
 | **DevOps** | none | Anthropic — the seat | the session's model, chosen per session | no — seat-side | Config, docs, release prep; the interactive-programmer role in `harness/agents/`. |

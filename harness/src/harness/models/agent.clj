@@ -16,7 +16,7 @@
 
   THE CAP DOES NOT THROW. A run that hit it may still have written usable
   files, and whether that is a failure is the orchestrator's policy, not this
-  namespace's — §07 step 5 leaves an escalated workspace standing for exactly
+  namespace's — §07's merge leaves an escalated workspace standing for exactly
   this reason. `:capped?` says what happened and the caller decides."
   (:require
    [babashka.http-client :as http]

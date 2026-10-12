@@ -59,8 +59,8 @@ architecture doc stays readable because decision churn lives in the log, not the
 
 Stages are numbered through, and each has a kind (`method.md` §04): stage 0 the **spike**,
 stage 1 the **walking skeleton**, stages 2 to N the **increments**, then **pre-release** stages
-and **release**. The **Foundation** (`03-method-and-tooling.md`) is built inside stage 0, before
-its first packet dispatches, and runs continuously underneath every stage. Infrastructure and
+and **release**. **Method and tooling** (`03-method-and-tooling.md`) are set in stage 0's plan, before
+its first packet dispatches, and every stage runs through them. Infrastructure and
 operations work is **woven into stages**, not held in a phase of its own; what release needs
 lands in the pre-release stages.
 
@@ -70,7 +70,7 @@ indicative, re-ranked by the risks at every stage's end.
 
 | Stage | Kind | Name | Delivers | Risk it retires | Key decisions it closes | Cap | Status |
 |---|---|---|---|---|---|---|---|
-| **0** | spike | <name> | Foundation built; the top risks proved against their pass criteria; running software, owed nothing - decisions confirmed or reversed | R1, R2 | <D-n …>, each pass or fallback | <$> | PLANNED |
+| **0** | spike | <name> | the loop proved with this project's models; the top risks proved against their pass criteria; working software deployed locally, however small, owed nothing - decisions confirmed or reversed | R1, R2 | <D-n …>, each pass or fallback | <$> | PLANNED |
 | **1** | walking skeleton | <name> | <one small function end to end through every layer, on the smallest input a person can walk>; the seams established; the first owner's walk | <R-n> | <decision IDs> | — | NOT STARTED — plan written when pulled |
 | **2** | increment | <name> | <deliverable> | <R-n> | <decision IDs> | — | NOT STARTED |
 | **…** | increment | | | | | — | |
@@ -97,7 +97,7 @@ Stage content beyond the next stage is indicative and will be re-planned.
 >
 > Every top risk gets an experiment cheap enough to be worth running and specific enough to
 > fail. De-risking is not confined to early stages: any design or architectural change
-> raises a new risk and earns a new prototype (`method.md` §02, §08).
+> raises a new risk and earns a new prototype (`method.md` §03, §08).
 
 | # | Risk | What it would cost | Prototype / spike that retires it | Runs in | Status |
 |---|---|---|---|---|---|
@@ -106,10 +106,10 @@ Stage content beyond the next stage is indicative and will be re-planned.
 
 ## 5. Review findings
 
-> Filled by the plan-review pass (`method.md` §02), which runs in every stage's plan step: for
-> stage 0 over the whole set, before Foundation; for every stage after, over the stage plan and
+> Filled by the plan-review pass (`method.md` §03), which runs in every stage's plan step: for
+> stage 0 over the whole set, before its approval; for every stage after, over the stage plan and
 > the documents it revised, before the blueprint is cut. A different model or person from
-> whoever wrote the plan; `bb plan-review` in the KIT's `harness/` is that pass, and writes its
+> whoever wrote the plan; `bb plan-review`, run from the workspace, is that pass, and writes its
 > raw output to `../reviews/`. Requirement-level additions land in the stage plan that owns
 > them and the index in `01-requirements.md`; decision-level items in `04-decision-log.md`.
 
@@ -123,7 +123,7 @@ Stage content beyond the next stage is indicative and will be re-planned.
 
 - **Decision IDs are stable.** FR-n/NFR-n, D-n, S-n, P0-n keep their identifiers
   permanently; new items get new numbers. Traceability depends on this.
-- **Every stage runs through the Foundation.** No code merges outside the workflow and
+- **Every stage runs through the loop.** No code merges outside the workflow and
   quality gates in `03-method-and-tooling.md`.
 - **Agent rules live in the rule source.** Never in a prompt string, never hand-edited into
   `AGENTS.md` — a gate fails on drift. Project rules override personal and global ones;

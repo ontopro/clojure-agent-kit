@@ -3,7 +3,7 @@
 (ns harness.contract.stub
   "The contract, as code the Tester can load.
 
-  WHY THIS EXISTS. §07 step 3 gives the Tester a worktree holding no
+  WHY THIS EXISTS. §07's dispatch gives the Tester a worktree holding no
   implementation, which is what makes its tests derive from the contract rather
   than from the code. Running the loop showed the cost: the Tester cannot
   `require` the namespace under test, so it cannot evaluate its own tests before

@@ -6,7 +6,7 @@ description: Step 2 of the KIT's workflow - the project plan for stage 0, filled
 # The plan, for stage 0
 
 The method is the source: the plan's documents and what each holds are written in `method.md`
-§02 and in the templates `bb init` copied into `<name>-build/docs/`. This skill walks them in
+§03 and in the templates `bb init` copied into `<name>-build/docs/`. This skill walks them in
 the template's order and fills nothing deeper than stage 0 needs.
 
 ## When it runs

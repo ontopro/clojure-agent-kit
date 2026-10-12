@@ -1,4 +1,4 @@
-# <Project> — Method & Tooling (the Foundation)
+# <Project> — Method & Tooling
 
 **Status:** <IN PROGRESS | READY — human sign-off YYYY-MM-DD>
 **Version:** 0.1 · **Last updated:** <YYYY-MM-DD>
@@ -19,11 +19,11 @@
 
 # Part 1 — Given: fixed by adopting the KIT
 
-## 0. Why a Foundation
+## 0. Why this document
 
 The workflow, the scaffold it operates in, and the quality gates it runs through are **not
 a delivery stage** — they are the method and the toolchain the stages are built *with*.
-Configured once, inside stage 0 before its first packet dispatches, then running continuously underneath every stage.
+Set once, in stage 0's plan, before its first packet dispatches; revised when a stage changes them.
 
 **Core principles:** REPL-first · cheap gates before expensive ones · independent
 verification (the author of the tests is never the author of the code) · failure escalates
@@ -112,7 +112,7 @@ dispatch and stops for the Architect when it finds something (§13 caps how ofte
 
 **Every stop has an owner, and the loop says which.** A stop whose answer is an amendment to the
 contract is the Architect's: the seat session amends or leaves it and carries on. Before reading a
-rejection, run the gated code over the real input (`method.md` §07 step 5): free, and it says
+rejection, run the gated code over the real input (`method.md` §07, the quality loop): free, and it says
 whether the finding is about the code or about an input the sources cannot produce - the second
 kind is answered with scope in `rules.edn`, never with a new rule in the contract. Everything else
 is the person's: the cap, a merge (the loop never merges; an approval stops it `:awaiting-merge`),
@@ -225,7 +225,7 @@ written down — the rule source's own first rule says it outranks the others:
 
 ---
 
-# Part 2 — Chosen: decided once, in Foundation, recorded in the log (P0-n)
+# Part 2 — Chosen: decided once, in stage 0's plan, recorded in the log (P0-n)
 
 ## 11. The rules overlay — `<name>-build/rules.edn`
 
@@ -385,8 +385,8 @@ justifies the extra call, or the reason it isn't justified here>.
 
 ## 18. Readiness — the record
 
-The Foundation is **ready** (not "done") when each line below is a fact with a date, not an
-intention. Record them here; `method.md` §03's checklist is what they close.
+Method and tooling are **ready** (not "done") when each line below is a fact with a date, not an
+intention. Record them here: 1 and 2 are setup's checks (`method.md` §02), 3 and 4 stage 0's (§03).
 
 1. **`bb doctor` reports green**, both verdicts — the `bb doctor --edn` map pasted into the
    decision log on <YYYY-MM-DD>.
@@ -395,9 +395,7 @@ intention. Record them here; `method.md` §03's checklist is what they close.
    generated from.
 3. **§11–§15 are filled and closed** — the overlay's placeholders gone (`start` lists none), the
    profile checked (`bb profile` green), the numbers in the log as P0-n.
-4. **The loop has run end to end on one deliberately trivial task with this project's models**,
-   run `<id>` on <YYYY-MM-DD>, to `:awaiting-merge` — and **torn down, not merged**: `record`
-   first, so `<name>-build/runs/<id>.edn` keeps the evidence, then `teardown`. The machine is
-   proved and nothing of the rehearsal is left in the application.
-
-Then stage 0's first packet dispatches against it.
+4. **The loop has run end to end with this project's models** - stage 0's first packet, run
+   `<id>` on <YYYY-MM-DD>; or a rehearsal on a trivial task, to `:awaiting-merge` and **torn down,
+   not merged**: `record` first, so `<name>-build/runs/<id>.edn` keeps the evidence, then
+   `teardown`. The loop is proved, and nothing of a rehearsal is left in the application.

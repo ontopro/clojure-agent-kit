@@ -13,19 +13,19 @@
 (def kit-dir (str (fs/parent (fs/real-path "."))))
 (def method-path (str (fs/path kit-dir "method.md")))
 
-(deftest the-checklist-is-step-2-and-section-06s-rules-read-from-the-method
+(deftest the-checklist-is-the-blueprint-step-and-section-06s-rules-read-from-the-method
   (let [c (br/checklist (slurp method-path))]
-    (is (str/starts-with? c "### Step 2 · Strategic planning"))
+    (is (str/starts-with? c "### The blueprint — the plan step's end"))
     (is (str/includes? c "over-engineered"))
-    (is (not (str/includes? c "### Step 2½")) "the step ends before the spec review's")
+    (is (not (str/includes? c "### The spec review")) "the step ends before the spec review's")
     (is (str/includes? c "### Data shapes first"))
     (is (str/includes? c "One promise per target"))
     (is (not (str/includes? c "### Per-role deltas")) "§06 ends before the per-role deltas")
-    (is (< (str/index-of c "### Step 2") (str/index-of c "### Data shapes first")) "the question, then the rules"))
-  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no '### Step 2 · Strategic planning'"
+    (is (< (str/index-of c "### The blueprint") (str/index-of c "### Data shapes first")) "the question, then the rules"))
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no '### The blueprint — the plan step's end'"
                         (br/checklist "# a method without it\n### Data shapes first\n### Per-role deltas")))
   (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no '### Data shapes first'"
-                        (br/checklist "### Step 2 · Strategic planning\n### Step 2½\n"))))
+                        (br/checklist "### The blueprint — the plan step's end\n### The spec review\n"))))
 
 (deftest the-stage-document-is-the-one-the-blueprints-header-names
   (is (= "stage-1-vertical-slice.md"
@@ -108,7 +108,7 @@
       (let [sent (json/generate-string (first seen))]
         (is (< (str/index-of sent "the stage's goal and its task list")
                (str/index-of sent "the shapes")
-               (str/index-of sent "Strategic planning")))
+               (str/index-of sent "The blueprint — the plan step")))
         (is (str/includes? sent "One promise per target"))
         (is (str/includes? sent "OVER-ENGINEERED") "the system prompt went too")))
     (testing "a second read keeps the first in the history"

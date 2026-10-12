@@ -56,6 +56,30 @@ step by hand, named there.
 
 ## 2026-10-09
 
+### Phases group the stages, and setup is not a stage (plan 6.3, item 7)
+
+The walk-through's findings 5 and 11 had one cause: the method's three phases - Plan, Foundation,
+Stages - no longer matched how a project runs. Setup (`bb self-check`, `bb init`) had moved before
+scoping, Foundation's other half was the plan step and stage 0's first packet, and every stage has
+the same four steps. `method.md` now has five phases, each a group of stages by kind: A · SETUP (no
+stage: once, by the person, no plan, cap or model spend), B · PROVE (stage 0, the spike), C · BUILD
+(the walking skeleton and the increments), D · PRE-RELEASE, E · RELEASE - the opening block, §01's
+table and the Quick start say so, and stage 0 owes working software deployed locally, however
+small ("Welcome to KIT" is enough). §02 is setup: the toolchain and the workspace, XTDB, the REPL,
+the gates, `bb health`, setup's two checks. §03 is stage 0: scope, plan (the planning text, its
+exit criteria with `bb plan-check` added), implement (the first packet proves the loop with your
+models), deploy locally. §07 names its parts by the stage step they belong to - the blueprint, the
+spec review, dispatch, the quality loop, the merge, the slice - and not as a third set of numbered
+steps; its Step 5 was two things, the per-task merge and the stage's slice. Its quality-loop
+diagram sent a code reviewer's rejection to a person; the loop sends it to triage. Two words now
+mean one thing each, both in the words table: **machine** is the computer (hardware, operating
+system, toolchain), **loop** the build machinery; the plan template's "the Foundation" is gone,
+`03-method-and-tooling.md` named for what it is and the stage-0 template proving the loop.
+`bb plan-review` reads its checklist from §03 and ends it with the plan step, and `bb
+blueprint-review` reads §07's blueprint section by its new heading. `workflow.md`'s diagram is
+grouped by phase; its step numbers stay, since `bb next` prints them. Every citation of a moved
+section - "§02's checklist", "§03 step N", "§07 step N", "before Foundation" - re-aimed.
+
 ### One placeholder for the project folder: `<xyx>` (plan 6.3, item 7)
 
 The walk-through's finding 7: the README writes the project folder `<xyx>`, while `method.md`

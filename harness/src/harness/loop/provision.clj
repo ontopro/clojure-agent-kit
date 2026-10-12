@@ -11,7 +11,7 @@
   being an assertion.
 
   It is also what makes the Tester's independence real rather than asserted.
-  §07 step 3 dispatches Coder and Tester concurrently and says they *do not
+  §07's dispatch sends Coder and Tester out concurrently and says they *do not
   share each other's output*: the Tester's worktree holds no implementation, so
   a test derived from one is impossible rather than merely forbidden. The
   `:no-gates` rule is belt-and-braces over that, and until this namespace
@@ -203,7 +203,7 @@
 (defn teardown!
   "Stop the nREPL and remove the worktree.
 
-  Separate from `provision!` and never called by it, because §07 step 5 leaves
+  Separate from `provision!` and never called by it, because §07's merge leaves
   an escalated workspace in place — whether to tear down is the loop's policy
   and not this namespace's. The branch survives `git worktree remove`, so the
   work is still reachable after the directory is gone."

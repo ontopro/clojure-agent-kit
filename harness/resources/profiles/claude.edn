@@ -200,7 +200,7 @@
   ;; role from 2026-10-06; before that `bb plan-review` borrowed the spec
   ;; reviewer's block. ONE CALL PER STAGE, IN ITS PLAN STEP, no tools: in
   ;; stage 0 the whole plan, after that the stage plan with the documents it
-  ;; revised, read cold with method.md §02's checklist - a requirement written
+  ;; revised, read cold with method.md §03's checklist - a requirement written
   ;; for a stage not pulled, a risk with no owning stage, a lesson the new plan
   ;; does not answer, and the faults that recur in any plan.
   ;;
@@ -255,7 +255,7 @@
   ;; pinned to Anthropic's own serving. Dated selection 2026-09-25. ONE CALL
   ;; PER BLUEPRINT, BEFORE SIGN-OFF, no tools: `bb blueprint-review` sends the
   ;; stage document and the Blueprint with the method's two questions — is it
-  ;; over-engineered (§07 step 2), and do its shapes and targets follow §06's
+  ;; over-engineered (§07, the blueprint), and do its shapes and targets follow §06's
   ;; rules — and writes the findings beside the stage's other reviews. The spec
   ;; review still reads every packet cut from it, one at a time, before dispatch;
   ;; this reads the whole, for what a packet cannot show.

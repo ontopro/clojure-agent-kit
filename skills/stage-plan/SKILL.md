@@ -42,7 +42,7 @@ index, and `docs/source.md`'s observations.
   Stage 0 has no previous stage; it needs `stage-0-gates.edn` with `:stage/approved` set.
 - A stage plan for this stage already exists and is approved: a change to an approved plan is
   an amendment the person approves again, not a rewrite. Say so.
-- The person wants requirements for a stage beyond this one: the method's §02 says a
+- The person wants requirements for a stage beyond this one: the method's §03 says a
   requirement belongs to the stage plan of the stage that builds it. Keep to this stage.
 
 ## Asks
@@ -50,8 +50,8 @@ index, and `docs/source.md`'s observations.
 First, out loud: which lessons of the last stage this plan answers, and how (a rule in the
 overlay, a line in this plan, a decision) - the plan review will ask for the one it does not.
 Then the template's sections in order for the stage's kind: stage 0 from the spike template
-(the risks it proves, each with its pass criterion and fallback; the Foundation built inside
-it; what runs at its end; what is kept); stage 1 from the stage template with breadth written
+(the risks it proves, each with its pass criterion and fallback; the loop proved by its first
+packet; what runs at its end; what is kept); stage 1 from the stage template with breadth written
 beside depth in §4; an increment from the stage template; a pre-release stage from its
 template (what of release's needs it takes; the deploy path rehearsed on a throwaway host; the
 threat model, every line of the architecture's §15 to be answered with its evidence and signed);

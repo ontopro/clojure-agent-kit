@@ -28,7 +28,7 @@
               the real REPL probe; no model calls (the balance line asks the
               OpenRouter key's status when a key is in the shell, as any run
               does, and never fails a run). Stops `:awaiting-merge`, is
-              RECORDED - `record`, as method.md §03 step 5 says: `run.edn`, and
+              RECORDED - `record`, as method.md §03's implement step says: `run.edn`, and
               in the generated application's workspace the copy in the plan's
               `runs/`, naming the KIT, application and plan commits, each held
               to that repository's HEAD; the loop having read its rules and
@@ -209,7 +209,7 @@
 ;; ---------------------------------------------------------------------------
 
 (defn trivial-task
-  "The one task the loop is run on: method §03's `clamp` - no design content
+  "The one task the loop is run on: method §02's `clamp` - no design content
   at all. The namespace is new, so `layers.edn` must declare it, and no
   dispatched role may write that file: it arrives as `:architecture`, the
   Architect's output, which is the case the mechanism exists for."

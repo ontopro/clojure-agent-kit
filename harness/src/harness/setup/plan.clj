@@ -2,7 +2,7 @@
   "What the harness knows about a plan's documents: the template the KIT ships
   (`plan-template/`, copied into `<name>-build/docs/` by `bb init`), the
   marks in it that a filled plan must no longer carry, and the check that
-  reads a filled plan before Foundation - `bb plan-check`.
+  reads a filled plan before the first dispatch - `bb plan-check`.
 
   THE TEMPLATE IS HALF-WRITTEN ON PURPOSE. Two of its documents state what
   adopting the KIT fixed and leave angle brackets only where a project decides;
@@ -97,7 +97,7 @@
   not: the template's own `README.md`, which explains the marks and so carries
   one, and the stage templates under `stages/` (`*-template.md`, and the gates
   record's `*-template.edn`), which are copied per stage with their marks
-  standing by design. Every other document - the seven written in Phase A,
+  standing by design. Every other document - the seven written in stage 0's plan step,
   the lessons among them, and every stage plan written since - is."
   [rel]
   (not (or (= rel "README.md")
@@ -416,7 +416,7 @@
 (defn -main
   "bb plan-check [<plan-dir>] [--workspace <dir>]
 
-  Reads a filled plan before Foundation and exits 1 with the list of what is
+  Reads a filled plan before the first dispatch and exits 1 with the list of what is
   left. With no plan given, the workspace's (`workspace/current`: the one
   pointed at, or the one `harness/` is in by walking up). A plan given by path
   finds its workspace by walking up from it."
