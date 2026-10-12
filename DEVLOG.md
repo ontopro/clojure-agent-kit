@@ -56,6 +56,15 @@ step by hand, named there.
 
 ## 2026-10-12
 
+### `kit-start` says where you are and what to type (plan 6.4, item 3)
+
+The proof build's first session read part 1's end - "scoping is next after this. Questions on the
+workspace, or on to part 2?" - as two next steps, and nearly typed "scoping". Every part now ends
+the same way: the four parts as a list, each DONE or NEXT, and one instruction ("Type next, or ask a
+question about the workspace"); scoping is named only at the handover, after part 4, as "Type
+scoping to begin step 1, the brief". And part 2's phases carry a Status column from the workspace's
+files - setup done, stage 0's phase in progress - so the approach says where the project is in it.
+
 ### `bb init` ends with the first move (plan 6.4, item 2)
 
 The proof build's first workspace showed that `bb init`'s closing message did not say how to begin:

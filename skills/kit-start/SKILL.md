@@ -36,14 +36,27 @@ the folders, and the build's `docs/source.md` §1 for whether a brief is filed.
 ## Asks
 
 One part at a time, and the next only when the person is ready; a question answered from the
-document it cites, by section, not from memory.
+document it cites, by section, not from memory. Every part ends the same way: the four parts as a
+list, each DONE or NEXT, then one instruction - nothing about scoping until the handover:
+
+```
+1 of 4: the workspace - DONE
+2 of 4: the approach - NEXT
+3 of 4: the steps in order
+4 of 4: the roles and their models
+
+Type next, or ask a question about the workspace.
+```
 
 1. **The workspace.** Each folder and what it is for - KIT's clone (never written to; `git pull`
    upgrades it), the application, the build (the plan, the settings, the records), `work/`,
    `workspace.edn`, and `bb.edn`: every command is run from this folder.
 2. **The approach.** `method.md` from its opening to the "Distilled from…" callout: the stages
    and their kinds, the four steps every stage has, the plan thin at the start and revised at
-   every stage's end. In the person's terms; the section is quoted where it is clearer.
+   every stage's end. The phases as a table with a Status column, filled from the workspace's files
+   as `bb next` reads them: A · SETUP Done (a workspace exists); B · PROVE In progress until stage
+   0's gates record says closed, then C · BUILD; the others Later. In the person's terms; the
+   section is quoted where it is clearer.
 3. **The steps in order.** `workflow.md`'s table of steps - setup done, scoping next, then the
    plan, its review and check, the approval, stage 0, the stages - and that `bb next` says at any
    point which one is next.
@@ -55,8 +68,9 @@ document it cites, by section, not from memory.
 
 ## Writes
 
-Nothing. Then: no brief filed (§1's first row still says `<the brief>`) - hand over to `scoping`,
-step 1; a brief filed - the project is under way, and `bb next` names the next step.
+Nothing. After part 4, the list with all four DONE, then the one next step: no brief filed (§1's
+first row still says `<the brief>`) - "Type scoping to begin step 1, the brief", and hand over to
+`scoping`; a brief filed - the project is under way, and `bb next` names the next step.
 
 ## Done when
 
