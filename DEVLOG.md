@@ -54,6 +54,16 @@ step by hand, named there.
 
 ---
 
+## 2026-10-12
+
+### `bb init` ends with the first move (plan 6.4, item 2)
+
+The proof build's first workspace showed that `bb init`'s closing message did not say how to begin:
+it said to start sessions in the workspace and that `bb next` says what comes next, but not the
+README's next step. It now ends with it - a Claude Code session opened in the workspace folder,
+Opus 5.5 at effort high, and `/kit-start` - with the `cd` into the workspace as an absolute path, so
+it is right wherever `bb init` was run from; `bb next` stays the answer at any point after.
+
 ## 0.6.3 — plan 6.3's boundary: the adopter's workflow, simple and clear
 
 Plan 6.3 added the README's *How to use KIT* - set up the workspace (`bb self-check`, `bb init`, named

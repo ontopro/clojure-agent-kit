@@ -675,7 +675,10 @@
                                  "\nWhat was written before that is still in " (:workspace/dir lay)
                                  "; remove it before running `bb init` again."))
                    (System/exit 1)))]
-        (println (str "Created. " (fs/path ws-dir workspace/file-name) " says which folder is which.\n"
-                      "Start sessions in " ws-dir ", and run KIT's commands from there: `bb next` says what comes next.\n"
+        (println (str "Created. " (fs/path ws-dir workspace/file-name) " says which folder is which.\n\n"
+                      "Next: open a Claude Code session in the workspace folder - Opus 5.5, effort high -\n"
+                      "and type /kit-start:\n\n"
+                      "  cd " ws-dir " && claude\n\n"
+                      "Every KIT command is run from there; `bb next` says what comes next at any point.\n"
                       "The application's own commands run in its folder - to see it:\n\n"
                       "  cd " (fs/path ws-dir app) " && bb serve     # http://localhost:8000"))))))
