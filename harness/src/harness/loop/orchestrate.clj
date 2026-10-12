@@ -21,7 +21,8 @@
   at a time, until the answer is `:stop`. Nothing about which step comes next
   is buried inside a step.
 
-  Stops, all of them a person's: a dispatch that failed · a provider refusing
+  Stops, each with its owner (`harness.loop.log/owner`) - the Architect's when
+  the answer is an amendment to the contract, a person's otherwise: a dispatch that failed · a provider refusing
   for credit · an nREPL that did not answer · assembly refusing a file · green
   gates over an empty diff · the retry cap · a review with no verdict · triage
   routing a red gate, a note or a rejection to the architect or to a person, or

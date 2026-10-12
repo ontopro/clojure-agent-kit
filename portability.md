@@ -31,12 +31,12 @@ These get collapsed constantly, and the distinction decides most of the design:
 
 | | What | How many |
 |---|---|---|
-| **The interactive seat** | Where the human works: planning, design, architecture. Reads `AGENTS.md`. §05's seventh role, off the loop. | **Exactly one per project** |
-| **The dispatch harness** | Babashka + `AgentRunner`, sending packets to Coder / Tester / Reviewer. Not a seat. | One |
+| **The interactive seat** | Where the human works: planning, design, architecture. Reads `AGENTS.md`. §05's role off the loop. | **Exactly one per project** |
+| **The dispatch harness** | Babashka + `AgentRunner`, sending packets to Coder / Tester / code reviewer. Not a seat. | One |
 | **The model per dispatched role** | A different family per role, per §05 | One per role |
 
 **§05's independence rule lives in the dispatch harness, by model family — not in the seat.**
-You do not open a second interactive client to review your own work; the Reviewer is a headless
+You do not open a second interactive client to review your own work; the code reviewer is a headless
 dispatch with a packet. A project has one seat and one harness, and the harness varies the
 *model* per role.
 
@@ -83,7 +83,7 @@ stale.
 
 Its permissions are ordered `{action, resource, effect}` rules, last match wins, with v2 action
 names `shell`, `edit`, `subagent`. It is the only client that could express the method's access
-rules as client rules rather than prose — Reviewer read-only, Tester never runs the suite,
+rules as client rules rather than prose — code reviewer read-only, Tester never runs the suite,
 nobody runs the gates, Coder writes only its target.
 
 Two caveats. It is **beta** ("plugin and SDK contracts are still being finalized ahead of
@@ -179,7 +179,7 @@ Owning the tool loop turns permissions from a policy language into a function-ca
 
 | Role | Tools exposed | Enforced by absence? |
 |---|---|---|
-| Reviewer | `read_file` | **Yes.** `packet/reviewer-packet` does `(dissoc :repl/port)`, so there is no eval tool at all — read-only is structural |
+| Code reviewer | `read_file` | **Yes.** `packet/reviewer-packet` does `(dissoc :repl/port)`, so there is no eval tool at all — read-only is structural |
 | Coder | `read_file`, `write_file` and `edit_file` (path-checked against `:files/target`), `nrepl_eval` | **Partly.** `(spit …)` from the REPL goes past the path check |
 | Tester | `read_file`, `write_file`, `edit_file`, `nrepl_eval` | **No** — and the tool list is the wrong place to look |
 
@@ -376,7 +376,7 @@ Proved one seat at a time, portability being the design:
 | security-reviewer | `openai` · `gpt-6-astra` (effort high, from 2026-10-08) · OpenRouter pinned `openai` · `:openai` | the same |
 | orchestrator | `anthropic` · `anthropic/claude-opus-5.5` (effort medium, from 2026-10-02; Fable 5.1 before) · OpenRouter pinned `anthropic` · `:openai` | `google` · `gemini-3.8-flash` (effort high) · OpenRouter · `:openai` |
 
-*(The `claude` seat's Tester and Reviewer swapped on 2026-09-16, after bake-offs measured
+*(The `claude` seat's Tester and code reviewer swapped on 2026-09-16, after bake-offs measured
 both seats' candidates. Those bake-offs' records are not in this repository; what the selections rest on is in
 the profiles' own comments, in words. The
 Orchestrator row was added the same day, when the loop began routing red gates and notes
@@ -388,7 +388,7 @@ generation record; the profile's header says why.)*
 
 Anthropic writes, and two other families verify. Between them both `:shape`
 adapters have a worked example, which is why there are two rather than one -
-the `:anthropic` shape's is `agy-ide`'s Reviewer and spec reviewer, direct to Anthropic
+the `:anthropic` shape's is `agy-ide`'s code reviewer and spec reviewer, direct to Anthropic
 with `:pricing`, now that every role of the `claude` example is on the `:openai` shape -
 and a single committed profile reads as *your* configuration, which is exactly
 how the first version was misread.
@@ -402,8 +402,8 @@ works, and no packet reaches them:
 |---|---|---|---|---|---|
 | **Coder** | — (family A) | Anthropic | `anthropic/claude-sonnet-5.5` over OpenRouter pinned to `anthropic`, effort medium (from 2026-10-02), the cache asked for | yes, every task | The seat's family, by convention: one story between the human and the code. |
 | **Tester** | **≠ A** | Google | `gemini-3.8-flash`, effort medium | yes, every task | Chosen by its tests, not its price; the cheapest model in the hardest seat lost a run. |
-| **Reviewer** | **≠ A** | OpenAI | `gpt-6.1-sol`, effort high | yes, on green | Third family; only Coder-divergence is required, a third adds blind-spot diversity. |
-| **Spec reviewer** | **≠ A** | OpenAI | `gpt-6.1-sol`, effort high | yes, once per spec, before `start` | Reads the Architect's contract cold — every place a target can be read two ways, every input no target mentions — and the Architect is the seat, family A. Added 2026-09-18; same model as the Reviewer because that is the configuration measured. |
+| **Code reviewer** | **≠ A** | OpenAI | `gpt-6.1-sol`, effort high | yes, on green | Third family; only Coder-divergence is required, a third adds blind-spot diversity. |
+| **Spec reviewer** | **≠ A** | OpenAI | `gpt-6.1-sol`, effort high | yes, once per spec, before `start` | Reads the Architect's contract cold — every place a target can be read two ways, every input no target mentions — and the Architect is the seat, family A. Added 2026-09-18; same model as the code reviewer because that is the configuration measured. |
 | **Plan reviewer** | **≠ A** | OpenAI | `gpt-6.1-sol`, effort high | yes, in every stage's plan step (`bb plan-review`) | The spec reviewer's selection by default; its own role since 2026-10-06, so a project can set it apart. |
 | **Security reviewer** | **≠ A** | OpenAI | `gpt-6-astra`, effort high | yes, at every stage's end (`bb security-review`) | Reads the merged application with tools, in a sandbox with no network; a finding counts only when a test of its own fails. Added 2026-10-08. |
 | **Blueprint reviewer** | none — family A, accepted by decision | Anthropic | `anthropic/claude-opus-5.5` over OpenRouter pinned to `anthropic`, effort high | yes, once per Blueprint, before sign-off | Reads the stage document and the Blueprint whole against §07, the blueprint, and §06's rules (`bb blueprint-review`). The rule's reasoning reaches it as it reaches the spec reviewer; the exception is from a measurement — on one build this family, reading Blueprints cold, alone found each round's load-bearing defect — written in the profile's comment and watched in `NOTES.md`. Added 2026-09-25. |
@@ -433,7 +433,7 @@ This is where §05's independence rule stops being prose. *Verifier ≠ Coder
 family* is recorded in method §05 and decision log P0-3 and had never been
 anything a tool could fail on; `violations` fails on it, naming the role. It
 is the same gap `:shapes` and `:deps-sigs` had, in the rule the method rests
-on — the Tester and the Reviewer exist to disagree with the Coder, and two
+on — the Tester and the code reviewer exist to disagree with the Coder, and two
 roles from its family share its blind spots.
 
 What is NOT checked is as deliberate. Two verifiers may share each other's

@@ -29,18 +29,19 @@ Set once, in stage 0's plan, before its first packet dispatches; revised when a 
 verification (the author of the tests is never the author of the code) · failure escalates
 to the role that owns it · humans gate exactly two moments · every loop has a circuit breaker.
 
-## 1. The six roles, and the independence rule
+## 1. The roles, and the independence rule
 
-`method.md` §05. Six roles are dispatched with packets and held to gates; a seventh works beside
-the loop. The constraints are the contract and are fixed; which model fills each seat is §12.
+`method.md` §05. The roles below work inside the loop - a packet, a reading or a gate; one more
+works beside it. The constraints are the contract and are fixed; which model fills each seat is §12.
 
 | Role | Constraint | Dispatched? | Access |
 |---|---|---|---|
 | **Coder** | family A | yes, every task | Full read/eval/write, in its own worktree |
 | **Tester** | **≠ A** | yes, every task | Eval for authoring only; never runs the full suite |
-| **Reviewer** | **≠ A** | yes, on green | Read-only: a diff, the slice, the gate report |
+| **Code reviewer** | **≠ A** | yes, on green | Read-only: a diff, the slice, the gate report |
 | **Spec reviewer** | **≠ A** (the Architect's family, which the Coder shares by convention) | yes, once per spec, at `start` | Read-only: the spec, its context, the rules; no tools |
 | **Plan reviewer** | **≠ A** (the Architect's family, which the Coder shares by convention) | yes, in every stage's plan step (`bb plan-review`) | Read-only: the plan's documents and the stage plan; no tools |
+| **Blueprint reviewer** | none — may share family A, by a written decision | yes, once per blueprint, before sign-off (`bb blueprint-review`) | Read-only: the stage plan and the blueprint; no tools |
 | **Security reviewer** | **≠ A** | yes, at every stage's end (`bb security-review`) | Reads the merged application, writes and runs tests of its own, sends requests to it, in a sandbox with no network; changes nothing of the application |
 | **Orchestrator** | none — it verifies nothing | software; a model for triage only, on a red gate, a note or a rejected review | Dispatch and triage; no code, no eval |
 | **Architect** | none | no — the seat, at the workspace root | Produces the blueprint; no REPL |
@@ -60,7 +61,7 @@ and the assembler (`harness.contract.packet`) cuts each role's from the task spe
 | Architect | The requirement + requirements/architecture/stage docs |
 | Coder | Its blueprint slice + read-only dependency files + a REPL connection |
 | Tester | The **same slice** — **not** the Coder's implementation — + a REPL for authoring |
-| Reviewer | The diff + the slice + the green gate report (read-only) |
+| Code reviewer | The diff + the slice + the green gate report (read-only) |
 | Orchestrator | Full blueprint + task DAG + accumulated error context |
 
 **Key invariant:** the Tester reads the *contract*, never the *code* — enforced in the packet
@@ -84,7 +85,7 @@ roles' REPLs stay warm across attempts. And this is what makes auto-approving an
 
 `method.md` §09. Gate 0 is run by the harness over what a role wrote, before the sequence; the
 sequence is `loop.edn`'s `:gates`, as `bb init` wrote it for the generated application - three
-of the template's own tasks and the KIT's boundary gate; gate 5 is the Reviewer, dispatched only
+of the template's own tasks and the KIT's boundary gate; gate 5 is the code reviewer, dispatched only
 on green.
 
 | Order | Gate | Command | Catches |
@@ -94,7 +95,7 @@ on green.
 | 2 | `:lint` | `bb lint` (clj-kondo, **fail on warning**) | style and correctness smells |
 | 3 | `:test` | `bb test` (eftest + cloverage; **independently authored** tests) | behaviour against the contract |
 | 4 | `:deps` | `bb --config <kit>/harness/bb.edn boundary` | a layer requiring what `layers.edn` forbids, or a namespace it does not declare |
-| 5 | Review | the Reviewer, ≠ Coder family | what no machine gate catches |
+| 5 | Review | the code reviewer, ≠ Coder family | what no machine gate catches |
 
 **The gate keys are a contract.** Triage dispatches on them and the run log is read by key
 months later; a project that changes the sequence keeps the keys.
@@ -271,9 +272,10 @@ written down — the rule source's own first rule says it outranks the others:
 |---|---|---|---|---|
 | Coder | <family A> | | <OpenRouter / direct> | |
 | Tester | <≠ A> | | | |
-| Reviewer | <≠ A> | | | |
-| Spec reviewer | <≠ the Architect's> | | | |
-| Plan reviewer | <≠ the Architect's> | | | the spec reviewer's selection unless a bake-off on the plan says otherwise |
+| Code reviewer | <≠ A> | | | |
+| Spec reviewer | <≠ A, the Architect's> | | | |
+| Plan reviewer | <≠ A, the Architect's> | | | the spec reviewer's selection unless a bake-off on the plan says otherwise |
+| Blueprint reviewer | <any - the seat's only by a written decision> | | | reads each stage's blueprint whole before sign-off |
 | Security reviewer | <≠ A> | | | chosen by `bb security-bake-off` on the KIT's planted-fault fixture |
 | Orchestrator (triage) | <any> | | | may share family A — it verifies nothing — but say so |
 | Architect | the seat | | — | |
@@ -340,7 +342,7 @@ justifies the extra call, or the reason it isn't justified here>.
 ## 16. Property targets
 
 > What the Tester generates against, and what every other role is handed too — the Coder has
-> to satisfy them and the Reviewer judges against them. Fill in the ones your domain actually has.
+> to satisfy them and the code reviewer judges against them. Fill in the ones your domain actually has.
 
 - **Round-trip:** <parse → canonical → store → read> preserves <fields>.
 - **Identity & disjointness:** `diff(v, v)` is empty; added and removed sets are disjoint.

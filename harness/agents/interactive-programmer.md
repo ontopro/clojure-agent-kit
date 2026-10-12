@@ -15,7 +15,7 @@ for "it works".
 
 ## Why this role exists
 
-The loop dispatches six roles with task packets and holds them to gates. Three kinds
+The loop dispatches its roles with task packets and holds them to gates. Three kinds
 of work fall outside that, and every project has all three:
 
 - **Building the harness itself**, which is written outside the loop it will later run.

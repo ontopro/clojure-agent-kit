@@ -93,7 +93,7 @@ Architect's blueprint input
 
 > The Architect turns this into task packets of ten to twenty targets each, the fixture a test
 > needs named in the input target that needs it (`method.md` §06). Each task: prototype in the
-> REPL → persist → cheap gates → Reviewer. Sequence so each task builds only on what already
+> REPL → persist → cheap gates → code reviewer. Sequence so each task builds only on what already
 > exists. Make the first task small, to learn the roles' habits on this stage before the big ones.
 
 1. **<the first task, small>** — <…>.

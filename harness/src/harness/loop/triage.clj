@@ -24,8 +24,8 @@
   to the mechanical proposal on a red gate and to a person on a note or a
   rejection, and the record says which and why in `:triage/fallback`.
 
-  THE ORCHESTRATOR IS THE PROFILE'S FOURTH ROLE, reached over HTTP like the
-  other three, with no tools: it reads what the prompt carries and nothing
+  THE ORCHESTRATOR IS A ROLE OF THE PROFILE, reached over HTTP like the
+  others, with no tools: it reads what the prompt carries and nothing
   else, so a triage verdict is reproducible from the prompt in the run
   directory. Upstream shelled out to a CLI and scraped its JSON."
   (:require

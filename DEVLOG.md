@@ -56,6 +56,18 @@ step by hand, named there.
 
 ## 2026-10-09
 
+### The roles counted, and "code reviewer" in the documents (plan 6.3, item 7)
+
+The audit's D2 and D3. `method.md` §05 said six roles over a table of ten and called the one off
+the loop the seventh; method-and-tooling §1 said six and, like its §12, left out the Blueprint
+reviewer the profile requires - both now count what they list, and the template has the Blueprint
+reviewer's row (one more mark to fill). Three docstrings counted the profile's roles as they were,
+and one called every stop a person's; they say the roles, and each stop's owner. Since the security
+reviewer became a role, a bare "Reviewer" names two: the documents say "code reviewer" for the
+`:reviewer` role. What the code prints and the models are told - stop messages, prompts, the rule
+source, the profiles' comments - still says "the Reviewer": `NOTES.md` row 126, carried, since a
+change to what a model reads is measured before it ships.
+
 ### The loop as the code runs it (plan 6.3, item 7)
 
 The audit's B findings, older than plan 6.3: documents described the loop as it is not. The retry

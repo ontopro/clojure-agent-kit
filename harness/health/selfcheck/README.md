@@ -32,7 +32,7 @@ Two boundaries, both enforced by `bb deps-check` against `layers.edn`:
 - **Siblings.** `parse`, `compute` and `render` may not see each other.
 - **The protocol seam.** `compute` depends on `selfcheck.bindings`, the protocol, and never on
   `selfcheck.memory`, an implementation of it. This is the violation rule `:review-scope` tells a
-  Reviewer to look for, and `bb break seam` proves the gate catches it.
+  Code reviewer to look for, and `bb break seam` proves the gate catches it.
 
 That is why one file was not enough: `:files/context`, `:deps-sigs` and `:layer/name` in a task
 packet are meaningless until one namespace has signatures another must call without reading the
@@ -76,7 +76,7 @@ all — a `clamp` function."* And readiness criteria 4 and 6 — *every gate gre
 scaffold*, and *you have run the whole loop end to end on one trivial task*. Until this
 directory existed there was nothing to run them against. Criterion 6 was closed for the
 loop with real models on exactly that `clamp` function - `bb run-loop run` from provisioning
-to the Reviewer's approval, `bb run-loop merge` behind a written decision, merged onto a
+to the code reviewer's approval, `bb run-loop merge` behind a written decision, merged onto a
 throwaway branch and recorded `:merged` - and `bb health` closes it on every machine with a
 scripted runner, which is the record this repository keeps.
 

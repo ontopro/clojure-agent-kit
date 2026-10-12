@@ -257,7 +257,7 @@
 
   EXACTLY ONE SEAT, and it is a scalar rather than a collection so that it
   cannot grow a second. A project has one interactive client — the one the
-  human is sitting in — and the three dispatched roles are the harness's
+  human is sitting in — and the roles it dispatches are the harness's
   business, reached over HTTP and not through anyone's editor. Working in one
   client while a reviewer runs in another is the arrangement this shape is
   built to make unrepresentable.

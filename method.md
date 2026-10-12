@@ -573,7 +573,7 @@ Release repeats. After the first, stages continue, and a later release carries a
 
 ## 05 — Roles
 
-### Six roles, one independence rule
+### Ten roles, one independence rule
 
 | Role | Responsibility | Access |
 |---|---|---|
@@ -581,7 +581,7 @@ Release repeats. After the first, stages continue, and a later release carries a
 | **Architect** | Produces the blueprint: data shapes → interfaces → namespaces → dependency-ordered task list | Produces an artifact; no code access |
 | **Coder** | REPL-first implementation, one task at a time | Full read/eval/write, in its own isolated workspace |
 | **Tester** | Authors tests from the blueprint's contract, independently of the Coder | Eval for authoring only — never runs the full suite itself |
-| **Reviewer** | Judges already-green code: design, idiom, edge cases, silent behavior changes | Read-only — a diff and a gate report, nothing to write |
+| **Code reviewer** | Judges already-green code: design, idiom, edge cases, silent behavior changes | Read-only — a diff and a gate report, nothing to write |
 | **Spec reviewer** | Reads a task's contract cold, before anyone works from it: every place a target can be read two ways, every input no target mentions. A different family from the Architect, for the reason below | Read-only — the spec, its context files and the rules; no code, no tools |
 | **Plan reviewer** | Reads the plan cold in every stage's plan step with §03's checklist: the whole set in stage 0, the stage plan and the documents it revised after — a requirement written for a stage not pulled, a risk with no owning stage, a lesson the new plan does not answer, and the faults that recur. Its own role; the spec reviewer's selection by default, since the two readings differ in the checklist sent and not in the kind of reader. A different family from the Architect, as the spec reviewer is | Read-only — the plan's documents and the stage plan; no code, no tools |
 | **Security reviewer** | Reads the merged application at every stage's end for what a request cannot show - a race, a check on the wrong route or method, a value that reaches a query unchecked - and backs each finding with a test of its own that fails; what it cannot show with a test is a hypothesis for the person. A different family from the Coder's: it is there to disagree with what the Coder wrote | Read, search, write new tests, run the tests and send a request to the application, in a sandbox with no network; it changes nothing of the application |
@@ -595,9 +595,9 @@ each as shipped. Which model fills a role is a measurement, not a preference: th
 candidate map where they agree and disagree, and it holds every candidate to the independence rule
 as it holds a profile.
 
-### A seventh role, off the loop
+### One more role, off the loop
 
-The six above are dispatched with packets and held to gates. Three kinds of work are not, and every project has all three: **building the harness itself** (which is written outside the loop it will later run, §12), **modelling and design sessions**, where the output is a decision rather than a diff, and **debugging the worktree an escalation left behind** — the loop deliberately leaves it in place (§07), and somebody has to go and look at it.
+The roles above work inside the loop's discipline - a packet, a reading or a gate. Three kinds of work do not, and every project has all three: **building the harness itself** (which is written outside the loop it will later run, §12), **modelling and design sessions**, where the output is a decision rather than a diff, and **debugging the worktree an escalation left behind** — the loop deliberately leaves it in place (§07), and somebody has to go and look at it.
 
 Name that role too. It is a person, or an agent working interactively beside them, and it has no packet, no retry cap and no gate discipline of its own — which is exactly why it has to inherit the *written* rules (§06). Hand-written code held to a lower bar than generated code is how a codebase ends up with two standards and one of them losing.
 
@@ -616,7 +616,7 @@ about two roles deriving the same wrong thing from the *contract* — and an amb
 read the same way more often than differently, because both models take the likeliest reading. The
 first project built on this kit merged a home page with a stray literal `div` on it: the Coder
 spliced a body vector where the target said it "appears unchanged", the Tester's test checked for
-exactly the run of elements a splice produces, the Reviewer approved, every gate was green. A
+exactly the run of elements a splice produces, the code reviewer approved, every gate was green. A
 person found it. **Disagreement between roles is the lucky case: it makes an ambiguity visible.
 Agreement hides it.** So the contract is reviewed before anyone works from it (§07, the spec
 review), by a model from a different family than the Architect who wrote it — for the same
@@ -624,7 +624,7 @@ reason the Tester is — and a stage's exit includes somebody looking at the bui
 
 ### Do you actually need a dedicated Tester?
 
-It's a real cost — a fourth model call on every task. Worth it when the error cost is high (audited data, correctness-critical logic) or the domain has rich generative properties to test against. Skip it for lower-stakes or exploratory work, and lean on Coder-loop + gates + Reviewer instead.
+It's a real cost — a fourth model call on every task. Worth it when the error cost is high (audited data, correctness-critical logic) or the domain has rich generative properties to test against. Skip it for lower-stakes or exploratory work, and lean on Coder-loop + gates + code reviewer instead.
 
 Wherever tests are authored by a role, that role should never also *run* the full suite as a model step — **authoring is a model's job, running is the gate's job**, always. And Coder and Tester can both start from the same blueprint slice and work in parallel rather than a red-green handoff, since each derives independently from the same written contract.
 
@@ -635,7 +635,7 @@ Wherever tests are authored by a role, that role should never also *run* the ful
 - **Transitivity** — if `A ⊑ B` and `B ⊑ C`, the derived store agrees that `A ⊑ C`.
 - **Cross-surface consistency** — two paths to the same answer (an API and a query) agree on every sampled input.
 
-**Hand the property targets to every role, not just the Tester.** They are contract: the Coder has to satisfy them and the Reviewer has to judge against them. The Tester's independence comes from never seeing the *implementation*; it does not depend on the others not seeing the *targets*. Giving them to the Tester alone lost a decision twice in the seed's own runs. In one, a clarified edge case never reached the Coder. In another, a validation rule reached neither the Coder, who broke it, nor the Reviewer, who therefore could not see it broken.
+**Hand the property targets to every role, not just the Tester.** They are contract: the Coder has to satisfy them and the code reviewer has to judge against them. The Tester's independence comes from never seeing the *implementation*; it does not depend on the others not seeing the *targets*. Giving them to the Tester alone lost a decision twice in the seed's own runs. In one, a clarified edge case never reached the Coder. In another, a validation rule reached neither the Coder, who broke it, nor the code reviewer, who therefore could not see it broken.
 
 ---
 
@@ -669,13 +669,13 @@ Twelve rules, each paid for once by a round or a stop in the projects built on t
    (`:data-conventions`), and its audience includes the Tester — a guarantee the Tester never sees is
    an input the Tester will test.
    **A seam is not only where data enters the system.** A value handed INTO a function crosses one
-   too, and what its caller guarantees about it has to be written just the same. Reviewers on two
+   too, and what its caller guarantees about it has to be written just the same. Code reviewers on two
    projects, reading cold, each noticed that a tree passed into a view could itself carry that
    view's marker attribute, which makes *exactly one element carries the marker* unsatisfiable. Once
    it stayed a note; once it was a rejection. The answer was one sentence for every view: *a marker
    belongs to one view, and a tree handed in carries none of it — callers guarantee it.*
 5. **The prediction written before dispatch is a contract review in disguise.** Writing down what
-   might go wrong found a gap for nothing that a Reviewer would have found for a round.
+   might go wrong found a gap for nothing that a code reviewer would have found for a round.
 6. **A target written at a stop is looser than one written at the desk.** A target added at a
    rejection drew two of the next three rejections.
 7. **Check the contract against reality before dispatch**: the shapes against the real data, the
@@ -690,7 +690,7 @@ Twelve rules, each paid for once by a round or a stop in the projects built on t
    styled everything keyed on a marker the targets promised, and of the two class names no target
    mentioned one happened to exist and one did not.
 9. **Emphasis is a promise.** "Anywhere in a hiccup tree, *however deeply nested*" was written to mean
-   *nested too*; two Reviewers, each reading cold, rejected ordinary recursion against it, because a
+   *nested too*; two code reviewers, each reading cold, rejected ordinary recursion against it, because a
    recursive walk does have a depth it fails at. The fix was to delete three words. When two
    independent readers agree against the author, that is evidence about the sentence, not about the
    readers — and the author is the last person to see it: the proposals on the table were a depth
@@ -698,11 +698,11 @@ Twelve rules, each paid for once by a round or a stop in the projects built on t
 10. **A finding is dismissed by asking whether ordinary input can reach it, not whether the happy path
    does.** "The library never produces a heading with no text" was true of headings that have text;
    an image-only heading is ordinary Markdown and has none. That finding was read and left twice, in
-   two projects, and the second time a Reviewer rejected on it. What it needed was one sentence at
+   two projects, and the second time a code reviewer rejected on it. What it needed was one sentence at
    the seam — the loader refuses such a page — and the function past the seam told it may assume.
-   The question is not the Architect's alone. A Reviewer once rejected on a value that was valid by
+   The question is not the Architect's alone. A code reviewer once rejected on a value that was valid by
    its type and impossible to write in the project's only input format; triage routed the Coder, a
-   round was paid, and the Architect was never asked. So the Reviewer and triage are given it too,
+   round was paid, and the Architect was never asked. So the code reviewer and triage are given it too,
    narrowly: **the type decides what a value is; where the project says its input comes from decides
    whether it can occur** — and only a source the rule source NAMES puts a value out of reach, never
    a role's sense that an input is unlikely, which is the mistake this rule began with. Say where
@@ -711,14 +711,14 @@ Twelve rules, each paid for once by a round or a stop in the projects built on t
     *classes and wrappers are presentation — never in a target, never asserted by a test, never
     grounds for a rejection* keeps every review off styling, and it worked: not one finding about a
     class in a whole project. Its other face: once a view is merged, restyling it changes no target,
-    so a loop run would pay a Coder, a Tester and a Reviewer to verify nothing, and the only real
+    so a loop run would pay a Coder, a Tester and a code reviewer to verify nothing, and the only real
     check is a person looking. Say in the project's conventions who may make a presentation-only
     change to a merged view and what stands in for the loop — the gates green, screenshots at the
     widths that matter, the change recorded as what it is. And say where the ASK for presentation
     lives, because a target cannot carry it: with classes kept out of every target and every test,
     nothing in a Coder's packet says *style it*, and one project's first four merged views arrived
     with no classes at all. The ask is one sentence in `:data-conventions` naming the design tokens
-    the views draw on — read by every role, so the Reviewer knows the classes are expected and not
+    the views draw on — read by every role, so the code reviewer knows the classes are expected and not
     review material — or a packet instruction labelled as a working instruction, never as contract.
     The sentence, once written, was enough: the next stage's views were styled without a hand change.
 12. **A packet carries ten to twenty targets, and names the fixture each test needs.** The first
@@ -781,7 +781,7 @@ The trick worth keeping is `:deps-sigs`: upstream namespaces are handed over as 
 
 - **Coder** — target is the impl file(s); context is the read-only dependency files.
 - **Tester** — target is the test namespace; context *excludes the Coder's own impl file even if listed*. Enforce this mechanically, in whatever assembles the packet — not as author discipline, which erodes.
-- **Reviewer** — no target file at all. It receives a diff, the contract slice, and the green gate report — nothing to write.
+- **Code reviewer** — no target file at all. It receives a diff, the contract slice, and the green gate report — nothing to write.
 
 > **The key invariant:** the Tester reads the *contract*, never the *code*. Tests derived from an implementation only re-assert what the code already does; tests derived from the shapes catch where the code and the contract disagree.
 
@@ -857,7 +857,7 @@ so the extraction is a command, and a test reads the template's packet as a spec
 
 ### The spec review — per task (Architect, at the desk)
 
-Before a task is dispatched, its spec is read cold by one model with no tools — the Reviewer's
+Before a task is dispatched, its spec is read cold by one model with no tools — the code reviewer's
 family, not the Architect's — and asked one question: *every place a target can be read two ways,
 and every input the shapes allow that no target mentions.* The Architect reads the list and, per
 finding, fixes the contract or leaves it. Then `start`.
@@ -871,7 +871,7 @@ little. Tried retrospectively on fifteen dispatched specs, it named every ambigu
 cost a round — including the one every role and every gate had passed — for about a tenth of a
 round's price. It also once invented a gap, every sample, until the type rule (§06) went into its
 prompt; the Architect still reads the list. **What it buys is not only fewer rounds.** In the second
-project a Reviewer rejected a green loader on two targets, both real defects — and both targets
+project a code reviewer rejected a green loader on two targets, both real defects — and both targets
 existed only because the spec review had asked the questions they answer. The spec review and the
 code review are not redundant: the second can only reject against what the first got written down.
 **What it costs**: about a quarter of that project's spend, a list that is mostly real and mostly
@@ -925,11 +925,11 @@ flowchart LR
 
 1. **Provision** — an isolated workspace and eval environment per task. Give each concurrently-dispatched task its own process, not a session shared with other in-flight tasks; shared session state between "simultaneous" tasks is a silent contamination source.
 2. **Gate 0** — a pre-gate, not a gate: whatever's purely mechanical and fully automatable (formatting-on-write, delimiter repair) runs here, before it can consume an agent's capped retry budget.
-3. **Gates** — ordered cheap to expensive, each short-circuiting on first failure (§09). A failing gate's log goes straight back to the owning agent; **no Reviewer involvement yet.** Don't pay a frontier model to look at code that doesn't compile.
-4. **Triage** — route a failure to the role that *owns* it: an implementation bug to the Coder, a design flaw to the Architect, a defective test to the Tester — not reflexively back to whoever wrote last. Default ownership of a failing test is the Coder (make it green); if the Coder judges the *test* mis-encodes the contract, that is a triage decision, not the Coder's to make alone. And what a retry *carries* is part of the routing: the Tester never receives the Reviewer's findings or anything that names the implementation — its independence is that it derives tests from the contract, and one quoted line undoes it. The harness's driver refuses such feedback unless the judgement to send it is recorded.
-5. **Review** — only on green gates, by the independent-family Reviewer, focused on what tools can't catch: design, idiom, logic, naming, edge cases. Edge cases it surfaces return to the Tester as new cases and to the Coder for the fix. **Before the Architect reads a rejection, run the gated code over the real input.** It costs nothing and it says which kind of rejection this is: one about the code, or one about an input the Reviewer invented and the project's sources cannot produce. The first real project did it as a habit and found the second kind each time it looked; the answer to that kind is scope, in the rule source, never a new rule in the contract (rule 10 above).
+3. **Gates** — ordered cheap to expensive, each short-circuiting on first failure (§09). A failing gate's log goes straight back to the owning agent; **no code reviewer involvement yet.** Don't pay a frontier model to look at code that doesn't compile.
+4. **Triage** — route a failure to the role that *owns* it: an implementation bug to the Coder, a design flaw to the Architect, a defective test to the Tester — not reflexively back to whoever wrote last. Default ownership of a failing test is the Coder (make it green); if the Coder judges the *test* mis-encodes the contract, that is a triage decision, not the Coder's to make alone. And what a retry *carries* is part of the routing: the Tester never receives the code reviewer's findings or anything that names the implementation — its independence is that it derives tests from the contract, and one quoted line undoes it. The harness's driver refuses such feedback unless the judgement to send it is recorded.
+5. **Review** — only on green gates, by the independent-family code reviewer, focused on what tools can't catch: design, idiom, logic, naming, edge cases. Edge cases it surfaces return to the Tester as new cases and to the Coder for the fix. **Before the Architect reads a rejection, run the gated code over the real input.** It costs nothing and it says which kind of rejection this is: one about the code, or one about an input the code reviewer invented and the project's sources cannot produce. The first real project did it as a habit and found the second kind each time it looked; the answer to that kind is scope, in the rule source, never a new rule in the contract (rule 10 above).
 
-**Exit:** formatted, lint-clean, independently-authored tests green, boundaries green, Reviewer approved.
+**Exit:** formatted, lint-clean, independently-authored tests green, boundaries green, code reviewer approved.
 
 > **The circuit breaker.** Every loop gets a hard retry cap; hitting it escalates to a human rather than retrying forever. The number is arbitrary per project — the discipline isn't. And escalate means *hand off what's there*, not discard it: if an agent had already produced usable output before the cap fired, let the gates judge it. A cap that fires with nothing produced is still an unambiguous failure.
 
@@ -1055,7 +1055,7 @@ Thirteen things that only showed up from running the loop repeatedly against rea
 11. **Synthetic data in a real frame is indistinguishable from a measurement.** Label it where it is *displayed* — on the row, on the number, on the total — never only in a caption. This one was learned the expensive way: an example report carrying plausible timings, costs and provider names, under prose that said three times the values were not real, was read as a record of three model calls that had never happened. The caption was accurate and the table still lied. Mark the numbers, because the numbers are what get read alone.
 
 13. **Report time and money from timestamps and per-step measurements, never from a running counter — and separate waiting from working.** A wall time accumulated across invocations once printed below the sum of its own steps. The seed's report derives total, waiting-on-a-person and active time from events' absolute stamps, groups cost by provider, role and model, and puts the provider's own balance at start and end beside the summed costs; an estimate of how long something took, repeated after the fact, is not a measurement.
-12. **A rule the agent has already read is not fixed by writing it again.** When an instruction is ignored rather than unknown, a second copy changes nothing — the question is whether anything fires at the moment of action. Gates cannot help here: they run on artifacts, and a process that reached a clean artifact by the wrong route leaves them nothing to see. That is review's job, and it is why the Reviewer reads the diff rather than the result. Before adding a rule, check whether the one you want already exists somewhere the agent had open.
+12. **A rule the agent has already read is not fixed by writing it again.** When an instruction is ignored rather than unknown, a second copy changes nothing — the question is whether anything fires at the moment of action. Gates cannot help here: they run on artifacts, and a process that reached a clean artifact by the wrong route leaves them nothing to see. That is review's job, and it is why the code reviewer reads the diff rather than the result. Before adding a rule, check whether the one you want already exists somewhere the agent had open.
 
 **Triage is worth a model call.** A deterministic heuristic has to assume something — usually that the tests are right and the implementation is wrong. A model that reads the failing gate output against the contract *and* both agents' files can tell the difference between a faithful implementation and a test whose generator violates the contract's own preconditions. Put it behind the deterministic path as a seam, so it can **degrade, never block**. The harness carries this as `harness.loop.triage`: one call with no tools, on a red gate, on a note and on a rejected review, routed on from the first run with the mechanical proposal as its fallback — and with two safeties the prompt alone does not give you: a route to the Architect or a human *stops* the loop rather than dispatching, and guidance bound for the Tester is held to the same leak check as a typed retry.
 
@@ -1091,7 +1091,7 @@ This document gives you the method, a decision-log discipline, and a task-packet
 
 When you do get there, [`harness/`](harness/) is a working starting point rather than a blank page — a few thousand lines extracted from a harness that ran this loop across dozens of real dispatches, and since extended by running it again. It carries §06's task packet as real schemas, the gate runner, gate 0, workspace provisioning, the `AgentRunner` seam, a toolchain doctor, and the loop itself.
 
-**The loop is in it now, and the order that put it there is the one this section recommends.** The seed shipped without it deliberately, and the manual version — the same steps as commands, with a person routing every failure — ran every recorded task in this repository's history before any of it was automated. What those runs made obvious is what got built: the loop routes what it can — a red gate, a note, a review that rejected — and hands every branch it cannot decide back to a person with the run left exactly where it stopped. It never merges. A Reviewer's approval stops it, and the merge is a command a person types with the reason written down first; §07's second human gate is a file, not a prompt the loop blocks on. The commands are still there, because they are how that person carries on. Do not read a finished loop in someone else's repository as permission to start with one in yours.
+**The loop is in it now, and the order that put it there is the one this section recommends.** The seed shipped without it deliberately, and the manual version — the same steps as commands, with a person routing every failure — ran every recorded task in this repository's history before any of it was automated. What those runs made obvious is what got built: the loop routes what it can — a red gate, a note, a review that rejected — and hands every branch it cannot decide back to a person with the run left exactly where it stopped. It never merges. A code reviewer's approval stops it, and the merge is a command a person types with the reason written down first; §07's second human gate is a file, not a prompt the loop blocks on. The commands are still there, because they are how that person carries on. Do not read a finished loop in someone else's repository as permission to start with one in yours.
 
 **What is in it, what is deliberately left out, and the order to add the rest back are its own README's business** — [`harness/README.md`](harness/README.md). Repeating the inventory here is how the two drifted apart once already: this section said "the first headless runner" was still to come for a week after the seed had one.
 

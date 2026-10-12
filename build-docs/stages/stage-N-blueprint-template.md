@@ -107,7 +107,7 @@ marker attributes for anything a test must find (method §06).
 
 > Per-role deltas from the same base packet: the **Tester's** `:files/context` **omits the
 > Coder's implementation file** — enforce this in the packet assembler, not by discipline.
-> The **Reviewer** gets a diff, the contract slice and the green gate report; no target file.
+> The **code reviewer** gets a diff, the contract slice and the green gate report; no target file.
 
 ## 5. Spike gates run by this stage
 
