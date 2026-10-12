@@ -5,7 +5,7 @@ kit is (`README.md`), not the method it teaches (`method.md`), not its current
 limitations (`NOTES.md`) — those are linked where you need them.
 
 A reusable build method for developing Clojure software with a small team of AI agents:
-`method.md` (the method), `plan-template/` (the plan template), `skills/` (the conversational steps), `harness/` (runnable
+`method.md` (the method), `build-docs/` (the build's document templates), `skills/` (the conversational steps), `harness/` (runnable
 code). Public, MIT, at `github.com/ontopro/clojure-agent-kit`.
 
 ## You are working ON this repo, not through its loop
@@ -53,7 +53,7 @@ benefit. It is also a product artifact, and also not addressed to you.
   stop. A commit message is not a document; nobody greps for a fact they do not
   know exists. At an item's end, `bb kit-status` lists what is stale or left hanging - read it
   before calling the item done. The commit check holds the part it can see: code staged under `harness/src/`,
-  `tools/`, `skills/` or `plan-template/` without `DEVLOG.md` or `NOTES.md` is refused, and a
+  `tools/`, `skills/` or `build-docs/` without `DEVLOG.md` or `NOTES.md` is refused, and a
   staged `NOTES.md` whose `**Updated <date> <time>` stamp was not moved past HEAD's, to no later
   than the clock, is refused.
 - **A number or a capability claim names the command that produced it, and the command
@@ -99,7 +99,7 @@ benefit. It is also a product artifact, and also not addressed to you.
   demanding attention to avoid an error; `> [!CAUTION]` a destructive outcome to avoid. One
   callout per point, the point in a sentence, the rest of the section as prose or a list under
   it - a section that is all callouts has none. The first is the harness README's
-  "Folders say topic; layers say dependency order." Not inside `plan-template/`: the plan check
+  "Folders say topic; layers say dependency order." Not inside `build-docs/`: the plan check
   reads every blockquote line there as a template instruction the project deletes.
 - Vocabulary:
   - **rule source**, never "corpus".

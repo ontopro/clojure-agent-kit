@@ -25,7 +25,7 @@ template, not KIT.
 
 ## For adopters
 
-What is in the clone - the method, the plan template, the harness, the tools, the skills - is
+What is in the clone - the method, the build docs, the harness, the tools, the skills - is
 listed under [Five parts](#five-parts), in the section for KIT developers below.
 
 ### Before anything: three installs
@@ -112,7 +112,7 @@ application generated from the pinned template, gates green, every gate failed o
 task through the loop, the application served, a headless Firefox opening it through KIT's browser
 pack (`tools/browser/`) where geckodriver and Firefox are installed (skipped, and the row says so,
 where they are not), and KIT's security pack (`tools/security/`) trying from outside what the
-plan template's architecture document says the template gives, and asking about every library it
+build docs' architecture document says the template gives, and asking about every library it
 ships and every line of its history. `bb gates` fails if this block and the records
 disagree. The date is the claim; nothing here says it still holds today.
 
@@ -151,7 +151,7 @@ where the weak points are.
 | | What it is |
 |---|---|
 | **[`method.md`](method.md)** | The method. Five phases — Setup, Prove, Build, Pre-release, Release — each a group of stages by kind, run as one lean-agile discipline: lean decides *what* to build, agile decides *how*, and the flow is Kanban (pulled, WIP-limited, no timeboxes). Roles, the task-packet contract, the rule source, the decision log, the gate order, and a field guide of twelve lessons each bought with a real run. |
-| **[`plan-template/`](plan-template/)** | The plan template, half-written on purpose — the source a plan derives from, an overview with a ranked risk register, requirements with MVP/post-MVP scoping, architecture and method-and-tooling each in three parts (GIVEN by adopting KIT, CHOSEN once in stage 0's plan, THEIRS the domain), the decision log, and just-in-time stage docs. `bb init` copies it into the project's plan repository, beside the rules overlay, the profile and the run records that repository also holds, and `bb plan-check` reads the filled plan before the first dispatch. |
+| **[`build-docs/`](build-docs/)** | The build docs, half-written on purpose — the source a plan derives from, an overview with a ranked risk register, requirements with MVP/post-MVP scoping, architecture and method-and-tooling each in three parts (GIVEN by adopting KIT, CHOSEN once in stage 0's plan, THEIRS the domain), the decision log, and just-in-time stage docs. `bb init` copies it into the project's plan repository, beside the rules overlay, the profile and the run records that repository also holds, and `bb plan-check` reads the filled plan before the first dispatch. |
 | **[`harness/`](harness/)** | The code that runs, and its health check's first subject (`health/selfcheck/`, a deliberately trivial project with gates that execute and fixtures that make each fail): the doctor, `bb init` and the health check; the two readings of a filled plan (`bb plan-check`, the gate; `bb plan-review`, the model's pass); the packet assembler, the gate runner, gate 0 and the boundary gate, three-worktree provisioning, an API-backed runner, a per-run cost report that names the three commits it ran against, the rule source with a drift gate, a bake-off that compares candidates for a role with a judge reading blind, and the loop that drives them — stopping for a person at every branch it cannot decide. [Its own README](harness/README.md) is the inventory. |
 | **[`tools/`](tools/)** | Tool packs a project runs from KIT's clone, each with its own `bb.edn` and dependencies, against the project's own server whatever its framework — the way a project already runs the boundary gate. The first is `tools/browser/`: the stage-end checks in a real browser (screenshots as tall as the page with the overflow measure, an axe-core scan, the serve-check-stop skeleton), Etaoin under Babashka driving a headless Firefox through geckodriver. Beside it, `tools/svg/` checks the SVG files a project draws, and `tools/security/` tries from outside what a request can - the headers, the cookies, a POST without its token, the routes that need a login, the error pages, the static folders, TLS - at every stage's end and in `bb health`. [Its README](tools/README.md) is the list. |
 | **[`skills/`](skills/)** | One skill per step of the workflow that is a conversation with a person and has a defined output - `scoping`, `plan`, `stage-plan`, `stage-end`, and beside them `kit-start`, the orientation a project's first session begins with - in one anatomy (when it runs, reads, refuses when, asks, writes, done when), each a thin layer over the method section it cites. Claude Code's mechanism, loaded from `.claude/skills/`: `bb init` renders them into a workspace's, where `scoping` is the first conversation, and `bb skills-sync --check` holds both to the source and every cited heading to the method. The other seats follow the same sections by hand. [Its README](skills/README.md) says the rules. |

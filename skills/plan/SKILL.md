@@ -25,14 +25,14 @@ skill's.
 | `method.md` | `The document set` |
 | `method.md` | `Security is a decision in stage 0 and a signature before release, not a gate` |
 | `method.md` | `The plan-review pass — the cheapest gate in the whole method` |
-| `plan-template/source.md` | `2. What was read from it` |
-| `plan-template/00-overview.md` | `4. Stage map` |
-| `plan-template/00-overview.md` | `4a. Risk register` |
-| `plan-template/01-requirements.md` | `10. Scope — three lists, revised at every stage's end` |
-| `plan-template/02-architecture.md` | `4. Security, as the template gives it` |
-| `plan-template/02-architecture.md` | `8. Security choices` |
-| `plan-template/02-architecture.md` | `15. Threat model` |
-| `plan-template/04-decision-log.md` | `5. Validation spikes (R)` |
+| `build-docs/source.md` | `2. What was read from it` |
+| `build-docs/00-overview.md` | `4. Stage map` |
+| `build-docs/00-overview.md` | `4a. Risk register` |
+| `build-docs/01-requirements.md` | `10. Scope — three lists, revised at every stage's end` |
+| `build-docs/02-architecture.md` | `4. Security, as the template gives it` |
+| `build-docs/02-architecture.md` | `8. Security choices` |
+| `build-docs/02-architecture.md` | `15. Threat model` |
+| `build-docs/04-decision-log.md` | `5. Validation spikes (R)` |
 
 And the workspace's own files, never the conversation: `<name>-build/docs/source.md` (the
 brief, filed by `bb brief` after scoping), the material it names, and the rules overlay

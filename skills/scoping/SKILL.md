@@ -19,7 +19,7 @@ seat's, and `bb init` renders them into the workspace's `.claude/skills/`.
 | File | Heading |
 |---|---|
 | `method.md` | `Scope — the scoping conversation, the first in the workspace` |
-| `plan-template/source.md` | `1. What was handed over` |
+| `build-docs/source.md` | `1. What was handed over` |
 
 Read the method's section whole before the first question: it has the six groups, the two
 rules (answers recorded as given; a question the person cannot answer becomes a risk or an open

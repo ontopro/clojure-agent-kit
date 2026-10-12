@@ -109,7 +109,7 @@
   (let [kit-dir (str (fs/parent (fs/real-path ".")))
         ws (str (fs/path (fs/real-path (fs/create-temp-dir)) "xyx"))
         lay (init/layout {:name "xyx" :kit-dir kit-dir :dir ws
-                          :plan-template (init/plan-template-files kit-dir)
+                          :build-docs (init/build-docs-files kit-dir)
                           :rule-mirrors ["xyx-app/AGENTS.md"]
                           :loop/defaults (:loop/defaults pin)})
         made (init/create! lay {:git-env git-env

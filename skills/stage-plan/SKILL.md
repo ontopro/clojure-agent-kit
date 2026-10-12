@@ -22,12 +22,12 @@ before the blueprint is cut.
 | `method.md` | `The stage plan, written just-in-time` |
 | `method.md` | `Spike gates: how a PROVISIONAL decision gets settled` |
 | `method.md` | `Pre-release and release` |
-| `plan-template/05-lessons.md` | `Stage <N> — <name>` |
-| `plan-template/stages/stage-N-template.md` | `2. Requirements this stage adds` |
-| `plan-template/stages/stage-N-template.md` | `11. Exit criteria (the stage's gate), and the cap` |
-| `plan-template/stages/stage-0-spike-template.md` | `2. The risks it proves, and the decisions it gates` |
-| `plan-template/stages/stage-prerelease-template.md` | `7. Exit criteria (the stage's gate), and the cap` |
-| `plan-template/02-architecture.md` | `15. Threat model` |
+| `build-docs/05-lessons.md` | `Stage <N> — <name>` |
+| `build-docs/stages/stage-N-template.md` | `2. Requirements this stage adds` |
+| `build-docs/stages/stage-N-template.md` | `11. Exit criteria (the stage's gate), and the cap` |
+| `build-docs/stages/stage-0-spike-template.md` | `2. The risks it proves, and the decisions it gates` |
+| `build-docs/stages/stage-prerelease-template.md` | `7. Exit criteria (the stage's gate), and the cap` |
+| `build-docs/02-architecture.md` | `15. Threat model` |
 
 And the workspace's own files, never the conversation, in this order: `docs/05-lessons.md`
 (the previous stage's section, read before anything else), the previous stage plan's §12

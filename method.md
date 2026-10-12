@@ -53,7 +53,7 @@ E · RELEASE      the release stage  package ▶ deploy on the server, or publis
 12. [Should you build a harness?](#12--should-you-build-a-harness)
 13. [Quick start](#13--quick-start)
 
-Fillable document stubs for a new project live in [`plan-template/`](plan-template/).
+Fillable document stubs for a new project live in [`build-docs/`](build-docs/).
 
 ---
 
@@ -104,7 +104,7 @@ The method uses a small vocabulary and means one thing by each word. A reader wh
 | **decision** | one thing settled, with a permanent ID, its status and its owner, in the decision log (§08); provisional until the spike that gates it runs; reversed only by a later decision that cites it |
 | **stage map** | the candidate stages in the order the risks put them, each with its kind; only the stage in progress has a cap; re-ranked after every stage |
 | **stage** | a unit of scope with a gate at its end: defined by what risk it retires and what it ships; pulled when the previous one closes; never a unit of time. Numbered through, each with a kind |
-| **project plan** | the document set in the build repository — the source, the overview, the requirements, the architecture, the method as instantiated, the decision log, the lessons, and one stage plan per stage. What and why, for people, with permanent IDs. "The plan" is its short form, in the commands and the template folder too |
+| **project plan** | the document set in the build repository — the source, the overview, the requirements, the architecture, the method as instantiated, the decision log, the lessons, and one stage plan per stage. What and why, for people, with permanent IDs. "The plan" is its short form, in the commands too |
 | **stage plan** | the project plan's slice for one stage, written when the stage is pulled: its goal and kind, the requirements it adds, the decisions it exercises, what it proves and does not, its seams, its task list, its exit criteria and its cap. Approved by the person before the blueprint is cut from it (§04) |
 | **blueprint** | the stage's technical specification, written by the Architect from the stage plan: the data shapes, the signatures, the namespaces, the task packets in dependency order — how, precisely enough for two agents who never compare notes (§06). Exactly one per stage, read by the blueprint review and signed off by the person |
 | **spec** | one task's contract, a packet cut from the blueprint: the targets, the shapes inlined, the signatures checked against the source they name. What one Coder and one Tester receive, read cold by the spec review before dispatch; one or more per stage (§06, §07) |
@@ -228,7 +228,7 @@ known-good set, calling newer *newer than tested* rather than wrong.
 install first), commits it UNTOUCHED - everything you add is diffable against that commit for
 ever - then commits the KIT's hand as a second commit: `AGENTS.md` from the rule source, the
 `CLAUDE.md` stub that imports it, and `layers.edn` for the boundary gate. Beside the application it
-creates the plan repository: `docs/` from [`plan-template/`](plan-template/), the rules overlay
+creates the plan repository: `docs/` from [`build-docs/`](build-docs/), the rules overlay
 `rules.edn` (the rule source's placeholders, filled there and never in the clone), the profile
 `profile.edn` (the shipped example for your seat, `--seat <name>`, default `claude`; the models per
 role, edited there), the run defaults in `loop.edn`, and `runs/` with `RUNS.md`, where the loop's
@@ -301,7 +301,7 @@ persistent sessions keeps vars and namespaces alive between calls — cheap for 
 loop, and exactly why the per-workspace rule matters. The harness provisions one per worktree.
 
 > The hook config for write-time repair, per client, is in
-> [`plan-template/03-method-and-tooling.md`](plan-template/03-method-and-tooling.md) §7.3.
+> [`build-docs/03-method-and-tooling.md`](build-docs/03-method-and-tooling.md) §7.3.
 
 ### The gates are wired; you edit the sequence, not the wiring
 
@@ -528,7 +528,7 @@ Write exit criteria as things a person can *check*, not qualities they can admir
 
 > **The stage's decision-log updates are recorded** — spike outcomes noted against the decisions they gate, provisional entries confirmed or reversed.
 >
-> **Every behaviour the tests verify only as an HTTP contract gets an interaction check** — in a real browser, at the stage's end, outside the loop. A test that calls a handler as a function of a request map proves the fragment comes back with the right header; it cannot prove the page swapped it in, or that the form submitted at all. One project accepted its search swap unverified for a whole build and verified it the next with a ten-line script driving headless Chrome: load the page, type, submit, screenshot the result. Not a gate and not a test in the suite — it starts a server and a browser, which the Testers' rule keeps out — but recorded beside the screenshots, with the driver named. The KIT ships the driver as a tool pack, `tools/browser/`, run from the application's folder whatever its framework: `bb --config <kit>/tools/browser/bb.edn check` serves the application by the command given, screenshots the pages named as tall as they are with their measurements, scans them with axe-core, and stops - Etaoin under Babashka, a headless Firefox through geckodriver, no Node; the project's interaction checks are its own scripts on the same driver. Three things a first project learnt about it are written where the scripts are (`tools/browser/README.md`), the first being that the permission to start Firefox on macOS belongs to the terminal application and `geckodriver --version` cannot tell - which is why `bb health` starts one. The plan template's `03-method-and-tooling.md` §17 says how.
+> **Every behaviour the tests verify only as an HTTP contract gets an interaction check** — in a real browser, at the stage's end, outside the loop. A test that calls a handler as a function of a request map proves the fragment comes back with the right header; it cannot prove the page swapped it in, or that the form submitted at all. One project accepted its search swap unverified for a whole build and verified it the next with a ten-line script driving headless Chrome: load the page, type, submit, screenshot the result. Not a gate and not a test in the suite — it starts a server and a browser, which the Testers' rule keeps out — but recorded beside the screenshots, with the driver named. The KIT ships the driver as a tool pack, `tools/browser/`, run from the application's folder whatever its framework: `bb --config <kit>/tools/browser/bb.edn check` serves the application by the command given, screenshots the pages named as tall as they are with their measurements, scans them with axe-core, and stops - Etaoin under Babashka, a headless Firefox through geckodriver, no Node; the project's interaction checks are its own scripts on the same driver. Three things a first project learnt about it are written where the scripts are (`tools/browser/README.md`), the first being that the permission to start Firefox on macOS belongs to the terminal application and `geckodriver --version` cannot tell - which is why `bb health` starts one. The build docs's `03-method-and-tooling.md` §17 says how.
 >
 > **The owner walks through the result, with the browser checks already run.** Not a review of the code and not a gate: the person the site is for, at every page the stage made, saying what is wrong. On the first real project that walk produced ten changes at stage 1's end that no target could have named - a hero at the wrong width, cards' lines too small, icons half the size they should be - seven of them presentation done by hand in an hour, and the stage was not over until they were. Write it as an exit criterion, after the checks and before the tag.
 

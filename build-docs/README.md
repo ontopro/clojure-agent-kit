@@ -1,4 +1,4 @@
-# The plan template
+# The build docs
 
 The documents a project's plan is made of, blank. `bb init` copies them, this file
 included, into `<name>-build/docs/` (or the folder `--build` names) and commits them as that

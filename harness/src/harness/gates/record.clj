@@ -15,7 +15,7 @@
   when there is no record, when it is red, or when the tree it names is not the
   tree being committed (`git write-tree` of the index the commit is made from).
   And it refuses code staged without a document: a change under `harness/src/`,
-  `tools/`, `skills/` or `plan-template/` stages `DEVLOG.md` or `NOTES.md` too.
+  `tools/`, `skills/` or `build-docs/` stages `DEVLOG.md` or `NOTES.md` too.
   And a staged `NOTES.md` must have bumped its `**Updated <date> <time>` stamp
   past HEAD's, to no later than the clock.
   And no added line may carry a name in the wording list (`.local/wording/names.txt`)
@@ -252,10 +252,10 @@
          run-gates)))
 
 (def code-paths
-  "Where a staged change is code (or a skill, or the plan template) that a
+  "Where a staged change is code (or a skill, or the build docs) that a
   document has to carry: what changed and why in `DEVLOG.md`, or what is still
   open in `NOTES.md`."
-  ["harness/src/" "tools/" "skills/" "plan-template/"])
+  ["harness/src/" "tools/" "skills/" "build-docs/"])
 
 (def documents #{"DEVLOG.md" "NOTES.md"})
 

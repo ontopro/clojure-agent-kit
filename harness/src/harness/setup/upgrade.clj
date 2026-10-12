@@ -78,7 +78,7 @@
     :head             the KIT's commit now
     :behind           how many commits `head` is past `made-at`, or nil when
                       `made-at` is unknown here (another KIT, or never recorded)
-    :template-changed plan-template files changed since `made-at`
+    :template-changed build-docs files changed since `made-at`
     :pin-moved        the application template's pin then and now (`pin-moved`),
                       or nil when it has not moved since `made-at`
     :guidance-changed ids of placeholder rules whose shipped text changed since
@@ -125,9 +125,9 @@
               (str "workspace.edn has no " k ": the harness reads as if that thing were not there")))
 
       (seq template-changed)
-      (conj (str "the plan template changed since: " (str/join ", " template-changed)
+      (conj (str "the build docs changed since: " (str/join ", " template-changed)
                  " - the build's copies are its own; where a document is still being filled, read the diff: "
-                 "`git -C " kit " diff " made-at " HEAD -- plan-template/`"))
+                 "`git -C " kit " diff " made-at " HEAD -- build-docs/`"))
 
       pin-moved
       (conj (let [{:keys [from to]} pin-moved]
@@ -243,7 +243,7 @@
      :head-version (git kit-dir "describe" "--tags" "--abbrev=0")
      :behind behind
      :template-changed (if known?
-                         (vec (remove str/blank? (str/split-lines (or (git kit-dir "diff" "--name-only" made-at "HEAD" "--" "plan-template/") ""))))
+                         (vec (remove str/blank? (str/split-lines (or (git kit-dir "diff" "--name-only" made-at "HEAD" "--" "build-docs/") ""))))
                          [])
      :pin-moved (when known?
                   (some-> (git kit-dir "show" (str made-at ":harness/resources/" template/resource-name))

@@ -6,7 +6,7 @@
   to none of them. `harness.setup.workspace` reads what this writes.
 
   TWO SEPARABLE PARTS, AND THIS NAMESPACE IS THE FIRST. Creating the workspace -
-  the folders, `workspace.edn`, the build repository with the plan from `plan-template/`, the agent file, the
+  the folders, `workspace.edn`, the build repository with the plan from `build-docs/`, the agent file, the
   wiring - knows nothing about any template. Generating the application is the
   only part that knows about one, and it arrives as `:app-fn`, a function of the
   application's folder. With none, the workspace names an application folder it
@@ -208,7 +208,7 @@
        "records - `runs/`, `RUNS.md`, `reviews/`. They are here and not in the application because they\n"
        "configure and record the BUILD, not the thing built: the dispatched roles never see them, and a\n"
        "change of model or rule is a commit here, never in the application's history.\n\n"
-       "- `docs/` - the KIT's plan template, as shipped. Fill them in the order `docs/README.md`\n"
+       "- `docs/` - the KIT's build docs, as shipped. Fill them in the order `docs/README.md`\n"
        "  gives; angle brackets mark what to replace. The method they implement is `method.md` in the KIT\n"
        "  (`" kit "`). `reviews/`, beside it, is for a review's raw material - each reader's output, any\n"
        "  comparison of readers - outside the governing documents. Two commands, run from the workspace, read\n"
@@ -283,7 +283,7 @@
   brief filed where nothing cites it is the thing this exists to prevent."
   [template-text brief today]
   (when-not (str/includes? template-text brief-row)
-    (throw (ex-info "plan-template/source.md has no S-1 row for the brief" {:init/error :no-brief-row})))
+    (throw (ex-info "build-docs/source.md has no S-1 row for the brief" {:init/error :no-brief-row})))
   (str (str/replace template-text brief-row
                     (str "| S-1 | the brief | text, Appendix A below | " today " | the person |"))
        "\n---\n\n## Appendix A — The brief, as given\n\n" (str/trim brief) "\n"))
@@ -337,8 +337,8 @@
   `:dir` nil means the DEFAULT target, the folder the KIT's clone is in: the
   adopter cloned the KIT into the folder they mean to work in. An explicit
   `:dir` is consent to use exactly that folder, and the KIT may then be
-  anywhere. `:plan-template` are the plan documents to copy, relative to
-  `<kit>/plan-template`. `:seat` names which shipped profile the build gets
+  anywhere. `:build-docs` are the plan documents to copy, relative to
+  `<kit>/build-docs`. `:seat` names which shipped profile the build gets
   (`default-seat` when nil). `:rule-mirrors` and `:loop/defaults` come from
   whatever generates the application.
 
@@ -359,7 +359,7 @@
   `:dir? true`, `:content string`, `:copy-from abs`, or `:app? true` (the
   application's folder: created only by an `:app-fn`). `:repos` are the folders
   that become repositories."
-  [{:keys [kit-dir dir plan-template skills rule-mirrors seat kit-commit kit-version harness-tasks] project :name defaults :loop/defaults
+  [{:keys [kit-dir dir build-docs skills rule-mirrors seat kit-commit kit-version harness-tasks] project :name defaults :loop/defaults
     app-folder :app build-folder :build}]
   (let [ws-dir (str (fs/normalize (or dir (fs/parent kit-dir))))
         seat (or seat default-seat)
@@ -421,9 +421,9 @@
             {:path (str build "/runs") :what "one record per run, copied here by the loop's record" :dir? true}
             {:path (str build "/RUNS.md") :what "the records' tables, published; bb report-check holds it to runs/"
              :content (runs-md project ws)}]
-           (for [s (sort plan-template)]
+           (for [s (sort build-docs)]
              {:path (str build "/docs/" s) :what "a plan document, from the template"
-              :copy-from (kit-path (str "plan-template/" s))})
+              :copy-from (kit-path (str "build-docs/" s))})
            [{:path app :what "the application (its own repository)" :app? true}
             {:path "work" :what "scratch, in no repository: runs/<id>/, worktrees/" :dir? true}
             {:path "work/runs" :what "one folder per run" :dir? true}]))}))
@@ -466,7 +466,7 @@
                "build are two repositories"))
 
     (not (:kit? facts))
-    (conj "this is not a clone of the KIT (no plan-template/ beside harness/): run `bb init` at the root of one")
+    (conj "this is not a clone of the KIT (no build-docs/ beside harness/): run `bb init` at the root of one")
 
     ;; The build's profile is a copy of a shipped example, so a seat the KIT has no example
     ;; for has nothing to copy - and an empty profile.edn would fail at the first `start`.
@@ -503,12 +503,12 @@
 ;; the edge: facts in, files out
 ;; ---------------------------------------------------------------------------
 
-(defn plan-template-files
-  "The plan documents the KIT ships, relative to `<kit>/plan-template`, its README
+(defn build-docs-files
+  "The plan documents the KIT ships, relative to `<kit>/build-docs`, its README
   included: that is where the order of writing and who writes them is said, and
   it travels with them."
   [kit-dir]
-  (let [root (fs/path kit-dir "plan-template")]
+  (let [root (fs/path kit-dir "build-docs")]
     (when (fs/directory? root)
       (->> (fs/glob root "**")
            (filter fs/regular-file?)
@@ -532,7 +532,7 @@
   "What is true of the machine that `refusals` needs to know. `doctor-ok?` is a
   thunk, so a test does not probe a toolchain."
   [{:keys [kit-dir]} {ws-dir :workspace/dir :keys [entries]} doctor-ok?]
-  {:kit? (fs/directory? (fs/path kit-dir "plan-template"))
+  {:kit? (fs/directory? (fs/path kit-dir "build-docs"))
    :existing (->> entries
                   (map :path)
                   (filter #(fs/exists? (fs/path ws-dir %)))
@@ -646,7 +646,7 @@
              :build build-folder
              :kit-commit (kit-commit kit-dir)
              :kit-version (kit-version kit-dir)
-             :plan-template (plan-template-files kit-dir)
+             :build-docs (build-docs-files kit-dir)
              :skills (skills/sources kit-dir)
              :harness-tasks (front-door/harness-tasks (slurp (str (fs/path kit-dir "harness" "bb.edn"))))
                ;; THE MIRROR FOLLOWS THE FOLDER, not the name: it is a path in workspace.edn.

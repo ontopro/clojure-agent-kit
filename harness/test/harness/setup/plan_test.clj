@@ -1,5 +1,5 @@
 (ns harness.setup.plan-test
-  "The shipped plan template as a fixture: which documents there are, and how
+  "The shipped build docs as a fixture: which documents there are, and how
   many marks each carries for a project to fill. The check over a filled plan
   (`bb plan-check`) is written against these numbers, so a change to the
   template changes them here deliberately - and against a workspace whose
@@ -19,7 +19,7 @@
 
 ;; The tests run in harness/, so the template is the real one beside them.
 (def kit-dir (str (fs/parent (fs/real-path "."))))
-(def template-dir (str (fs/path kit-dir "plan-template")))
+(def template-dir (str (fs/path kit-dir "build-docs")))
 
 (deftest a-placeholder-is-an-angle-bracket-a-project-fills
   (is (= ["<Project>" "<YYYY-MM-DD>"] (plan/placeholders "# <Project>\n\n**Last updated:** <YYYY-MM-DD>")))
@@ -50,7 +50,7 @@
           "stages/stage-prerelease-template.md" 14
           "stages/stage-release-template.md" 8}
          (plan/placeholder-counts template-dir)))
-  (is (= (keys (plan/placeholder-counts template-dir)) (init/plan-template-files (str (fs/parent template-dir))))
+  (is (= (keys (plan/placeholder-counts template-dir)) (init/build-docs-files (str (fs/parent template-dir))))
       "what bb init lists is what is counted, source.md and the README included"))
 
 (deftest the-given-parts-ask-nothing

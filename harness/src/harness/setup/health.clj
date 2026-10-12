@@ -526,7 +526,7 @@
   token, error pages, static folders - and stops the server; `deps` asks OSV about
   every library the application ships; `secrets --all` reads its whole history
   for a committed secret. Ok when each exits 0 and wrote its record: no failing
-  row. So every claim of the plan template's `02-architecture.md` §4 that a
+  row. So every claim of the build docs's `02-architecture.md` §4 that a
   request can try is tried on the day of the run, against the application the
   pin generates, and the pin's dependencies are asked about the same day: an
   advisory published since the pin was made fails here first.
@@ -585,7 +585,7 @@
         local-root (some-> (System/getenv "KIT_TEMPLATE_LOCAL") not-empty fs/absolutize fs/normalize str)
         ws (str (fs/path (fs/create-temp-dir {:prefix "kit-health"}) app-name))
         req {:name app-name :kit-dir kit :dir ws
-             :plan-template (init/plan-template-files kit)
+             :build-docs (init/build-docs-files kit)
              :skills (skills/sources kit)
              :rule-mirrors [(str app-name "-app/AGENTS.md")]
              :loop/defaults (:loop/defaults pin)}

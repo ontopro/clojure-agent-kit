@@ -15,7 +15,7 @@
 
 ;; The tests run in harness/, so the template is the real one beside them.
 (def kit-dir (str (fs/parent (fs/real-path "."))))
-(def template-path (str (fs/path kit-dir "plan-template" "stages" "stage-N-blueprint-template.md")))
+(def template-path (str (fs/path kit-dir "build-docs" "stages" "stage-N-blueprint-template.md")))
 (def template (slurp template-path))
 
 (def session {:worktree/path "/work/app-wt-01" :nrepl/port 7801})

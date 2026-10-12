@@ -56,6 +56,17 @@ step by hand, named there.
 
 ## 2026-10-09
 
+### `plan-template/` is `build-docs/` (plan 6.3, item 7)
+
+The folder holds the templates of every document the build keeps - the seven of the project plan,
+the stage plan, the blueprint, the pre-release and release plans, the gates record - not a plan's
+template, and `bb init` copies it to `<xyx>-build/docs/`; the name now says where it lands. Every
+reference follows: the commit check's list of folders that need a DEVLOG or NOTES entry, `bb
+doctor`'s diff of what changed since a workspace was made, `bb init`'s copy and its "not a clone"
+check (`build-docs-files`, `:build-docs`), `bb plan-check`'s given parts, the health check, the
+skills, the method, the READMEs and this repository's `CLAUDE.md`. "The plan" stays the word for
+what `bb plan-check` and `bb plan-review` read.
+
 ### Phases group the stages, and setup is not a stage (plan 6.3, item 7)
 
 The walk-through's findings 5 and 11 had one cause: the method's three phases - Plan, Foundation,

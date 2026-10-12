@@ -25,11 +25,11 @@
 (deftest the-lines-name-what-is-expected-what-is-here-and-the-command-that-shows-it
   (testing "commits later, and the changes since"
     (let [lines (upgrade/expectations (assoc complete :head "def" :behind 3
-                                             :template-changed ["plan-template/01-requirements.md"]
+                                             :template-changed ["build-docs/01-requirements.md"]
                                              :guidance-changed [:data-conventions]))]
       (is (= "made at KIT commit abc; the KIT is 3 commits later, at def" (first lines)))
-      (is (some #(str/includes? % "the plan template changed since: plan-template/01-requirements.md") lines))
-      (is (some #(str/includes? % "git -C /k diff abc HEAD -- plan-template/") lines) "the command that shows it")
+      (is (some #(str/includes? % "the build docs changed since: build-docs/01-requirements.md") lines))
+      (is (some #(str/includes? % "git -C /k diff abc HEAD -- build-docs/") lines) "the command that shows it")
       (is (some #(str/includes? % "placeholder rule :data-conventions changed since this workspace filled it") lines))))
   (testing "the application template's pin moved: both pins, and where the template's change is seen"
     (let [kit-v1 {:git/url "https://github.com/ontopro/clojure-stack-lite.git" :git/tag "kit-v1"

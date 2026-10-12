@@ -103,7 +103,7 @@
     (is (nil? (record/document-refusal ["harness/src/harness/a.clj" "DEVLOG.md"])))
     (is (nil? (record/document-refusal ["skills/plan/SKILL.md" "NOTES.md"]))))
   (testing "code alone, each kind of path: refused, the paths named"
-    (doseq [p ["harness/src/harness/a.clj" "tools/security/check.bb" "skills/plan/SKILL.md" "plan-template/docs/01.md"]]
+    (doseq [p ["harness/src/harness/a.clj" "tools/security/check.bb" "skills/plan/SKILL.md" "build-docs/docs/01.md"]]
       (is (str/includes? (str (record/document-refusal [p])) p))))
   (testing "a document only counts at the root"
     (is (some? (record/document-refusal ["tools/x.bb" "tools/DEVLOG.md"]))))

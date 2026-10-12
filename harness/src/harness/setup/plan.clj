@@ -1,6 +1,6 @@
 (ns harness.setup.plan
   "What the harness knows about a plan's documents: the template the KIT ships
-  (`plan-template/`, copied into `<name>-build/docs/` by `bb init`), the
+  (`build-docs/`, copied into `<name>-build/docs/` by `bb init`), the
   marks in it that a filled plan must no longer carry, and the check that
   reads a filled plan before the first dispatch - `bb plan-check`.
 
@@ -385,7 +385,7 @@
     {:plan plan
      :workspace (some-> ws :workspace/dir)
      :documents (count texts)
-     :problems (problems plan ws (fs/path (kit-dir ws) "plan-template") (template/pin (template/load-pins)))
+     :problems (problems plan ws (fs/path (kit-dir ws) "build-docs") (template/pin (template/load-pins)))
      ;; the two lists, not failures: what the person and the stage's end are shown
      :inferred (inferred-requirements texts)
      :uncited (if source

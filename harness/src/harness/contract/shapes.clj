@@ -514,7 +514,7 @@
   "Every key `loop.edn` may hold, described once: its type, its default, what it
   is for, and the namespace that reads it. `bb init` renders the file's header
   from this; `resolve-config` fills the defaults from it and refuses a key not
-  in it by name; the plan template's §13 names only keys that are here. A key's
+  in it by name; the build docs's §13 names only keys that are here. A key's
   namespace names the thing it configures (`:spec-review/max` beside
   `:spec-review/run?`), which is also what reads it; `:architecture`, a map
   with keys of its own, is the one bare key and keeps its name.
@@ -524,7 +524,7 @@
   A `:computed` default depends on the run or the workspace and is filled in
   `resolve-config`; the doc says from what. Before this table the defaults
   lived in `resolve-config`'s merge, the keys were documented in the driver's
-  docstring, the header `bb init` writes and the plan template's §13, and a
+  docstring, the header `bb init` writes and the build docs's §13, and a
   key misspelt in `loop.edn` was a default silently applied - one of them,
   the spec review, spends money."
   [{:key :run/id :type :string :required true :reader 'harness.loop.driver

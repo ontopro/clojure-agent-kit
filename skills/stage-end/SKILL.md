@@ -25,12 +25,12 @@ exit criteria and says what is kept.
 | `method.md` | `Scope is three lists, revised at every stage's end` |
 | `method.md` | `Rank risks, then order the stages by them` |
 | `method.md` | `Security is a decision in stage 0 and a signature before release, not a gate` |
-| `plan-template/05-lessons.md` | `Stage <N> — <name>` |
-| `plan-template/01-requirements.md` | `6b. The index — every requirement, by the stage that wrote it` |
-| `plan-template/01-requirements.md` | `10. Scope — three lists, revised at every stage's end` |
-| `plan-template/stages/stage-N-template.md` | `11. Exit criteria (the stage's gate), and the cap` |
-| `plan-template/stages/stage-N-template.md` | `12. Residual risks / feeds into the next stage` |
-| `plan-template/02-architecture.md` | `15. Threat model` |
+| `build-docs/05-lessons.md` | `Stage <N> — <name>` |
+| `build-docs/01-requirements.md` | `6b. The index — every requirement, by the stage that wrote it` |
+| `build-docs/01-requirements.md` | `10. Scope — three lists, revised at every stage's end` |
+| `build-docs/stages/stage-N-template.md` | `11. Exit criteria (the stage's gate), and the cap` |
+| `build-docs/stages/stage-N-template.md` | `12. Residual risks / feeds into the next stage` |
+| `build-docs/02-architecture.md` | `15. Threat model` |
 | `tools/browser/README.md` | `Three things to know` |
 | `tools/security/README.md` | `The routes file` |
 | `tools/security/README.md` | `The two scans` |

@@ -9,7 +9,7 @@ has the steps; [`method.md`](../method.md) has the substance.
 
 **The method is the source.** A skill is a thin layer that names its method section, asks its
 questions and writes to the template; the questions, the sections and the rules are written
-once, in `method.md` and `plan-template/`. A skill that restates its section is drift. Each
+once, in `method.md` and `build-docs/`. A skill that restates its section is drift. Each
 skill's *Reads* table cites the headings it reads, and `bb skills-sync --check` in the harness's
 gates fails when a cited heading is no longer in the file - so the method can be renamed, but
 not out from under a skill.

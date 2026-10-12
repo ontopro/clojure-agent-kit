@@ -23,12 +23,12 @@
 (defn- tmp [] (str (fs/real-path (fs/create-temp-dir))))
 
 (defn- request [m]
-  (merge {:name "xyx" :kit-dir kit-dir :plan-template (init/plan-template-files kit-dir) :skills (skills/sources kit-dir)} m))
+  (merge {:name "xyx" :kit-dir kit-dir :build-docs (init/build-docs-files kit-dir) :skills (skills/sources kit-dir)} m))
 
 (defn- paths [lay] (set (map :path (:entries lay))))
 
 (deftest the-default-workspace-is-the-folder-the-kit-is-in
-  (let [lay (init/layout (request {:kit-dir "/w/clojure-agent-kit" :plan-template ["00-overview.md"]}))]
+  (let [lay (init/layout (request {:kit-dir "/w/clojure-agent-kit" :build-docs ["00-overview.md"]}))]
     (is (= "/w" (:workspace/dir lay)))
     (is (true? (:default? lay)))
     (is (= {:workspace/kit "clojure-agent-kit" :workspace/app "xyx-app" :workspace/build "xyx-build"
@@ -53,14 +53,14 @@
 (deftest a-brief-is-filed-as-source-md-s-first-row-and-its-appendix
   ;; Scoping runs in the workspace, after `bb init`; `bb brief` files what it wrote: §1's row
   ;; names it and Appendix A carries it verbatim; everything else the template leaves is left.
-  (let [filed (init/source-with-brief (slurp (str (fs/path kit-dir "plan-template" "source.md")))
+  (let [filed (init/source-with-brief (slurp (str (fs/path kit-dir "build-docs" "source.md")))
                                       "Build me a site.\n\nFor patients." "2026-10-06")]
     (is (str/includes? filed "| S-1 | the brief | text, Appendix A below | 2026-10-06 | the person |"))
     (is (str/ends-with? filed "## Appendix A — The brief, as given\n\nBuild me a site.\n\nFor patients.\n"))
     (is (not (str/includes? filed init/brief-row)) "the template's row is replaced, not kept beside")
     (is (str/includes? filed "<what it shows>") "§2 stays the Architect's to fill"))
   (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no S-1 row" (init/source-with-brief "# no row" "x" "d")))
-  (let [lay (init/layout (request {:plan-template ["source.md"]}))
+  (let [lay (init/layout (request {:build-docs ["source.md"]}))
         entry (first (filter #(= "xyx-build/docs/source.md" (:path %)) (:entries lay)))]
     (is (:copy-from entry) "init copies source.md as shipped: the brief comes after"))
   (let [ws-dir (fs/create-temp-dir)
@@ -70,7 +70,7 @@
     (try
       (fs/create-dirs (fs/parent source))
       (fs/create-dirs (fs/parent brief))
-      (spit (str source) (slurp (str (fs/path kit-dir "plan-template" "source.md"))))
+      (spit (str source) (slurp (str (fs/path kit-dir "build-docs" "source.md"))))
       (is (str/includes? (:refused (init/file-brief ws brief "2026-10-09")) "is not a file") "no brief yet")
       (spit (str brief) "Build me a site.\n")
       (is (= (str source) (:ok (init/file-brief ws brief "2026-10-09"))))
@@ -184,8 +184,8 @@
   (let [ws (tmp)
         kit (str (fs/path ws "clojure-agent-kit"))
         _ (fs/create-dirs (fs/path kit ".git"))
-        _ (fs/create-dirs (fs/path kit "plan-template"))
-        req (request {:kit-dir kit :plan-template ["00-overview.md"]})
+        _ (fs/create-dirs (fs/path kit "build-docs"))
+        req (request {:kit-dir kit :build-docs ["00-overview.md"]})
         lay (init/layout req)]
     (is (= {:kit? true :existing [] :other-repos [] :workspaces-below [] :seats [] :doctor/ok? true}
            (init/survey req lay (constantly true)))
@@ -226,7 +226,7 @@
       (testing "the plan is a repository with one commit and nothing left over"
         (is (= "1" (git-out plan "rev-list" "--count" "HEAD")))
         (is (= "" (git-out plan "status" "--porcelain")))
-        (is (= (slurp (str (fs/path kit-dir "plan-template" "stages" "stage-N-template.md")))
+        (is (= (slurp (str (fs/path kit-dir "build-docs" "stages" "stage-N-template.md")))
                (slurp (str (fs/path plan "docs" "stages" "stage-N-template.md"))))
             "the template keeps its tree, so their relative links still resolve")
         (is (fs/exists? (fs/path plan "docs" "README.md")) "the order of writing travels with the documents")
@@ -364,7 +364,7 @@
   (let [lay (init/layout (request {:kit-dir "/w/clojure-agent-kit" :name "xyx"
                                    :app "xyx-shop-site" :build "xyx-shop-plan"
                                    :rule-mirrors ["xyx-shop-site/AGENTS.md"]
-                                   :plan-template ["00-overview.md"]}))
+                                   :build-docs ["00-overview.md"]}))
         content (fn [path] (:content (first (filter #(= path (:path %)) (:entries lay)))))]
     (is (= {:workspace/kit "clojure-agent-kit"
             :workspace/app "xyx-shop-site" :workspace/build "xyx-shop-plan"
