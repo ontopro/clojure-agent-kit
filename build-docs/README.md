@@ -38,8 +38,8 @@ repository holds all of it, and the KIT's clone none.
 skill writes to `work/brief.md` and `bb brief` files (`method.md` §03, scope). Then source → requirements (the scope lists; stage 1's
 requirements, no more) → architecture (candidates, provisional) → method → decision log (each
 candidate with the pass criterion stage 0 applies) → overview (the stage map by kind, a cap on
-stage 0 alone), and the overlay's three placeholders in `rules.edn` with the method. Then `bb
-plan-check` (the gate) and the plan-review pass (`method.md` §03; `bb plan-review` runs it), the
+stage 0 alone), and the overlay's three placeholders in `rules.edn` with the method. Then the
+plan-review pass (`method.md` §03; `bb plan-review` runs it) and `bb plan-check` (the gate), the
 person's approval of stage 0 with its cap, then the stage 0 plan - whose first packet proves the loop - and
 stage 0 itself. **The plan commits to stage 0 and nothing after it.** Every later stage's plan is
 written when that stage is pulled, with the previous stage's §12 and `05-lessons.md` read first,
@@ -70,6 +70,6 @@ session started at the workspace root - in stage 0's plan step, before any loop 
 ever writes a plan document. **Angle brackets** `<like this>` mark things to replace. Delete
 every instructional blockquote once you've acted on it — a document left half-filled reads as a
 decision, and an angle bracket left standing reaches whoever reads the plan next as literal text.
-`bb plan-check` in the KIT's `harness/` holds the plan to both (and to the rules overlay's
+`bb plan-check`, run from the workspace folder, holds the plan to both (and to the rules overlay's
 placeholders and the given parts), and `start` runs it once per workspace before its first
 dispatch; this README and the templates under `stages/` are not checked, everything else under `docs/` is.

@@ -147,7 +147,7 @@
 
       (seq mirrors-drifted)
       (into (for [m mirrors-drifted]
-              (str m " does not match the rule source: run `bb rules-sync` in the KIT's harness/")))
+              (str m " does not match the rule source: run `bb rules-sync` from the workspace folder")))
 
       (and profile (seq profile-missing))
       (into (for [r profile-missing]
@@ -156,7 +156,7 @@
       (seq skills-missing)
       (conj (str ".claude/skills/ lacks the KIT's " (str/join ", " skills-missing)
                  " skill" (when (not= 1 (count skills-missing)) "s")
-                 " (bb init writes them since 2026-10-07): run `bb skills-sync` in the KIT's harness/"))
+                 " (bb init writes them since 2026-10-07): run `bb skills-sync` from the workspace folder"))
 
       (and front-door (not (:existed? front-door)))
       (conj (str "no bb.edn at the workspace root - the front door every KIT command is run through (bb init writes it since 0.6.3): "
@@ -169,7 +169,7 @@
       (seq skills-drifted)
       (into (for [s skills-drifted]
               (str ".claude/skills/" s "/SKILL.md is not the rendering of the KIT's skills/" s
-                   "/SKILL.md: run `bb skills-sync` in the KIT's harness/ (a project's own skill under another name is never touched)"))))))
+                   "/SKILL.md: run `bb skills-sync` from the workspace folder (a project's own skill under another name is never touched)"))))))
 
 (defn render
   "The report as `bb doctor` prints it."

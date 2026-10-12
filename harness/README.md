@@ -21,7 +21,7 @@ bb health     # the KIT, this machine, the pinned template - certified together 
 bb init       # the workspace, named after the folder the clone is in (or bb init <name>): the application generated from the pin, the build, work/
 bb plan-check  # the filled plan, before the first dispatch: no mark, no instruction, the overlay filled, the given parts intact
 bb plan-review # method.md §03's review pass, run: the plan read cold by the :plan-reviewer; a reading, not a gate
-bb skills-sync # the fifth part, skills/, rendered to the clone's own .claude/skills/ and a workspace's; --check holds both to the source and every cited heading to the method (in gates)
+bb skills-sync # the fifth part, skills/, rendered to a workspace's .claude/skills/; --check holds the copies to the source and every cited heading to the method (in gates)
 bb brief      # in a workspace: the brief the scoping skill wrote to work/brief.md, filed as source.md §1 and Appendix A
 bb next       # the workflow's next step, its owner and the command or skill, read off the build's files; setup before a workspace exists, scoping in a new one
 bb stage-report <stage-plan.md> # a stage's figures from its records, into its plan's exit-criteria section; --check holds the block to the records (in gates)
@@ -158,7 +158,7 @@ the model as shipped — is [`roster.md`](roster.md).
 | `harness.setup.plan` + `harness.setup.plan-review` | `bb plan-check`: what a filled plan still carries - every mark, every line of the template's instructions still standing, every requirement that cites no observation of `source.md` and is not marked inferred, the overlay's placeholders - and whether its given parts are intact (the KIT's rules unedited, `layers.edn` not loosened against the pin's layers, the gate keys in the KIT's order); exit 1 with the list, and `start` runs it once per workspace, known by a hash of what it read. `bb plan-review`: `method.md` §03's pass, run - the plan's documents and §03's checklist, read from the method at the call, to the profile's `:plan-reviewer`, one completion; findings printed with the cost and written to `<plan>/reviews/` | The plan is the Architect's session's to fill, and nothing read it: a mark left standing reached the next reader as literal text, the rule source's failure one level up; and two projects ran the review pass as a throwaway script each with the checklist pasted in by hand. The check is the gate and is free; the reading is not a gate, because a review that found nothing proves nothing |
 | `harness.setup.blueprint-review` | `bb blueprint-review <blueprint.md>`: a stage's Blueprint and the stage document it names, read whole by the profile's `:blueprint-reviewer` against `method.md` §07, the blueprint (is it over-engineered?) and §06's rules for shapes and targets, both read from the method at the call; one completion, no tools; the findings printed with the cost and written to `<plan>/reviews/<stage>/blueprint-review.edn`, for the Architect to resolve in the stage document before the sign-off | The method promised this read and nothing ran it: the harness's orchestrator is triage, and a Blueprint's packets met a model one at a time in the spec review, which cannot see a layer with one use or a shape nothing needs. Two projects wrote the read as a throwaway script; the third measured which family reads a Blueprint best, and the answer set the role |
 | `harness.setup.doctor` + `harness.setup.upgrade` | Toolchain probe and report; in a workspace, what a pulled KIT expects that it lacks | A missing small binary doesn't fail the loop — it quietly spends the Coder's retry budget on parens. Check the toolchain; don't assume it. |
-| `harness.setup.skills` | `bb skills-sync [--check]`: the KIT's `skills/` - one skill per conversational step of the workflow - rendered to the clone's own `.claude/skills/` and a workspace's, each copy noting the KIT commit; the check compares everything but the commit, and holds every heading a skill's Reads table cites to the file it names. A project's own skill under another name is never touched | The method is the source: a skill that restated its section would drift, so each cites its headings and the gates hold them; and a workspace's copy of a skill was nobody's to update until the doctor and this check said so |
+| `harness.setup.skills` | `bb skills-sync [--check]`: the KIT's `skills/` - one skill per conversational step of the workflow - rendered to a workspace's `.claude/skills/` (the clone carries no rendering), each copy noting the KIT commit; the check compares everything but the commit, and holds every heading a skill's Reads table cites to the file it names. A project's own skill under another name is never touched | The method is the source: a skill that restated its section would drift, so each cites its headings and the gates hold them; and a workspace's copy of a skill was nobody's to update until the doctor and this check said so |
 | `harness.setup.inventory` | `bb inventory-sync [--check]`: this README's inventory block - every namespace under `src/harness/`, its group, the first line of its docstring, the count - rendered from the source between markers; the check fails on drift and on a namespace this table never names | The count above was typed by hand and was wrong within a week of being right; a number nobody re-derives is the failure this repository is most against, and the first run of the check named this very namespace as unnamed here |
 | `harness.setup.next` | `bb next`: the workflow's next step, its owner and the command or skill that runs it, from five facts that are files - a workspace, the plan check, the stage's gates record, its blueprint reviewed and signed, its packets' merged records; before a workspace exists, setup; in one with no brief yet, scoping. Pure over the facts and table-tested, as the loop's `next-action` is; information, never a gate | The hand-offs between the workflow's steps lived in prose and in whoever remembered them; a session opened cold had to find its place by reading everything. The loop answered the same question for a run from its state alone, and this is that shape one level up |
 | `harness.money.stage-report` | `bb stage-report <stage-plan.md>`: a stage's roll-up over the run records of its blueprint's packets and its readings - money by role, rounds, stops by owner, retries and rejections - beside its cap and the stage before, with the security pack's counts and its two scans' from their records beside the stage plan, rendered into the stage plan's exit-criteria section as a block that names itself; `--check` (in `bb gates`) holds every published block to the records, both directions, as `report-check` holds `RUNS.md`. Said, not counted: the cap stays the person's stop | The stage is the unit of money and its figures were a hand-kept rounds table, a ledger and a spend sheet, re-added after every merge and re-derivable by nobody |
@@ -400,8 +400,15 @@ of a project is written into it - which is why the list below is short.
   The winner's block is pasted into `profile.edn` as it is. A record whose cost had not arrived when it was written
   keeps its generation ids, and `bb bake-off reprice <dir>` fetches the costs later and re-renders the table. `bb gates` here holds the table to the
   records.
-- **A KIT kept outside its workspace is pointed at it.** Every command here finds the workspace by
-  walking up from `harness/`, which from a clone kept elsewhere (`bb init <name> <dir>`, or one
+- **Every command a project runs is run from its workspace folder.** `bb init` writes a front door
+  there, `<xyx>/bb.edn`, offering every harness task a project uses (`harness.setup.front-door`'s
+  `tasks`; the KIT's own gates and syncs are not on it). Each hands on to the same task here, with
+  `KIT_WORKSPACE` set to the workspace and every argument that is a path - one that exists, or one a
+  command will write in a folder that exists - made absolute from there; a model slug or a git rev
+  goes on as typed. A workspace keeps the front door it was made with: after a `git pull`, `bb
+  front-door-sync` writes it again, and `bb doctor` in the workspace says when it lacks a task.
+- **A KIT kept outside its workspace is pointed at it.** Run here rather than through the front
+  door, a command finds the workspace by walking up from `harness/`, which from a clone kept elsewhere (`bb init <name> <dir>`, or one
   clone serving several projects) finds nothing: the rule tasks would miss the application's
   mirror and every rendering would read the source alone. So `bb rules-sync`, `bb rules-check`,
   `bb profile` and `bb report-check` take `--workspace <dir>` (the workspace, or any folder under
@@ -411,7 +418,7 @@ of a project is written into it - which is why the list below is short.
   command's, whatever the shell says.
 - **Your profile is `<name>-build/profile.edn`.** `bb init` copies the shipped example for your
   seat there (`--seat <name>`, default `claude`) and points the build's `loop.edn` at it: in a
-  workspace, `:profile` resolves against the build. Edit it there; `bb profile` here checks it, and
+  workspace, `:profile` resolves against the build. Edit it there; `bb profile`, from the workspace folder, checks it, and
   `bb balance` with no profile argument reads it. `resources/profiles/` is the shipped examples'
   folder, held by the KIT's own tests to exactly those files - nothing of a project goes in the clone.
   The doctor lists five seats and the KIT ships examples for two: `claude`, the seat every build on
@@ -452,7 +459,7 @@ of a project is written into it - which is why the list below is short.
   executable stub script that records its argv — make the executable name an
   option so tests point at the stub and only the live run spends quota.
 - **The skills.** `bb init` renders the KIT's `skills/` into the workspace's `.claude/skills/`,
-  each copy noting the KIT commit; `bb skills-sync` here re-renders them after a `git pull`, and
+  each copy noting the KIT commit; `bb skills-sync`, run from the workspace folder, re-renders them after a `git pull`, and
   `bb skills-sync --check` (in `bb gates`) and `bb doctor`'s workspace report say when a copy
   no longer matches. A skill of the project's own goes beside them under another name and is
   never touched.

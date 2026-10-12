@@ -72,7 +72,7 @@
 ```
 
 > **This is the task spec the harness reads - `spec.edn`, key for key.** `bb spec-from-blueprint`
-> in the KIT's `harness/`, given this file, a task id and an output path, pulls the packet out of
+> (from the workspace folder), given this file, a task id and an output path, pulls the packet out of
 > its fence, replaces every shape named under `:shapes` with §1's definition of it (verbatim, in
 > §1's order; `(def Name schema)` and `[Name schema]` both read) and writes it validated; a shape
 > §1 does not define and a task id this document does not carry are refused by name. Without an

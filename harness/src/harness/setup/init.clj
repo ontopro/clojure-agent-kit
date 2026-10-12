@@ -107,8 +107,8 @@
         fillable (rules/placeholder-ids source)]
     (str ";; This project's rules, merged by :id over the KIT's rule source (" kit "/harness/resources/agent-rules.edn,\n"
          ";; which no project edits: `git pull` upgrades the clone). Every rendering reads the merged set: each\n"
-         ";; role's system prompt, and the application's AGENTS.md - `bb rules-sync` in the KIT's harness/\n"
-         ";; re-renders it after an edit here, and `bb rules-check` there fails until it is run.\n"
+         ";; role's system prompt, and the application's AGENTS.md - `bb rules-sync`, run from the workspace folder,\n"
+         ";; re-renders it after an edit here, and `bb rules-check` fails until it is run.\n"
          ";;   - an entry whose :id is a PLACEHOLDER rule of the source replaces that rule's :text: the entries\n"
          ";;     below, as shipped. Fill the <angle brackets> and keep the rest; `bb run-loop start` lists any\n"
          ";;     still standing (they reach every role as literal text, with every gate green);\n"
@@ -142,7 +142,7 @@
     (when (fs/exists? source)
       (str ";; THIS PROJECT'S PROFILE - the models per role, and the seat. Copied by `bb init` from the KIT's\n"
            ";; example for seat " seat " (" kit "/harness/" profile/examples-dir "/" seat ".edn); edit it HERE. The build's\n"
-           ";; loop.edn names it, `bb profile` in the KIT's harness/ checks it, and nothing of it goes in the clone.\n"
+           ";; loop.edn names it, `bb profile` (from the workspace folder) checks it, and nothing of it goes in the clone.\n"
            ";;\n"
            (slurp source)))))
 
@@ -222,7 +222,7 @@
        "  and any rule of this project's own. Every role's prompt and the application's `AGENTS.md` read the\n"
        "  merged set; the KIT's own rules are not this file's to change.\n"
        "- `profile.edn` - the models per role and the seat, copied by `bb init` from the KIT's example for\n"
-       "  the seat. Edit it here; `bb profile` in the KIT's `harness/` checks it.\n"
+       "  the seat. Edit it here; `bb profile`, run from the workspace folder, checks it.\n"
        "- `loop.edn` - this project's DEFAULTS for a run. Not read from here: copy it into each run\n"
        "  directory and set `:run/id`.\n"
        "- `runs/` - one record per run, `<run-id>.edn`, copied here by the loop's `record` (the run's own\n"
@@ -236,13 +236,13 @@
   plain fenced block opening `Run <id> ·`, which is what `report/published-reports`
   finds, so this prose publishes nothing and `bb report-check` holds an empty
   `runs/` to it from the first gate run."
-  [project {:workspace/keys [kit]}]
+  [project _ws]
   (str "# " project " - the run records, published\n\n"
-       "Every run the loop records is copied to `runs/<id>.edn` by `bb run-loop record` in the KIT's\n"
-       "`harness/` (`" kit "/harness/`), and its tables are published here: `bb report < runs/<id>.edn`\n"
+       "Every run the loop records is copied to `runs/<id>.edn` by `bb run-loop record`, and its tables\n"
+       "are published here: `bb report < runs/<id>.edn`, run from the workspace folder like every KIT command,\n"
        "renders one report; paste it into a plain fenced block (three backticks, no label) under a heading\n"
-       "of your own, newest first or oldest first as you like. `bb report-check` there - run by `bb gates`\n"
-       "in the clone - holds this document to `runs/`: every report re-renders from its record, and every\n"
+       "of your own, newest first or oldest first as you like. `bb report-check` holds this document to\n"
+       "`runs/`: every report re-renders from its record, and every\n"
        "record is published.\n\n"
        "No run yet.\n"))
 
@@ -395,11 +395,11 @@
             {:path ".claude/agents/interactive-programmer.md"
              :what "the off-loop role, copied from the KIT"
              :copy-from (kit-path "harness/agents/interactive-programmer.md")}]
-           ;; THE SKILLS, RENDERED: the fifth part's four conversational steps as Claude Code
+           ;; THE SKILLS, RENDERED: the fifth part's conversational steps as Claude Code
            ;; loads them, each copy a rendering of `<kit>/skills/<name>/SKILL.md` noting the
            ;; KIT commit, held to its source by `bb skills-sync --check` and reported by the
            ;; doctor when a pulled KIT's differ. The workspace is the only place they are
-           ;; rendered: `scoping` is the first of them a project's session runs.
+           ;; rendered: `kit-start` is the first of them a project's session runs, then `scoping`.
            (for [[nm text] skills]
              {:path (str skills/target-dir "/" nm "/" skills/file-name)
               :what (str "the " nm " skill, rendered from the KIT's skills/")

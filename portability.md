@@ -218,7 +218,7 @@ The shape, decided:
   rather than drop silently, naming the extras. That comparison is the `:scope` check.
 - **All three survive an escalation**, provisionally. The interesting escalations are ones where
   Coder and Tester disagreed, and that is invisible in the assembled tree.
-- Coder and tester workspaces carry an nREPL each (§03: *"one nREPL per workspace"*); the gate
+- Coder and tester workspaces carry an nREPL each (§02: *"one nREPL per workspace"*); the gate
   workspace needs none, so `:nrepl/port` should be optional on a `Session` schema — the
   precedent is `reviewer-packet`, which dissocs it.
 - **Read the port from `.nrepl-port`** rather than choosing one and hoping. That is what the file

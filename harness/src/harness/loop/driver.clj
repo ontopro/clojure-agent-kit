@@ -1019,7 +1019,7 @@
               (throw (ex-info (str "the plan is not ready - " (count problems) " thing" (when (> (count problems) 1) "s")
                                    " left in " (:workspace/build ws) ":\n"
                                    (str/join "\n" (map #(str "    " %) problems))
-                                   "\n  fill or fix, then `start` again (`bb plan-check` in the KIT's harness/ runs this check alone)")
+                                   "\n  fill or fix, then `start` again (`bb plan-check`, from the workspace folder, runs this check alone)")
                               {:run-loop/error :plan-check :problems problems :run-dir (:run-dir ctx)})))
             (fs/create-dirs (fs/parent cache))
             (spit (str cache) (pr-str {:hash h :at (str (java.time.Instant/now)) :documents documents}))

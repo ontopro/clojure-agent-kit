@@ -39,7 +39,7 @@
         "> The block below is generated from the KIT's rule source (`harness/resources/agent-rules.edn`\n"
         "> in the KIT's clone, never edited by this project) merged with this project's rules overlay\n"
         "> (`../" build-folder "/rules.edn`: the placeholders filled, project rules added; `../workspace.edn`\n"
-        "> names both) by `bb rules-sync`, run in the KIT's `harness/`. Everything outside the markers is\n"
+        "> names both) by `bb rules-sync`, run from the workspace folder. Everything outside the markers is\n"
         "> hand-written and survives a sync.\n"
         "> **Rules never go outside the markers** - one written out there reaches only agents that read\n"
         "> this file, which by design excludes the agent verifying the Coder.\n\n"

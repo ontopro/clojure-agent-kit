@@ -121,11 +121,11 @@ a `human` or `tooling` route, a dead REPL, a provider refusing for credit.
 ## 6. The workspace — once, here
 
 ```bash
-cd <the folder this project lives in> && git clone https://github.com/ontopro/clojure-agent-kit
-cd clojure-agent-kit && bb doctor      # follow it, run it again, until both verdicts say yes
-bb health                              # the KIT, this machine, the pinned template: certified together
-bb init <name>                         # <name>-app (generated, committed untouched), <name>-build, work/
-cd ../<name>-app && bb serve           # answers on localhost:8000
+mkdir <name> && cd <name>              # the project folder: it becomes the workspace
+git clone https://github.com/ontopro/clojure-agent-kit.git KIT
+cd KIT && bb self-check                # the doctor, then the health check: until it says healthy
+bb init                                # <name>-app (generated, committed untouched), <name>-build, work/, bb.edn
+cd .. && cd <name>-app && bb serve     # KIT's commands from the workspace; the application's in its folder
 ```
 
 Three sibling repositories in a plain folder - the KIT, the application, the build - and
@@ -252,9 +252,9 @@ written down — the rule source's own first rule says it outranks the others:
 
 > The **family assignment is the binding contract**; the model column is a dated selection.
 > Re-selecting is a new log entry, not an edit, and it is measured, not preferred: `bb bake-off`
-> in the KIT's `harness/` reads what this plan already holds with each candidate once, a judge
+> (from the workspace folder) reads what this plan already holds with each candidate once, a judge
 > maps where they agree, and you mark what is real. `bb init` copied the shipped example for the seat
-> (`--seat`, default `claude`); `bb profile` in the KIT's `harness/` checks it - the shape, the
+> (`--seat`, default `claude`); `bb profile` (from the workspace folder) checks it - the shape, the
 > verifiers' independence, the seat, the key variables - and `bb balance` reads the credit
 > behind it. The seat is where the human works, with no packet. The shipped `claude` example
 > serves every role through OpenRouter, the Anthropic ones pinned to the `anthropic` provider

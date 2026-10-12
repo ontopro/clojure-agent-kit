@@ -12,8 +12,9 @@
 ;; Every task delegates to `harness/`, which is where the harness and its own `bb.edn`
 ;; live; nothing is implemented twice. A relative path typed at the root would be read from
 ;; inside `harness/` and mean a different file, so a task offered here either takes no path
-;; or - `init` - makes it absolute before delegating. The rest of the harness's tasks
-;; (`bb run-loop`, `bb balance`, `bb report` …) are run from `harness/`, as its README says.
+;; or - `init` - makes it absolute before delegating. A project runs the rest of the harness's
+;; tasks (`bb run-loop`, `bb balance`, `bb report` …) from its workspace folder, through the front
+;; door `bb init` writes there; the KIT's own development runs them from `harness/`.
 ;;
 ;; Two tasks live HERE and not in `harness/`, because they are about this clone as a whole:
 ;;

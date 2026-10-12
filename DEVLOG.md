@@ -56,6 +56,22 @@ step by hand, named there.
 
 ## 2026-10-09
 
+### Documents and generated text say where commands run: the workspace folder (plan 6.3, item 7)
+
+The audit's C findings, plan 6.3's own drift. The skills are rendered into a workspace only, not the
+clone (the `skills-sync` task, the harness README, `AGENTS.md`, which now lists `kit-start`, and the
+README). "In the KIT's `harness/`" is "from the workspace folder" wherever a project runs the
+command: the `rules.edn` and `profile.edn` headers, the build README, `RUNS.md` (which named the
+KIT's path and sent adopters to `bb gates`, a KIT-only task) and the application's `AGENTS.md`
+frame that `bb init` writes; the doctor's lines and the driver's plan-check hint; `build-docs`'
+README, method-and-tooling and blueprint template. The harness README says how a project's commands
+reach the harness - the front door, its path rule, `front-door-sync` - and the README calls the root
+`bb.edn` KIT's own task list, so "front door" means the workspace's alone. Method-and-tooling §6
+shows today's setup; scoping is stage 0's first step, in phase B; `kit-start` comes before scoping;
+the plan review before `bb plan-check`; and two section references follow the method's new shape.
+The README's *How to use KIT* numbers its two steps 1 and 2, so the letters A to E mean only the
+method's phases.
+
 ### The front door: a slug is not a path, `bb next` prints paths that run, and `bb front-door-sync` (plan 6.3, item 7)
 
 The code-and-documents audit before the tag found three faults in what plan 6.3 added. The front
