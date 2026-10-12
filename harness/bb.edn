@@ -20,7 +20,7 @@
           :requires ([harness.setup.upgrade :as upgrade])
           :task (apply upgrade/doctor-main *command-line-args*)}
 
-  init {:doc "bb init [<name> [dir]] [--seat <name>] [--app <folder>] [--build <folder>] [--dry-run]: create the workspace a project is built in - the application from the pinned template, the build repository (the plan, its rules, profile and loop defaults), work/, workspace.edn. No name: the project is named after the folder this clone is in. Default dir: the folder this clone is in; default seat claude; default folders <name>-app and <name>-build. Never overwrites"
+  init {:doc "bb init [<name> [dir]] [--seat <name>] [--app <folder>] [--build <folder>] [--dry-run]: create the workspace a project is built in - the application from the pinned template, the build repository (the plan, its rules, profile and loop defaults), work/, workspace.edn; at the workspace root, bb.edn (the front door), CLAUDE.md and .claude/ (the off-loop agent, the skills). No name: the project is named after the folder this clone is in. Default dir: the folder this clone is in; default seat claude; default folders <name>-app and <name>-build. Never overwrites"
         :requires ([harness.setup.init :as init])
         :task (apply init/-main *command-line-args*)}
 
@@ -53,7 +53,7 @@
 
   ;; NEVER part of `gates`: it starts JVMs and takes minutes. What an adopter runs after
   ;; `bb doctor`, and what the KIT runs before it publishes a known-good set.
-  health {:doc "The health check: the selfcheck project's gates and red breakers, then an application generated from the pinned template - gates, breakers, serve. [--selfcheck-only] [--keep]"
+  health {:doc "The health check: the selfcheck project's gates and red breakers, then an application generated from the pinned template - gates, breakers, one loop run, serve, the browser and security packs. [--selfcheck-only] [--keep] [--record: write this platform's record]"
           :requires ([harness.setup.health :as health])
           :task (apply health/-main *command-line-args*)}
 
@@ -66,7 +66,7 @@
                   :requires ([harness.models.security-score :as security-score])
                   :task (apply security-score/-main *command-line-args*)}
 
-  security-bake-off {:doc "bb security-bake-off <fixture-dir> --model \"<model> [effort]\" ... [--out <dir>] [--rounds N] [--parallel N]: models compared as security reviewers - each reviews the fixture twice as the tracer, on the faulted branch and on the careful one, and every reading is scored by running the tests it wrote; a table of planted faults found, claims its tests did not show, what is left for you to mark, tests that fail on the careful branch, completions, minutes, cost. No judge: the tests are the evidence. REAL MODEL CALLS, minutes each; a stopped run resumes. Never in `bb gates`"
+  security-bake-off {:doc "bb security-bake-off <fixture-dir> --model \"<model> [effort]\" ... [--out <dir>] [--rounds N] [--parallel N]: models compared as security reviewers - each reviews the fixture twice as the tracer, on the faulted branch and on the careful one, and every reading is scored by running the tests it wrote; a table of planted faults found, claims its tests did not show, what is left for you to mark, tests that fail on the careful branch, completions, minutes, cost. No judge: the tests are the evidence. REAL MODEL CALLS, minutes each; a stopped run resumes. --report <dir> writes report.md again from a folder's records, no model calls. Never in `bb gates`"
                      :requires ([harness.models.security-bake-off :as security-bake-off])
                      :task (apply security-bake-off/-main *command-line-args*)}
 
@@ -142,7 +142,7 @@
            :requires ([harness.money.reprice :as reprice])
            :task (apply reprice/-main *command-line-args*)}
 
-  balance {:doc "bb balance <profile.edn> [records...]: OpenRouter credit remaining (its API has it) and Anthropic spend over the records given (its API has no balance) — printed before and after every `run-loop run`"
+  balance {:doc "bb balance [profile.edn] [records...]: the workspace's profile when none is given; OpenRouter credit remaining (its API has it) and Anthropic spend over the records given (its API has no balance) — printed before and after every `run-loop run`"
            :requires ([harness.money.balance :as balance])
            :task (apply balance/-main *command-line-args*)}
 
@@ -183,7 +183,7 @@
   ;; Candidates for a role, read against the same artifact, compared by a judge that reads them
   ;; blind - one pass each, the person's marks decide what is real. The table is held to the
   ;; records by `bake-off-check`, which `gates` runs in a workspace's clone.
-  bake-off {:doc "bb bake-off run <plan>/bake-offs/<id>/bake-off.edn | table <dir> | reprice <dir> | check: a three-line spec (:role, :candidates as \"<model> <effort>\", :judge) expanded through the catalogue and routes.edn, every case run with every candidate, a judge that reads the answers blind and maps consensus, one TABLE.md; marks.edn is the person's real/not per row"
+  bake-off {:doc "bb bake-off new | run <plan>/bake-offs/<id>/bake-off.edn | table <dir> | reprice <dir> | check: new asks at a terminal and writes a three-line spec (:role, :candidates as \"<model> <effort>\", :judge) expanded through the catalogue and routes.edn, every case run with every candidate, a judge that reads the answers blind and maps consensus, one TABLE.md; marks.edn is the person's real/not per row"
             :requires ([harness.models.bake-off :as bake-off])
             :task (apply bake-off/-main *command-line-args*)}
   bake-off-check {:doc "Fail when a bake-off's TABLE.md has drifted from its records and marks (the workspace's plan; nothing to check outside one)"

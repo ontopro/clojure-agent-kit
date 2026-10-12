@@ -224,8 +224,10 @@ store, documents a minimum of 21 and its early v2 releases failed at class-load 
 every other version is a floor, and the doctor shows the machine's versions beside the KIT's dated
 known-good set, calling newer *newer than tested* rather than wrong.
 
-`bb init` generates the application from the pin (deps-new as a plain dependency; no tool to
-install first), commits it UNTOUCHED - everything you add is diffable against that commit for
+`bb init --dry-run` prints the workspace it would make and writes nothing; `--app <folder>` and
+`--build <folder>` name the two repositories' folders when `<name>-app` and `<name>-build` will not
+do, and `--seat <name>` picks the shipped profile. `bb init` generates the application from the
+pin (deps-new as a plain dependency; no tool to install first), commits it UNTOUCHED - everything you add is diffable against that commit for
 ever - then commits the KIT's hand as a second commit: `AGENTS.md` from the rule source, the
 `CLAUDE.md` stub that imports it, and `layers.edn` for the boundary gate. Beside the application it
 creates the build repository: `docs/` from [`build-docs/`](build-docs/), the rules overlay

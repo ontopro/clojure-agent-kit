@@ -184,6 +184,11 @@ bb health     # then, once: is this KIT healthy here, with the template it pins?
               # one task through the loop, the application served, a Firefox opening it (skipped, and said, with no geckodriver)
 bb init       # then: the workspace, named after the folder the clone is in - see harness/README.md
 bb gates      # KIT's own gates: doctor -> format -> lint -> boundary -> rules -> skills -> inventory -> health block -> the records (reports, stage reports, bake-offs) -> test
+bb hooks-install   # once per clone: the pre-commit hook, which runs `bb commit-check`
+bb commit-check    # what the hook runs: refuse unless the last `bb gates` was green on exactly this tree
+bb kit-status      # at an item's end: flaky tests, stale health records, open register rows, the plan's log
+bb tag-check <tag> # before a tag: DEVLOG's checklist for <tag> on HEAD (--run does what is stale, --landed after the push)
+bb docker-gates    # the gates on a clone of HEAD in a fresh Linux container; bb docker-health the health check there
 
 cd harness
 bb example    # the whole loop shape in one run — no model calls, no network

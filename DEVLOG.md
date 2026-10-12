@@ -56,6 +56,18 @@ step by hand, named there.
 
 ## 2026-10-09
 
+### Every command where a reader looks for it (plan 6.3, item 7)
+
+The audit's E findings. `AGENTS.md`'s task table had no row for `bb security-review` or `bb
+security-route`, which the front door offers and the stage-end skill runs, nor for the KIT's own
+security fixture, scoring and bake-off; its `run-loop` steps and the harness README's lacked
+`mutation`. Task docs - what `bb tasks` and the front door print - left out `bake-off new` (and the
+README `reprice`), `balance`'s optional profile, `security-bake-off --report`, `health --record`
+(which `self-check` passes on), `kit-status`'s health records, and what `init` writes at the
+workspace root. The README's developer commands name the commit hook, `kit-status`, `tag-check`
+and the container runs, and `method.md` §02 names `bb init`'s `--dry-run`, `--app`, `--build` and
+`--seat`.
+
 ### The harness README's numbers and gate advice, and "the build" for the build (plan 6.3, item 7)
 
 The audit's D4-D7. The harness README's size was a count from 2026-09-24; it is the same command's

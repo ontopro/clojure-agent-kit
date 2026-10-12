@@ -92,7 +92,7 @@
 
   ;; Setup's one check: the doctor's loop verdict (a JVM included - what a project needs), and
   ;; only on a yes the health check, which takes minutes and starts JVMs. Exit: the first no.
-  self-check {:doc "Is this KIT ready on this machine? `bb doctor`, then - when it says yes - `bb health` (flags passed on: --keep, --selfcheck-only); minutes, starts JVMs. Run from the clone, before `bb init`"
+  self-check {:doc "Is this KIT ready on this machine? `bb doctor`, then - when it says yes - `bb health` (flags passed on: --keep, --selfcheck-only, --record); minutes, starts JVMs. Run from the clone, before `bb init`"
               :task (let [{:keys [exit]} (shell {:dir "harness" :continue true} "bb" "doctor")]
                       (when-not (zero? exit)
                         (println (str "\nself-check: the doctor says this machine is not ready - the table above says "
@@ -104,13 +104,13 @@
   doctor {:doc "Is this machine ready? The toolchain: tool, version, status, what it is for (--edn for a pins map); in a workspace, what a pulled KIT expects that the workspace lacks"
           :task (apply harness "doctor" *command-line-args*)}
 
-  init {:doc "bb init [<name> [dir]] [--seat <name>] [--app <folder>] [--build <folder>] [--dry-run]: create the workspace a project is built in. No name: the project is named after the folder this clone is in. Default dir: the folder this clone is in; default seat claude; default folders <name>-app and <name>-build. Never overwrites"
+  init {:doc "bb init [<name> [dir]] [--seat <name>] [--app <folder>] [--build <folder>] [--dry-run]: create the workspace a project is built in. No name: the project is named after the folder this clone is in. Default dir: the folder this clone is in; default seat claude; default folders <name>-app and <name>-build; at the workspace root, bb.edn (the front door), CLAUDE.md and .claude/ (the off-loop agent, the skills). Never overwrites"
         :requires ([babashka.fs :as fs]
                    [harness.setup.init-args :as init-args])
         ;; init's own parse, so a flag with a value travels with it; both paths absolute.
         :task (apply harness "init" (init-args/root-args *command-line-args* (fn [p] (str (fs/absolutize p)))))}
 
-  health {:doc "The health check: the selfcheck project and an application generated from the pinned template - gates, breakers, one loop run, serve. Minutes; starts JVMs. [--selfcheck-only] [--keep]"
+  health {:doc "The health check: the selfcheck project and an application generated from the pinned template - gates, breakers, one loop run, serve, the browser and security packs. Minutes; starts JVMs. [--selfcheck-only] [--keep] [--record: write this platform's record]"
           :task (apply harness "health" *command-line-args*)}
 
   gates {:doc "The KIT's own quality gates, cheap first: doctor -> format -> lint -> boundary -> rules -> skills -> inventory -> health block -> the records (reports, stage reports, bake-offs) -> test; writes the gates record .local/gates/last.edn"
@@ -128,7 +128,7 @@
              :requires ([harness.gates.tag-check :as tag-check])
              :task (apply tag-check/-main *command-line-args*)}
 
-  kit-status {:doc "What an item's end should look at, printed, never refused: flaky tests since the last tag, register rows opened since it still open or on watch, the plan's Sessions log older than HEAD, a .local/ folder without its README.md or an entry it never names"
+  kit-status {:doc "What an item's end should look at, printed, never refused: flaky tests since the last tag, health records stale against the code they ran, register rows opened since it still open or on watch, the plan's Sessions log older than HEAD, a .local/ folder without its README.md or an entry it never names"
               :requires ([harness.gates.kit-status :as kit-status])
               :task (kit-status/-main)}
 
