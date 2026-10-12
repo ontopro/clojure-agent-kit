@@ -17,8 +17,10 @@
    [clojure.string :as str]))
 
 (def default-gate-seq
-  "Cheap first (method §09). Each entry is [gate-key shell-command]; the
-  commands are your project's task surface, so edit them.
+  "Cheap first (method §09). Each entry is [gate-key shell-command]: the
+  fallback for a run whose `loop.edn` names no `:gates`. A project's own
+  commands are in its build's `loop.edn`, which `bb init` writes; the clone
+  is never edited.
 
   The gate KEYS are a public contract, not labels. Whatever routes a
   failure dispatches on them, and the run log is read by key months later —

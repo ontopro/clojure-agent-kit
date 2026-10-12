@@ -56,6 +56,17 @@ step by hand, named there.
 
 ## 2026-10-09
 
+### The harness README's numbers and gate advice, and "the build" for the build (plan 6.3, item 7)
+
+The audit's D4-D7. The harness README's size was a count from 2026-09-24; it is the same command's
+today, with the numbers it printed. It told a project to put its commands in
+`gates/default-gate-seq`, in the clone no project edits; they are in the build's `loop.edn`
+`:gates`, which `bb init` writes, and the default is only the fallback - its own docstring says so
+too, and an orphan comment about it is gone. "The plan repository" is the build repository, as the
+code and the rest of the documents call it (`method.md` §02, the harness README, `build-docs`'
+README, two docstrings). And the health check writes a record only with `--record`, which the
+setup section now says.
+
 ### The roles counted, and "code reviewer" in the documents (plan 6.3, item 7)
 
 The audit's D2 and D3. `method.md` §05 said six roles over a table of ten and called the one off

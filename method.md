@@ -228,14 +228,14 @@ known-good set, calling newer *newer than tested* rather than wrong.
 install first), commits it UNTOUCHED - everything you add is diffable against that commit for
 ever - then commits the KIT's hand as a second commit: `AGENTS.md` from the rule source, the
 `CLAUDE.md` stub that imports it, and `layers.edn` for the boundary gate. Beside the application it
-creates the plan repository: `docs/` from [`build-docs/`](build-docs/), the rules overlay
+creates the build repository: `docs/` from [`build-docs/`](build-docs/), the rules overlay
 `rules.edn` (the rule source's placeholders, filled there and never in the clone), the profile
 `profile.edn` (the shipped example for your seat, `--seat <name>`, default `claude`; the models per
 role, edited there), the run defaults in `loop.edn`, and `runs/` with `RUNS.md`, where the loop's
 `record` copies every run's record and its tables are published. Then `work/` for run directories
 and worktrees, and `workspace.edn` naming which folder is which. A workspace is three sibling
-repositories in a plain folder: the KIT, the application, the plan - three lifecycles, none
-rewritten to change another; everything a project decides or produces is in the plan, and the
+repositories in a plain folder: the KIT, the application, the build - three lifecycles, none
+rewritten to change another; everything a project decides or produces is in the build, and the
 KIT's clone is upgraded with `git pull` and written into by nobody. The plan is filled before any
 of this dispatches (§03), and `bb plan-check`, run from the workspace, is the gate on it: `start`
 runs it once per workspace before its first dispatch. The template's options (`:db`, `:auth`,
@@ -332,7 +332,7 @@ This is the step people skip, and it is the only one that produces evidence rath
 ### Setup is done when
 
 1. **The toolchain reports green.** `bb doctor`, both verdicts *yes*. A missing small binary does not fail loudly; it quietly spends an agent's retry budget.
-2. **The health check passes on this machine**: the scaffold boots (`bb serve` answers), every gate is green on the untouched scaffold and fails when it should, and the whole loop has run end to end on one trivial task, recorded and torn down. Its record names the KIT commit and the template commit it certified.
+2. **The health check passes on this machine**: the scaffold boots (`bb serve` answers), every gate is green on the untouched scaffold and fails when it should, and the whole loop has run end to end on one trivial task, recorded and torn down. With `--record` (`bb self-check --record`), it writes a record naming the KIT commit and the template commit it certified.
 
 `bb self-check` is both, in that order. Then scoping begins (§03).
 

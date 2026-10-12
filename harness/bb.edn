@@ -134,9 +134,6 @@
                 :requires ([harness.rules :as rules])
                 :task (apply rules/prompt-main *command-line-args*)}
 
-  ;; Mirrors gates/default-gate-seq, minus :deps — the seed has no layers
-  ;; to enforce. Written out rather than driven off the data, so a gate
-  ;; failure here looks like a gate failure and not a harness failure.
   report {:doc "Render a run record (EDN on stdin) as a timing and cost report"
           :requires ([harness.money.report :as report])
           :task (apply report/-main *command-line-args*)}

@@ -31,7 +31,7 @@ repository's first commit, the way it generates `<name>-app/` from the KIT's app
 Beside `docs/`, `bb init` writes `rules.edn`, `profile.edn`, `loop.edn`, `runs/` (empty until the
 loop's `record` copies the first record there) and `RUNS.md` (its header; the reports come with
 the records); `reviews/` appears with the first `bb plan-review` and `bake-offs/` with the first
-`bb bake-off new`. All of it is the rest of what a project decides or produces: the plan
+`bb bake-off new`. All of it is the rest of what a project decides or produces: the build
 repository holds all of it, and the KIT's clone none.
 
 **Order of writing.** Scoping first, before any of this is written: the brief, which the `scoping`

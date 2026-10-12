@@ -28,7 +28,7 @@
   empty - `rules/sync!` fills it, and `bb rules-check` in the KIT guards it from
   then on (`workspace.edn`, `:workspace/rule-mirrors`).
 
-  `build-folder` is the plan repository's folder as the workspace names it, not
+  `build-folder` is the build repository's folder as the workspace names it, not
   derived from the name: the first real project named its folders with
   `bb init --plan` (as the option was then called), and this sentence - a reader's, outside the markers, so no
   sync ever corrects it - still pointed at a `<name>-build/` that did not exist."
@@ -97,7 +97,7 @@
 (defn app-fn
   "The function `init/create!` calls with the application's folder.
 
-  `p` is a `template/pin`. Opts: `:app-name`; `:build-folder` (the plan
+  `p` is a `template/pin`. Opts: `:app-name`; `:build-folder` (the build
   repository's folder, for `agents-md`'s sentence; `<name>-build` when nil);
   `:local-root` (a local clone of the template instead of the pinned commit -
   `KIT_TEMPLATE_LOCAL`); `:git-env`, extra environment for git; `:run`,

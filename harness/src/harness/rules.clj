@@ -74,7 +74,7 @@
 ;;
 ;; The clone of the KIT a project builds with is upgraded with `git pull`, so no project
 ;; edits `resources/agent-rules.edn`. What a project decides about its rules - the three
-;; placeholders filled, rules of its own added - lives in the plan repository, in the file
+;; placeholders filled, rules of its own added - lives in the build repository, in the file
 ;; `workspace.edn` names as `:workspace/rules-overlay` (`bb init` writes it with the
 ;; placeholders standing), and is merged over the source by :id here. Every rendering reads
 ;; the merged set. A KIT rule that is not a placeholder is not the overlay's to change: that
