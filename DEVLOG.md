@@ -24,8 +24,8 @@ development branch reached `main` as one commit, so its commits are not cited
 either; an entry's date is its reference.
 
 **How it is versioned.** The KIT carries a tag at each plan's boundary, and a heading for the
-tag stands above the day's entries here, with the one line a workspace made before it needs:
-what `bb doctor` run there will list, in a sentence. The numbers mean this and not what a
+tag stands above the day's entries here, with one line: what the plan added, and anything a
+workspace made before it needs - what `bb doctor` run there will list - in a sentence. The numbers mean this and not what a
 library's would: the minor is a plan family - `0.6.0` closed plan v6, the guided lean workflow -
 and the patch is a follow-on plan that completes the family without changing the workflow's
 shape, so `0.6.1` closes plan 6.1, `0.6.2` the plan after it, and a patch here is not a fix.
@@ -40,8 +40,8 @@ the template fork's tags and version the template, not the KIT.
    at the root, then `bb health-sync`; the records and the README block committed. A record
    names the commit it ran on, and a tag on code its records never ran is a tag on an untried
    claim.
-3. The tag's documents: its heading here, with the one line a workspace made before it needs, and
-   the root README's sentence naming the current tag.
+3. The tag's documents: its heading here, with its line - what the plan added, and anything a
+   workspace made before it needs - and the root README's sentence naming the current tag.
 4. On the commit the tag will name: `bb repair && bb gates` green, then `bb docker-gates` run by
    hand and green - the gates on a clone of that commit inside a machine that has only the
    toolchain, which is the fresh-machine check until a workflow runs it on push.
@@ -53,6 +53,15 @@ the commit between them; `--landed` checks origin after step 5. bear-claw's secr
 step by hand, named there.
 
 ---
+
+## 0.6.3 — plan 6.3's boundary: the adopter's workflow, simple and clear
+
+Plan 6.3 added the README's *How to use KIT* - set up the workspace (`bb self-check`, `bb init`, named
+after its folder), then build the application (`/kit-start` in a session there) - and what it rests
+on: the workspace's front door, every KIT command run from the workspace folder (`bb
+front-door-sync` writes it again after a pull); `bb brief` and scoping in the workspace; the
+`kit-start` skill; the roster's model for the Architect's session; the method's five phases
+grouping the stages, setup not a stage; and `build-docs/` for `plan-template/`.
 
 ## 2026-10-09
 
