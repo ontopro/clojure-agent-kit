@@ -6,7 +6,7 @@ description: Steps 6 and 7 of the KIT's workflow - a stage's plan, written just-
 # The stage plan, written when the stage is pulled
 
 The method is the source: the stage plan's sections, what each kind of stage owes, and the
-spike's rule are in `method.md` §04; the templates under `<name>-build/docs/stages/` lay them
+spike's rule are in `method.md` §04; the templates under `<xyx>-build/docs/stages/` lay them
 out. This skill reads the lessons first, then fills the template for the stage's kind.
 
 ## When it runs
@@ -22,7 +22,7 @@ before the blueprint is cut.
 | `method.md` | `The stage plan, written just-in-time` |
 | `method.md` | `Spike gates: how a PROVISIONAL decision gets settled` |
 | `method.md` | `Pre-release and release` |
-| `build-docs/05-lessons.md` | `Stage <N> — <name>` |
+| `build-docs/05-lessons.md` | `Stage <N>` |
 | `build-docs/stages/stage-N-template.md` | `2. Requirements this stage adds` |
 | `build-docs/stages/stage-N-template.md` | `11. Exit criteria (the stage's gate), and the cap` |
 | `build-docs/stages/stage-0-spike-template.md` | `2. The risks it proves, and the decisions it gates` |
@@ -63,12 +63,12 @@ the routes the security pack tries (`docs/security-routes.edn`) gain the stage's
 routes that need a login.
 The exit criteria are things a person can check, "deployed locally" among them from stage 1
 on, and the cap is proposed to the person. Then run `bb plan-review
-<name>-build/docs/stages/stage-N-<name>.md` and read the findings cold with the person, resolving each in
+<xyx>-build/docs/stages/stage-N-plan.md` and read the findings cold with the person, resolving each in
 the overview's findings table and the stage plan; then `bb plan-check`.
 
 ## Writes
 
-`docs/stages/stage-N-<name>.md` from the template for its kind, every mark replaced and every
+`docs/stages/stage-N-plan.md` from the template for its kind, every mark replaced and every
 instruction deleted; `docs/stages/stage-N-gates.edn` copied from the gates template; the
 overview's stage map with this stage's cap; the review's findings resolved. Then say the next
 step: the person's approval with the cap written into the gates record, and `bb next`.

@@ -143,8 +143,8 @@
         build (str (fs/path ws "xyx-build"))
         stages (fs/path build "docs" "stages")
         records (str (fs/path build "runs"))
-        plan-0 (str (fs/path stages "stage-0-spike.md"))
-        plan-1 (str (fs/path stages "stage-1-skeleton.md"))]
+        plan-0 (str (fs/path stages "stage-0-plan.md"))
+        plan-1 (str (fs/path stages "stage-1-plan.md"))]
     (fs/create-dirs stages)
     (fs/create-dirs records)
     (fs/create-dirs (fs/path build "reviews" "stage-1"))
@@ -164,7 +164,7 @@
     (spit (str (fs/path stages "stage-1-security.edn"))
           (str ";; Written by the KIT's security pack. Do not edit.\n"
                (pr-str {:security/at "2026-10-08T00:05" :counts {:ok 9 :warn 2 :fail 0 :skipped 3} :ok? true :rows []})))
-    (is (= [[0 "stage-0-spike.md"] [1 "stage-1-skeleton.md"]] (sr/stage-plans stages)))
+    (is (= [[0 "stage-0-plan.md"] [1 "stage-1-plan.md"]] (sr/stage-plans stages)))
     (is (nil? (sr/summary-for build records 2)) "no blueprint, nothing to roll up")
     (let [s (sr/summary-for build records 1)]
       (is (= ["t1" "t2"] (mapv :task/id (:runs s))) "the records of the blueprint's packets, in its order; w0 is stage 0's")
@@ -176,8 +176,8 @@
           "the security pack's record beside the gates record, its comment line read past")
       (is (= {:deps {:counts {:ok 1 :warn 0 :fail 0 :skipped 0} :date "2026-10-08"}} (:security-scans s))
           "the deps scan's record beside it; no secrets record, no entry"))
-    (is (= ["stage-0-spike.md publishes no stage report and its packets have records: run `bb stage-report`"
-            "stage-1-skeleton.md publishes no stage report and its packets have records: run `bb stage-report`"]
+    (is (= ["stage-0-plan.md publishes no stage report and its packets have records: run `bb stage-report`"
+            "stage-1-plan.md publishes no stage report and its packets have records: run `bb stage-report`"]
            (sr/check build records))
         "both stages have records and no block")
     (spit plan-1 (sr/splice (slurp plan-1) (sr/render (sr/summary-for build records 1))))
@@ -186,4 +186,4 @@
     (spit (str (fs/path records "t3.edn")) (pr-str (assoc merged-run :run/id "t3" :task/id "t3")))
     (is (= [] (sr/check build records)) "a record for a task the blueprint does not name is not this stage's")
     (spit (str (fs/path records "t2.edn")) (pr-str (assoc escalated-run :run/status :merged)))
-    (is (= ["stage-1-skeleton.md's stage report does not match its records: run `bb stage-report`"] (sr/check build records)))))
+    (is (= ["stage-1-plan.md's stage report does not match its records: run `bb stage-report`"] (sr/check build records)))))

@@ -1,8 +1,8 @@
-# Stage <N> Blueprint — <Name>
+# Stage <N> blueprint
 
 **Status:** AWAITING HUMAN GATE — no task dispatches until signed off
 **Author:** Architect (<model>) · **Date:** <YYYY-MM-DD>
-**Input:** `stage-N-<name>.md`, the stage plan, approved · **Method:** `../03-method-and-tooling.md`
+**Input:** `stage-N-plan.md`, the stage plan, approved · **Method:** `../03-method-and-tooling.md`
 
 > Produced in a fixed order: **shapes → interfaces → namespaces and dependencies →
 > dependency-ordered task packets.** This document is read twice, by two agents who never

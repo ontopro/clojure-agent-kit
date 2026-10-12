@@ -1,4 +1,4 @@
-# Stage <N> — <Name>
+# Stage <N> plan
 
 **Status:** PLANNED — for the person's approval, with its cap (§11)
 **Kind:** <walking skeleton · increment> (stage 0 is the spike, `stage-0-spike-template.md`; pre-release and release have templates of their own)

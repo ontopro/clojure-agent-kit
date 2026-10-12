@@ -40,15 +40,15 @@
           "02-architecture.md" 35
           "03-method-and-tooling.md" 51
           "04-decision-log.md" 12
-          "05-lessons.md" 11
+          "05-lessons.md" 12
           "README.md" 1
           "source.md" 10
-          "stages/stage-0-spike-template.md" 12
-          "stages/stage-N-blueprint-template.md" 9
+          "stages/stage-0-spike-template.md" 11
+          "stages/stage-N-blueprint-template.md" 8
           "stages/stage-N-gates-template.edn" 2
-          "stages/stage-N-template.md" 26
-          "stages/stage-prerelease-template.md" 14
-          "stages/stage-release-template.md" 8}
+          "stages/stage-N-template.md" 25
+          "stages/stage-prerelease-template.md" 13
+          "stages/stage-release-template.md" 7}
          (plan/placeholder-counts template-dir)))
   (is (= (keys (plan/placeholder-counts template-dir)) (init/build-docs-files (str (fs/parent template-dir))))
       "what bb init lists is what is counted, source.md and the README included"))
@@ -280,14 +280,14 @@
     (is (str/includes? (plan/report r) "\n  uncited: 2 observations of source.md nothing cites - the backlog nobody decided on, revised at the stage's end: S-1.2, S-1.3"))
     (is (not (str/includes? (plan/report r) "inferred:")))
     (testing "a stage plan's requirements: one inferred, one resting on nothing"
-      (spit (doc "stages/stage-1-skeleton.md")
+      (spit (doc "stages/stage-1-plan.md")
             "# Stage 1\n\n## 2. Requirements this stage adds\n\n| # | Requirement | Source | Priority |\n|---|---|---|---|\n| FR-4 | walks | (inferred) | must |\n| FR-5 | runs | | must |\n")
       (let [r (check ws)]
-        (is (= ["docs/stages/stage-1-skeleton.md: FR-5 cites no observation of source.md (S-n.m in its Source column) and is not marked (inferred)"]
+        (is (= ["docs/stages/stage-1-plan.md: FR-5 cites no observation of source.md (S-n.m in its Source column) and is not marked (inferred)"]
                (:problems r)))
-        (is (= [["FR-4" "stages/stage-1-skeleton.md"]] (:inferred r)))
-        (is (str/includes? (plan/report r) "\n  inferred: 1 requirement rests on the Architect's inference, shown at the stage's approval - FR-4 (docs/stages/stage-1-skeleton.md)")))
-      (fs/delete (doc "stages/stage-1-skeleton.md")))
+        (is (= [["FR-4" "stages/stage-1-plan.md"]] (:inferred r)))
+        (is (str/includes? (plan/report r) "\n  inferred: 1 requirement rests on the Architect's inference, shown at the stage's approval - FR-4 (docs/stages/stage-1-plan.md)")))
+      (fs/delete (doc "stages/stage-1-plan.md")))
     (is (= [] (:problems (check ws))))))
 
 (deftest the-hash-covers-what-the-check-reads-and-nothing-else

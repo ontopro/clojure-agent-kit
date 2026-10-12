@@ -104,7 +104,7 @@
 
 (defn stage-key
   "The folder under `reviews/` a stage plan's read is written to: the
-  `stage-N` its file name starts with (`stage-1-skeleton.md` → `stage-1`, as
+  `stage-N` its file name starts with (`stage-1-plan.md` → `stage-1`, as
   the blueprint review keys `stage-1-blueprint.md`), or the name without
   `.md` when it does not start that way."
   [stage-plan-path]
@@ -149,7 +149,7 @@
     (when-not (and (fs/exists? sp)
                    stages (= "stages" (fs/file-name stages))
                    docs (= "docs" (fs/file-name docs)))
-      (throw (ex-info (str "a stage plan lives at <plan>/docs/stages/stage-N-<name>.md; " sp
+      (throw (ex-info (str "a stage plan lives at <build>/docs/stages/stage-N-plan.md; " sp
                            (if (fs/exists? sp) " is not there" " does not exist"))
                       {:plan-review/error :no-stage-plan :path (str sp)})))
     (str (fs/normalize (fs/parent docs)))))
@@ -255,7 +255,7 @@
 
   Stage 0's reading is the whole set: the workspace's plan when nothing is
   given, or the plan folder named. A later stage's reading names its stage
-  plan, `<plan>/docs/stages/stage-N-<name>.md`, and reads it first with the
+  plan, `<build>/docs/stages/stage-N-plan.md`, and reads it first with the
   seven documents after it. The profile is the plan's `profile.edn` (where
   `bb init` put it) unless `--profile` names another."
   [& args]

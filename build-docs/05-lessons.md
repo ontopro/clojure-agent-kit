@@ -14,16 +14,16 @@
 
 ---
 
-## Stage 0 — <name>
+## Stage 0
 
 **Closed:** <YYYY-MM-DD> · **Cost:** <$ of its cap> · **Runs:** <n, m merged> - from `bb stage-report`'s first line
 
 | # | Lesson | Ends as | Where |
 |---|---|---|---|
-| L-0.1 | <what the roles did, or failed to, and what it cost> | rule · stage plan line · decision | <`rules.edn` :id / `stages/stage-1-<name>.md` §n / D-n> |
+| L-0.1 | <what the roles did, or failed to, and what it cost> | rule · stage plan line · decision | <`rules.edn` :id / `stages/stage-1-plan.md` §n / D-n> |
 | L-0.2 | <what the person did by hand that a target could not have named> | | |
 
-## Stage <N> — <name>
+## Stage <N>
 
 **Closed:** <YYYY-MM-DD> · **Cost:** <$ of its cap> · **Runs:** <n, m merged> - from `bb stage-report`'s first line
 

@@ -351,7 +351,7 @@
             (println "stage-report: every published stage report matches its records"))))
 
       (nil? plan-arg)
-      (do (println "stage-report: which stage? bb stage-report <plan>/docs/stages/stage-N-<name>.md, or --check")
+      (do (println "stage-report: which stage? bb stage-report <build>/docs/stages/stage-N-plan.md, or --check")
           (System/exit 2))
 
       :else
@@ -362,7 +362,7 @@
             ws (or (workspace/find-workspace (str build)) ws)
             records (:workspace/records ws)]
         (when-not (and (fs/exists? path) id (= "stages" (fs/file-name (fs/parent path))))
-          (println (str "stage-report: " path " is not a stage plan at <plan>/docs/stages/stage-N-<name>.md"))
+          (println (str "stage-report: " path " is not a stage plan at <build>/docs/stages/stage-N-plan.md"))
           (System/exit 2))
         (if-let [s (summary-for (str build) records id)]
           (let [block (render s)]

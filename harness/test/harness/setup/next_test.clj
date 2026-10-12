@@ -16,7 +16,7 @@
   "A workspace whose plan passes, with stage 1 pulled: the base the table is
   walked from."
   {:workspace? true :brief? true :plan-problems []
-   :stage {:id 1 :plan "stage-1-skeleton.md" :gates {:stage/id "1" :stage/approved nil :blueprint/signed nil :stage/closed nil}
+   :stage {:id 1 :plan "stage-1-plan.md" :gates {:stage/id "1" :stage/approved nil :blueprint/signed nil :stage/closed nil}
            :blueprint nil :reviewed? false :packets [] :merged #{} :runs {}}})
 
 (defn- with-stage [m] (update ready :stage merge m))
@@ -147,9 +147,9 @@
     (spit (str (fs/path build "docs" "source.md")) "# Source\n\n| S-1 | the brief, received |\n")
     (spit (str (fs/path stages "stage-N-template.md")) "# a template\n")
     (spit (str (fs/path stages "stage-N-gates-template.edn")) "{:stage/id \"<N>\"}")
-    (spit (str (fs/path stages "stage-0-spike.md")) "# Stage 0\n")
+    (spit (str (fs/path stages "stage-0-plan.md")) "# Stage 0\n")
     (spit (str (fs/path stages "stage-0-gates.edn")) (pr-str {:stage/id "0" :stage/approved {:date "d"} :stage/closed {:date "d"}}))
-    (spit (str (fs/path stages "stage-1-skeleton.md")) "# Stage 1\n\n**Kind:** walking skeleton\n")
+    (spit (str (fs/path stages "stage-1-plan.md")) "# Stage 1\n\n**Kind:** walking skeleton\n")
     (spit (str (fs/path stages "stage-1-gates.edn")) (pr-str {:stage/id "1" :stage/approved {:date "d"} :blueprint/signed {:date "d"}}))
     (spit (str (fs/path stages "stage-1-blueprint.md"))
           "# Blueprint\n\n```clojure\n{:task/id \"t1\"}\n```\n\n```clojure\n{:task/id \"t2\"}\n```\n")
@@ -162,7 +162,7 @@
           s (:stage f)]
       (is (true? (:brief? f)))
       (is (= 1 (:id s)) "the highest-numbered stage with a file; templates are not stages")
-      (is (= "stage-1-skeleton.md" (:plan s)))
+      (is (= "stage-1-plan.md" (:plan s)))
       (is (= "walking skeleton" (:kind s)) "the plan's kind line")
       (is (= "stage-1-blueprint.md" (:blueprint s)))
       (is (true? (:reviewed? s)))

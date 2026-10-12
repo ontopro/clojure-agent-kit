@@ -1,4 +1,4 @@
-# Stage <N> — <Name>, release
+# Stage <N> plan
 
 **Status:** PLANNED — for the person's approval, with its cap (§6)
 **Kind:** release

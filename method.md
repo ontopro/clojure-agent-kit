@@ -32,7 +32,7 @@ E · RELEASE      the release stage  package ▶ deploy on the server, or publis
                                     then back to C; a later release has a smaller D before it
 ```
 
-**Every stage has the same four steps; the phases group the stages by kind.** Setup comes once, before stage 0, and is not a stage. The plan is thin at the start - it commits to stage 0 and nothing after it - and is revised at every stage's end. Build, pre-release and release repeat until the product is released, and release repeats. Stages are numbered through, and each has a kind: spike, skeleton, increment, pre-release, release. The names are yours; the kinds and their order are the method's.
+**Every stage has the same four steps; the phases group the stages by kind.** Setup comes once, before stage 0, and is not a stage. The plan is thin at the start - it commits to stage 0 and nothing after it - and is revised at every stage's end. Build, pre-release and release repeat until the product is released, and release repeats. Stages are numbered through, and each has a kind: spike, skeleton, increment, pre-release, release; the kinds and their order are the method's. A stage may also have a name ("stage 3 — search"): the Architect's session proposes it in the stage map, and the person decides.
 
 > Distilled from a live multi-agent build that ran this loop across dozens of real dispatches — including a few it got wrong — before anyone trusted it with real work. What follows is the discipline that survived contact with those runs, not a design done on paper.
 
@@ -421,7 +421,7 @@ Six or seven documents, each with a **different change cadence** — that separa
 | `02a-<domain>-model.md` | The canonical data model, if your domain has one worth its own document | Evolves stage-by-stage as adapters land |
 | `03-method-and-tooling.md` | This method, instantiated: your roles, model picks, gates, scaffold, harness | Stable once ready; revised when a stage changes the loop's settings |
 | `04-decision-log.md` | **Every** decision, with status and owner (§08) | **Living** — the mechanism by which everything else evolves |
-| `stages/stage-N-*.md` | One document per stage: goal, the requirements it adds, task list, exit criteria (§04) | Created **just-in-time**, when the stage is pulled; approved, with the stage's cap, by the person |
+| `stages/stage-N-plan.md` | One document per stage: goal, the requirements it adds, task list, exit criteria (§04) | Created **just-in-time**, when the stage is pulled; approved, with the stage's cap, by the person |
 | `05-lessons.md` | One section per stage, written at its end: what the roles did, what the person did by hand, what the next stage changes — each lesson ending as a rule, a line in the next stage plan, or a decision | Appended at every stage's end; read first when the next stage's document is written |
 
 Beside `docs/`, a `reviews/` folder holds a review's raw material — each reader's output from the
@@ -495,7 +495,7 @@ What every stage does, stage 0 included (§03 walks through it), and the kinds t
 
 Not by a calendar slot, and not by a feature list. A stage exists to take **a named set of risks off the table and deliver a named increment of the product**. Both halves matter: risk-only stages produce a very well-understood product that nobody can use, and increment-only stages defer every hard question until it is expensive.
 
-Stages are numbered through, and each has a kind. The kinds and their order are the method's; the names are yours.
+Stages are numbered through, and each has a kind; the kinds and their order are the method's. A stage may also have a name ("stage 3 — search"): the Architect's session proposes it in the stage map, and the person decides. A stage's documents are named by what they are - `stage-N-plan.md`, `stage-N-blueprint.md`, `stage-N-gates.edn` - never by its kind or its name.
 
 - **Stage 0 is a spike.** It proves the foundational choices — the architecture's provisional decisions, the stack, the loop — against pass criteria written before it runs, and it ends in running software. What it owes is decisions confirmed or reversed, and working software deployed locally, however small: stage 1 keeps what passed its criterion and rewrites the rest with no obligation. Its first packet proves the loop with your models (§03).
 - **Stage 1 is the walking skeleton.** One small function end to end through every layer the architecture names, on the smallest input a person can walk in a browser or at a REPL — for a site, the home page and two pages; for a library, one public function with its test and its line in the README. **Full depth and the smallest breadth**, and both halves are the point: a project that heard only the depth half made its first stage over every input it had, and the first packet cut from it cost a third of the build and merged nothing. The skeleton is the first thing the owner walks.

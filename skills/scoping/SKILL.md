@@ -29,7 +29,7 @@ decision, never a blocker), and what scoping does not ask.
 
 - No workspace: there is no `workspace.edn` in the session's folder. Say that setup is step 0 -
   `bb self-check` and `bb init` in KIT's clone, as the README's *How to use KIT* says - and stop.
-- `<name>-build/docs/source.md` already carries a brief (§1's first row no longer says
+- `<xyx>-build/docs/source.md` already carries a brief (§1's first row no longer says
   `<the brief>`): say so and stop. Scoping runs once; a change to the brief is a decision in the
   decision log, not a second scoping.
 - The person wants a feature list, a data model or a stack choice from this conversation: the

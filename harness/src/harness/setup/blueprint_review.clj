@@ -100,7 +100,7 @@
 
 (defn stage-document-name
   "The stage document a Blueprint names as its input in its header
-  (`**Input:** \\`stage-N-<name>.md\\``), or nil when the header does not."
+  (`**Input:** \\`stage-N-plan.md\\``), or nil when the header does not."
   [blueprint-text]
   (second (re-find #"\*\*Input:\*\*\s*`([^`]+\.md)`" blueprint-text)))
 

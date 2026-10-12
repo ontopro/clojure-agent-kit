@@ -25,7 +25,7 @@ exit criteria and says what is kept.
 | `method.md` | `Scope is three lists, revised at every stage's end` |
 | `method.md` | `Rank risks, then order the stages by them` |
 | `method.md` | `Security is a decision in stage 0 and a signature before release, not a gate` |
-| `build-docs/05-lessons.md` | `Stage <N> — <name>` |
+| `build-docs/05-lessons.md` | `Stage <N>` |
 | `build-docs/01-requirements.md` | `6b. The index — every requirement, by the stage that wrote it` |
 | `build-docs/01-requirements.md` | `10. Scope — three lists, revised at every stage's end` |
 | `build-docs/stages/stage-N-template.md` | `11. Exit criteria (the stage's gate), and the cap` |
@@ -36,7 +36,7 @@ exit criteria and says what is kept.
 | `tools/security/README.md` | `The two scans` |
 
 And the workspace's own files, never the conversation: this stage's plan (§11 and §12), its
-gates record, the run records under `<name>-build/runs/` for the stage, `docs/00-overview.md`,
+gates record, the run records under `<xyx>-build/runs/` for the stage, `docs/00-overview.md`,
 `docs/01-requirements.md`, `docs/04-decision-log.md`, `docs/05-lessons.md`.
 
 ## Refuses when
@@ -66,9 +66,9 @@ read with the person; an advisory accepted or a hit allowed goes in the routes f
 reason, never around it, and a secret found is rotated, not only removed. Then the security review, once the person
 agrees to its cost (a real model call: $0.46 to $1.50 a reading of the KIT's small fixture, more for a larger application): from the workspace folder, on a fresh clone of the
 application's merged tip, `bb security-review <clone> --stance tracer --base stage-<N-1> --out
-<name>-build/docs/stages/stage-N-security-review` (the application's first commit for `--base` at the first stage's
+<xyx>-build/docs/stages/stage-N-security-review` (the application's first commit for `--base` at the first stage's
 end), which reads the profile's `:security-reviewer`; then `bb security-route <the record it wrote> <clone> --out
-<name>-build/docs/stages/stage-N-security-review`, which asks triage about each reproduced finding. A review the
+<xyx>-build/docs/stages/stage-N-security-review`, which asks triage about each reproduced finding. A review the
 model declined or left without an answer is said as that and is not a clean review. Go through every finding with
 the person: a `coder` route's draft in `security-fixes.md` is completed into this stage's Blueprint as a packet,
 signed and run, and the stage does not close until the security reviewer's test kept beside it passes on the merged
@@ -89,7 +89,7 @@ criteria answered, pass or fallback. Then the scope lists against the source (`b
 prints the observations nothing cites) and the stage map re-ranked by what remains; the next
 stage pulled by kind - an increment, a pre-release stage, or the release - and, at the first
 boundary where "could we ship after this one?" is yes, the MVP named. Finally the cap: what
-the stage cost against what was approved: run `bb stage-report <name>-build/docs/stages/stage-N-<name>.md`, which renders the
+the stage cost against what was approved: run `bb stage-report <xyx>-build/docs/stages/stage-N-plan.md`, which renders the
 stage's figures into §11 from the run records and its security checks and scans from the pack's records,
 and read it with the person; the lessons section's
 cost and runs are its first line.

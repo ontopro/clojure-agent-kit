@@ -192,8 +192,9 @@
 
 (defn stage-files
   "The stages under `docs/stages/`, by id: `{id {:plan name :blueprint name
-  :gates map}}` - a plan file is `stage-N-<name>.md` that is neither a
-  template nor the blueprint; the gates record is `stage-N-gates.edn`."
+  :gates map}}` - a plan file is `stage-N-plan.md` - read as any `stage-N-*.md`
+  that is neither a template nor the blueprint; the gates record is
+  `stage-N-gates.edn`."
   [stages-dir]
   (reduce (fn [m f]
             (let [nm (fs/file-name f)

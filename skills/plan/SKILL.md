@@ -6,7 +6,7 @@ description: Step 2 of the KIT's workflow - the project plan for stage 0, filled
 # The plan, for stage 0
 
 The method is the source: the plan's documents and what each holds are written in `method.md`
-§03 and in the templates `bb init` copied into `<name>-build/docs/`. This skill walks them in
+§03 and in the templates `bb init` copied into `<xyx>-build/docs/`. This skill walks them in
 the template's order and fills nothing deeper than stage 0 needs.
 
 ## When it runs
@@ -34,9 +34,9 @@ skill's.
 | `build-docs/02-architecture.md` | `15. Threat model` |
 | `build-docs/04-decision-log.md` | `5. Validation spikes (R)` |
 
-And the workspace's own files, never the conversation: `<name>-build/docs/source.md` (the
+And the workspace's own files, never the conversation: `<xyx>-build/docs/source.md` (the
 brief, filed by `bb brief` after scoping), the material it names, and the rules overlay
-`<name>-build/rules.edn`.
+`<xyx>-build/rules.edn`.
 
 ## Refuses when
 
@@ -68,7 +68,7 @@ the inferred requirements, for the approval, and the uncited observations, for l
 
 ## Writes
 
-The seven documents under `<name>-build/docs/` as the template lays them out, every mark
+The seven documents under `<xyx>-build/docs/` as the template lays them out, every mark
 replaced or the row deleted, every instruction blockquote deleted once acted on; the rules
 overlay filled; `reviews/plan-review.edn` by the review; the findings table in the overview.
 Then say the next step: the person's approval of stage 0 with its cap, recorded in

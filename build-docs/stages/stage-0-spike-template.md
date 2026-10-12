@@ -1,4 +1,4 @@
-# Stage 0 — <Name>, the spike
+# Stage 0 plan
 
 **Status:** PLANNED — for the person's approval, with its cap (§7)
 **Kind:** spike

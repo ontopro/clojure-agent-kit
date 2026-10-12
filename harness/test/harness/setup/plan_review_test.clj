@@ -39,11 +39,11 @@
     (is (str/ends-with? text "=== THE CHECKLIST (method.md §03, the plan-review pass) ===\n- check this"))))
 
 (deftest a-stage-plan-is-read-first-and-keyed-by-its-stage
-  (let [text (pr/review-input ["stage-1-skeleton.md" "the skeleton"] [["source.md" "the brief"]] "- check this")]
-    (is (str/starts-with? text "=== stages/stage-1-skeleton.md (THE STAGE PLAN UNDER REVIEW) ===\nthe skeleton"))
+  (let [text (pr/review-input ["stage-1-plan.md" "the skeleton"] [["source.md" "the brief"]] "- check this")]
+    (is (str/starts-with? text "=== stages/stage-1-plan.md (THE STAGE PLAN UNDER REVIEW) ===\nthe skeleton"))
     (is (< (str/index-of text "THE STAGE PLAN UNDER REVIEW") (str/index-of text "=== source.md ==="))))
-  (is (= "stage-1" (pr/stage-key "docs/stages/stage-1-skeleton.md")) "as the blueprint review keys stage-1-blueprint.md")
-  (is (= "stage-0" (pr/stage-key "stage-0-spike.md")))
+  (is (= "stage-1" (pr/stage-key "docs/stages/stage-1-plan.md")) "as the blueprint review keys stage-1-blueprint.md")
+  (is (= "stage-0" (pr/stage-key "stage-0-plan.md")))
   (is (= "stage-12" (pr/stage-key "stage-12-hosting.md")))
   (is (= "hosting" (pr/stage-key "hosting.md")) "a file not named by its stage keeps its name"))
 
@@ -145,19 +145,19 @@
         (with-stub answer
           (fn [endpoint]
             (let [plan (scratch-plan endpoint)
-                  stage-plan (str (fs/path plan "docs" "stages" "stage-1-skeleton.md"))]
+                  stage-plan (str (fs/path plan "docs" "stages" "stage-1-plan.md"))]
               (fs/create-dirs (fs/parent stage-plan))
               (spit stage-plan "# Stage 1 - the walking skeleton\n\nthe text of the stage plan\n")
               [(with-out-str (pr/review! plan (str (fs/path plan "profile.edn")) method-path stage-plan)) plan stage-plan])))
         written (edn/read-string (slurp (str (fs/path plan "reviews" "stage-1" "plan-review.edn"))))]
     (is (= 2 (:count written)))
-    (is (= "stage-1-skeleton.md" (:stage written)) "the record says which stage plan it read")
+    (is (= "stage-1-plan.md" (:stage written)) "the record says which stage plan it read")
     (is (= (vec (drop-last 2 pr/documents)) (:documents written)) "the seven documents are its context")
     (is (not (fs/exists? (fs/path plan "reviews" "plan-review.edn"))) "stage 0's record is not touched")
     (is (str/includes? out "reviews/stage-1/plan-review.edn"))
     (is (str/includes? out "and the stage plan"))
     (let [sent (json/generate-string (first seen))]
-      (is (< (str/index-of sent "stages/stage-1-skeleton.md (THE STAGE PLAN UNDER REVIEW)") (str/index-of sent "=== source.md ==="))
+      (is (< (str/index-of sent "stages/stage-1-plan.md (THE STAGE PLAN UNDER REVIEW)") (str/index-of sent "=== source.md ==="))
           "the stage plan is read first")
       (is (str/includes? sent "the text of the stage plan"))
       (is (str/includes? sent "A lesson of the last stage this document does not answer") "the checklist went too"))

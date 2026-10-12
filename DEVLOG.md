@@ -56,6 +56,20 @@ step by hand, named there.
 
 ## 2026-10-12
 
+### A stage's documents are named by what they are (plan 6.4, item 4)
+
+The proof build's orientation said "you pick the names", and nothing said whose name or why. The
+stage plan was the one file of a stage named by something other than what it is -
+`stage-N-<name>.md`, filled by kind (`stage-1-skeleton.md`), by feature (`stage-3-search.md`) or
+anything else - while the blueprint and the gates record are named `-blueprint` and `-gates`; and
+the skills printed `<name>-build/docs/stages/stage-N-<name>.md`, one placeholder for the project and
+the stage. Now each thing has one place: the file names the document (`stage-N-plan.md`), the title
+names the document and the stage (`# Stage 3 plan`), the kind is the plan's `**Kind:**` line, a
+stage's name is optional - the stage map's column and the title, proposed by the Architect's session
+and decided by the person - and the project is the folder (`<xyx>-build/`). No logic changed: the
+tools read any `stage-N-*.md` as the plan; KIT's own examples and tests now use the new name. And a
+template instruction `bb plan-check` could not see, hidden by a mark nested inside it, is one mark now.
+
 ### `kit-start` says where you are and what to type (plan 6.4, item 3)
 
 The proof build's first session read part 1's end - "scoping is next after this. Questions on the

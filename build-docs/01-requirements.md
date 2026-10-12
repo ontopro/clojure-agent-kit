@@ -61,7 +61,7 @@
 | # | Stage | Written in | One line |
 |---|---|---|---|
 | FR-1 | 1 | this document, §6.1 | |
-| FR-n | <N> | `stages/stage-N-<name>.md` §2 | |
+| FR-n | <N> | `stages/stage-N-plan.md` §2 | |
 
 ## 7. Non-functional requirements
 

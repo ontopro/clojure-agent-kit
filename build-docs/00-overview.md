@@ -45,7 +45,7 @@ Full requirements: `01-requirements.md`.
 | `03-method-and-tooling.md` | The build method: roles, protocols, quality gates, scaffold, harness | Stable once ready; runs under every stage |
 | `04-decision-log.md` | **Every** decision with status: RESOLVED / PROVISIONAL (+ gating spike) / OPEN (+ owning stage) | **Living** |
 | `05-lessons.md` | One section per stage, written at its end: what the roles did, what the person did by hand, what the next stage changes - each lesson ending as a rule, a line in the next stage plan, or a decision | Appended at every stage's end; read first when the next stage plan is written |
-| `stages/stage-N-*.md` | One **stage plan** per stage: goal and kind, the requirements it adds, the decisions it exercises, what it proves and does not, its seams, its task list, its exit criteria and its cap | Created **just-in-time**, when the stage is pulled; approved by the person with its cap |
+| `stages/stage-N-plan.md` | One **stage plan** per stage: goal and kind, the requirements it adds, the decisions it exercises, what it proves and does not, its seams, its task list, its exit criteria and its cap | Created **just-in-time**, when the stage is pulled; approved by the person with its cap |
 | `stages/stage-N-blueprint.md` | The stage's **blueprint**: shapes, signatures, namespaces, the task packets in dependency order; exactly one per stage | Written from the approved stage plan; signed off by the person |
 
 **The decision log is how the iterative method and the architecture reconcile.** An aspect
@@ -68,14 +68,14 @@ lands in the pre-release stages.
 later stage is approved with its own cap at its stage plan, and the rows below it are
 indicative, re-ranked by the risks at every stage's end.
 
-| Stage | Kind | Name | Delivers | Risk it retires | Key decisions it closes | Cap | Status |
+| Stage | Kind | Name (optional) | Delivers | Risk it retires | Key decisions it closes | Cap | Status |
 |---|---|---|---|---|---|---|---|
-| **0** | spike | <name> | the loop proved with this project's models; the top risks proved against their pass criteria; working software deployed locally, however small, owed nothing - decisions confirmed or reversed | R1, R2 | <D-n …>, each pass or fallback | <$> | PLANNED |
-| **1** | walking skeleton | <name> | <one small function end to end through every layer, on the smallest input a person can walk>; the seams established; the first owner's walk | <R-n> | <decision IDs> | — | NOT STARTED — plan written when pulled |
-| **2** | increment | <name> | <deliverable> | <R-n> | <decision IDs> | — | NOT STARTED |
+| **0** | spike | | the loop proved with this project's models; the top risks proved against their pass criteria; working software deployed locally, however small, owed nothing - decisions confirmed or reversed | R1, R2 | <D-n …>, each pass or fallback | <$> | PLANNED |
+| **1** | walking skeleton | | <one small function end to end through every layer, on the smallest input a person can walk>; the seams established; the first owner's walk | <R-n> | <decision IDs> | — | NOT STARTED — plan written when pulled |
+| **2** | increment | | <deliverable> | <R-n> | <decision IDs> | — | NOT STARTED |
 | **…** | increment | | | | | — | |
-| **N** | pre-release | <name> | <host, publish, backup, restore, metrics, logging, auditing, the pre-publish gate - what of it this stage takes> | <R-n> | | — | NOT STARTED |
-| **N+1** | release | <name> | packaged; deployed on the server or published for download | | | — | NOT STARTED |
+| **N** | pre-release | | <host, publish, backup, restore, metrics, logging, auditing, the pre-publish gate - what of it this stage takes> | <R-n> | | — | NOT STARTED |
+| **N+1** | release | | packaged; deployed on the server or published for download | | | — | NOT STARTED |
 
 **The MVP is named afterwards.** At every stage boundary ask "could we ship after this one?";
 the first boundary where the answer is yes is the MVP - mark it in the Status column when it
