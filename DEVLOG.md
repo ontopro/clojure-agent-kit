@@ -56,6 +56,16 @@ step by hand, named there.
 
 ## 2026-10-09
 
+### One placeholder for the project folder: `<xyx>` (plan 6.3, item 7)
+
+The walk-through's finding 7: the README writes the project folder `<xyx>`, while `method.md`
+§03's block, `workflow.md`'s diagram and two docstrings (`harness.setup.workspace`,
+`harness.loop.driver`) wrote it bare, `xyx-app`. Now `<xyx>` everywhere a folder is meant
+(`&lt;xyx&gt;` in the diagram's labels, as `&lt;stage&gt;` already is). `<name>`, the project's
+name where the documents mean the name and not the folder, and the tests' `xyx`, a real name the
+code runs on, are unchanged. The `workspace.edn` example in `harness.setup.workspace` names the
+clone `KIT`, as the README's clone makes it.
+
 ### What a newcomer's walk-through of How to use KIT found, fixed (plan 6.3, item 7)
 
 A fresh agent with none of plan 6.3's context followed the README's *How to use KIT* from an empty

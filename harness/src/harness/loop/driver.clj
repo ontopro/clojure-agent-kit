@@ -16,7 +16,7 @@
 
     spec.edn         the task spec — one entry of the Architect's task list
     loop.edn         {:run/id \"d10\" :profile \"resources/profiles/claude.edn\"
-                      :repo/root \"../../xyx-app\"          ; optional - see `project-root`
+                      :repo/root \"../../<xyx>-app\"        ; optional - see `project-root`
                       :project/subdir \"sandbox\"            ; optional
                       :architecture {:from \"arch\" :files [\"layers.edn\"]} ; optional
                       :worktrees/dir \"/tmp/...\"            ; optional

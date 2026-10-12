@@ -5,11 +5,11 @@
   application, the build - and `workspace.edn`, written by `bb init`, says which
   is which:
 
-    {:workspace/kit \"clojure-agent-kit\"  :workspace/app \"xyx-app\"
-     :workspace/build \"xyx-build\"          :workspace/work \"work\"
-     :workspace/rule-mirrors [\"xyx-app/AGENTS.md\"]
-     :workspace/rules-overlay \"xyx-build/rules.edn\"
-     :workspace/records \"xyx-build/runs\"  :workspace/run-tables \"xyx-build/RUNS.md\"}
+    {:workspace/kit \"KIT\"                :workspace/app \"<xyx>-app\"
+     :workspace/build \"<xyx>-build\"        :workspace/work \"work\"
+     :workspace/rule-mirrors [\"<xyx>-app/AGENTS.md\"]
+     :workspace/rules-overlay \"<xyx>-build/rules.edn\"
+     :workspace/records \"<xyx>-build/runs\"  :workspace/run-tables \"<xyx>-build/RUNS.md\"}
 
   every path relative to the file (or absolute: a KIT kept elsewhere). The
   overlay is the project's rules over the KIT's source (`harness.rules/overlay`);

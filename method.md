@@ -341,15 +341,15 @@ checks the machine before anything is generated. Nothing is copied by hand and n
 installed for you.
 
 ```bash
-mkdir xyx && cd xyx                                          # the project folder: it becomes the workspace
+mkdir <xyx> && cd <xyx>                                      # the project folder: it becomes the workspace
 git clone https://github.com/ontopro/clojure-agent-kit.git KIT
 cd KIT
 bb self-check    # bb doctor - every tool, its version, what fixes a miss - then, when it says yes, bb health:
                  # KIT, on this machine, with the template it pins - minutes, starts JVMs
-bb init          # the workspace, named after the folder: xyx-app (generated, two commits), xyx-build (the
+bb init          # the workspace, named after the folder: <xyx>-app (generated, two commits), <xyx>-build (the
                  # documents, the rules overlay, the profile, run defaults, runs/), work/, and bb.edn
 cd ..            # every session of the project, and KIT's commands, from here
-cd xyx-app && bb serve                                       # the application's own commands, in its folder: http://localhost:8000
+cd <xyx>-app && bb serve                                     # the application's own commands, in its folder: http://localhost:8000
 ```
 
 The three installs the doctor cannot do for you - JDK 21, the Clojure CLI, Babashka - are the

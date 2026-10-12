@@ -11,7 +11,7 @@ implement, deploy locally - and the reviews belong to those steps, not to a plac
 flowchart TD
   subgraph SETUP["Step 0 — setup: the person, once, in KIT's clone"]
     S1["bb self-check: the doctor, then the health check"] --> S3["bb init"]
-    S3 --> S4["xyx-app/ · xyx-build/ (docs, rules.edn, profile.edn, loop.edn) · work/ · workspace.edn · bb.edn"]
+    S3 --> S4["&lt;xyx&gt;-app/ · &lt;xyx&gt;-build/ (docs, rules.edn, profile.edn, loop.edn) · work/ · workspace.edn · bb.edn"]
   end
 
   subgraph SCOPING["Step 1 — scoping: the person and an Architect session, in the workspace"]
@@ -27,7 +27,7 @@ flowchart TD
   end
 
   subgraph STAGE0["Stage 0 — the spike: Foundation, then the risks proved"]
-    Z0["the stage 0 plan: the risks it proves, their pass criteria and fallbacks"] --> F1["profile.edn edited · bb profile"] --> F2["bb rules-sync → xyx-app/AGENTS.md"] --> F3["gates as loop.edn names them"]
+    Z0["the stage 0 plan: the risks it proves, their pass criteria and fallbacks"] --> F1["profile.edn edited · bb profile"] --> F2["bb rules-sync → &lt;xyx&gt;-app/AGENTS.md"] --> F3["gates as loop.edn names them"]
     F3 --> F4["stage 0's first packet through the loop with real models — the machine proved"]
     F4 --> F5["the spike's packets: each pass criterion answered, pass or fallback; running software"]
     F5 --> F6["readiness checklist closed against live evidence; what is kept, said; decisions settled"]
@@ -53,7 +53,7 @@ flowchart TD
     L5 --> L4
     L4 -- green --> L6["code review (Reviewer)"]
     L6 -- reject --> L5
-    L6 -- approve --> L7{"the person merges; record → xyx-build/runs/, RUNS.md"}
+    L6 -- approve --> L7{"the person merges; record → &lt;xyx&gt;-build/runs/, RUNS.md"}
   end
 
   subgraph RELEASE["pre-release stages, then release — stages like any other"]
