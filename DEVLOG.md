@@ -56,6 +56,14 @@ step by hand, named there.
 
 ## 2026-10-09
 
+### The gate order, said the same everywhere (plan 6.3, item 7)
+
+The audit's D1: four places gave `bb gates`' order short or wrong - the README and the root
+`bb.edn` without the boundary, skills, inventory and health-block steps, the harness README with the
+records before the health block, the harness `gates` task's own doc without boundary and inventory.
+All four now say what the task runs and `CLAUDE.md` and `AGENTS.md` already said: doctor, format,
+lint, boundary, rules, skills, inventory, health block, the records, test.
+
 ### Documents and generated text say where commands run: the workspace folder (plan 6.3, item 7)
 
 The audit's C findings, plan 6.3's own drift. The skills are rendered into a workspace only, not the

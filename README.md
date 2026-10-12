@@ -183,7 +183,7 @@ bb health     # then, once: is this KIT healthy here, with the template it pins?
               # the selfcheck project and a freshly generated application, gates green, gates failed on purpose,
               # one task through the loop, the application served, a Firefox opening it (skipped, and said, with no geckodriver)
 bb init       # then: the workspace, named after the folder the clone is in - see harness/README.md
-bb gates      # KIT's own gates: doctor -> format -> lint -> rules -> reports -> test
+bb gates      # KIT's own gates: doctor -> format -> lint -> boundary -> rules -> skills -> inventory -> health block -> the records (reports, stage reports, bake-offs) -> test
 
 cd harness
 bb example    # the whole loop shape in one run — no model calls, no network

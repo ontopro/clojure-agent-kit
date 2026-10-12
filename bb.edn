@@ -113,7 +113,7 @@
   health {:doc "The health check: the selfcheck project and an application generated from the pinned template - gates, breakers, one loop run, serve. Minutes; starts JVMs. [--selfcheck-only] [--keep]"
           :task (apply harness "health" *command-line-args*)}
 
-  gates {:doc "The KIT's own quality gates, cheap first: doctor -> format -> lint -> rules -> reports -> test; writes the gates record .local/gates/last.edn"
+  gates {:doc "The KIT's own quality gates, cheap first: doctor -> format -> lint -> boundary -> rules -> skills -> inventory -> health block -> the records (reports, stage reports, bake-offs) -> test; writes the gates record .local/gates/last.edn"
          :task (harness "gates")}
 
   hooks-install {:doc "Point this clone's git hooks at .githooks/ (core.hooksPath), so the pre-commit hook runs `bb commit-check`. Once per clone"

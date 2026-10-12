@@ -211,7 +211,7 @@
   ;; Every run, green or red, writes the gates record (.local/gates/last.edn at the repository
   ;; root): the working tree it ran on, HEAD, the exit, the failed step and tests. The clone's
   ;; pre-commit hook (`bb commit-check` at the root) refuses a commit the record does not back.
-  gates {:doc "Quality gates, cheap first: doctor -> format -> lint -> rules -> skills -> health block -> reports and bake-offs (a workspace's) -> test; writes the gates record the commit check reads"
+  gates {:doc "Quality gates, cheap first: doctor -> format -> lint -> boundary -> rules -> skills -> inventory -> health block -> the records (reports, stage reports, bake-offs) -> test; writes the gates record the commit check reads"
          :requires ([harness.gates.record :as record])
          :task (record/recorded!
                 [["doctor" (fn [] (shell "bb" "doctor" "--tier" "gates"))]

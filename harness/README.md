@@ -26,7 +26,7 @@ bb brief      # in a workspace: the brief the scoping skill wrote to work/brief.
 bb next       # the workflow's next step, its owner and the command or skill, read off the build's files; setup before a workspace exists, scoping in a new one
 bb stage-report <stage-plan.md> # a stage's figures from its records, into its plan's exit-criteria section; --check holds the block to the records (in gates)
 bb spec-from-blueprint <blueprint.md> <task-id> [<out.edn>]  # a task's spec.edn out of the Blueprint, its named shapes inlined from §1; pipes into bb sigs
-bb gates      # the KIT's own gates: doctor -> format -> lint -> rules -> reports -> health block -> test; writes .local/gates/last.edn, which the pre-commit hook reads
+bb gates      # the KIT's own gates: doctor -> format -> lint -> boundary -> rules -> skills -> inventory -> health block -> the records (reports, stage reports, bake-offs) -> test; writes .local/gates/last.edn, which the pre-commit hook reads
 bb repair     # gate 0 over the Clojure files you changed (run before bb gates)
 bb example    # the whole loop shape in one run: no model calls, no network
 ```
