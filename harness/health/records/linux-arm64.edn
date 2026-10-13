@@ -1,10 +1,10 @@
 ;; Written by `bb health --record`; rendered into the README by `bb health-sync`. Do not edit.
-{:health/as-of "2026-10-12",
+{:health/as-of "2026-10-13",
  :platform
  {:key "linux-arm64", :label "Linux Ubuntu 24.04.5 LTS arm64"},
  :kit
- {:sha "ac8760b1726e2ec400cbab06960b3d540fa1fefd",
-  :short "ac8760b",
+ {:sha "11727df1b3df4c42d6efdc13af469b4f5f7c44fc",
+  :short "11727df",
   :dirty? false},
  :template
  {:template io.github.ontopro/clojure-stack-lite,
@@ -20,13 +20,13 @@
   :git "2.56.0",
   :java "21.0.12.1"},
  :checks
- [{:subject :selfcheck, :check :gates, :ok? true, :ms 3335}
-  {:subject :selfcheck, :check :red, :ok? true, :ms 4831}
-  {:subject :selfcheck, :check :loop, :ok? true, :ms 8589}
-  {:subject :app, :check :gates, :ok? true, :ms 13280}
-  {:subject :app, :check :red, :ok? true, :ms 12202}
-  {:subject :app, :check :loop, :ok? true, :ms 12447}
-  {:subject :app, :check :serve, :ok? true, :ms 7524}
-  {:subject :app, :check :browser, :ok? true, :ms 10121}
-  {:subject :app, :check :security, :ok? true, :ms 13216}],
+ [{:subject :selfcheck, :check :gates, :ok? true, :ms 3352}
+  {:subject :selfcheck, :check :red, :ok? true, :ms 4748}
+  {:subject :selfcheck, :check :loop, :ok? true, :ms 8910}
+  {:subject :app, :check :gates, :ok? true, :ms 13075}
+  {:subject :app, :check :red, :ok? true, :ms 12321}
+  {:subject :app, :check :loop, :ok? true, :ms 12359}
+  {:subject :app, :check :serve, :ok? true, :ms 8550}
+  {:subject :app, :check :browser, :ok? true, :ms 10244}
+  {:subject :app, :check :security, :ok? true, :ms 13218}],
  :ok? true}
