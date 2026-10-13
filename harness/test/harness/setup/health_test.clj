@@ -274,3 +274,28 @@
       (is (= {:as-of "2026-09-22" :platform "Test arm64" :tools {:bb "1.13.223"}}
              (edn/read-string (slurp (str (fs/path dir "known-good.edn")))))
           "the doctor's known-good set is what the run saw"))))
+
+(deftest the-report-wraps-and-ends-with-what-is-ready
+  (testing "no line wider than the width, broken at spaces"
+    (let [text (str/join " " (repeat 40 "provision, dispatch"))]
+      (is (every? #(<= (count %) 60) (health/wrap 60 text)))
+      (is (= text (str/join " " (health/wrap 60 text))) "nothing lost or added")))
+  (testing "the summary: what is READY, on what, and what was expected"
+    (let [lines (health/summary {:kit {:tag "0.6.3" :short "304eecd"}
+                                 :pin {:git/tag "kit-v1.2" :git/sha "9ca4b7b0f00"}
+                                 :platform "macOS 27.0.1 arm64"
+                                 :results [{:check :gates :ms 3000}
+                                           {:check :security :ms 11000
+                                            :detail (str "10 ok\n" health/expected-gaps "\nwarn headers: a\nwarn csp: b\nskipped tls: c")}]
+                                 :doctor [{:tool :bb :req :required :status :ok}
+                                          {:tool :opencode2 :req :optional :status :missing}]})]
+      (is (= "  READY - KIT 0.6.3 at 304eecd with template kit-v1.2 (9ca4b7b), on macOS 27.0.1 arm64" (first lines)))
+      (is (str/includes? (second lines) "optional, not installed: opencode2 (not needed)"))
+      (is (str/includes? (nth lines 2) "2 of 2 checks ok in 14s"))
+      (is (str/includes? (nth lines 3) "2 security warnings and 1 skip - the template's known gaps"))
+      (is (every? #(<= (count %) health/width) lines))))
+  (testing "no application generated: no template, and no expected line when nothing was expected"
+    (let [lines (health/summary {:kit {:tag "0.6.3" :short "304eecd"} :platform "p"
+                                 :results [{:check :gates :ms 1000}] :doctor []})]
+      (is (= ["  READY - KIT 0.6.3 at 304eecd, on p" "    toolchain  every required tool ok" "    health     1 of 1 checks ok in 1s"]
+             lines)))))

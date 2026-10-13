@@ -99,6 +99,8 @@
                                       "what to fix; then run `bb self-check` again. `bb health` was not run."))
                         (System/exit exit))
                       (let [{:keys [exit]} (apply shell {:dir "harness" :continue true} "bb" "health" *command-line-args*)]
+                        (when (zero? exit)
+                          (println "    next       bb init - the workspace, named after this clone's folder - then cd .."))
                         (System/exit exit)))}
 
   doctor {:doc "Is this machine ready? The toolchain: tool, version, status, what it is for (--edn for a pins map); in a workspace, what a pulled KIT expects that the workspace lacks"

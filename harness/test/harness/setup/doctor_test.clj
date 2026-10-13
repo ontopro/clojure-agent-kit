@@ -54,11 +54,20 @@
 
 (deftest render
   (let [results (mapv #(doctor/probe % {} {}) specs)]
-    (testing "every tool appears in the table, with what it does"
+    (testing "every tool appears in the table; what it does, only when it is not ok"
       (let [out (doctor/render-table results)]
-        (doseq [{:keys [tool does]} specs]
-          (is (str/includes? out (name tool)))
-          (is (str/includes? out does)))))
+        (doseq [{:keys [tool]} specs]
+          (is (str/includes? out (name tool)))))
+      (let [out (doctor/render-table [{:tool :bb :req :required :status :ok :does "Task runner"}
+                                      {:tool :neil :req :optional :status :missing :does "Scaffolding"}])]
+        (is (not (str/includes? out "Task runner")) "an ok tool is its name, versions and status")
+        (is (str/includes? out "Scaffolding"))))
+    (testing "two parts: what the gates and a loop need, then the optional; an absent optional tool is not installed"
+      (let [out (doctor/render-table [{:tool :bb :req :required :status :ok}
+                                      {:tool :opencode2 :req :optional :status :missing :does "x"}])]
+        (is (< (str/index-of out "required") (str/index-of out "bb") (str/index-of out "Optional") (str/index-of out "opencode2")))
+        (is (str/includes? out "not installed"))
+        (is (not (str/includes? out "missing")))))
     (testing "a missing required tool is shouted, a missing optional one is not"
       (let [out (doctor/render-table
                  [{:tool :cljfmt :req :required :status :missing :does "Formatter"}

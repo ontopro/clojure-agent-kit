@@ -464,26 +464,35 @@
            "yes"))))
 
 (defn render-table
-  "The human report: one line per tool, the two verdicts, and where the pins
-  and the known-good set came from."
+  "The human report, in two parts - what KIT's gates and a loop need, and what
+  only a seat or a pack needs - then the two verdicts and where the pins and
+  the known-good set came from. A tool's line is its name, versions and status;
+  what it is for, and what fixes it, follow only when it is not ok (or a pin
+  speaks for it), so a ready machine's report is short and no line runs wide.
+  An optional tool that is absent is `not installed`, not a miss."
   ([results] (render-table results nil nil))
   ([results good pin-file]
    (let [w (apply max 4 (map #(count (name (:tool %))) results))
-         row (fn [{:keys [tool version known-good] :as r}]
-               (format (str "  %-" w "s  %-12s  %-12s  %-12s %s")
-                       (name tool) (or version "—") (or known-good "—") (status-label r) (detail r)))
-         soft (remove #(or (= :required (:req %)) (= :ok (:status %))) results)]
-     (str "\nClojure toolchain\n\n"
-          (format (str "  %-" w "s  %-12s  %-12s  %-12s %s\n") "tool" "here" "known-good" "status" "")
-          (str/join "\n" (map row results))
+         label (fn [{:keys [status req] :as r}]
+                 (if (and (= :missing status) (not= :required req)) "not installed" (status-label r)))
+         row (fn [{:keys [tool version known-good status pin] :as r}]
+               (str (format (str "  %-" w "s  %-12s  %-12s  %s")
+                            (name tool) (or version "—") (or known-good "—") (label r))
+                    (when (or (not= :ok status) pin)
+                      (str "\n      " (detail r)))))
+         {required true optional false} (group-by #(= :required (:req %)) results)]
+     (str "\nClojure toolchain - required (KIT's gates and a loop need these)\n\n"
+          (format (str "  %-" w "s  %-12s  %-12s  %s\n") "tool" "here" "known-good" "status")
+          (str/join "\n" (map row required))
+          (when (seq optional)
+            (str "\n\nOptional - a seat's client or a pack's tool; one not installed is fine\n\n"
+                 (str/join "\n" (map row optional))))
           "\n\n"
           (verdict-line results :gates "The KIT's gates can run here") "\n"
           (verdict-line results :loop "A loop can run here") "\n"
-          (when (seq soft)
-            (str "  not required, missing: " (str/join ", " (map #(name (:tool %)) soft)) "\n"))
           (when good
-            (str "  known-good: the KIT's own set, run together on " (:as-of good) " (" (:platform good)
-                 "); newer than it is information, not a fault\n"))
+            (str "  known-good: KIT's own set, run together on " (:as-of good) " (" (:platform good)
+                 "); newer is fine\n"))
           (when pin-file
             (str "  pins: " pin-file " - floors, except the JDK's major\n"))))))
 

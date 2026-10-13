@@ -137,6 +137,12 @@
 (defn- result [check {:keys [subject]} ok? ms detail]
   {:check check :subject subject :ok? (boolean ok?) :ms ms :detail detail})
 
+(def expected-gaps
+  "The line above the security pack's warns and skips: on a fresh application
+  they are the pinned template's known gaps, the same on every machine, and
+  none of them fails the run."
+  "expected on a fresh application - the template's known gaps (02-architecture.md §4 and §8); they fail nothing:")
+
 (defn- gate-lines
   "The failed gate's output, last lines: enough to read, never the whole log."
   [{:keys [gates/failed gates/report]}]
@@ -563,12 +569,13 @@
                             (let [{:keys [ok warn fail skipped]} (:counts rec)]
                               (str ok " ok, " warn " warn, " fail " fail, " skipped " skipped, " label))
                             (str "the security pack's " cmd " exited " exit ", no record written\n" tail)))
-                        (for [{:keys [rec]} runs
-                              {:keys [status check subject says]} (:rows rec)
-                              :when (#{:fail :warn :skipped} status)]
-                          (str (name status) " " (name check)
-                               (when (#{:deps :secrets} check) (str " " subject))
-                               ": " says))))))))
+                        (let [rows (for [{:keys [rec]} runs
+                                         {:keys [status check subject says]} (:rows rec)
+                                         :when (#{:fail :warn :skipped} status)]
+                                     (str (name status) " " (name check)
+                                          (when (#{:deps :secrets} check) (str " " subject))
+                                          ": " says))]
+                          (when (seq rows) (cons expected-gaps rows)))))))))
 
 ;; ---------------------------------------------------------------------------
 ;; the generated application
@@ -723,11 +730,80 @@
 
 (defn- say [& xs] (println (apply str xs)) (flush))
 
+(def width
+  "No line of the report is wider than this: a terminal's soft wrap drops a
+  space when the text is copied, and a 300-column line is not read."
+  100)
+
+(defn wrap
+  "`text` as lines of at most `n` columns, broken at spaces; a word longer
+  than `n` stands on its own line. A line that fits is left as it is, its own
+  spacing kept."
+  [n text]
+  (if (<= (count text) n)
+    [text]
+    (reduce (fn [lines word]
+              (let [last-line (peek lines)]
+                (if (and last-line (<= (+ (count last-line) 1 (count word)) n))
+                  (conj (pop lines) (str last-line " " word))
+                  (conj lines word))))
+            []
+            (remove str/blank? (str/split text #" ")))))
+
+(defn- kit-version
+  "KIT's tag and commit, `{:tag \"0.6.3\" :short \"304eecd\"}`; nil for what git cannot say."
+  [kit]
+  (let [out (fn [& args] (let [{:keys [exit out]} (apply p/shell {:dir kit :out :string :err :string :continue true} "git" args)]
+                           (when (zero? exit) (not-empty (str/trim out)))))]
+    {:tag (out "describe" "--tags" "--abbrev=0") :short (out "rev-parse" "--short" "HEAD")}))
+
+(defn summary
+  "The lines a healthy run ends with - what is READY, on what, and what was
+  expected - from plain data, so every line is tested: `:kit` (`kit-version`),
+  `:pin` (the template pin, nil when no application was generated), `:platform`
+  (its label), `:results` (every check), `:doctor` (the doctor's results)."
+  [{:keys [kit pin platform results doctor]}]
+  (let [ms (reduce + (map :ms results))
+        not-installed (for [{:keys [tool req status]} doctor
+                            :when (and (not= :required req) (= :missing status))]
+                        (name tool))
+        security (some #(when (= :security (:check %)) (:detail %)) results)
+        lines-of (fn [prefix] (count (filter #(str/starts-with? % prefix) (some-> security str/split-lines))))
+        warns (lines-of "warn ")
+        skips (lines-of "skipped ")
+        plural (fn [n word] (str n " " word (when (not= 1 n) "s")))]
+    (cond-> [(str "  READY - KIT " (or (:tag kit) "(untagged)") (some->> (:short kit) (str " at "))
+                  (when pin (str " with template " (:git/tag pin) " (" (subs (:git/sha pin) 0 7) ")"))
+                  ", on " platform)
+             (str "    toolchain  every required tool ok"
+                  (when (seq not-installed)
+                    (str "; optional, not installed: " (str/join ", " not-installed) " (not needed)")))
+             (str "    health     " (count results) " of " (count results) " checks ok in " (format "%.0fs" (/ ms 1000.0)))]
+      (pos? (+ warns skips))
+      (conj (str "    expected   " (plural warns "security warning") " and " (plural skips "skip")
+                 " - the template's known gaps, on every machine")))))
+
+(def ^:private row-format "  %-9s %-8s %-4s %7s  ")
+
+(def ^:private indent (apply str (repeat (count (format row-format "" "" "" "")) " ")))
+
 (defn- show [{:keys [check subject ok? ms detail]}]
-  (say (format "  %-8s %-8s %-4s %6.1fs  %s" (name subject) (name check) (if ok? "ok" "FAIL")
-               (/ ms 1000.0) (first (str/split-lines detail))))
-  (doseq [line (rest (str/split-lines detail))]
-    (say "                                  " line)))
+  (let [n (- width (count indent))
+        ;; a line that wraps goes on two spaces in, so each line of the detail starts where it is seen
+        hang (fn [raw]
+               ;; a pack's own padded columns, squeezed to three spaces before they are measured
+               (let [line (str/replace raw #" {4,}" "   ")]
+                 (if (<= (count line) n)
+                   [line]
+                   (let [l1 (first (wrap n line))
+                         words (remove str/blank? (str/split line #" "))
+                         more-text (str/join " " (drop (count (str/split l1 #" ")) words))]
+                     (cons l1 (when-not (str/blank? more-text)
+                                (map #(str "  " %) (wrap (- n 2) more-text))))))))
+        [first-line & more] (mapcat hang (str/split-lines detail))]
+    (say (format row-format (name subject) (name check) (if ok? "ok" "FAIL") (format "%.1fs" (/ ms 1000.0)))
+         first-line)
+    (doseq [line more] (say indent line))))
 
 (defn run-subject!
   "The checks for one subject, in order, each printed as it completes. `checks`
@@ -761,7 +837,7 @@
     (when-not (doctor/ok? doctor-results :loop)
       (say "  a loop cannot run here; run `bb doctor`, follow it, run this again")
       (System/exit 1))
-    (say "\n  subject  check    ok      time  detail")
+    (say "\n" (format row-format "subject" "check" "ok" "time") "detail")
     (let [selfcheck (let [s (selfcheck-subject kit)
                           rs (run-subject! s [:gates :red :loop])]
                       (if (flags "--keep") (say "  kept: " (:workspace s)) (fs/delete-tree (fs/parent (:workspace s))))
@@ -786,6 +862,10 @@
             (System/exit 1))
         (do (say "  healthy: " (count all) " checks, "
                  (format "%.0fs" (/ (reduce + (map :ms all)) 1000.0)))
+            (say "")
+            (doseq [l (summary {:kit (kit-version kit) :pin (when app (template/pin (template/load-pins)))
+                                :platform (:label (platform)) :results all :doctor doctor-results})]
+              (say l))
             (cond
               (and (flags "--record") (flags "--selfcheck-only"))
               (say "  --record needs the full run (both subjects); nothing written")

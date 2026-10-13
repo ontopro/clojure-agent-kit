@@ -56,6 +56,19 @@ step by hand, named there.
 
 ## 2026-10-12
 
+### The self-check report says what it means (plan 6.4, item 1)
+
+The proof build's first screen was `bb self-check`: 58 lines, some 300 columns wide, the optional
+tools beside the required with a `missing` that is not a fault, five security warns with no word
+that they are expected, a subject column out of line, and no last line saying the machine is ready.
+The doctor's table is in two parts - what KIT's gates and a loop need, then the optional, whose
+absence reads `not installed` - and what a tool is for, with its fix, shows only when it is not ok.
+The health table's columns line up, no detail line is wider than 100 columns, a long one wrapped
+with a hanging indent, and one line above the security pack's warns says they are the template's
+known gaps and fail nothing. A healthy run ends with a summary - READY, KIT's tag and commit, the
+template, the platform; the toolchain; the checks; what was expected - and `self-check` adds the
+next step. Rows 124 and 125 are fixed.
+
 ### A stage's documents are named by what they are (plan 6.4, item 4)
 
 The proof build's orientation said "you pick the names", and nothing said whose name or why. The
