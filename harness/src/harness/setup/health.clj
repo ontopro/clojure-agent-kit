@@ -771,17 +771,23 @@
         lines-of (fn [prefix] (count (filter #(str/starts-with? % prefix) (some-> security str/split-lines))))
         warns (lines-of "warn ")
         skips (lines-of "skipped ")
-        plural (fn [n word] (str n " " word (when (not= 1 n) "s")))]
-    (cond-> [(str "  READY - KIT " (or (:tag kit) "(untagged)") (some->> (:short kit) (str " at "))
-                  (when pin (str " with template " (:git/tag pin) " (" (subs (:git/sha pin) 0 7) ")"))
-                  ", on " platform)
-             (str "    toolchain  every required tool ok"
-                  (when (seq not-installed)
-                    (str "; optional, not installed: " (str/join ", " not-installed) " (not needed)")))
-             (str "    health     " (count results) " of " (count results) " checks ok in " (format "%.0fs" (/ ms 1000.0)))]
-      (pos? (+ warns skips))
-      (conj (str "    expected   " (plural warns "security warning") " and " (plural skips "skip")
-                 " - the template's known gaps, on every machine")))))
+        plural (fn [n word] (str n " " word (when (not= 1 n) "s")))
+        ;; a line too wide goes on under where its text began
+        lines (fn [lead text]
+                (let [pad (apply str (repeat (count lead) " "))]
+                  (map str (cons lead (repeat pad)) (wrap (- width (count lead)) text))))]
+    (vec
+     (concat
+      (lines "  " (str "READY - KIT " (or (:tag kit) "(untagged)") (some->> (:short kit) (str " at "))
+                       (when pin (str " with template " (:git/tag pin) " (" (subs (:git/sha pin) 0 7) ")"))
+                       ", on " platform))
+      (lines "    toolchain  " (str "every required tool ok"
+                                    (when (seq not-installed)
+                                      (str "; optional, not installed: " (str/join ", " not-installed) " (not needed)"))))
+      (lines "    health     " (str (count results) " of " (count results) " checks ok in " (format "%.0fs" (/ ms 1000.0))))
+      (when (pos? (+ warns skips))
+        (lines "    expected   " (str (plural warns "security warning") " and " (plural skips "skip")
+                                      " - the template's known gaps, on every machine")))))))
 
 (def ^:private row-format "  %-9s %-8s %-4s %7s  ")
 

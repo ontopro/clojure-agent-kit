@@ -75,7 +75,9 @@ The health table's columns line up, no detail line is wider than 100 columns, a 
 with a hanging indent, and one line above the security pack's warns says they are the template's
 known gaps and fail nothing. A healthy run ends with a summary - READY, KIT's tag and commit, the
 template, the platform; the toolchain; the checks; what was expected - and `self-check` adds the
-next step. Rows 124 and 125 are fixed.
+next step. Rows 124 and 125 are fixed. The tag's first Linux run, with six optional tools not
+installed, printed a 123-column toolchain line: every line of the summary now wraps at the width,
+under where its text began.
 
 ### A stage's documents are named by what they are (plan 6.4, item 4)
 

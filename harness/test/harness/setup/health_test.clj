@@ -294,6 +294,15 @@
       (is (str/includes? (nth lines 2) "2 of 2 checks ok in 14s"))
       (is (str/includes? (nth lines 3) "2 security warnings and 1 skip - the template's known gaps"))
       (is (every? #(<= (count %) health/width) lines))))
+  (testing "a long line wraps under where its text began - six optional tools not installed"
+    (let [lines (health/summary {:kit {:tag "0.6.4" :short "bc188a6"} :platform "Linux Ubuntu 24.04.5 LTS arm64"
+                                 :results [{:check :gates :ms 1000}]
+                                 :doctor (for [t [:claude :agy-ide :opencode :opencode2 :pi :mise]]
+                                           {:tool t :req :optional :status :missing})})]
+      (is (every? #(<= (count %) health/width) lines))
+      (is (= ["    toolchain  every required tool ok; optional, not installed: claude, agy-ide, opencode,"
+              "               opencode2, pi, mise (not needed)"]
+             (subvec lines 1 3)))))
   (testing "no application generated: no template, and no expected line when nothing was expected"
     (let [lines (health/summary {:kit {:tag "0.6.3" :short "304eecd"} :platform "p"
                                  :results [{:check :gates :ms 1000}] :doctor []})]
