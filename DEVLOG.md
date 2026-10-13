@@ -54,6 +54,14 @@ step by hand, named there.
 
 ---
 
+## 0.6.4 — plan 6.4's boundary: the proof build's first findings
+
+Plan 6.4 added a `self-check` report that ends with READY and the next step; `bb init`'s closing
+message ending with the first move (`cd ..`, a session, `/kit-start`); `kit-start` saying at each
+part's end which of its four parts are done and what to type, and where the project is among the
+phases; and a stage's documents named by what they are (`stage-N-plan.md`), the stage's name
+optional. A workspace made before it runs `bb skills-sync` after the pull.
+
 ## 2026-10-12
 
 ### The self-check report says what it means (plan 6.4, item 1)
