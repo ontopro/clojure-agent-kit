@@ -51,7 +51,7 @@
     (let [s0 (with-stage {:id 0 :plan nil :gates nil})]
       (is (= [5 "the person"] (step s0)) "no gates record yet")
       (is (= [5 "the person"] (step (assoc-in s0 [:stage :gates] {:stage/id "0" :stage/approved nil}))))
-      (let [a (next/next-action (assoc-in s0 [:stage :gates] {:stage/id "0" :stage/approved {:date "d"}}))]
+      (let [a (next/next-action (assoc-in s0 [:stage :gates] {:stage/id "0" :stage/approved {:date "d" :by "Ada"}}))]
         (is (= [6 "the Architect's session"] ((juxt :step :owner) a)))
         (is (str/includes? (:run a) "stage-plan skill")))))
   (testing "a later stage: its plan, then approval"
@@ -62,7 +62,7 @@
     (is (= [7 "the person"] (step ready)) "written, not approved")
     (is (str/includes? (:run (next/next-action ready)) ":stage/approved")))
   (testing "approved: the blueprint, its review, the sign-off"
-    (let [approved (gate ready :stage/approved {:date "d" :cap "$5"})]
+    (let [approved (gate ready :stage/approved {:date "d" :cap "$5" :by "Ada"})]
       (is (= [8 "the Architect's session"] (step approved)))
       (let [bp (with-stage {:gates (:gates (:stage approved)) :blueprint "stage-1-blueprint.md"})]
         (is (= [9 "the Architect's session"] (step bp)))
@@ -72,8 +72,8 @@
           (is (str/includes? (:run (next/next-action reviewed)) ":blueprint/signed"))))))
   (testing "signed: the packets, one at a time, by their records"
     (let [signed (-> (with-stage {:blueprint "stage-1-blueprint.md" :reviewed? true :packets ["t1" "t2" "t3"]})
-                     (gate :stage/approved {:date "d"})
-                     (gate :blueprint/signed {:date "d"}))]
+                     (gate :stage/approved {:date "d" :by "Ada"})
+                     (gate :blueprint/signed {:date "d" :by "Ada"}))]
       (is (= [8 "the Architect's session"] (step (assoc-in signed [:stage :packets] []))) "a blueprint with no packet")
       (let [a (next/next-action signed)]
         (is (= [11 "the Architect's session"] ((juxt :step :owner) a)))
@@ -97,8 +97,8 @@
 (deftest a-pre-release-stage-has-a-fourth-gate-its-threat-model-signed
   (let [all (-> (with-stage {:kind "pre-release" :blueprint "stage-1-blueprint.md" :reviewed? true
                              :packets ["t1"] :merged #{"t1"}})
-                (gate :stage/approved {:date "d"})
-                (gate :blueprint/signed {:date "d"}))]
+                (gate :stage/approved {:date "d" :by "Ada"})
+                (gate :blueprint/signed {:date "d" :by "Ada"}))]
     (let [a (next/next-action all)]
       (is (= [14 "the Architect's session"] ((juxt :step :owner) a)) "the stage-end skill still runs the stage's end")
       (is (str/includes? (:run a) "every line of docs/02-architecture.md §15 answered with its evidence"))
@@ -111,6 +111,35 @@
       (is (= "the stage-end skill" (:run (next/next-action (assoc-in all [:stage :kind] "increment")))))
       (is (= [7 "the person"] (step (-> all (assoc-in [:stage :kind] nil) (gate :stage/closed {:date "d"}))))))))
 
+(deftest a-sign-off-names-who-signed
+  (testing "a :by that names no one: missing, blank, not a string, the template's words, the role - any case"
+    (doseq [by [nil "" "  " :ada "NAME OF WHO SIGNED" "the person" " The Person "]]
+      (is (next/unnamed? (cond-> {:date "d"} (some? by) (assoc :by by))) (pr-str by))))
+  (testing "a name, and a gate not passed, are not"
+    (is (not (next/unnamed? {:date "d" :by "Ada"})))
+    (is (not (next/unnamed? nil))))
+  (testing "bb next says it at the gate's own step, before anything after it"
+    (let [approved (gate ready :stage/approved {:date "d" :cap "$5" :by "the person"})
+          a (next/next-action approved)]
+      (is (= [7 "the person"] ((juxt :step :owner) a)))
+      (is (= "set :by in :stage/approved to the name of who signed, in docs/stages/stage-1-gates.edn" (:run a)))
+      (is (= "stage 1's :stage/approved has :by \"the person\" - a sign-off names who signed" (:because a))))
+    (let [s0 (with-stage {:id 0 :plan nil :gates {:stage/id "0" :stage/approved {:date "d" :cap "$5"}}})]
+      (is (= [5 "the person"] (step s0)) "stage 0's approval is step 5")
+      (is (= "stage 0's :stage/approved has no :by - a sign-off names who signed" (:because (next/next-action s0)))))
+    (let [signed (-> (with-stage {:blueprint "stage-1-blueprint.md" :reviewed? true :packets ["t1"]})
+                     (gate :stage/approved {:date "d" :by "Ada"})
+                     (gate :blueprint/signed {:date "d" :by "NAME OF WHO SIGNED"}))]
+      (is (= [10 "the person"] (step signed)) "the blueprint's sign-off, not the packet")
+      (is (= [11 "the Architect's session"] (step (gate signed :blueprint/signed {:date "d" :by "Ada"}))) "named: the packet"))
+    (let [closed (-> (with-stage {:kind "pre-release" :blueprint "stage-1-blueprint.md" :reviewed? true
+                                  :packets ["t1"] :merged #{"t1"}})
+                     (gate :stage/approved {:date "d" :by "Ada"})
+                     (gate :blueprint/signed {:date "d" :by "Ada"})
+                     (gate :stage/closed {:date "d"})
+                     (gate :security/signed {:date "d" :by ""}))]
+      (is (= [14 "the person"] (step closed)) "the threat model's signature, before the next stage"))))
+
 (deftest a-stage-plans-kind-is-its-kind-line
   (is (= "pre-release" (next/stage-kind "# Stage 5\n\n**Status:** PLANNED\n**Kind:** pre-release  \n**Version:** 0.1\n")))
   (is (= "walking skeleton" (next/stage-kind "**Kind:** walking skeleton\n")))
@@ -118,7 +147,7 @@
 
 (deftest every-action-names-a-step-an-owner-a-command-and-a-reason
   (doseq [f [{:workspace? false} {:workspace? true :brief? false} ready
-             (gate ready :stage/approved {:date "d"}) (with-stage {:gates nil})]]
+             (gate ready :stage/approved {:date "d" :by "Ada"}) (with-stage {:gates nil})]]
     (let [a (next/next-action f)]
       (is (contains? next/steps (:step a)))
       (is (every? (comp seq str a) [:name :owner :run :because])))))
@@ -148,9 +177,9 @@
     (spit (str (fs/path stages "stage-N-template.md")) "# a template\n")
     (spit (str (fs/path stages "stage-N-gates-template.edn")) "{:stage/id \"<N>\"}")
     (spit (str (fs/path stages "stage-0-plan.md")) "# Stage 0\n")
-    (spit (str (fs/path stages "stage-0-gates.edn")) (pr-str {:stage/id "0" :stage/approved {:date "d"} :stage/closed {:date "d"}}))
+    (spit (str (fs/path stages "stage-0-gates.edn")) (pr-str {:stage/id "0" :stage/approved {:date "d" :by "Ada"} :stage/closed {:date "d"}}))
     (spit (str (fs/path stages "stage-1-plan.md")) "# Stage 1\n\n**Kind:** walking skeleton\n")
-    (spit (str (fs/path stages "stage-1-gates.edn")) (pr-str {:stage/id "1" :stage/approved {:date "d"} :blueprint/signed {:date "d"}}))
+    (spit (str (fs/path stages "stage-1-gates.edn")) (pr-str {:stage/id "1" :stage/approved {:date "d" :by "Ada"} :blueprint/signed {:date "d" :by "Ada"}}))
     (spit (str (fs/path stages "stage-1-blueprint.md"))
           "# Blueprint\n\n```clojure\n{:task/id \"t1\"}\n```\n\n```clojure\n{:task/id \"t2\"}\n```\n")
     (fs/create-dirs (fs/path build "reviews" "stage-1"))

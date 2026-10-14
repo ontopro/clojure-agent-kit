@@ -56,6 +56,17 @@ step by hand, named there.
 
 ## 2026-10-14
 
+### `bb next` holds a sign-off to a name (plan 6.5, item 2)
+
+The sign-off's fix below moved the example, not the mechanism: the gates template now shows
+`:by "NAME OF WHO SIGNED"`, no code read `:by`, and a record copied with the example kept passed
+`bb next` exactly as `"the person"` had. Found by a review of that fix. `bb next` now reads a
+passed approval or sign-off whose `:by` is missing, blank, not a string, the template's words or
+"the person" (any case) as not given, and says so at the gate's own step before anything after it:
+"stage 1's :stage/approved has :by \"the person\" - a sign-off names who signed", with the fix to
+run. The list is those two and no more - a wider one ("the owner", a role's name) would be a
+guess. `:stage/closed` names no signer and is not held.
+
 ### A sign-off records who signed (plan 6.5, item 2)
 
 The proof build's first blueprint read "SIGNED OFF by the person", and its gates record had

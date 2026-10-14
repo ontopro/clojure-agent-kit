@@ -51,6 +51,26 @@
 
 (defn- gates-file [id] (str "docs/stages/stage-" id "-gates.edn"))
 
+(def ^:private names-no-one
+  "What a sign-off's `:by` may not be, in lower case: the gates template's own words, and the
+  role it once gave as its example. A record carrying either names no one."
+  #{"name of who signed" "the person"})
+
+(defn unnamed?
+  "Is the gate `g` passed - a map - with a `:by` that names no one: missing, blank, not a
+  string, the template's words or the role? No code reads `:by`'s value, so this is the one
+  check that a sign-off says who signed."
+  [g]
+  (and (map? g)
+       (let [by (:by g)]
+         (or (not (string? by))
+             (str/blank? by)
+             (contains? names-no-one (str/lower-case (str/trim by)))))))
+
+(def ^:private signed-gates
+  "The gates that are a sign-off, in the order they are passed; `:stage/closed` names no signer."
+  [:stage/approved :blueprint/signed :security/signed])
+
 (defn- stage-action
   "The next action inside the stage `s` in progress: `{:id :plan :kind :gates
   :blueprint :reviewed? :packets :merged :runs}` - `:gates` the record's map or
@@ -58,19 +78,29 @@
   line or nil, `:packets` the blueprint's task ids in order, `:merged` the set
   with a merged record, `:runs` task id → the latest record's status for the
   rest. A pre-release stage has a fourth gate, its threat model signed, which
-  comes before its close."
+  comes before its close. A sign-off whose `:by` names no one (`unnamed?`) is
+  said before anything that follows it."
   [{:keys [id plan kind gates blueprint reviewed? packets merged runs]}]
   (let [{:stage/keys [approved closed] :blueprint/keys [signed]} gates
         spike? (= 0 id)
         unsigned-threat-model? (and (= "pre-release" kind) (nil? (:security/signed gates)))
         sign-threat-model (str "every line of docs/02-architecture.md §15 answered with its evidence, then "
-                               ":security/signed {:date :by <name>} in " (gates-file id))]
+                               ":security/signed {:date :by <name>} in " (gates-file id))
+        unnamed-gate (first (filter #(unnamed? (get gates %)) signed-gates))]
     (cond
       (nil? gates)
       (action (if spike? 5 7) person
               (str "copy docs/stages/stage-N-gates-template.edn to " (gates-file id)
                    (if spike? " and set :stage/approved with the cap" (str " for stage " id)))
               (str "docs/stages/ has stage " id "'s plan and no gates record for it"))
+
+      unnamed-gate
+      (let [by (:by (get gates unnamed-gate))]
+        (action ({:stage/approved (if spike? 5 7) :blueprint/signed 10 :security/signed 14} unnamed-gate) person
+                (str "set :by in " unnamed-gate " to the name of who signed, in " (gates-file id))
+                (str "stage " id "'s " unnamed-gate
+                     (if (and (string? by) (not (str/blank? by))) (str " has :by " (pr-str by)) " has no :by")
+                     " - a sign-off names who signed")))
 
       (and (nil? approved) spike?)
       (action 5 person (str "set :stage/approved {:date :cap :by <name>} in " (gates-file id))
