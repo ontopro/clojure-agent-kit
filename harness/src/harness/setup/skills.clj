@@ -13,7 +13,10 @@
 
   A rendering is the source with one generated note after its frontmatter;
   `--check` compares everything but the note's commit. A folder under the target that is not a
-  shipped skill is a project's own and is never touched.
+  shipped skill is a project's own and is never touched - unless it carries the note: then it is
+  a rendering of a skill the KIT has since renamed or dropped (`stale`), which the sync removes
+  (`prune!`) and `--check` fails on, so an upgraded workspace does not keep the old name beside the
+  new.
 
   THE METHOD IS THE SOURCE of a skill's substance, and a skill cites the
   headings it reads in its *Reads* table. `citation-problems` holds every cited
@@ -21,7 +24,7 @@
   not out from under a skill.
 
   The pure parts are `citations`, `split-frontmatter`, `render`, `normalize`
-  and `generated?`; `sync!` and `-main` are the commands."
+  and `generated?`; `sync!`, `prune!` and `-main` are the commands."
   (:require
    [babashka.fs :as fs]
    [babashka.process :as p]
@@ -164,6 +167,34 @@
                (spit (str path) (render nm source commit)))
              {:name nm :path (str path) :existed? existed? :changed? changed?}))))
 
+(defn stale
+  "The renderings under `target-root/.claude/skills/` of a skill the KIT at
+  `kit-dir` no longer ships - renamed or dropped since they were rendered: a
+  folder whose `SKILL.md` carries the generated note, under a name not in
+  `shipped`. A folder without the note is a project's own and is never one.
+  Sorted names."
+  [kit-dir target-root]
+  (let [d (fs/path target-root target-dir)
+        ships (set (shipped kit-dir))]
+    (vec (sort (for [f (when (fs/directory? d) (fs/list-dir d))
+                     :let [nm (str (fs/file-name f))
+                           p (fs/path f file-name)]
+                     :when (and (not (ships nm)) (fs/regular-file? p) (generated? (slurp (str p))))]
+                 nm)))))
+
+(defn prune!
+  "Remove each `stale` rendering: its `SKILL.md`, then its folder when that
+  leaves it empty. Returns one map per name: `:name`, `:path` (the folder),
+  `:kept` (what else the folder held, left in place - never written by this
+  command, so never removed by it)."
+  [kit-dir target-root]
+  (vec (for [nm (stale kit-dir target-root)
+             :let [d (fs/path target-root target-dir nm)]]
+         (do (fs/delete (fs/path d file-name))
+             (let [kept (mapv #(str (fs/file-name %)) (fs/list-dir d))]
+               (when (empty? kept) (fs/delete d))
+               {:name nm :path (str d) :kept kept})))))
+
 (defn kit-dir-of
   "The KIT's clone: the workspace's, or the parent of `harness/`, where every
   `bb` task runs."
@@ -192,7 +223,10 @@
           results (vec (for [[root commit label] targets
                              r (sync! kit-dir root :check? check? :commit commit)]
                          (assoc r :label label)))
-          drifted (filter :changed? results)]
+          drifted (filter :changed? results)
+          old (vec (for [[root _ label] targets
+                         nm (stale kit-dir root)]
+                     {:name nm :path (str (fs/path root target-dir nm)) :label label}))]
       (when (empty? targets)
         (println (str "skills: every citation holds; no workspace here, so nothing is rendered")))
       (doseq [{:keys [path changed? existed? label]} results]
@@ -201,6 +235,13 @@
                                       changed? "synced: "
                                       :else "in sync: ")
                       path " (" label ")")))
-      (when (and check? (seq drifted))
+      (if check?
+        (doseq [{:keys [path label]} old]
+          (println (str "skills stale: " path " (" label ") - a rendering of a skill this KIT no longer ships")))
+        (doseq [[root _ label] targets
+                {:keys [path kept]} (prune! kit-dir root)]
+          (println (str "skills removed: " path " (" label ") - a rendering of a skill this KIT no longer ships"
+                        (when (seq kept) (str "; kept beside it, not written here: " (str/join ", " kept)))))))
+      (when (and check? (or (seq drifted) (seq old)))
         (println "skills: a rendering does not match skills/ - run `bb skills-sync` from the workspace folder")
         (System/exit 1)))))

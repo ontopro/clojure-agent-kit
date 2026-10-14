@@ -89,13 +89,14 @@
     :profile-missing  roles the KIT's profile shape names and the profile lacks
     :skills-missing   skills the KIT ships that the workspace's `.claude/skills/` lacks
     :skills-drifted   skills whose workspace copy is not the rendering of the KIT's
+    :skills-stale     renderings of skills the KIT no longer ships (`skills/stale`)
     :front-door       the workspace's `bb.edn` against what this KIT writes
                       (`front-door/sync!`, checked): `{:existed? :generated? :missing}`
 
   Each line names what is expected, what is here, and the command that shows
   the difference. An empty vector means nothing is missing."
   [{:keys [dir kit keys-present made-at made-version head head-version behind template-changed pin-moved guidance-changed
-           mirrors-drifted profile profile-missing skills-missing skills-drifted front-door]}]
+           mirrors-drifted profile profile-missing skills-missing skills-drifted skills-stale front-door]}]
   (let [present (set keys-present)
         ;; the version beside the commit where one is known: a tag at a plan's boundary, for a person
         at (fn [commit version] (str commit (when version (str " (version " version ")"))))]
@@ -165,6 +166,11 @@
       (and front-door (:existed? front-door) (:generated? front-door) (seq (:missing front-door)))
       (conj (str "the front door (bb.edn) lacks " (str/join ", " (:missing front-door))
                  ", which this KIT offers: run `bb front-door-sync` from the workspace folder"))
+
+      (seq skills-stale)
+      (conj (str ".claude/skills/ keeps " (str/join ", " skills-stale)
+                 ", rendered under a name this KIT no longer ships (the skills took the kit- prefix 2026-10-14):"
+                 " run `bb skills-sync` from the workspace folder, which removes them"))
 
       (seq skills-drifted)
       (into (for [s skills-drifted]
@@ -267,6 +273,7 @@
      :profile-missing (profile-missing profile-path)
      :skills-missing (vec (for [r (skills/sync! kit-dir (:workspace/dir ws) :check? true) :when (not (:existed? r))] (:name r)))
      :skills-drifted (vec (for [r (skills/sync! kit-dir (:workspace/dir ws) :check? true) :when (and (:existed? r) (:changed? r))] (:name r)))
+     :skills-stale (skills/stale kit-dir (:workspace/dir ws))
      :front-door (select-keys (front-door/sync! kit-dir (:workspace/dir ws) :check? true) [:existed? :generated? :missing])}))
 
 (defn report

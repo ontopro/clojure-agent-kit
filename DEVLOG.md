@@ -56,6 +56,17 @@ step by hand, named there.
 
 ## 2026-10-14
 
+### An upgraded workspace drops a skill's old name (plan 6.5, item 3)
+
+The prefix leaves every workspace made before it with `.claude/skills/plan/` and the rest
+rendered under the old names, and `bb skills-sync` wrote only what the KIT ships: after an upgrade
+`plan` would sit beside `kit-plan`, and the collision the rename fixes would stay. A rendering
+says it is one - the generated note after its frontmatter - so a folder carrying the note under a
+name the KIT no longer ships is stale: `bb skills-sync` removes its `SKILL.md`, and the folder when
+nothing else is in it (a file the sync never wrote is kept, and said); `--check` lists it and
+fails; and `bb doctor`, in a workspace, says it with the command that removes it. A project's own
+skill has no note and is never touched, under an old name or any other.
+
 ### Every KIT skill takes the `kit-` prefix, and every handover names its command (plan 6.5, item 3)
 
 The proof build's handovers used three verbs for one act - "Type next", "Type scoping", "Say

@@ -79,3 +79,26 @@
         (skills/sync! kit-dir target :commit "abc1234")
         (is (not (str/includes? (slurp path) "edited here")))))
     (is (= "---\nname: mine\n---\nthe project's own\n" (slurp (str own))) "a project's own skill is never touched")))
+
+(deftest a-rendering-of-a-skill-no-longer-shipped-is-stale-and-the-sync-removes-it
+  (let [target (str (fs/create-temp-dir {:prefix "skills-"}))
+        at (fn [nm] (fs/path target skills/target-dir nm))
+        source (slurp (skills/source-path kit-dir "kit-plan"))]
+    (skills/sync! kit-dir target :commit "abc1234")
+    ;; an old KIT's renderings under the names before the kit- prefix, one with a file of its own beside it
+    (doseq [nm ["plan" "scoping"]]
+      (fs/create-dirs (at nm))
+      (spit (str (fs/path (at nm) skills/file-name)) (skills/render nm source "old0000")))
+    (spit (str (fs/path (at "scoping") "notes.md")) "the person's\n")
+    ;; a project's own skill under an old name, with no generated note
+    (fs/create-dirs (at "stage-end"))
+    (spit (str (fs/path (at "stage-end") skills/file-name)) "---\nname: stage-end\n---\nthe project's own\n")
+    (is (= ["plan" "scoping"] (skills/stale kit-dir target)) "the note marks a rendering; no note, a project's own")
+    (is (= [] (skills/stale kit-dir (str (fs/create-temp-dir {:prefix "skills-"})))) "no .claude/skills/: nothing stale")
+    (let [removed (skills/prune! kit-dir target)]
+      (is (= [{:name "plan" :kept []} {:name "scoping" :kept ["notes.md"]}] (mapv #(select-keys % [:name :kept]) removed))))
+    (is (not (fs/exists? (at "plan"))) "an empty folder goes with its rendering")
+    (is (= ["notes.md"] (mapv #(str (fs/file-name %)) (fs/list-dir (at "scoping")))) "a file the sync never wrote is kept")
+    (is (fs/exists? (fs/path (at "stage-end") skills/file-name)) "a project's own skill is never touched")
+    (is (= [] (skills/stale kit-dir target)))
+    (is (not-any? :changed? (skills/sync! kit-dir target :check? true)) "the shipped renderings are untouched")))

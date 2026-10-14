@@ -143,7 +143,17 @@
           (is (= ["made at KIT commit "] (map #(subs % 0 19) (remove pin-line? (upgrade/expectations f)))))
           (is (= bump? (boolean (some pin-line? (upgrade/expectations f)))))
           (spit (str (fs/path ws ".claude" "skills" "kit-plan" "SKILL.md")) "edited\n")
-          (is (= ["kit-plan"] (:skills-drifted (upgrade/facts (workspace/find-workspace ws) kit-dir))) "an edited copy drifts"))))))
+          (is (= ["kit-plan"] (:skills-drifted (upgrade/facts (workspace/find-workspace ws) kit-dir))) "an edited copy drifts")
+          (is (= [] (:skills-stale f)))
+          (fs/create-dirs (fs/path ws ".claude" "skills" "plan"))
+          (spit (str (fs/path ws ".claude" "skills" "plan" "SKILL.md")) (skills/render "plan" "---\nname: plan\n---\nold\n" "old0000"))
+          (is (= ["plan"] (:skills-stale (upgrade/facts (workspace/find-workspace ws) kit-dir))) "a rendering under an old name is stale"))))))
+
+(deftest a-rendering-under-a-name-the-kit-no-longer-ships-is-said-with-the-command-that-removes-it
+  (is (some #(= % (str ".claude/skills/ keeps plan, scoping, rendered under a name this KIT no longer ships"
+                       " (the skills took the kit- prefix 2026-10-14): run `bb skills-sync` from the workspace folder, which removes them"))
+            (upgrade/expectations (assoc complete :skills-stale ["plan" "scoping"]))))
+  (is (= ["made at KIT commit abc, which is where the KIT is"] (upgrade/expectations (assoc complete :skills-stale [])))))
 
 (deftest the-front-door-missing-or-behind-the-kit-is-said-with-the-command-that-writes-it
   (is (= ["made at KIT commit abc, which is where the KIT is"]
