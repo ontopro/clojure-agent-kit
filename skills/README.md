@@ -29,7 +29,7 @@ never for a dispatched role: the generated rule mirror is the roles' and stays s
 to it by `bb skills-sync --check`: written by `bb init` and updated by `bb skills-sync` after a
 `git pull`; each copy says it is generated and from which KIT commit, and `bb doctor` in the
 workspace reports a copy that no longer matches. The clone carries no rendering: a project's
-sessions open in the workspace, and `kit-start`, then scoping, are the first of them.
+sessions open in the workspace, and `kit-start`, then `kit-scoping`, are the first of them.
 
 A project may add a skill of its own under another name beside these; the sync leaves it alone.
 

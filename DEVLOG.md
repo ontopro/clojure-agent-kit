@@ -79,7 +79,9 @@ and a handover gives the command: "Type `/kit-scoping` to begin step 1, the brie
 `kit-stage-end` "Type `/kit-stage-plan`". `bb next` names the command where it named "the plan
 skill" (`/kit-start, then /kit-scoping`, `/kit-plan`, `/kit-stage-plan`, `/kit-stage-end`). The
 step names stay ("scoping", "the plan, for stage 0"): they name steps, not skills. A handover
-whose next act is the person's approval names no command, since none runs it.
+whose next act is the person's approval names no command, since none runs it. A review of the
+rename found two places it missed: the workspace `CLAUDE.md` that `bb init` writes now says to
+start with `/kit-start`, and the skills' README names `kit-scoping`.
 
 ### `bb next` holds a sign-off to a name (plan 6.5, item 2)
 
