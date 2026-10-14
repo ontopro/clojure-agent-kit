@@ -38,7 +38,11 @@ decision, never a blocker), and what scoping does not ask.
 
 ## Asks
 
-The six groups of the method's section, one group at a time, in its order; within a group, one
+First the ask, in these words: "In your own words, what do you want built, and why? A sentence
+or a page; paste an existing description if you have one." The answer is the brief's ask, kept as
+given; the six groups draw out the rest.
+
+Then the six groups of the method's section, one group at a time, in its order; within a group, one
 question at a time, and the next only after the answer. Record each answer as given, in the
 person's words, numbered `1.1`, `1.2`, ... by group and question. When the person cannot answer,
 write the question down as a risk (what would prove it, and which stage) or as an open decision

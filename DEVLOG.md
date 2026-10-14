@@ -56,6 +56,15 @@ step by hand, named there.
 
 ## 2026-10-14
 
+### Scoping opens with its question in so many words (plan 6.5, item 2)
+
+The proof build's scoping opened with "In your own words, what are you asking for?", and the
+person asked whether it meant what the project is about. It did: the method calls the brief "the
+person's one-page ask, in their words", but neither the method nor the skill gave the opening
+question, so the session made it from "ask". The skill now gives it - "In your own words, what do
+you want built, and why? A sentence or a page; paste an existing description if you have one" -
+and the answer is the brief's ask, before the six groups draw out the rest.
+
 ### The orientation names `bb next` without running it (plan 6.5, item 2)
 
 The proof build's clean start showed two "nexts" again at the end of `kit-start`'s part 3: the
