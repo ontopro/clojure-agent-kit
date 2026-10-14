@@ -54,6 +54,19 @@ step by hand, named there.
 
 ---
 
+## 2026-10-14
+
+### The orientation names `bb next` without running it (plan 6.5, item 2)
+
+The proof build's clean start showed two "nexts" again at the end of `kit-start`'s part 3: the
+session ran `bb next` and showed its "next: step 1 - scoping" directly above the parts list's
+"4 of 4: the roles and their models - NEXT". Plan 6.4 had said "nothing about scoping until the
+handover", but part 3 said to show "that `bb next` says at any point which one is next", which
+invites running it, and the more specific instruction won. Part 3 now names `bb next` as what
+says the next step after the orientation - named, not run - and the rule every part ends by says
+`bb next` is not run before the handover, where its "next: step 1 - scoping" and "Type scoping"
+agree.
+
 ## 0.6.4 — plan 6.4's boundary: the proof build's first findings
 
 Plan 6.4 added a `self-check` report that ends with READY and the next step; `bb init`'s closing

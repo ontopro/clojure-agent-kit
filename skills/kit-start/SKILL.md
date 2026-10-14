@@ -37,7 +37,8 @@ the folders, and the build's `docs/source.md` §1 for whether a brief is filed.
 
 One part at a time, and the next only when the person is ready; a question answered from the
 document it cites, by section, not from memory. Every part ends the same way: the four parts as a
-list, each DONE or NEXT, then one instruction - nothing about scoping until the handover:
+list, each DONE or NEXT, then one instruction - nothing about scoping until the handover, and
+`bb next` not run before it (its "next" is the project's step, not the orientation's part):
 
 ```
 1 of 4: the workspace - DONE
@@ -58,8 +59,8 @@ Type next, or ask a question about the workspace.
    0's gates record says closed, then C · BUILD; the others Later. In the person's terms; the
    section is quoted where it is clearer.
 3. **The steps in order.** `workflow.md`'s table of steps - setup done, scoping next, then the
-   plan, its review and check, the approval, stage 0, the stages - and that `bb next` says at any
-   point which one is next.
+   plan, its review and check, the approval, stage 0, the stages - and that after the orientation
+   `bb next` says which one is next. Named, not run: its output belongs to the handover.
 4. **The roles and their models.** From the roster: who acts at each kind of act - this session,
    the Architect's; the dispatched roles; the readings; the person - and the model each runs on,
    one line each; `harness/roster.md` for when and why. Then this session: the roster recommends
