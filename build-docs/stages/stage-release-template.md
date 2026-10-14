@@ -1,6 +1,6 @@
 # Stage <N> plan
 
-**Status:** PLANNED — for the person's approval, with its cap (§6)
+**Status:** PLANNED — for the person's approval, with its cap (§6); once approved, APPROVED by the signer's name, never a role, and the date
 **Kind:** release
 **Version:** 0.1 · **Last updated:** <YYYY-MM-DD>
 **Companion to:** the pre-release stage plans before it · `../04-decision-log.md` · `../05-lessons.md`
@@ -44,7 +44,7 @@
 
 ## 6. Exit criteria (the stage's gate), and the cap
 
-**Cap:** <$>, approved by the person on <YYYY-MM-DD>. Recorded in `stage-N-gates.edn`.
+**Cap:** <$>, approved by <who approved - a name> on <YYYY-MM-DD>. Recorded in `stage-N-gates.edn`.
 
 - **The released artifact started as packaged, on an empty home, with the build's caches out
   of reach**, by a command kept with the release - the health-check lesson turned on the

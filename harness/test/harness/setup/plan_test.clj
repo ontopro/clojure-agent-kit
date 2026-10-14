@@ -43,12 +43,12 @@
           "05-lessons.md" 12
           "README.md" 1
           "source.md" 10
-          "stages/stage-0-spike-template.md" 11
+          "stages/stage-0-spike-template.md" 12
           "stages/stage-N-blueprint-template.md" 8
           "stages/stage-N-gates-template.edn" 2
-          "stages/stage-N-template.md" 25
-          "stages/stage-prerelease-template.md" 13
-          "stages/stage-release-template.md" 7}
+          "stages/stage-N-template.md" 26
+          "stages/stage-prerelease-template.md" 14
+          "stages/stage-release-template.md" 8}
          (plan/placeholder-counts template-dir)))
   (is (= (keys (plan/placeholder-counts template-dir)) (init/build-docs-files (str (fs/parent template-dir))))
       "what bb init lists is what is counted, source.md and the README included"))

@@ -1,6 +1,6 @@
 # Stage <N> plan
 
-**Status:** PLANNED — for the person's approval, with its cap (§11)
+**Status:** PLANNED — for the person's approval, with its cap (§11); once approved, APPROVED by the signer's name, never a role, and the date
 **Kind:** <walking skeleton · increment> (stage 0 is the spike, `stage-0-spike-template.md`; pre-release and release have templates of their own)
 **Version:** 0.1 · **Last updated:** <YYYY-MM-DD>
 **Companion to:** `../02-architecture.md` · `../04-decision-log.md` · `../05-lessons.md`
@@ -107,10 +107,10 @@ N. **Containerize / CI** — <woven in here, not held for an infrastructure phas
 > Checkable, not admirable. A person follows these and gets a yes or a no. These are the
 > stage's **definition of done**, and nothing closes the stage but them.
 
-**Cap:** <$ for this stage>, approved by the person on <YYYY-MM-DD>; the stop: <what stops the
-stage early - a figure, a stop named with the stage>. Recorded in `stage-N-gates.edn` beside
-this plan, as `bb next` reads it. The stage's figures - money by role, rounds, stops by owner, retries
-and rejections, the readings - against this cap and the stage before are `bb stage-report`'s: it
+**Cap:** <$ for this stage>, approved by <who approved - a name> on <YYYY-MM-DD>;
+the stop: <what stops the stage early - a figure, a stop named with the stage>. Recorded in
+`stage-N-gates.edn` beside this plan, as `bb next` reads it. The stage's figures - money by role,
+rounds, stops by owner, retries and rejections, the readings - against this cap and the stage before are `bb stage-report`'s: it
 renders them into this section from the run records as a block, and `--check` holds the block
 to the records, so the figures here are never typed by hand.
 

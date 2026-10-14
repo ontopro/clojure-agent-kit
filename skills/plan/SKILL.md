@@ -72,7 +72,9 @@ The seven documents under `<xyx>-build/docs/` as the template lays them out, eve
 replaced or the row deleted, every instruction blockquote deleted once acted on; the rules
 overlay filled; `reviews/plan-review.edn` by the review; the findings table in the overview.
 Then say the next step: the person's approval of stage 0 with its cap, recorded in
-`docs/stages/stage-0-gates.edn` copied from the gates template, and `bb next`.
+`docs/stages/stage-0-gates.edn` copied from the gates template, and `bb next`. An approval
+names who gave it - the cap line, the status line and the gates record's `:by` - by the name the
+brief gives for who signs off, or asked for; never "the person".
 
 ## Done when
 

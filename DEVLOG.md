@@ -56,6 +56,23 @@ step by hand, named there.
 
 ## 2026-10-14
 
+### A sign-off records who signed (plan 6.5, item 2)
+
+The proof build's first blueprint read "SIGNED OFF by the person", and its gates record had
+`:by "the person"` in both the approval and the sign-off - the records the loop proceeds on,
+naming a role and not a signer. The cause was the templates: the gates record's comments gave
+`:by "the person"` beside `"YYYY-MM-DD"`, so it read as a value to keep, and the stage plans' cap
+lines marked the cap and the date but not the name. Now the gates template gives `:by` as
+`"NAME OF WHO SIGNED"`, in capitals like its `"YYYY-MM-DD"` - not a mark, which `bb plan-check`
+would hold against a copy's comments - and says it is never a role. The cap lines read "approved
+by `<who approved - a name>` on `<YYYY-MM-DD>`", a mark filled when the plan is approved, as the
+date already is (not `<name>`, which the check takes for the project's name and passes). The
+status lines of the stage plans and the blueprint say what they read once approved or signed - in
+words, not a mark, since `bb plan-check` reads a stage plan before its approval. `plan`,
+`stage-plan` and `stage-end` take the name from the brief's answer on who signs off, or ask; and
+`bb next` asks for `{:date :by <name>}`. No code reads `:by`'s value; `bb stage-report` prints it,
+now a name.
+
 ### Scoping opens with its question in so many words (plan 6.5, item 2)
 
 The proof build's scoping opened with "In your own words, what are you asking for?", and the

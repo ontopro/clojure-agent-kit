@@ -1,6 +1,6 @@
 # Stage <N> blueprint
 
-**Status:** AWAITING HUMAN GATE — no task dispatches until signed off
+**Status:** AWAITING HUMAN GATE — no task dispatches until signed off; once signed, SIGNED OFF by the signer's name, never a role, and the date
 **Author:** Architect (<model>) · **Date:** <YYYY-MM-DD>
 **Input:** `stage-N-plan.md`, the stage plan, approved · **Method:** `../03-method-and-tooling.md`
 

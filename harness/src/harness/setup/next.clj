@@ -64,7 +64,7 @@
         spike? (= 0 id)
         unsigned-threat-model? (and (= "pre-release" kind) (nil? (:security/signed gates)))
         sign-threat-model (str "every line of docs/02-architecture.md §15 answered with its evidence, then "
-                               ":security/signed {:date :by} in " (gates-file id))]
+                               ":security/signed {:date :by <name>} in " (gates-file id))]
     (cond
       (nil? gates)
       (action (if spike? 5 7) person
@@ -73,7 +73,7 @@
               (str "docs/stages/ has stage " id "'s plan and no gates record for it"))
 
       (and (nil? approved) spike?)
-      (action 5 person (str "set :stage/approved {:date :cap :by} in " (gates-file id))
+      (action 5 person (str "set :stage/approved {:date :cap :by <name>} in " (gates-file id))
               (str "stage 0 is not approved (" (gates-file id) ")"))
 
       (and (nil? approved) (nil? plan))
@@ -81,7 +81,7 @@
               (str "stage " id " is pulled (" (gates-file id) ") and docs/stages/ has no stage-" id " plan"))
 
       (nil? approved)
-      (action 7 person (str "read docs/stages/" plan ", then set :stage/approved {:date :cap :by} in " (gates-file id))
+      (action 7 person (str "read docs/stages/" plan ", then set :stage/approved {:date :cap :by <name>} in " (gates-file id))
               (str "stage " id "'s plan is written and not approved"))
 
       (nil? plan)
@@ -98,7 +98,7 @@
               (str "docs/stages/" blueprint " has no reading under reviews/stage-" id "/"))
 
       (nil? signed)
-      (action 10 person (str "resolve the review's findings in docs/stages/" plan ", then set :blueprint/signed {:date :by} in " (gates-file id))
+      (action 10 person (str "resolve the review's findings in docs/stages/" plan ", then set :blueprint/signed {:date :by <name>} in " (gates-file id))
               (str "stage " id "'s blueprint is reviewed and not signed"))
 
       (empty? packets)

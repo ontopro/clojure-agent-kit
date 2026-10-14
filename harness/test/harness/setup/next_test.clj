@@ -102,11 +102,11 @@
     (let [a (next/next-action all)]
       (is (= [14 "the Architect's session"] ((juxt :step :owner) a)) "the stage-end skill still runs the stage's end")
       (is (str/includes? (:run a) "every line of docs/02-architecture.md §15 answered with its evidence"))
-      (is (str/includes? (:run a) ":security/signed {:date :by} in docs/stages/stage-1-gates.edn, before :stage/closed")))
+      (is (str/includes? (:run a) ":security/signed {:date :by <name>} in docs/stages/stage-1-gates.edn, before :stage/closed")))
     (let [closed (gate all :stage/closed {:date "d"})]
       (is (= [14 "the person"] (step closed)) "closed without it: the person signs before the next stage is pulled")
       (is (= "stage 1 is pre-release and closed without its threat model signed" (:because (next/next-action closed))))
-      (is (= [7 "the person"] (step (gate closed :security/signed {:date "d" :by "the person"}))) "signed: the next stage"))
+      (is (= [7 "the person"] (step (gate closed :security/signed {:date "d" :by "Ada"}))) "signed: the next stage"))
     (testing "another kind is not asked, and a plan with no kind line is another kind"
       (is (= "the stage-end skill" (:run (next/next-action (assoc-in all [:stage :kind] "increment")))))
       (is (= [7 "the person"] (step (-> all (assoc-in [:stage :kind] nil) (gate :stage/closed {:date "d"}))))))))

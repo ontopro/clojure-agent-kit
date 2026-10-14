@@ -103,7 +103,8 @@ its date, cost and runs; `docs/04-decision-log.md` with the stage's entries sett
 walk's decisions added; `docs/01-requirements.md` with the scope lists revised and the index
 appended; `docs/00-overview.md` with the stage closed in the stage map, the risk register and
 the map re-ranked, the next stage named with its cap proposed; for a pre-release stage, the
-gates record's `:security/signed` with the date, written by the person, before its
+gates record's `:security/signed` with the date and the signer's name (`:by`, never "the
+person"), written by the person, before its
 `:stage/closed` with the date, written by the person; the tag `stage-N` on the application's
 merged tip. Not this skill's: the run records and `RUNS.md` (`record` writes them per run) and
 the screenshots (the work folder, uncommitted); the security review's folder

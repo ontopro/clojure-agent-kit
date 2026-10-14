@@ -1,6 +1,6 @@
 # Stage <N> plan
 
-**Status:** PLANNED — for the person's approval, with its cap (§7)
+**Status:** PLANNED — for the person's approval, with its cap (§7); once approved, APPROVED by the signer's name, never a role, and the date
 **Kind:** pre-release
 **Version:** 0.1 · **Last updated:** <YYYY-MM-DD>
 **Companion to:** `../01-requirements.md` §7 · `../02-architecture.md` §15 · `../04-decision-log.md` · `../05-lessons.md`
@@ -60,7 +60,7 @@
 
 ## 7. Exit criteria (the stage's gate), and the cap
 
-**Cap:** <$>, approved by the person on <YYYY-MM-DD>. Recorded in `stage-N-gates.edn`.
+**Cap:** <$>, approved by <who approved - a name> on <YYYY-MM-DD>. Recorded in `stage-N-gates.edn`.
 
 - The deploy path rehearsed against the throwaway host, and the application answered there
 - A restore rehearsed: a backup taken, the data removed, the backup restored, the application

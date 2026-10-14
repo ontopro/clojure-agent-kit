@@ -71,10 +71,13 @@ the overview's findings table and the stage plan; then `bb plan-check`.
 `docs/stages/stage-N-plan.md` from the template for its kind, every mark replaced and every
 instruction deleted; `docs/stages/stage-N-gates.edn` copied from the gates template; the
 overview's stage map with this stage's cap; the review's findings resolved. Then say the next
-step: the person's approval with the cap written into the gates record, and `bb next`.
+step: the person's approval with the cap written into the gates record, and `bb next`. An
+approval names who gave it - the cap line, the status line and the gates record's `:by` - by
+the name the brief gives for who signs off, or asked for; never "the person".
 
 ## Done when
 
 The stage plan has every section its template has, filled for its kind; `bb plan-review` has
 run over it and every finding is resolved; `bb plan-check` passes; the person has been shown
-the inferred requirements and has approved the stage with its cap in `stage-N-gates.edn`.
+the inferred requirements and has approved the stage with its cap in `stage-N-gates.edn`, `:by`
+their name.

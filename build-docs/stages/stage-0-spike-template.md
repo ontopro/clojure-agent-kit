@@ -1,6 +1,6 @@
 # Stage 0 plan
 
-**Status:** PLANNED — for the person's approval, with its cap (§7)
+**Status:** PLANNED — for the person's approval, with its cap (§7); once approved, APPROVED by the signer's name, never a role, and the date
 **Kind:** spike
 **Version:** 0.1 · **Last updated:** <YYYY-MM-DD>
 **Companion to:** `../00-overview.md` §4a · `../02-architecture.md` · `../04-decision-log.md`
@@ -72,8 +72,8 @@
 
 ## 7. Exit criteria (the stage's gate), and the cap
 
-**Cap:** <$ for stage 0>, approved by the person on <YYYY-MM-DD>; the stop: <what stops it
-early>. Recorded in `stage-0-gates.edn` beside this plan.
+**Cap:** <$ for stage 0>, approved by <who approved - a name> on <YYYY-MM-DD>;
+the stop: <what stops it early>. Recorded in `stage-0-gates.edn` beside this plan.
 
 - **Every pass criterion of §2 answered** - pass, or the fallback executed - and the decision
   log says which, dated
