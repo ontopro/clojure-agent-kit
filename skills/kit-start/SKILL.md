@@ -1,6 +1,6 @@
 ---
 name: kit-start
-description: The first session in a KIT workspace - an orientation before step 1. Walks the person through the workspace's folders, KIT's approach, the steps in order, and the roles and the models they run on, with the model and effort recommended for this session; then hands over to `scoping`, or to `bb next` once a brief is filed. Use when the person types `/kit-start`, opens a first session in a workspace made by `bb init`, or asks "where do I start", "what is this", "walk me through KIT".
+description: The first session in a KIT workspace - an orientation before step 1. Walks the person through the workspace's folders, KIT's approach, the steps in order, and the roles and the models they run on, with the model and effort recommended for this session; then hands over to `kit-scoping`, or to `bb next` once a brief is filed. Use when the person types `/kit-start`, opens a first session in a workspace made by `bb init`, or asks "where do I start", "what is this", "walk me through KIT".
 ---
 
 # kit-start - the orientation, in the workspace
@@ -70,8 +70,8 @@ Type next, or ask a question about the workspace.
 ## Writes
 
 Nothing. After part 4, the list with all four DONE, then the one next step: no brief filed (§1's
-first row still says `<the brief>`) - "Type scoping to begin step 1, the brief", and hand over to
-`scoping`; a brief filed - the project is under way, and `bb next` names the next step.
+first row still says `<the brief>`) - "Type `/kit-scoping` to begin step 1, the brief", and hand over to
+`kit-scoping`; a brief filed - the project is under way, and `bb next` names the next step.
 
 ## Done when
 

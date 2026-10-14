@@ -1,5 +1,5 @@
 ---
-name: stage-plan
+name: kit-stage-plan
 description: Steps 6 and 7 of the KIT's workflow - a stage's plan, written just-in-time when the stage is pulled, by its kind (stage 0 the spike, stage 1 the walking skeleton, an increment, a pre-release stage, the release), reviewed cold and approved with its cap. Use when the previous stage is closed and the next is pulled, or the person says "plan stage N", "write the stage plan".
 ---
 
@@ -38,7 +38,7 @@ index, and `docs/source.md`'s observations.
 ## Refuses when
 
 - The previous stage's gates record (`docs/stages/stage-<N-1>-gates.edn`) has `:stage/closed`
-  nil: its exit criteria are unchecked. Say so and stop; the `stage-end` skill closes a stage.
+  nil: its exit criteria are unchecked. Say so and stop; the `kit-stage-end` skill closes a stage.
   Stage 0 has no previous stage; it needs `stage-0-gates.edn` with `:stage/approved` set.
 - A stage plan for this stage already exists and is approved: a change to an approved plan is
   an amendment the person approves again, not a rewrite. Say so.

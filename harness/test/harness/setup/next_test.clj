@@ -32,7 +32,7 @@
 (deftest a-workspace-with-no-brief-is-scoped-there
   (let [a (next/next-action {:workspace? true :brief? false})]
     (is (= [1 "scoping"] [(:step a) (:name a)]))
-    (is (str/includes? (:run a) "the scoping skill"))
+    (is (str/includes? (:run a) "/kit-start, then /kit-scoping"))
     (is (str/includes? (:run a) "bb brief"))))
 
 (deftest the-plan-comes-before-any-stage
@@ -40,7 +40,7 @@
   (is (str/includes? (:because (next/next-action {:workspace? true :brief? false})) "<the brief>"))
   (let [a (next/next-action {:workspace? true :brief? true :plan-problems ["a" "b"]})]
     (is (= 2 (:step a)))
-    (is (str/includes? (:run a) "the plan skill"))
+    (is (str/includes? (:run a) "/kit-plan"))
     (is (= "bb plan-check: 2 things left" (:because a))))
   (let [a (next/next-action {:workspace? true :brief? true :plan-problems [] :stage nil})]
     (is (= [5 "the person"] ((juxt :step :owner) a)) "the plan passes and no stage exists: stage 0's approval")
@@ -53,11 +53,11 @@
       (is (= [5 "the person"] (step (assoc-in s0 [:stage :gates] {:stage/id "0" :stage/approved nil}))))
       (let [a (next/next-action (assoc-in s0 [:stage :gates] {:stage/id "0" :stage/approved {:date "d" :by "Ada"}}))]
         (is (= [6 "the Architect's session"] ((juxt :step :owner) a)))
-        (is (str/includes? (:run a) "stage-plan skill")))))
+        (is (str/includes? (:run a) "/kit-stage-plan")))))
   (testing "a later stage: its plan, then approval"
     (let [pulled (with-stage {:plan nil})]
       (is (= [7 "the Architect's session"] (step pulled)))
-      (is (str/includes? (:run (next/next-action pulled)) "the stage-plan skill")))
+      (is (str/includes? (:run (next/next-action pulled)) "/kit-stage-plan")))
     (is (= [7 "the person"] (step (with-stage {:gates nil}))) "a plan with no gates record: copy the template")
     (is (= [7 "the person"] (step ready)) "written, not approved")
     (is (str/includes? (:run (next/next-action ready)) ":stage/approved")))
@@ -88,7 +88,7 @@
       (is (= [11 "the Architect's session"] (step (assoc-in signed [:stage :runs] {"t1" :abandoned}))))
       (let [all (assoc-in signed [:stage :merged] #{"t1" "t2" "t3"})]
         (is (= [14 "the Architect's session"] (step all)))
-        (is (str/includes? (:run (next/next-action all)) "the stage-end skill"))
+        (is (str/includes? (:run (next/next-action all)) "/kit-stage-end"))
         (let [closed (gate all :stage/closed {:date "d"})]
           (is (= [7 "the person"] (step closed)))
           (is (str/includes? (:run (next/next-action closed)) "stage-2-gates.edn"))
@@ -100,7 +100,7 @@
                 (gate :stage/approved {:date "d" :by "Ada"})
                 (gate :blueprint/signed {:date "d" :by "Ada"}))]
     (let [a (next/next-action all)]
-      (is (= [14 "the Architect's session"] ((juxt :step :owner) a)) "the stage-end skill still runs the stage's end")
+      (is (= [14 "the Architect's session"] ((juxt :step :owner) a)) "/kit-stage-end still runs the stage's end")
       (is (str/includes? (:run a) "every line of docs/02-architecture.md §15 answered with its evidence"))
       (is (str/includes? (:run a) ":security/signed {:date :by <name>} in docs/stages/stage-1-gates.edn, before :stage/closed")))
     (let [closed (gate all :stage/closed {:date "d"})]
@@ -108,7 +108,7 @@
       (is (= "stage 1 is pre-release and closed without its threat model signed" (:because (next/next-action closed))))
       (is (= [7 "the person"] (step (gate closed :security/signed {:date "d" :by "Ada"}))) "signed: the next stage"))
     (testing "another kind is not asked, and a plan with no kind line is another kind"
-      (is (= "the stage-end skill" (:run (next/next-action (assoc-in all [:stage :kind] "increment")))))
+      (is (= "/kit-stage-end" (:run (next/next-action (assoc-in all [:stage :kind] "increment")))))
       (is (= [7 "the person"] (step (-> all (assoc-in [:stage :kind] nil) (gate :stage/closed {:date "d"}))))))))
 
 (deftest a-sign-off-names-who-signed

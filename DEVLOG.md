@@ -56,6 +56,20 @@ step by hand, named there.
 
 ## 2026-10-14
 
+### Every KIT skill takes the `kit-` prefix, and every handover names its command (plan 6.5, item 3)
+
+The proof build's handovers used three verbs for one act - "Type next", "Type scoping", "Say
+plan" - and the person asked each time whether to type the word or the slash command. The slash
+command is the reliable one: Claude Code runs it directly, where a plain word relies on the model
+connecting it to the skill. But `/plan` reaches Claude Code's own plan mode, not KIT's skill, and
+another seat's client can collide the same way (OpenCode has a plan mode). So the four skills
+after `kit-start` take its prefix - `kit-scoping`, `kit-plan`, `kit-stage-plan`, `kit-stage-end` -
+and a handover gives the command: "Type `/kit-scoping` to begin step 1, the brief", and from
+`kit-stage-end` "Type `/kit-stage-plan`". `bb next` names the command where it named "the plan
+skill" (`/kit-start, then /kit-scoping`, `/kit-plan`, `/kit-stage-plan`, `/kit-stage-end`). The
+step names stay ("scoping", "the plan, for stage 0"): they name steps, not skills. A handover
+whose next act is the person's approval names no command, since none runs it.
+
 ### `bb next` holds a sign-off to a name (plan 6.5, item 2)
 
 The sign-off's fix below moved the example, not the mechanism: the gates template now shows

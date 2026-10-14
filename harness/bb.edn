@@ -24,7 +24,7 @@
         :requires ([harness.setup.init :as init])
         :task (apply init/-main *command-line-args*)}
 
-  brief {:doc "bb brief [<file>] [--workspace <dir>]: file the brief the scoping skill wrote (default: the workspace's work/brief.md) into the build's docs/source.md as §1's first row and Appendix A. Refuses a source.md that already names one: scoping runs once"
+  brief {:doc "bb brief [<file>] [--workspace <dir>]: file the brief the kit-scoping skill wrote (default: the workspace's work/brief.md) into the build's docs/source.md as §1's first row and Appendix A. Refuses a source.md that already names one: scoping runs once"
          :requires ([harness.setup.init :as init])
          :task (apply init/brief-main *command-line-args*)}
 

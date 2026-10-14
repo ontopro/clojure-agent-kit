@@ -34,7 +34,7 @@ the records); `reviews/` appears with the first `bb plan-review` and `bake-offs/
 `bb bake-off new`. All of it is the rest of what a project decides or produces: the build
 repository holds all of it, and the KIT's clone none.
 
-**Order of writing.** Scoping first, before any of this is written: the brief, which the `scoping`
+**Order of writing.** Scoping first, before any of this is written: the brief, which the `kit-scoping`
 skill writes to `work/brief.md` and `bb brief` files (`method.md` §03, scope). Then source → requirements (the scope lists; stage 1's
 requirements, no more) → architecture (candidates, provisional) → method → decision log (each
 candidate with the pass criterion stage 0 applies) → overview (the stage map by kind, a cap on

@@ -1,5 +1,5 @@
 ---
-name: stage-end
+name: kit-stage-end
 description: Step 14 of the KIT's workflow - a stage's end, once its packets are merged. Deploy locally, run the browser pack, walk the owner through the result, check the exit criteria, write the lessons, revise the scope lists and the stage map, close the stage, pull the next. Use when the last packet of a stage is merged or the person says "close the stage", "end stage N", "the stage is done".
 ---
 
@@ -111,8 +111,8 @@ the screenshots (the work folder, uncommitted); the security review's folder
 `docs/stages/stage-N-security-review/` - its record, the tests it wrote, `security-routing.edn` and any
 `security-fixes.md` - is the commands', committed with the stage; the security pack's records
 `docs/stages/stage-N-security.edn`, `-security-deps.edn` and `-security-secrets.edn` are the
-pack's, committed with the stage. Then say the next step: `bb next`, and the
-`stage-plan` skill for the stage pulled, in a fresh session if the person likes.
+pack's, committed with the stage. Then say the next step: `bb next`, and "Type `/kit-stage-plan`
+to plan stage N+1" for the stage pulled, in a fresh session if the person likes.
 
 ## Done when
 

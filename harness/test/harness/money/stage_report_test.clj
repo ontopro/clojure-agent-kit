@@ -91,12 +91,12 @@
       (is (str/ends-with? (sr/render (sr/stage-summary (assoc facts :kind "increment" :checks checks)))
                           "\n  Security checks: 10 ok, 5 warn, 0 fail, 3 skipped (2026-10-08)"))
       (is (str/includes? (sr/render (sr/stage-summary (assoc facts :kind "pre-release")))
-                         "\n  Security checks: no record (the stage-end skill runs the security pack")
+                         "\n  Security checks: no record (the kit-stage-end skill runs the security pack")
           "a pre-release stage says it has none")
       (is (str/includes? (sr/render (sr/stage-summary (assoc facts :kind "pre-release" :checks checks)))
                          (str "Security checks: 10 ok, 5 warn, 0 fail, 3 skipped (2026-10-08)\n"
-                              "  Dependencies: no record (the stage-end skill runs the security pack's deps with --record docs/stages/stage-N-security-deps.edn)\n"
-                              "  Secrets: no record (the stage-end skill runs the security pack's secrets with --record docs/stages/stage-N-security-secrets.edn)\n"
+                              "  Dependencies: no record (the kit-stage-end skill runs the security pack's deps with --record docs/stages/stage-N-security-deps.edn)\n"
+                              "  Secrets: no record (the kit-stage-end skill runs the security pack's secrets with --record docs/stages/stage-N-security-secrets.edn)\n"
                               "  Threat model: not signed"))
           "before the signature, which reads it; a pre-release stage says which scan has no record")))
   (testing "the two scans' lines: a stage with their records, or a pre-release stage"

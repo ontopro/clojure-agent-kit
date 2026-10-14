@@ -1,5 +1,5 @@
 ---
-name: scoping
+name: kit-scoping
 description: Step 1 of the KIT's workflow - the scoping conversation, the first in a new workspace. Use when a person has a workspace made by `bb init` and no brief yet, or says "scope", "start a project", "what are we building". Asks the method's six groups of questions, writes the brief to the workspace's `work/brief.md`, and `bb brief` files it.
 ---
 

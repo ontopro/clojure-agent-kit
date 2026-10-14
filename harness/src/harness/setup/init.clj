@@ -289,7 +289,7 @@
        "\n---\n\n## Appendix A — The brief, as given\n\n" (str/trim brief) "\n"))
 
 (def brief-file
-  "Where the `scoping` skill writes the brief, in the workspace's `work/`: scratch,
+  "Where the `kit-scoping` skill writes the brief, in the workspace's `work/`: scratch,
   since `bb brief` files it verbatim into `source.md`."
   "brief.md")
 
@@ -303,7 +303,7 @@
   (let [source (fs/path (:workspace/build ws) "docs" "source.md")]
     (cond
       (not (fs/regular-file? brief-path))
-      {:refused (str brief-path " is not a file - the scoping skill writes it")}
+      {:refused (str brief-path " is not a file - the kit-scoping skill writes it")}
       (not (fs/exists? source))
       {:refused (str source " is missing")}
       (not (str/includes? (slurp (str source)) brief-row))
@@ -315,7 +315,7 @@
 (defn brief-main
   "bb brief [<file>] [--workspace <dir>]
 
-  Files the brief the scoping skill wrote - by default the workspace's
+  Files the brief the kit-scoping skill wrote - by default the workspace's
   `work/brief.md` - into the build's `docs/source.md` as §1's first row and
   Appendix A. Run from the workspace folder, its front door hands it on."
   [& args]
@@ -399,7 +399,7 @@
            ;; loads them, each copy a rendering of `<kit>/skills/<name>/SKILL.md` noting the
            ;; KIT commit, held to its source by `bb skills-sync --check` and reported by the
            ;; doctor when a pulled KIT's differ. The workspace is the only place they are
-           ;; rendered: `kit-start` is the first of them a project's session runs, then `scoping`.
+           ;; rendered: `kit-start` is the first of them a project's session runs, then `kit-scoping`.
            (for [[nm text] skills]
              {:path (str skills/target-dir "/" nm "/" skills/file-name)
               :what (str "the " nm " skill, rendered from the KIT's skills/")

@@ -81,7 +81,7 @@ The table to the terminal, and `security.edn` (the rows, the counts, the base, t
 with `security.md` beside it, under `--out`, else `SECURITY_OUT`, else the workspace's
 `work/security/<app>/` when the application is in a KIT workspace (scratch, in no repository),
 else `.local/security/`. `--record <file>` writes the same `security.edn` where a committed
-document can cite it: the `stage-end` skill passes the stage's
+document can cite it: the `kit-stage-end` skill passes the stage's
 `docs/stages/stage-N-security.edn`, beside its gates record, and `bb stage-report` reads it from
 there.
 
@@ -141,7 +141,7 @@ What a project has read and decided goes in the routes file, each with its reaso
 
 `bb health` runs both in the generated application, in the same `app security` row as the
 checks - `secrets` with `--all` - so an advisory published against the pin after it was made
-fails the next health run. The `stage-end` skill runs them at every stage's end, `secrets` over
+fails the next health run. The `kit-stage-end` skill runs them at every stage's end, `secrets` over
 the stage's commits (`--from stage-<N-1>`).
 
 An accepted advisory or an allowed hit is a warn naming its reason; an acceptance past its

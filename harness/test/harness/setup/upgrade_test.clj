@@ -74,9 +74,9 @@
       (is (some #(str/includes? % "/w/xyx-app/AGENTS.md does not match the rule source: run `bb rules-sync`") lines))
       (is (some #(str/includes? % "/w/xyx-build/profile.edn has no :plan-reviewer") lines))))
   (testing "a skill the workspace lacks, and one it edited"
-    (let [lines (upgrade/expectations (assoc complete :skills-missing ["scoping" "plan"] :skills-drifted ["stage-end"]))]
-      (is (some #(str/includes? % ".claude/skills/ lacks the KIT's scoping, plan skills (bb init writes them since 2026-10-07): run `bb skills-sync`") lines))
-      (is (some #(str/includes? % ".claude/skills/stage-end/SKILL.md is not the rendering of the KIT's skills/stage-end/SKILL.md: run `bb skills-sync`") lines))))
+    (let [lines (upgrade/expectations (assoc complete :skills-missing ["kit-scoping" "kit-plan"] :skills-drifted ["kit-stage-end"]))]
+      (is (some #(str/includes? % ".claude/skills/ lacks the KIT's kit-scoping, kit-plan skills (bb init writes them since 2026-10-07): run `bb skills-sync`") lines))
+      (is (some #(str/includes? % ".claude/skills/kit-stage-end/SKILL.md is not the rendering of the KIT's skills/kit-stage-end/SKILL.md: run `bb skills-sync`") lines))))
   (testing "nothing missing renders as such"
     (is (str/includes? (upgrade/render (assoc complete :made-at nil :behind nil
                                               :keys-present (remove #{:workspace/kit-commit} upgrade/expected-keys)))
@@ -142,8 +142,8 @@
           (is (= [] (:skills-drifted f)))
           (is (= ["made at KIT commit "] (map #(subs % 0 19) (remove pin-line? (upgrade/expectations f)))))
           (is (= bump? (boolean (some pin-line? (upgrade/expectations f)))))
-          (spit (str (fs/path ws ".claude" "skills" "plan" "SKILL.md")) "edited\n")
-          (is (= ["plan"] (:skills-drifted (upgrade/facts (workspace/find-workspace ws) kit-dir))) "an edited copy drifts"))))))
+          (spit (str (fs/path ws ".claude" "skills" "kit-plan" "SKILL.md")) "edited\n")
+          (is (= ["kit-plan"] (:skills-drifted (upgrade/facts (workspace/find-workspace ws) kit-dir))) "an edited copy drifts"))))))
 
 (deftest the-front-door-missing-or-behind-the-kit-is-said-with-the-command-that-writes-it
   (is (= ["made at KIT commit abc, which is where the KIT is"]

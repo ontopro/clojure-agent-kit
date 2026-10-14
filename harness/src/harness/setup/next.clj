@@ -15,7 +15,7 @@
   blueprint written, reviewed, signed; which of its packets have a merged
   record under the build's `runs/`. Before a workspace exists the next action
   is setup (`bb self-check`, `bb init` in KIT's clone); in a workspace whose
-  `source.md` names no brief yet, scoping - the `scoping` skill, then `bb brief`.
+  `source.md` names no brief yet, scoping - `/kit-scoping`, then `bb brief`.
 
   A first cut, and said so: it reads merged records and nothing of a run in
   flight beyond its last recorded status, it does not read the plan review's
@@ -107,7 +107,7 @@
               (str "stage 0 is not approved (" (gates-file id) ")"))
 
       (and (nil? approved) (nil? plan))
-      (action 7 architect "the stage-plan skill"
+      (action 7 architect "/kit-stage-plan"
               (str "stage " id " is pulled (" (gates-file id) ") and docs/stages/ has no stage-" id " plan"))
 
       (nil? approved)
@@ -115,7 +115,7 @@
               (str "stage " id "'s plan is written and not approved"))
 
       (nil? plan)
-      (action 6 architect "the stage-plan skill (stage 0's plan, from the spike template)"
+      (action 6 architect "/kit-stage-plan (stage 0's plan, from the spike template)"
               (str "stage 0 is approved and docs/stages/ has no stage-0 plan"))
 
       (nil? blueprint)
@@ -152,9 +152,9 @@
 
       (nil? closed)
       (action 14 architect (if unsigned-threat-model?
-                             (str "the stage-end skill; a pre-release stage's exit criteria include its threat model: "
+                             (str "/kit-stage-end; a pre-release stage's exit criteria include its threat model: "
                                   sign-threat-model ", before :stage/closed")
-                             "the stage-end skill")
+                             "/kit-stage-end")
               (str "every packet of stage " id " is merged (" (count packets) ") and the stage is not closed"))
 
       unsigned-threat-model?
@@ -163,7 +163,7 @@
 
       :else
       (action 7 person (str "pull stage " (inc id) " by kind: copy docs/stages/stage-N-gates-template.edn to "
-                            (gates-file (inc id)) ", then the stage-plan skill")
+                            (gates-file (inc id)) ", then /kit-stage-plan")
               (str "stage " id " is closed")))))
 
 (defn- step-action
@@ -174,11 +174,11 @@
             "no workspace.edn at or above here")
 
     (not brief?)
-    (action 1 (str person ", with an Architect session") "kit-start, then the scoping skill - it writes work/brief.md - then bb brief files it"
+    (action 1 (str person ", with an Architect session") "/kit-start, then /kit-scoping - it writes work/brief.md - then bb brief files it"
             "docs/source.md §1 still says <the brief>")
 
     (seq plan-problems)
-    (action 2 architect "the plan skill; bb plan-check lists what is left, bb plan-review before the approval"
+    (action 2 architect "/kit-plan; bb plan-check lists what is left, bb plan-review before the approval"
             (str "bb plan-check: " (count plan-problems) " thing" (when (not= 1 (count plan-problems)) "s") " left"))
 
     (nil? stage)

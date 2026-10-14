@@ -23,7 +23,7 @@ bb init       # the workspace, named after the folder the clone is in (or bb ini
 bb plan-check  # the filled plan, before the first dispatch: no mark, no instruction, the overlay filled, the given parts intact
 bb plan-review # method.md §03's review pass, run: the plan read cold by the :plan-reviewer; a reading, not a gate
 bb skills-sync # the fifth part, skills/, rendered to a workspace's .claude/skills/; --check holds the copies to the source and every cited heading to the method (in gates)
-bb brief      # in a workspace: the brief the scoping skill wrote to work/brief.md, filed as source.md §1 and Appendix A
+bb brief      # in a workspace: the brief the kit-scoping skill wrote to work/brief.md, filed as source.md §1 and Appendix A
 bb next       # the workflow's next step, its owner and the command or skill, read off the build's files; setup before a workspace exists, scoping in a new one
 bb stage-report <stage-plan.md> # a stage's figures from its records, into its plan's exit-criteria section; --check holds the block to the records (in gates)
 bb spec-from-blueprint <blueprint.md> <task-id> [<out.edn>]  # a task's spec.edn out of the Blueprint, its named shapes inlined from §1; pipes into bb sigs

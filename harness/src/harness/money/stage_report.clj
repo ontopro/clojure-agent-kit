@@ -176,13 +176,13 @@
           (str "  Security checks: "
                (if-let [{:keys [ok warn fail skipped]} (:counts security-checks)]
                  (str ok " ok, " warn " warn, " fail " fail, " skipped " skipped (" (:date security-checks) ")")
-                 "no record (the stage-end skill runs the security pack with --record docs/stages/stage-N-security.edn)")))
+                 "no record (the kit-stage-end skill runs the security pack with --record docs/stages/stage-N-security.edn)")))
         (for [[k label cmd] [[:deps "Dependencies" "deps"] [:secrets "Secrets" "secrets"]]]
           (when (or (get security-scans k) (= "pre-release" kind))
             (str "  " label ": "
                  (if-let [{:keys [ok warn fail skipped]} (:counts (get security-scans k))]
                    (str ok " ok, " warn " warn, " fail " fail, " skipped " skipped (" (:date (get security-scans k)) ")")
-                   (str "no record (the stage-end skill runs the security pack's " cmd " with --record docs/stages/stage-N-security-" cmd ".edn)")))))
+                   (str "no record (the kit-stage-end skill runs the security pack's " cmd " with --record docs/stages/stage-N-security-" cmd ".edn)")))))
         (when (or security (= "pre-release" kind))
           (str "  Threat model: "
                (if security

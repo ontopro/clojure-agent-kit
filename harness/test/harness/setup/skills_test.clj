@@ -10,7 +10,7 @@
 (def kit-dir (str (fs/parent (fs/real-path "."))))
 
 (deftest the-five-skills-ship-in-the-one-anatomy
-  (is (= ["kit-start" "plan" "scoping" "stage-end" "stage-plan"] (skills/shipped kit-dir)))
+  (is (= ["kit-plan" "kit-scoping" "kit-stage-end" "kit-stage-plan" "kit-start"] (skills/shipped kit-dir)))
   (doseq [nm (skills/shipped kit-dir)
           :let [text (slurp (skills/source-path kit-dir nm))
                 [fm body] (skills/split-frontmatter text)]]
@@ -63,19 +63,19 @@
         (is (= (skills/shipped kit-dir) (mapv :name rs)))
         (is (every? :changed? rs))
         (is (not-any? :existed? rs))
-        (is (not (fs/exists? (fs/path target skills/target-dir "scoping" "SKILL.md"))) "check writes nothing")))
+        (is (not (fs/exists? (fs/path target skills/target-dir "kit-scoping" "SKILL.md"))) "check writes nothing")))
     (testing "written, with the commit in the note"
       (let [rs (skills/sync! kit-dir target :commit "abc1234")]
         (is (every? :changed? rs))
-        (let [text (slurp (str (fs/path target skills/target-dir "scoping" "SKILL.md")))]
+        (let [text (slurp (str (fs/path target skills/target-dir "kit-scoping" "SKILL.md")))]
           (is (str/includes? text "KIT commit: abc1234"))
-          (is (str/starts-with? text "---\nname: scoping\n") "the frontmatter stays first, so Claude Code reads it"))))
+          (is (str/starts-with? text "---\nname: kit-scoping\n") "the frontmatter stays first, so Claude Code reads it"))))
     (testing "current after, whatever commit a later check would name"
       (is (not-any? :changed? (skills/sync! kit-dir target :check? true :commit "zzz9999"))))
     (testing "an edited copy is drift; the sync restores it"
-      (let [path (str (fs/path target skills/target-dir "plan" "SKILL.md"))]
+      (let [path (str (fs/path target skills/target-dir "kit-plan" "SKILL.md"))]
         (spit path (str (slurp path) "\nedited here\n"))
-        (is (= ["plan"] (mapv :name (filter :changed? (skills/sync! kit-dir target :check? true)))))
+        (is (= ["kit-plan"] (mapv :name (filter :changed? (skills/sync! kit-dir target :check? true)))))
         (skills/sync! kit-dir target :commit "abc1234")
         (is (not (str/includes? (slurp path) "edited here")))))
     (is (= "---\nname: mine\n---\nthe project's own\n" (slurp (str own))) "a project's own skill is never touched")))

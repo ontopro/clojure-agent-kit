@@ -1,5 +1,5 @@
 ---
-name: plan
+name: kit-plan
 description: Step 2 of the KIT's workflow - the project plan for stage 0, filled only as deep as stage 0 needs, then reviewed and checked. Use after bb init, when the build's docs/ still carry the template's marks, or when the person says "write the plan", "fill the plan", "plan stage 0".
 ---
 
@@ -12,7 +12,7 @@ the template's order and fills nothing deeper than stage 0 needs.
 ## When it runs
 
 Workflow step 2, once, in the Architect's session at the workspace root, after `bb init` and
-before stage 0 is approved (step 5). Not again: every later stage's plan is the `stage-plan`
+before stage 0 is approved (step 5). Not again: every later stage's plan is the `kit-stage-plan`
 skill's.
 
 ## Reads
@@ -41,7 +41,7 @@ brief, filed by `bb brief` after scoping), the material it names, and the rules 
 ## Refuses when
 
 - `docs/source.md` §1 still says `<the brief>`: there is no brief. Say that scoping is step 1
-  and stop; the `scoping` skill writes one and `bb brief` files it.
+  and stop; the `kit-scoping` skill writes one and `bb brief` files it.
 - The person asks for every requirement, a complete architecture, the MVP or a cap per stage:
   the method's "Decide as little as possible" says what the plan commits to - stage 0 and
   nothing after it. Say so and keep to that depth.

@@ -1,10 +1,10 @@
 # skills/ - the KIT's fifth part
 
 One skill per step of the workflow that is a conversation with a person and has a defined
-output: `scoping` (step 1), `plan` (step 2), `stage-plan` (steps 6 and 7), `stage-end` (step
+output: `kit-scoping` (step 1), `kit-plan` (step 2), `kit-stage-plan` (steps 6 and 7), `kit-stage-end` (step
 14). The loop's steps run without a person and stay commands. Beside them, `kit-start` is the
 orientation a project's first session begins with - not a step, and it writes nothing: it walks the
-person through KIT and hands over to `scoping`. [`workflow.md`](../workflow.md)
+person through KIT and hands over to `kit-scoping`. [`workflow.md`](../workflow.md)
 has the steps; [`method.md`](../method.md) has the substance.
 
 **The method is the source.** A skill is a thin layer that names its method section, asks its
@@ -18,7 +18,7 @@ not out from under a skill.
 section it cites); *refuses when* (by name, before anything is spent); *asks* (the
 conversation, from the method); *writes* (the documents, to the template); *done when*. A
 skill reads its inputs from files, never from the conversation, so it can be started in a
-fresh session; `stage-end` writes enough for `stage-plan` to start cold.
+fresh session; `kit-stage-end` writes enough for `kit-stage-plan` to start cold.
 
 **Skills are the `claude` seat's.** They are Claude Code's mechanism, loaded from
 `.claude/skills/<name>/SKILL.md`. The other four seats follow the same method section by hand;
@@ -34,7 +34,7 @@ sessions open in the workspace, and `kit-start`, then scoping, are the first of 
 A project may add a skill of its own under another name beside these; the sync leaves it alone.
 
 **The split with the harness.** The skill is the conversation; a `bb` task is the record it
-writes or reads: `scoping` ends in `bb brief`, `plan` and `stage-plan` in `bb
-plan-review` and `bb plan-check`, `stage-end` in the browser pack and the records. The hand-offs
+writes or reads: `kit-scoping` ends in `bb brief`, `kit-plan` and `kit-stage-plan` in `bb
+plan-review` and `bb plan-check`, `kit-stage-end` in the browser pack and the records. The hand-offs
 between steps are not inside the skills: `bb next` says what comes next, and a skill ends by
 saying to run it.

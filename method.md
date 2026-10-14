@@ -1114,7 +1114,7 @@ Two things to get right early because they're cheap now and expensive later: **a
 - [ ] The application's `.mise.toml` is a dated known-good set; `bb doctor` reads it as floors, the JDK's major as the one pin
 
 **B · PROVE — stage 0, the spike** *(§03: scope ▶ plan ▶ implement ▶ deploy locally; the plan commits to stage 0 and nothing after it)*
-- [ ] Scope first, in the workspace: the `scoping` skill writes `work/brief.md`, `bb brief` files it; the six groups of questions and only those; the answers recorded as given in `source.md`, the content named apart; the first thing worth seeing named
+- [ ] Scope first, in the workspace: the `kit-scoping` skill writes `work/brief.md`, `bb brief` files it; the six groups of questions and only those; the answers recorded as given in `source.md`, the content named apart; the first thing worth seeing named
 - [ ] Write the three scope lists — ships first, deferred with its stage, out of scope with its reason — and treat every exclusion as a decision
 - [ ] Rank the risks; name which ones stage 0 proves, each with a pass criterion and a fallback written before it runs
 - [ ] Put the candidate architecture in the log as PROVISIONAL entries gated by those criteria; open everything else OPEN-with-an-owner
