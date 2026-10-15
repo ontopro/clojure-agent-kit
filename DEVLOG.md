@@ -96,6 +96,22 @@ no `/health` answering, so a program of someone else's on that port is never the
 and both packs' scripts catch the start's refusal and print its words alone, exit 1, instead of
 babashka's error box around them.
 
+### Round 1 of the sandbox: three things the first real phase 2 showed (plan 6.5, item 16)
+
+The first-time path on a fresh copy of the proof build's workspace, its clone on a throwaway tag
+at the branch tip: every step ran, the front door, the skills, the orientation (`CLAUDE.md`
+unmarked, the new text beside it), the build documents (fifteen hunks applied, the filled
+retry-cap row the one conflict, saved), `loop.edn`, the application's branch - which stopped on
+the `server.clj` conflict the plan predicted, the project's no-cache wrapper against the
+template's asset handler - and the record. Three things in the doctor's notice were wrong. It
+said the application's branch was merged: a branch cut off `main` and stopped on its first
+conflict still points at the commit it was cut from, which is an ancestor of HEAD, so ancestry
+alone read as a merge; merged by ancestry now needs the tip to have moved. It said "upgraded to
+0.6.4", the release the workspace already had: the record names what was taken, a release or a
+commit past one, while the workspace's version stays the nearest release tag. And the workspace
+folder printed as `<dir>/.` after a `.` given as the folder; it is normalized once where it is
+found.
+
 ### The pin moves to `kit-v1.3`, and a record from a local clone is refused (plan 6.5, item 15)
 
 `template-pins.edn` names the fork's candidate - `kit-v1.3`, commit `1c1838a`, the tag not yet

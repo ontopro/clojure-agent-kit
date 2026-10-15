@@ -40,7 +40,8 @@
   It is found by walking UP, so it answers the same from a run directory under
   `work/` and from one inside the KIT's clone."
   [start]
-  (loop [dir (fs/absolutize start)]
+  ;; normalized, so a `.` given as the folder does not print as `<dir>/.` everywhere after
+  (loop [dir (fs/normalize (fs/absolutize start))]
     (when dir
       (let [f (fs/path dir file-name)]
         (if (fs/exists? f)

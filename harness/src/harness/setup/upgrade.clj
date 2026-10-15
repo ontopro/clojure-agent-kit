@@ -262,9 +262,13 @@
                            (case (:run/status stop)
                              :awaiting-merge :awaiting-merge
                              (case (:stop/kind stop) :merge-conflict :conflict :gates-red :gates-red (:state app))))))
-          exists? (and branch (some? (git app-dir "rev-parse" "-q" "--verify" (str "refs/heads/" branch))))
+          tip (when branch (git app-dir "rev-parse" "-q" "--verify" (str "refs/heads/" branch "^{commit}")))
+          exists? (some? tip)
+          ;; MERGED BY ANCESTRY ONLY WHEN THE BRANCH WENT SOMEWHERE: a branch stopped on its first
+          ;; conflict still points at the commit it was cut from, which is an ancestor of HEAD
           merged? (and branch (or (= :merged from-state)
-                                  (and exists? (some? (git app-dir "merge-base" "--is-ancestor" branch "HEAD")))))]
+                                  (and exists? (not= tip (git app-dir "rev-parse" "HEAD"))
+                                       (some? (git app-dir "merge-base" "--is-ancestor" branch "HEAD")))))]
       {:version version :at at
        :app (when branch
               (cond merged? (assoc app :state :merged)

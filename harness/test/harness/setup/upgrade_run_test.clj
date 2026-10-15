@@ -465,3 +465,19 @@
                  (catch clojure.lang.ExceptionInfo e e))]
       (is (= :no-commit (:upgrade/error (ex-data e))))
       (is (str/includes? (ex-message e) ":workspace/kit-commit")))))
+
+(deftest a-branch-stopped-on-its-first-conflict-is-not-merged-though-its-tip-is-an-ancestor
+  ;; round 1 of the sandbox: the branch cut off main and stopped mid-merge still points at main's
+  ;; commit, an ancestor of HEAD, and the doctor said "merged"
+  (let [kit (fake-kit!)
+        ws (workspace! kit)
+        app (:workspace/app ws)]
+    (git-out app "branch" "upgrade-x")
+    (spit (str (fs/path (:workspace/dir ws) "workspace.edn"))
+          (pr-str (assoc (raw ws) :workspace/upgraded-to {:version "x" :at "d" :app {:branch "upgrade-x" :state :conflict :run-dir "/nowhere"} :conflicts [] :new []})))
+    (is (= :conflict (get-in (upgrade/open-after-upgrade ws (raw ws)) [:app :state])))
+    (testing "a commit on it that main then takes by --no-ff is merged"
+      (spit (str (fs/path app "x.txt")) "x\n")
+      (git-out app "checkout" "-q" "upgrade-x") (git-out app "add" "-A") (git-out app "commit" "-q" "-m" "on the branch")
+      (git-out app "checkout" "-q" "main") (git-out app "merge" "-q" "--no-ff" "--no-edit" "upgrade-x")
+      (is (= :merged (get-in (upgrade/open-after-upgrade ws (raw ws)) [:app :state]))))))

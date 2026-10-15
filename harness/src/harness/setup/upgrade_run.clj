@@ -376,10 +376,12 @@
      :app (when (not= :nothing (:outcome r))
             {:branch id :run-dir run-dir :state (:outcome r)})}))
 
-(defn- step-workspace-edn! [{:keys [ws before from head version at records]}]
+(defn- step-workspace-edn! [{:keys [ws before from head version release at records]}]
   (backup! before (:workspace/dir ws) workspace/file-name)
   (let [raw (raw-workspace ws)
-        record {:from from :to head :version version :at at
+        ;; the record names what was taken - a release, or a commit past one - while the
+        ;; workspace's version stays the nearest release tag
+        record {:from from :to head :version release :at at
                 :app (get-in records [:app :app])
                 :conflicts (vec (get-in records [:build-docs :conflicts]))
                 :new (vec (get-in records [:orientation :new]))}]
