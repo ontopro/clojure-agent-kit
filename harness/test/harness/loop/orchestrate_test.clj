@@ -956,7 +956,13 @@
       (testing "green and approved waits on the merge — the only way to :awaiting-merge"
         (let [a (action (reviewed {:verdict :approve :reasons []}))]
           (is (= :reviewed (:stop/kind a)))
-          (is (= :awaiting-merge (:run/status a)))))
+          (is (= :awaiting-merge (:run/status a)))
+          (is (= "the code reviewer approved; the merge is a person's" (:reason a)))))
+      (testing "an approval with notes says so, and is still an approval"
+        (let [a (action (reviewed {:verdict :approve :reasons [{:finding "the menu never opens"} {:finding "no positioned ancestor"}]}))]
+          (is (= [:reviewed :awaiting-merge] ((juxt :stop/kind :run/status) a)))
+          (is (= "the code reviewer approved with 2 notes - read them before the merge, which is a person's" (:reason a))))
+        (is (str/includes? (:reason (action (reviewed {:verdict :approve :reasons [{:finding "x"}]}))) "with 1 note -")))
       (testing "a rejection is triaged under the cap, and escalates without asking once no role has a round left"
         (is (= {:action :triage :trigger :rejection} (action (reviewed {:verdict :reject :reasons ["r"]}))))
         (is (= {:action :triage :trigger :rejection}

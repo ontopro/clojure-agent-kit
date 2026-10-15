@@ -193,7 +193,16 @@
       ;; findings it did give printed above the stop.
       review
       (case (:verdict (:verdict review))
-        :approve (stop :reviewed :human "the code reviewer approved; the merge is a person's" :awaiting-merge)
+        ;; AN APPROVAL WITH NOTES SAYS SO. The proof build merged a layout packet whose approvals
+        ;; each carried notes naming real faults - outside the packet's targets, so not a rejection -
+        ;; and the stop read the same as a clean approval.
+        :approve (let [n (count (:reasons (:verdict review)))]
+                   (stop :reviewed :human
+                         (if (pos? n)
+                           (str "the code reviewer approved with " n " note" (when (> n 1) "s")
+                                " - read them before the merge, which is a person's")
+                           "the code reviewer approved; the merge is a person's")
+                         :awaiting-merge))
         :reject (or (capped "and the code reviewer rejected")
                     {:action :triage :trigger :rejection})
         (stop :no-verdict :human "the code reviewer gave no verdict — its findings are above, and the loop cannot read them"))

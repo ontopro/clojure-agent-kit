@@ -56,6 +56,16 @@ step by hand, named there.
 
 ## 2026-10-14
 
+### An approval with notes says so at the stop (plan 6.5, item 5)
+
+The proof build merged a layout packet whose code reviews each approved with notes naming real
+faults - a menu that could never open, a row that closed as it opened - judged outside the
+packet's targets and so not a rejection. The stop read "the code reviewer approved; the merge is a
+person's" either way, and the notes were found by whoever read the findings above it. Now an
+approval whose verdict carries reasons says how many: "the code reviewer approved with 2 notes -
+read them before the merge, which is a person's". The interim answer only: what would hold such a
+fault in the loop is an interaction target the browser pack checks, which is not built.
+
 ### What the code prints and what models are told say "code reviewer" (plan 6.5, item 5)
 
 The documents said "code reviewer" from the day the security reviewer became a role; the code
