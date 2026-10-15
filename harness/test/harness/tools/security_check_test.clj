@@ -160,7 +160,11 @@
                   "<a href=\"/home/about\">Home</a>"
                   "<img src='/home/logo.png'>"
                   "/assets/content/extracted/pictures/home/home-logo.jpg"]]
-      (is (nil? (sc/leak body)) body))))
+      (is (nil? (sc/leak body)) body)))
+  (testing "the path quoted is the path, never the quote or the tag after it"
+    (is (= "/home/deploy/app.clj" (second (sc/leak "<pre>/home/deploy/app.clj</pre>"))))
+    (is (= "/Users/someone/img.png" (second (sc/leak "<img src=\"/Users/someone/img.png\">"))))
+    (is (= "/root/x.edn" (second (sc/leak "('/root/x.edn')"))))))
 
 (deftest a-finding-is-accepted-by-its-exact-text-with-a-reason
   (let [failing (sc/error-row (resp "/nope" 404 [] "<pre>/home/deploy/app.clj</pre>") "a page that does not exist")

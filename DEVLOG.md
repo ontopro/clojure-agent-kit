@@ -66,7 +66,9 @@ It now matches a path only where one starts: at the text's start or after a spac
 plausibly has, never as an `href`, `src` or `action` value. Every other prefix matches in an
 attribute too: a template that renders a file into an image source leaks it there (the narrowing
 is a review's). A test holds the real logo address, a URL with `/home/`, and a root-relative link,
-against eight paths a server could print, two of them in attributes. And the fail could not be accepted: it stood in the
+against eight paths a server could print, two of them in attributes. The path a row quotes ends at
+a quote or an angle bracket as well as at whitespace: it had carried the `"` or `</pre>` after it,
+and a row's text is now what an acceptance is keyed by. And the fail could not be accepted: it stood in the
 stage plan with its reason and failed every run after. A fail or a warn the project has judged now
 goes in the routes file under `:accepted-findings`, keyed by the row's exact text, with a reason:
 the row says `accepted` and why, never `ok`, and fails nothing. An acceptance with no reason, or
