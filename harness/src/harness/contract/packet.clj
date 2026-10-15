@@ -43,7 +43,7 @@
     ;; EVERY ROLE, NOT JUST THE TESTER. They were the Tester's alone, and that
     ;; cost two runs: in one, an amendment about :div never reached the Coder; in
     ;; the next, "throw check!'s ex-info on invalid input" reached neither the Coder,
-    ;; who validated the wrong thing, nor the Reviewer, whose "no findings" was
+    ;; who validated the wrong thing, nor the code reviewer, whose "no findings" was
     ;; accurate against the contract it was shown. A property target is
     ;; CONTRACT. The Tester's independence comes from not seeing the
     ;; implementation; it never depended on the others not seeing the contract.
@@ -81,7 +81,7 @@
             :files/context (vec (remove impl (:files/context spec)))))))
 
 (defn reviewer-packet
-  "Reviewer: diff + slice + the green gate report. Read-only — no target,
+  "Code reviewer: diff + slice + the green gate report. Read-only — no target,
   no REPL port. The diff and gate report come from the loop, not the spec."
   [spec session diff gate-report]
   (validate!

@@ -173,7 +173,7 @@
         (str "the table has ragged rows: " (sort widths)))))
 
 (deftest the-table-stays-aligned-whatever-the-longest-step-name-is
-  ;; A Reviewer's second dispatch is `reviewer-r1`, eleven characters in a
+  ;; A code reviewer's second dispatch is `reviewer-r1`, eleven characters in a
   ;; ten-character column, and its row ran one column right. The same mistake
   ;; as the kind column one column to the left — a width
   ;; typed as a literal for data that varies.
@@ -472,7 +472,7 @@
 ;; ---------------------------------------------------------------------------
 
 (deftest a-dispatch-that-failed-at-the-provider-is-not-synthetic
-  ;; Two Reviewer dispatches refused with HTTP 402 had no model and no cost, and
+  ;; Two code reviewer dispatches refused with HTTP 402 had no model and no cost, and
   ;; were rendered "SYNTHETIC: made up, not measured". Each was a real request,
   ;; timed and answered.
   (let [failed {:status :failed :files [] :cost nil :stdout nil

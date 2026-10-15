@@ -6,7 +6,7 @@
 
   `TaskPacket` is the context-passing contract (method §06): one slice per
   task, dispatched to one role. The per-role deltas are a :multi schema on
-  :task/role — the Reviewer receives a diff and a gate report and has no
+  :task/role — the code reviewer receives a diff and a gate report and has no
   :files/target; Coder and Tester must name one."
   (:require
    [malli.core :as m]
@@ -78,10 +78,10 @@
   sibling's observation differently, and flattening them to prose loses that.
 
   `:triage` is whoever routes a failure — method §07's Orchestrator, and so
-  far a human. One run went green with a Reviewer reporting no findings, and
+  far a human. One run went green with a code reviewer reporting no findings, and
   triage found the implementation breaking the contract on every invalid input
   it tried. There was no source to send that as: labelling it `:reviewer`
-  would have put words in the Reviewer's mouth, which is the flattening this
+  would have put words in the code reviewer's mouth, which is the flattening this
   enum exists to prevent.
 
   `:architect` announces a change to the contract. A run once amended its
@@ -103,7 +103,7 @@
    [:repl/port [:int {:min 1024 :max 65535}]]
    [:layer/name :keyword]
    ;; The properties the contract promises, in words. On EVERY packet: the Coder
-   ;; must satisfy them and the Reviewer judge against them, as much as the
+   ;; must satisfy them and the code reviewer judge against them, as much as the
    ;; Tester must test them. They were declared on the Tester's packet alone,
    ;; and two runs each lost a decision to that. See `harness.contract.packet`.
    [:property-targets {:optional true} [:vector :string]]
@@ -139,7 +139,7 @@
 
 (def ReviewerPacket
   "Read-only: diff + slice + the green gate report. No :files/target, and no
-  REPL — the Reviewer does not eval and does not write."
+  REPL — the code reviewer does not eval and does not write."
   (-> PacketBase
       (mu/dissoc :repl/port)
       (mu/merge
@@ -264,7 +264,7 @@
   built to make unrepresentable.
 
   All eight roles are required. §07 dispatches the Coder, the Tester and the
-  Reviewer on every task; the loop dispatches the Orchestrator's triage call on
+  code reviewer on every task; the loop dispatches the Orchestrator's triage call on
   every red gate, note and rejected review it has to route; `start` sends every spec to
   the spec reviewer before it dispatches; `bb plan-review` sends the plan, and
   every stage plan after it, to the plan reviewer in the stage's plan step;

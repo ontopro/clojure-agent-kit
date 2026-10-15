@@ -42,7 +42,7 @@
 
 (defn parse-verdict
   "The LAST fenced ```json block in `text` as a map, or nil — see
-  `agent/last-json-block`, which is where the parser lives: the Reviewer's
+  `agent/last-json-block`, which is where the parser lives: the code reviewer's
   verdict is read the same way, by a namespace this one sits above."
   [text]
   (agent/last-json-block text))
@@ -199,7 +199,7 @@
     :rejection
     (let [{:keys [verdict findings notes]} payload]
       (str "WHAT HAPPENED: every gate went GREEN — format, lint, the Tester's own tests, the "
-           "layer check — and the Reviewer, who read the assembled diff, REJECTED the change.\n"
+           "layer check — and the code reviewer, who read the assembled diff, REJECTED the change.\n"
            "The tests pass, so whatever is wrong is something they do not catch. A defect in "
            "the implementation that the contract rules out is the coder's; a test that is "
            "wrong, cannot fail, or misses a case the targets require is the tester's; a "
@@ -222,14 +222,14 @@
            (if-let [dc (data-conventions)]
              (str "This project's data conventions, as every role was given them:\n" dc "\n")
              "This project has stated no data conventions, so no input is out of reach.\n")
-           "The Reviewer's reasons for rejecting:\n"
+           "The code reviewer's reasons for rejecting:\n"
            (str/join "\n" (map #(str "- " %) (:reasons verdict)))
            (when (seq notes)
-             (str "\nThe Reviewer's note(s) about the contract:\n"
+             (str "\nThe code reviewer's note(s) about the contract:\n"
                   (str/join "\n" (map #(str "- " %) notes))))
-           "\nThe Reviewer's findings, in full:\n"
+           "\nThe code reviewer's findings, in full:\n"
            (clipped findings max-output-chars)
-           "\n\nIF YOU ROUTE THE TESTER, your guidance is ALL it will be sent: the Reviewer "
+           "\n\nIF YOU ROUTE THE TESTER, your guidance is ALL it will be sent: the code reviewer "
            "read the implementation, so none of its text may reach the Tester. Say which "
            "target or which case of the contract is untested, in the contract's own words."))))
 
@@ -401,8 +401,8 @@
     :red-gate   the failing gate's own output, as `:gate` feedback
     :note       nothing — the guidance stands in for a decision the role
                 could not make itself
-    :rejection  the Reviewer's findings, as `:reviewer` feedback — TO THE
-                CODER ONLY. The Reviewer read the diff, so its text is derived
+    :rejection  the code reviewer's findings, as `:reviewer` feedback — TO THE
+                CODER ONLY. The code reviewer read the diff, so its text is derived
                 from the implementation and `driver/leaks` refuses every word
                 of it for the Tester. A Tester routed on a rejection is sent
                 the guidance alone, which `shield` then checks like any other."
@@ -465,7 +465,7 @@
            :guidance nil
            :triage/fallback why}
     :rejection {:route :human
-                :reason "the Reviewer rejected, and the triage model did not say whose it is"
+                :reason "the code reviewer rejected, and the triage model did not say whose it is"
                 :guidance nil
                 :triage/fallback why}
     :security-finding {:route :human

@@ -58,7 +58,7 @@
 
 (deftest every-role-gets-the-property-targets
   ;; They were the Tester's alone. One run's amendment never reached the Coder; in
-  ;; the next, target 6 reached neither the Coder, who broke it, nor the Reviewer, who
+  ;; the next, target 6 reached neither the Coder, who broke it, nor the code reviewer, who
   ;; therefore could not see it broken. A property target is contract.
   (let [diff "diff --git a/src/app/service.clj ..."
         gates {:fmt :pass :lint :pass :test :pass :deps :pass}
@@ -144,7 +144,7 @@
         "and it validates on the packet it is carried into")))
 
 (deftest triage-can-say-why-a-role-is-back
-  ;; One run: green gates, no Reviewer findings, and a contract broken on every
+  ;; One run: green gates, no code reviewer findings, and a contract broken on every
   ;; invalid input — found by triage, which had no source to send it as.
   (let [r (packet/for-retry (packet/coder-packet spec session) 2
                             [{:feedback/from :triage

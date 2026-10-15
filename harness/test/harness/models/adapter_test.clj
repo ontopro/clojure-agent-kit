@@ -220,7 +220,7 @@
         "a read with no write reported")))
 
 (deftest a-402-is-a-credit-error-and-keeps-one-clean-line-of-the-text
-  ;; The first project built on the KIT had a Reviewer refused with 402 and the
+  ;; The first project built on the KIT had a code reviewer refused with 402 and the
   ;; provider's message - a dashboard URL with the key's id in it - reached the
   ;; console, state.edn and the run log whole. A credit refusal is its own
   ;; kind, and its text is cut before anything keeps it.

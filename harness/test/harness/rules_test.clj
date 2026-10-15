@@ -17,7 +17,7 @@
 (def ^:private audiences
   "Every dispatched role, plus the human mirror — derived from shapes/Role
   rather than written out, so a role added to the enum without rules fails
-  here instead of silently receiving an empty system prompt. The Reviewer was
+  here instead of silently receiving an empty system prompt. The code reviewer was
   exactly that: a first-class role everywhere except the rule source, and the
   one role that reads no rules file at all."
   (conj (set (rest shapes/Role)) :human))

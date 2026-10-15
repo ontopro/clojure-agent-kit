@@ -47,7 +47,7 @@
     continue  <run-dir> [<decision.edn>]      carry on from a pause: the Tester, or `check`;
                                               {:decision \"...\"} is required when nothing
                                               was amended or retried since the pause
-    check     <run-dir>                       assemble, gate 0, gates, Reviewer if green
+    check     <run-dir>                       assemble, gate 0, gates, code reviewer if green
     retry     <run-dir> <role> <triage.edn> [--allow-leak]
                                               re-dispatch one role; the file is
                                               {:decision \"...\" :feedback [Feedback ...]}.
@@ -72,7 +72,7 @@
   EVERY DECISION IN HERE COST A RUN TO LEARN, and each is written where it is
   made rather than listed here. The shape of them: one state file and one clock,
   because a run that printed its wall time below its own steps could not be
-  checked; the Reviewer shown a diff, because two reviews were dispatched with
+  checked; the code reviewer shown a diff, because two reviews were dispatched with
   no code; notes, feedback and triage decisions kept as `:run/events`, so a
   document can quote them; a red gate's own output and the run's final files in
   the record, because an audit found both only in a gitignored directory; a
@@ -307,7 +307,7 @@
       ;; Only when a request was sent again, so older state replays unchanged.
       (pos? (:retries m 0)) (assoc :retries (:retries m))
       (:task/feedback pkt) (assoc :feedback (:task/feedback pkt))
-      ;; The Reviewer's verdict, nil included: `orchestrate/next-action` routes
+      ;; The code reviewer's verdict, nil included: `orchestrate/next-action` routes
       ;; on it, and it reads events, not results.
       (= :reviewer role) (assoc :verdict (:verdict m))
       (:cost-partial m) (assoc :cost-partial (:cost-partial m))
@@ -361,7 +361,7 @@
 
   FROM THE LOOP'S OWN OUTCOME. The loop writes a `:stopped` event carrying the
   status it is finishing with, so the record says what the run did rather than
-  what its last gate run did — `:awaiting-merge` when the Reviewer has been and
+  what its last gate run did — `:awaiting-merge` when the code reviewer has been and
   a person has the merge, `:escalated` for every stop that hands the task back,
   `:merged` once a merge has happened.
 
@@ -595,8 +595,8 @@
     :impl-path        an impl file's path or name (the file the Tester was kept from)
     :impl-var         a var the impl defines that the slice's :interfaces did not
                       grant, as a whole symbol
-    :code-block       a fenced ``` block — a Reviewer finding once quoted the impl
-    :reviewer-source  :feedback/from :reviewer at all: the Reviewer read the diff,
+    :code-block       a fenced ``` block — a code reviewer finding once quoted the impl
+    :reviewer-source  :feedback/from :reviewer at all: the code reviewer read the diff,
                       so its text was derived from the implementation
 
   A WORD THE CONTRACT ITSELF USES IS NOT A LEAK. `:impl-var` matches a bare
@@ -621,7 +621,7 @@
            :let [text (str text)]
            leak (concat
                  (when (= :reviewer from)
-                   [{:leak :reviewer-source :detail "the Reviewer's text is derived from the diff it read"}])
+                   [{:leak :reviewer-source :detail "the code reviewer's text is derived from the diff it read"}])
                  (for [p impl :when (or (str/includes? text p) (str/includes? text (fs/file-name p)))]
                    {:leak :impl-path :detail (str "names " p)})
                  (for [{:keys [ns name]} impl-names
@@ -842,7 +842,7 @@
           (println "\n  ASSEMBLY REFUSED:" (:refused asm) (pr-str (:data asm))))
       (let [paths (concat (:files/impl sp) (:files/test sp))
             ;; WHAT GATE 0 CHANGES IS RECORDED. It repairs and formats the
-            ;; assembled files in place, and the gates and the Reviewer see its
+            ;; assembled files in place, and the gates and the code reviewer see its
             ;; result; a Tester once wrote a file that did not read, gate 0
             ;; removed the stray bracket, and nothing said so.
             before (into {} (for [p paths :let [f (fs/path gate-dir p)] :when (fs/exists? f)]
@@ -916,7 +916,7 @@
           (let [diff (prov/review-diff (:gate s))]
             ;; GREEN GATES OVER NOTHING AT ALL. Every gate passes on an
             ;; unchanged tree, so a green run whose diff is empty says only that
-            ;; the repository was already green. The Reviewer is not dispatched
+            ;; the repository was already green. The code reviewer is not dispatched
             ;; to read nothing, and the run stops for a person.
             (if (= "(no diff)" diff)
               (do (event! ctx {:event/kind :empty-diff})
@@ -1285,7 +1285,7 @@
 
   A RETRIED ROLE WAS STARTING FROM A FILE THAT DID NOT READ. Gate 0 repairs and
   formats in the gate worktree, and everything after it — the gates, the
-  Reviewer, a merge, the record — reads that copy. The role's own worktree
+  code reviewer, a merge, the record — reads that copy. The role's own worktree
   kept the bytes as written. A Tester whose first file had four bracket errors
   went green through gate 0, red on one assertion, and was sent back to fix the
   assertion: it opened its own copy, could not load it, and spent all 24 turns
@@ -1354,7 +1354,7 @@
   prediction and cannot be fitted to the outcome afterwards.
 
   THE TESTER'S FEEDBACK IS CHECKED FIRST. Every Tester retry on record had been
-  shielded by hand from the Reviewer's findings and the implementation's names; `leaks` is that shield as a rule, and `--allow-leak`
+  shielded by hand from the code reviewer's findings and the implementation's names; `leaks` is that shield as a rule, and `--allow-leak`
   is the judgement to pass one anyway, recorded on the triage event either way."
   [ctx role-name triage-file & flags]
   (retry-with! ctx (keyword role-name) (edn/read-string (slurp triage-file))
@@ -1425,7 +1425,7 @@
 
   THE GATED BYTES, NOT THE WRITTEN ONES. This copied each role's own worktree,
   while gate 0 repairs and formats in the gate worktree that the gates, the
-  Reviewer and a merge all read: one run's `final/` failed the very format gate
+  code reviewer and a merge all read: one run's `final/` failed the very format gate
   the run had passed, and five committed records held a file their format gate
   had never seen. So `final/<path>` is the gate worktree's copy
   whenever that copy is current, and `final/as-written/<path>` keeps the role's
@@ -1629,7 +1629,7 @@
 
   THE LOOP NEVER MERGES, AND THIS IS WHERE THAT IS ENFORCED. The run must have
   been stopped BY THE LOOP for the merge — which takes green gates and a
-  Reviewer's `approve` — the gate worktree must hold both roles' latest files,
+  code reviewer's `approve` — the gate worktree must hold both roles' latest files,
   and a person must have written down why. A hand-driven run reaches here by
   typing `run`, which costs nothing over a finished review and puts the verdict
   logic in one place instead of two."
@@ -1646,7 +1646,7 @@
       (not (awaiting-merge? events))
       {:run-loop/error :not-awaiting-merge
        :message (str "this run is not awaiting a merge — `bb run-loop run <run-dir>` must have stopped "
-                     "with green gates and the Reviewer's approval, and nothing but a mutation check "
+                     "with green gates and the code reviewer's approval, and nothing but a mutation check "
                      "may have happened since")}
 
       (not (gated-current? events))
@@ -1666,11 +1666,11 @@
 
   THE GATE WORKTREE, BECAUSE IT IS WHAT WAS JUDGED. It holds the assembled
   files after gate 0, plus the Architect's — the bytes every gate passed and
-  the Reviewer read. A role's own worktree holds what the role wrote, which
+  the code reviewer read. A role's own worktree holds what the role wrote, which
   gate 0 may have changed; a merge taken from there once shipped a file its
   own format gate had never seen.
 
-  AND ONLY IF IT IS STILL WHAT WAS REVIEWED. The Reviewer's diff is in the run
+  AND ONLY IF IT IS STILL WHAT WAS REVIEWED. The code reviewer's diff is in the run
   directory; the gate worktree's diff is taken again here, and a difference
   refuses the merge. `gated-current?` reads events, and an edit made by hand in
   the gate worktree leaves none."
@@ -1682,7 +1682,7 @@
         reviewed (when (fs/exists? reviewed-file) (slurp reviewed-file))
         now-diff (prov/review-diff gate)]
     (when-not (= reviewed now-diff)
-      (throw (ex-info (str "the gate worktree is not what the Reviewer read — its diff against HEAD differs from "
+      (throw (ex-info (str "the gate worktree is not what the code reviewer read — its diff against HEAD differs from "
                            (fs/file-name reviewed-file) ". `check` again, so the gates and a review see what would merge")
                       {:run-loop/error :changed-since-review :reviewed-diff reviewed-file})))
     (git-in root "add" "-A")
@@ -1750,7 +1750,7 @@
 ;; ---------------------------------------------------------------------------
 
 (def usage
-  "usage: bb run-loop spec-review <run-dir>                    the contract, read cold by the Reviewer's model — before start
+  "usage: bb run-loop spec-review <run-dir>                    the contract, read cold by the code reviewer's model — before start
        bb run-loop run <run-dir>                            the loop, to its next stop
        bb run-loop <start|check|record> <run-dir>
        bb run-loop teardown <run-dir> [--keep-branches|--discard]  the worktrees, and a recorded run's branches; record first

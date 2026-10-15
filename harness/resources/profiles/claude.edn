@@ -4,7 +4,7 @@
 ;; SEAT :claude. Its sibling is agy-ide.edn, and the pair is instructive: they
 ;; are near mirror images. Here Anthropic writes and Google and OpenAI verify,
 ;; every role over OpenRouter on the :openai shape; there Google writes and
-;; Anthropic verifies, its Reviewer, spec reviewer and plan reviewer direct to Anthropic on
+;; Anthropic verifies, its code reviewer, spec reviewer and plan reviewer direct to Anthropic on
 ;; the :anthropic shape. The pair still covers both tool-call shapes, which is
 ;; why there are two rather than one — and since this file's Anthropic roles
 ;; go through OpenRouter (below, and why), the :anthropic shape's worked
@@ -34,7 +34,7 @@
 ;;   seats this kit supports.
 ;;
 ;;   VERIFIER ≠ CODER FAMILY. Method §05 and decision log P0-3, and this one IS
-;;   checked. The Tester and the Reviewer both verify the Coder, so neither may
+;;   checked. The Tester and the code reviewer both verify the Coder, so neither may
 ;;   share its family, nor each other's. `bb profile` is the only place that
 ;;   rule has ever been anything but prose.
 ;;
@@ -129,8 +129,8 @@
                    :cache_control {:type "ephemeral"}}}
 
   ;; TESTER — gemini-3.8-flash at medium effort, over OpenRouter. Dated
-  ;; selection 2026-09-16, when the Tester and Reviewer swapped families so the
-  ;; best measured Reviewer could take that seat without sharing it.
+  ;; selection 2026-09-16, when the Tester and code reviewer swapped families so the
+  ;; best measured code reviewer could take that seat without sharing it.
   ;;
   ;; CHOOSE THE TESTER BY ITS TESTS, NOT ITS PRICE. The Tester writes MORE than
   ;; the Coder, from the contract alone, under more lint conventions; the
@@ -154,7 +154,7 @@
            :params {:reasoning_effort "medium"
                     :provider {:only ["google-vertex"] :allow_fallbacks false}}}
 
-  ;; REVIEWER — gpt-6.1-sol at high effort, over OpenRouter's standard endpoint.
+  ;; CODE REVIEWER — gpt-6.1-sol at high effort, over OpenRouter's standard endpoint.
   ;; Dated selection 2026-10-07; gpt-5.6-sol from 2026-09-16 until then.
   ;;
   ;; WHY IT MOVED, MEASURED: `bb profile` said the line had two newer models at
@@ -180,7 +180,7 @@
   ;;
   ;; HIGH, THOUGH MEDIUM MEASURED THE SAME on the defects that were tested. It
   ;; ships high by the user's decision, as insurance on defects unlike those:
-  ;; the Reviewer runs once per unit of work and is the cheapest seat in the
+  ;; the code reviewer runs once per unit of work and is the cheapest seat in the
   ;; loop.
   ;;
   ;; EFFORT IS A MEASURED SETTING, not a default — :reasoning_effort "high" on a
@@ -224,7 +224,7 @@
                   :params {:reasoning_effort "high"
                            :provider {:only ["openai"] :allow_fallbacks false}}}
 
-  ;; SPEC REVIEWER — the same model as the Reviewer, over OpenRouter.
+  ;; SPEC REVIEWER — the same model as the code reviewer, over OpenRouter.
   ;; Dated selection 2026-09-18. ONE CALL PER SPEC, BEFORE START, no tools:
   ;; every place a target can be read two ways, every input the shapes allow
   ;; that no target mentions. `start` runs it for any spec without a current
@@ -241,7 +241,7 @@
   ;; compared, but is the seat's family. On 2026-10-07 the line's newest,
   ;; gpt-6.1-sol, was read against it on eight saved specs with a judge of
   ;; another family: fewer findings, nearly all of them real by the judge's
-  ;; reading, faster, same price (the Reviewer's comment has it). A cheaper
+  ;; reading, faster, same price (the code reviewer's comment has it). A cheaper
   ;; choice here is possible and not yet measured.
   :spec-reviewer {:family :openai
                   :model "openai/gpt-6.1-sol"
@@ -320,7 +320,7 @@
   ;; is the one judgement inside the loop that a mechanical proposal cannot make.
   ;;
   ;; IT SHARES THE CODER'S FAMILY, AND THAT IS ACCEPTED. §05's rule is for
-  ;; verifiers: the Tester and the Reviewer exist to disagree with the Coder.
+  ;; verifiers: the Tester and the code reviewer exist to disagree with the Coder.
   ;; Triage neither writes code nor judges a diff; it reads a failure against
   ;; the contract and both roles' files. The decision (2026-09-16) is that
   ;; the family that reads a Clojure contract best should route, and the

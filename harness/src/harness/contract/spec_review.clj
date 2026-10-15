@@ -29,7 +29,7 @@
 (def system-prompt
   (str "You review a task contract BEFORE it is given to anyone. Three roles will work from it without "
        "talking to each other: a Coder writes the implementation, a Tester writes property tests from the "
-       "contract alone (it never sees the implementation), and a Reviewer checks the result against the "
+       "contract alone (it never sees the implementation), and a code reviewer checks the result against the "
        "contract. Wherever the contract can be read two ways, each role will pick a reading, and they may "
        "not pick the same one - or, worse, may all pick the same wrong one.\n\n"
        "You are given the task's spec (its interfaces, shapes, property targets, granted dependencies), the "
@@ -62,12 +62,12 @@
   "The text the review reads: the spec printed as data (an Architect's comments
   in spec.edn are predictions and hints no role was shown, and they are not
   shown here either), each context file's contents, and the rules as the
-  Reviewer reads them. `context-files` is a map of path -> contents or nil
+  code reviewer reads them. `context-files` is a map of path -> contents or nil
   for a file that does not exist yet.
 
-  THE RULES ARE LABELLED AS THE REVIEWER'S, because they are. The heading once
+  THE RULES ARE LABELLED AS THE CODE REVIEWER'S, because they are. The heading once
   said *as every role reads them* over a block rendered for one audience, and
-  the review believed it: it read the Reviewer's *you write nothing* as binding
+  the review believed it: it read the code reviewer's *you write nothing* as binding
   the Coder and the Tester and reported the contradiction with their having
   files to write - in four of one project's twenty-five reviews, a false
   finding the Architect had to read past each time. The label is a one-line
@@ -79,11 +79,11 @@
        (str/join "\n" (for [[path text] context-files]
                         (str "=== context file: " path
                              (when-not text " (does not exist yet)") " ===\n" (or text ""))))
-       "\n=== THE PROJECT'S RULES, AS THE REVIEWER IS GIVEN THEM ===\n"
-       "This is the Reviewer's rendering of the rule source. The Coder and the Tester are each sent their own, "
-       "which leaves out the rules addressed to the Reviewer alone - that it writes nothing, that it has a diff "
+       "\n=== THE PROJECT'S RULES, AS THE CODE REVIEWER IS GIVEN THEM ===\n"
+       "This is the code reviewer's rendering of the rule source. The Coder and the Tester are each sent their own, "
+       "which leaves out the rules addressed to the code reviewer alone - that it writes nothing, that it has a diff "
        "and a green gate report and no REPL - and adds rules about writing and the REPL that are not shown "
-       "here. A rule below that speaks to \"you\" speaks to the Reviewer; it is not in conflict with the Coder "
+       "here. A rule below that speaks to \"you\" speaks to the code reviewer; it is not in conflict with the Coder "
        "and the Tester having files to write, and is not a finding.\n\n"
        rules-text))
 
@@ -133,7 +133,7 @@
 (defn read!
   "The read itself, with `role` (a role block, not a file) in the reviewer's
   seat: the run's spec.edn, its context files under the project, the rules as
-  the Reviewer reads them; one completion, no tools. Returns the findings (nil
+  the code reviewer reads them; one completion, no tools. Returns the findings (nil
   when the answer had no block), the spec's identity, the model as served, the
   cost, the time, and the text sent - what a bake-off compares candidates on."
   [role run-dir config]
@@ -142,8 +142,8 @@
         context (into {} (for [f (:files/context spec)
                                :let [p (fs/path dir f)]]
                            [f (when (fs/exists? p) (slurp (str p)))]))
-        ;; the rules as the Reviewer reads them: the rule source has no :spec-reviewer
-        ;; audience, and the review judges the contract by the rules a Reviewer will
+        ;; the rules as the code reviewer reads them: the rule source has no :spec-reviewer
+        ;; audience, and the review judges the contract by the rules a code reviewer will
         input (review-input spec (rules/rule-block :reviewer {}) context)
         t0 (System/currentTimeMillis)
         r (agent/converse! role system-prompt input {:dir dir} {:max-iterations 1 :tools #{}})]

@@ -43,7 +43,7 @@
 
 (deftest ensures-a-trailing-newline
   ;; cljfmt does not enforce one, and no later gate catches its absence —
-  ;; only a Reviewer noticed, which is a frontier model doing a job a
+  ;; only a code reviewer noticed, which is a frontier model doing a job a
   ;; two-line function can do for free.
   (let [dir (str (fs/create-temp-dir))]
     (spit (str (fs/path dir "no-newline.clj")) "(ns a)\n\n(def x 1)")

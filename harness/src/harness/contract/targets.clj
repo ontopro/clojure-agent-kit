@@ -11,7 +11,7 @@
   skipped target 7 — *validates e once, at its entry, not at every level of the
   tree* — and went green through fmt, lint, test and deps. Mutation found it
   afterwards, by hand: the mutant that moves validation into the recursive
-  helper survived the whole suite. A Reviewer bake-off then showed the Reviewer
+  helper survived the whole suite. A code reviewer bake-off then showed the code reviewer
   does not cover the gap either, and for a reason no rule fixes: it verifies the
   property ITSELF and reports it satisfied, so it never asks whether a test pins
   it.

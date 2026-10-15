@@ -329,19 +329,19 @@
         :into gate-dir}))))
 
 (defn review-diff
-  "What the Reviewer is shown: the gate workspace against HEAD, NEW FILES
+  "What the code reviewer is shown: the gate workspace against HEAD, NEW FILES
   INCLUDED.
 
   The early dispatched runs built this by hand, as `git diff HEAD` — which does
   not show an untracked file, and everything a task creates is untracked. So the
-  first two Reviewers to be dispatched at all were handed a `layers.edn` change
+  first two code reviewers to be dispatched at all were handed a `layers.edn` change
   and neither the implementation nor the tests. The loop assembles NEW namespaces
   by design, so the omission was the common case, not an edge. Intent-to-add
   records a path in the index without staging its content, which is exactly
   enough for `git diff` to see it; the gate workspace is disposable, so
   touching its index costs nothing.
 
-  Returns \"(no diff)\" rather than an empty string, because a Reviewer handed
+  Returns \"(no diff)\" rather than an empty string, because a code reviewer handed
   nothing should be told so rather than left to wonder whether it was cut."
   [gate-session]
   (let [dir (:worktree/path gate-session)]

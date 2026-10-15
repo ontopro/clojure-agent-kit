@@ -124,7 +124,7 @@
   (testing "the Tester"
     (is (= [:verifier-shares-coder-family]
            (errors (assoc-in base [:roles :tester :family] :anthropic)))))
-  (testing "the Reviewer"
+  (testing "the code reviewer"
     (is (= [:verifier-shares-coder-family]
            (errors (assoc-in base [:roles :reviewer :family] :anthropic)))))
   (testing "the Spec reviewer: the Architect is the seat, and the seat's family is the Coder's by convention"

@@ -249,7 +249,7 @@
                      "REFUSED")))
 
 (deftest a-reviewer-is-not-offered-a-tool-it-is-told-not-to-use
-  ;; :review-read-only says the Reviewer writes nothing and has no REPL. Its
+  ;; :review-read-only says the code reviewer writes nothing and has no REPL. Its
   ;; packet has no :files/target either, so write_file would refuse every
   ;; path — but refusing a request and never inviting it are different, and
   ;; a rule that forbids what the tools still offer is one waiting to be
@@ -375,7 +375,7 @@
 
 (deftest a-change-to-an-existing-clojure-file-reports-its-forms
   ;; A rewrite over one lint warning that drops a helper is told so while the
-  ;; author is still there, not by a Reviewer a round later.
+  ;; author is still there, not by a code reviewer a round later.
   (let [dir (workspace)
         first-write (write! dir "(ns app.service)\n\n(defn helper [x] x)\n\n(defn f [x] (helper x))\n")]
     (is (not (str/includes? (:content first-write) "forms "))

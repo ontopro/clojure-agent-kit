@@ -70,7 +70,7 @@
          " has no credit left — nothing sent again will do better until the account is topped up")))
 
 (defn- current-review
-  "The Reviewer's dispatch event, when it is the last word on the run's code:
+  "The code reviewer's dispatch event, when it is the last word on the run's code:
   among the gate runs and ALL the dispatches, the last one is a review. A
   Coder sent back after a rejection makes the review before it history —
   without that, the loop would read the same rejection again and route it
@@ -193,10 +193,10 @@
       ;; findings it did give printed above the stop.
       review
       (case (:verdict (:verdict review))
-        :approve (stop :reviewed :human "the Reviewer approved; the merge is a person's" :awaiting-merge)
-        :reject (or (capped "and the Reviewer rejected")
+        :approve (stop :reviewed :human "the code reviewer approved; the merge is a person's" :awaiting-merge)
+        :reject (or (capped "and the code reviewer rejected")
                     {:action :triage :trigger :rejection})
-        (stop :no-verdict :human "the Reviewer gave no verdict — its findings are above, and the loop cannot read them"))
+        (stop :no-verdict :human "the code reviewer gave no verdict — its findings are above, and the loop cannot read them"))
 
       ;; A dispatch has happened since the last gate run — a hand `retry`, or
       ;; the Tester after a `continue`.
@@ -225,7 +225,7 @@
    :repl-dead ["check the nREPL in the role's worktree, then:"
                "bb run-loop run <run-dir>   ; the probe runs again before any dispatch"]
    :dispatch-failed ["bb run-loop retry <run-dir> <role> <triage.edn>   ; {:decision \"...\" :feedback [...]}"
-                     "bb run-loop check <run-dir>                       ; if it was the Reviewer: gates and review again"]
+                     "bb run-loop check <run-dir>                       ; if it was the code reviewer: gates and review again"]
    :credit ["a credit limit, not a model error: read the reason above, add credit to that account, then"
             "bb balance                                        ; the key's limit and the account's credit, as the provider reports them"
             "bb run-loop retry <run-dir> <role> <triage.edn>   ; {:decision \"credit added\"}; the same packet, sent again"]
@@ -253,11 +253,11 @@
             "bb run-loop amend <run-dir> <spec-before.edn> <reason> --not-counted   ; the last round followed guidance that contradicted the contract: it is not counted, and `run` carries on"
             "raise :gates {:retry-cap n} in spec.edn, then bb run-loop amend <run-dir> <spec-before.edn> <reason>   ; a decision, logged"
             "bb run-loop record <run-dir> && bb run-loop teardown <run-dir>   ; or stop here"]
-   :reviewed ["read the Reviewer's findings above. To merge — the gate worktree, one commit, --no-ff into the base checkout:"
+   :reviewed ["read the code reviewer's findings above. To merge — the gate worktree, one commit, --no-ff into the base checkout:"
               "bb run-loop merge <run-dir> <decision.edn>   ; {:decision \"why this merges\"}; then records and tears down"
               "To deny it, type nothing: the run stays :awaiting-merge with its worktrees and branches in place. Or:"
               "bb run-loop record <run-dir> && bb run-loop teardown <run-dir>   ; keep the record, merge nothing"]
-   :rejected ["the Reviewer rejected and triage routed it away from both roles; both are above"
+   :rejected ["the code reviewer rejected and triage routed it away from both roles; both are above"
               "bb run-loop amend <run-dir> <spec-before.edn> <reason>   ; if the contract is what is wrong — `run` then gates and reviews afresh, against the amended contract"
               "bb run-loop retry <run-dir> <role> <triage.edn>          ; the decision is written first"
               "bb run-loop check <run-dir>                              ; or disagree with the review: gates and a fresh one"
@@ -288,9 +288,9 @@
          {:step (:event/step d) :files (:files d) :iterations (:iterations d)})))
 
 (defn reviews-bought
-  "How many Reviewer dispatches this run has paid for, and what they cost:
+  "How many code reviewer dispatches this run has paid for, and what they cost:
   `{:count n :cost total :cost-known k}` - the count from the dispatch events
-  with the Reviewer's role, the cost from the report steps of the same names
+  with the code reviewer's role, the cost from the report steps of the same names
   (`:cost-known` says how many of those had a figure).
 
   THE CAP COUNTS ROUNDS, NOT REVIEWS. A `check` after a rule-source or
@@ -342,7 +342,7 @@
                 :red-gate {:gate-result (:last-gates state)}
                 :note (select-keys (last (filter #(= :paused (:event/kind %)) events))
                                    [:after :next :notes])
-                ;; THE NOTES TOO, not only the verdict. A Reviewer's note is
+                ;; THE NOTES TOO, not only the verdict. A code reviewer's note is
                 ;; about the contract, and a rejection whose real finding is
                 ;; "the targets do not say" is the architect's — which triage
                 ;; can only see if it is shown the note.

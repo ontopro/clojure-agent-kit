@@ -407,7 +407,7 @@
 
   A task's test file is the Tester's target, not someone else's code to keep
   working. When a rewrite already had tests, `dependents` alone listed that file:
-  the Coder was told it must keep working, the Reviewer to check it, the Tester
+  the Coder was told it must keep working, the code reviewer to check it, the Tester
   saw its own target as read-only context, and a careful Coder noting the expected
   breakage would stop the run on the note pause for nothing (review of
   experiments/d7-d15, R2)."
@@ -421,7 +421,7 @@
 
   Into `:files/context` rather than `:files/target`: a dependent is something
   a role must keep working and may read, not something it may edit. Every
-  packet carries `:files/context`, so the Coder, the Tester and the Reviewer all
+  packet carries `:files/context`, so the Coder, the Tester and the code reviewer all
   see them, and `tester-packet` still strips the implementation."
   [spec deps]
   (if (seq deps)

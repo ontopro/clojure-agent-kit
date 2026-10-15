@@ -28,10 +28,10 @@
     (testing "a context file that does not exist yet is named as such, not silently empty"
       (is (str/includes? text "src/app/missing.clj (does not exist yet)")))
     (is (str/includes? text "- rule two"))
-    (testing "the rules are labelled as the Reviewer's rendering, not as what every role reads"
+    (testing "the rules are labelled as the code reviewer's rendering, not as what every role reads"
       ;; The heading once claimed every role read this block; the review believed it and reported
-      ;; the Reviewer's `you write nothing` as contradicting the Coder having a file to write.
-      (is (str/includes? text "AS THE REVIEWER IS GIVEN THEM"))
+      ;; the code reviewer's `you write nothing` as contradicting the Coder having a file to write.
+      (is (str/includes? text "AS THE CODE REVIEWER IS GIVEN THEM"))
       (is (not (str/includes? text "as every role reads them")))
       (is (str/includes? text "is not a finding")))))
 

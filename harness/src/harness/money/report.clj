@@ -63,7 +63,7 @@
              ;; Defaulting the other way is how a hand-made example becomes a record.
              ;;
              ;; EXCEPT A CALL THAT FAILED AT THE PROVIDER, which has neither and is
-             ;; as real as any other. Two Reviewer dispatches refused with HTTP 402
+             ;; as real as any other. Two code reviewer dispatches refused with HTTP 402
              ;; (a spent credit limit) were rendered as "SYNTHETIC: made up, not
              ;; measured" - each a request that was sent, timed at about 300ms, and
              ;; answered. An :error in :runner/meta is what a real failed call

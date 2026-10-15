@@ -54,7 +54,7 @@
 
   HERE BECAUSE TWO CALLERS READ A MODEL'S ANSWER THIS WAY and they sit on
   opposite sides of the driver: `harness.loop.triage` reads a routing verdict and
-  `harness.models.runner` reads the Reviewer's. Triage requires the driver and the
+  `harness.models.runner` reads the code reviewer's. Triage requires the driver and the
   driver requires the runner, so the parser could not live in either."
   [text]
   (when text
@@ -107,7 +107,7 @@
 
   OFF THE LOOP, because nothing inside the loop reads a generation record and
   waiting on one bought nothing. Measured on 2026-09-14 against one run's
-  Tester and Reviewer models: 6.8–10.5s of waiting per completion, against 0.8–2.2s
+  Tester and code reviewer models: 6.8–10.5s of waiting per completion, against 0.8–2.2s
   for the completion itself — 84–88% of a tool round trip's wall time spent
   on bookkeeping. Each fetch starts the moment its completion returns, so it
   keeps the full retry budget `provenance/fetch!` gives it."

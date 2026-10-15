@@ -273,7 +273,7 @@
                                    {:event/kind :dispatch :role :tester}
                                    {:event/kind :gates}])))
   (is (true? (loop/gated-current? [{:event/kind :gates} {:event/kind :dispatch :role :reviewer}]))
-      "the Reviewer writes nothing")
+      "the code reviewer writes nothing")
   (is (false? (loop/gated-current? [{:event/kind :gates} {:event/kind :triage}
                                     {:event/kind :dispatch :role :tester}]))
       "a retry after the last gate run has not been gated")
@@ -418,7 +418,7 @@
 
 (deftest check-records-what-gate-0-changed-and-nothing-when-it-changed-nothing
   (let [spec {:task/id "t" :files/impl ["src/a/impl.clj"] :files/test []}
-        ;; red, so check! stops at its routing proposal and builds no Reviewer packet
+        ;; red, so check! stops at its routing proposal and builds no code reviewer packet
         red {:gates/passed? false :gates/failed :test
              :gates/report [{:gate :test :status :fail :ms 1 :out "FAIL in (x)"}]}
         run (fn [repair]
@@ -449,7 +449,7 @@
 (deftest a-dispatch-that-changed-nothing-is-said-out-loud
   (is (true? (loop/wrote-nothing? :tester {:status :done :files []})))
   (is (false? (loop/wrote-nothing? :tester {:status :done :files ["test/a_test.clj"]})))
-  (is (false? (loop/wrote-nothing? :reviewer {:status :done :files []})) "the Reviewer writes nothing by design")
+  (is (false? (loop/wrote-nothing? :reviewer {:status :done :files []})) "the code reviewer writes nothing by design")
   (is (false? (loop/wrote-nothing? :coder {:status :failed :files []})) "a failed dispatch already says so"))
 
 (deftest a-dispatch-that-left-notes-pauses-the-run
@@ -871,7 +871,7 @@
                                     #'harness.gates.repair/repair! (fn [& _] {:exit 0})
                                     #'harness.contract.sigs/undeclared-calls (fn [& _] [])
                                     #'harness.loop.provision/review-diff (fn [& _] "")
-                                    ;; the green path builds the Reviewer's packet before it
+                                    ;; the green path builds the code reviewer's packet before it
                                     ;; dispatches, and this spec is a stub, not a real one
                                     #'harness.contract.packet/reviewer-packet (fn [& _] {})
                                     #'loop/dispatch! (fn [& _] nil)

@@ -61,7 +61,7 @@
        "defined in §1 or inline, and a var a target requires the code to refer to must be granted under "
        ":deps-sigs, and every :deps-sigs entry is qualified, ns/f, because the calls gate grants by qualified "
        "name. An interface is (name [args]) for a function and (name) for a var, never a bare name.\n\n"
-       "The stack, the layering as the boundary file declares it, the six roles, the packet, the gates and "
+       "The stack, the layering as the boundary file declares it, the roles, the packet, the gates and "
        "the retry cap are GIVEN by the method and are not the Blueprint's to have decided - do not report "
        "them. Report only what a reader could act on: name the section, the packet id or the target, quote "
        "the words. Do not report style or length. An empty list is a valid answer when the Blueprint is "

@@ -111,7 +111,7 @@
    ;; four lines up, has always said "satisfying every :property-targets entry".
    ;; One Tester had all eight targets in its packet, wrote tests for six,
    ;; skipped the validate-once one and went green through every gate; mutation
-   ;; found it afterwards, and a Reviewer dispatched at the same code did not
+   ;; found it afterwards, and a code reviewer dispatched at the same code did not
    ;; cover the gap either. Another model on the same task and the same targets
    ;; covered it — so the targets were enough for one model and not another,
    ;; which is why `harness.contract.targets` checks the markers rather than trusting
@@ -176,11 +176,11 @@
                   ;; read as a rejection and one that read as an approval left
                   ;; the loop in the same place. `reject` is reserved for what
                   ;; the contract rules out, because a rejection costs a paid
-                  ;; round: a Reviewer that rejects on taste spends the cap.
+                  ;; round: a code reviewer that rejects on taste spends the cap.
                   ;;
                   ;; EVERY REASON NAMES WHAT IT BREAKS. The definition of `reject`
                   ;; below was in this text from the start and did not hold: one
-                  ;; Reviewer rejected four times in eight tasks on findings that
+                  ;; code reviewer rejected four times in eight tasks on findings that
                   ;; broke no target — a rule read strictly, a double validation
                   ;; pass, a broad `catch` — each true, each labelled blocking,
                   ;; and one task went to its raised cap on three reviews that each
@@ -206,7 +206,7 @@
                   "paid round. If every finding you have breaks \"none\", your "
                   "verdict is `approve`. An approval with no findings has no "
                   "reasons. "
-                  ;; A VALUE THAT CANNOT ARRIVE BREAKS NOTHING. One Reviewer rejected on
+                  ;; A VALUE THAT CANNOT ARRIVE BREAKS NOTHING. One code reviewer rejected on
                   ;; `(keyword "")` - valid by its type, and impossible to write in the
                   ;; EDN file that was the project's only source of content. Triage routed
                   ;; the Coder, a round was paid, and the Architect - the only role that
@@ -225,7 +225,7 @@
                   "and mark it \"none\".")})
 
 (defn review-verdict
-  "The Reviewer's verdict from its final message: `{:verdict :approve|:reject
+  "The code reviewer's verdict from its final message: `{:verdict :approve|:reject
   :reasons [str ...]}`, or nil when there is no block, it does not parse, or
   its verdict is neither word.
 
@@ -233,7 +233,7 @@
   block is missing, which throws away findings that were paid for and are
   usually fine: the prose is the review, and the block is only how the LOOP
   reads it. So the dispatch stays `:done`, the findings stay in `:stdout`, and
-  the loop stops for a person with \"the Reviewer gave no verdict\"."
+  the loop stops for a person with \"the code reviewer gave no verdict\"."
   [text]
   (let [block (agent/last-json-block text)
         v (some-> (:verdict block) str str/trim str/lower-case)
@@ -369,7 +369,7 @@
         ;; carry on from: assembly refuses the missing deliverable one step
         ;; later, with nothing to say why, and a run has gone green over a
         ;; namespace with no tests at all because the absent file was skipped.
-        ;; The Reviewer is exempt: it writes nothing by design.
+        ;; The code reviewer is exempt: it writes nothing by design.
         capped-empty? (and (#{:coder :tester} role) (= :done status) capped? (empty? files))
         status (if capped-empty? :failed status)
         text (if capped-empty?
@@ -420,7 +420,7 @@
                                             (reduce (fn [acc u] (merge-with + acc (into {} (filter (comp some? val)) u)))
                                                     {} (keep :usage steps)))}
                             (:pricing cfg) (assoc :pricing (:pricing cfg))
-                            ;; The Reviewer's verdict, PRESENT EVEN WHEN NIL: a
+                            ;; The code reviewer's verdict, PRESENT EVEN WHEN NIL: a
                             ;; review that gave none is a fact the loop stops
                             ;; on, and an absent key would read the same as a
                             ;; role that was never asked for one.

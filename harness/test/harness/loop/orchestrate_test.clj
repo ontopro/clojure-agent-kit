@@ -3,7 +3,7 @@
   nREPL, real assembly and real gates, with only the dispatch faked.
 
   WHY NOT FAKE MORE. Everything between the dispatches is where this loop's
-  decisions live: assembly refusing a file, the gate run, the diff the Reviewer
+  decisions live: assembly refusing a file, the gate run, the diff the code reviewer
   would read, the events each of those leaves. A test that stubbed them would
   be testing `next-action` against states it had invented rather than against
   the states the driver actually produces, which is the one thing a test here
@@ -97,9 +97,9 @@
   of the packet returning one, so a retry can write differently — records
   the same step and event a real dispatch would, and returns `results`'
   answer for the role, which may also be a function of the packet: a
-  Reviewer that rejects the first diff and approves the second is one.
+  code reviewer that rejects the first diff and approves the second is one.
 
-  THE REVIEWER APPROVES UNLESS A TEST SAYS OTHERWISE, the way the gates are
+  THE CODE REVIEWER APPROVES UNLESS A TEST SAYS OTHERWISE, the way the gates are
   green unless a test says otherwise: most tests here are about something
   else, and the verdict is what lets them reach the stop they are about."
   [writes results]
@@ -227,7 +227,7 @@
         (is (= :red (get-in trg [:payload :gate-result :gates/failed])))
         (is (= "t-01" (get-in trg [:spec :task/id])))
         (is (fs/exists? (fs/path (get-in trg [:worktrees :coder]) impl-path)) "the Coder's file as written")))
-    (testing "the proposal is recorded, the verdict is on the stop, and no Reviewer was dispatched"
+    (testing "the proposal is recorded, the verdict is on the stop, and no code reviewer was dispatched"
       (is (some #(= :routing (:event/kind %)) (events rd)))
       (let [stopped (last (events rd))]
         (is (= :stopped (:event/kind stopped)))
@@ -599,7 +599,7 @@
       (is (= :empty-diff (:stop/kind res)))
       (is (= :escalated (:status res)))
       (is (str/includes? (:reason res) "empty diff")))
-    (is (zero? @reviewed) "the Reviewer is not dispatched to read nothing")
+    (is (zero? @reviewed) "the code reviewer is not dispatched to read nothing")
     (is (some #(= :empty-diff (:event/kind %)) (events rd)))
     (teardown! rd)))
 
@@ -608,7 +608,7 @@
 ;; ---------------------------------------------------------------------------
 
 (defn- rejecting-until-fixed
-  "A Reviewer that rejects any diff without the word `fixed` in it, with
+  "A code reviewer that rejects any diff without the word `fixed` in it, with
   findings that quote the implementation — as a real one's do."
   [pkt]
   (if (str/includes? (:review/diff pkt) "fixed")
@@ -631,14 +631,14 @@
     (is (= :awaiting-merge (:status res)) "green, rejected, routed, retried, green, approved")
     (is (= :reviewed (:stop/kind res)))
     (is (= 2 (:attempts res)) "a rejection's retry is a round like any other")
-    (testing "triage was shown the verdict, the findings and the Reviewer's note"
+    (testing "triage was shown the verdict, the findings and the code reviewer's note"
       (is (= 1 (count @asked)))
       (is (= {:trigger :rejection
               :payload {:verdict (rejects "f ignores its bounds")
                         :findings "FINDING: `(defn f [x] x)` in src/scratch/x.clj ignores its bounds."
                         :notes ["the targets do not say what f does at the bounds"]}}
              (select-keys (first @asked) [:trigger :payload]))))
-    (testing "the Coder was told the guidance first, then the Reviewer's own findings"
+    (testing "the Coder was told the guidance first, then the code reviewer's own findings"
       (let [retry (first (filter #(= :coder-r1 (:event/step %)) (events rd)))]
         (is (= [:triage :reviewer] (mapv :feedback/from (:feedback retry))))
         (is (= "honour the bounds" (:feedback/text (first (:feedback retry)))))
@@ -653,7 +653,7 @@
     (teardown! rd)))
 
 (deftest a-rejection-routed-to-the-tester-sends-the-guidance-and-none-of-the-review
-  ;; The Reviewer read the implementation, so every word of its findings is
+  ;; The code reviewer read the implementation, so every word of its findings is
   ;; derived from it. The Tester gets triage's guidance — checked — and no more.
   (let [repo (scratch-repo)
         rd (run-dir! repo)
@@ -681,7 +681,7 @@
     (is (= :tester-leak (:stop/kind res)))
     (is (= :human (:route res)))
     (is (= :escalated (:status res)) "a rejected run is never awaiting a merge")
-    (is (= 3 (count (filter #(= :dispatch (:event/kind %)) (events rd)))) "Coder, Tester, Reviewer — and no retry")
+    (is (= 3 (count (filter #(= :dispatch (:event/kind %)) (events rd)))) "Coder, Tester, code reviewer — and no retry")
     (teardown! rd)))
 
 (deftest a-rejection-routed-to-the-architect-stops-and-cannot-be-merged
@@ -695,7 +695,7 @@
     (is (= "triage: the targets do not say what happens at the bounds" (:reason res)))
     (testing "and `merge` refuses it, decision or no decision: only an approval awaits a merge"
       (let [decision (str (fs/path rd "merge.edn"))]
-        (spit decision (pr-str {:decision "I disagree with the Reviewer"}))
+        (spit decision (pr-str {:decision "I disagree with the code reviewer"}))
         (is (thrown-with-msg? Exception #"not awaiting a merge"
                               (driver/merge! (driver/context rd) decision)))
         (is (not (fs/exists? (fs/path repo impl-path))))))
@@ -723,7 +723,7 @@
     (teardown! rd)))
 
 (deftest the-review-a-person-is-told-to-read-is-on-the-console
-  ;; The stop says "read the Reviewer's findings above". The real `dispatch!`
+  ;; The stop says "read the code reviewer's findings above". The real `dispatch!`
   ;; runs here, with only the model behind it replaced, because the printing is
   ;; inside it.
   (let [repo (scratch-repo)
@@ -846,7 +846,7 @@
         rd (run-dir! repo)]
     (drive! rd {})
     (spit (str (fs/path rd "wt" "a-test-reviewer" impl-path)) (str impl-src "(defn sneaked-in [] :unreviewed)\n"))
-    (is (thrown-with-msg? Exception #"not what the Reviewer read" (merge! rd "looks good")))
+    (is (thrown-with-msg? Exception #"not what the code reviewer read" (merge! rd "looks good")))
     (is (not (fs/exists? (fs/path repo impl-path))))
     (is (= ["init"] (str/split-lines (:out (git! (str (fs/path rd "wt" "a-test-reviewer")) "log" "--format=%s"))))
         "and nothing was committed on the gate branch either")
@@ -968,7 +968,7 @@
                                         {:event/kind :triage :role :tester} {:event/kind :triage :role :tester}] %)))]
           (is (= :capped (:stop/kind a)))
           (is (str/includes? (:reason a) "per role is spent by both - the Coder's 3 rounds and the Tester's 3 rounds"))
-          (is (str/includes? (:reason a) "the Reviewer rejected"))))
+          (is (str/includes? (:reason a) "the code reviewer rejected"))))
       (testing "a review with no verdict is a person's, and is not awaiting a merge"
         (let [a (action (reviewed nil))]
           (is (= :no-verdict (:stop/kind a)))
@@ -997,7 +997,7 @@
         (is (= {:action :triage :trigger :rejection}
                (action (reviewed {:verdict :reject :reasons ["r"]})))
             "and with no amendment the rejection is still the last word"))
-      (testing "a failed Reviewer dispatch is a failed dispatch, not a missing verdict"
+      (testing "a failed code reviewer dispatch is a failed dispatch, not a missing verdict"
         (is (= :dispatch-failed
                (:stop/kind (action (assoc green :events (conj dispatched {:event/kind :gates}
                                                               {:event/kind :dispatch :role :reviewer
@@ -1113,7 +1113,7 @@
         "a retry that finished replaced the file")
     (is (= [] (orch/cut-off-writers [(d :tester :tester true :failed)]))
         "capped and wrote nothing is a failed dispatch, which stops the loop by itself")
-    (is (= [] (orch/cut-off-writers [(d :reviewer :reviewer true :done)])) "the Reviewer writes no file")
+    (is (= [] (orch/cut-off-writers [(d :reviewer :reviewer true :done)])) "the code reviewer writes no file")
     (is (= [] (orch/cut-off-writers [])))))
 
 (deftest a-stop-is-the-architect-s-when-its-answer-is-an-amendment-and-the-person-s-otherwise

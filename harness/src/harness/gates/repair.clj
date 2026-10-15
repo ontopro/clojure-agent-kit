@@ -17,7 +17,7 @@
 
   Both repairs below were learned live rather than designed: delimiter
   errors burned real retries, and the missing trailing newline was caught
-  by a Reviewer — a frontier model doing judgement work — because no
+  by a code reviewer — a frontier model doing judgement work — because no
   cheaper gate was looking for it."
   (:require
    [babashka.fs :as fs]

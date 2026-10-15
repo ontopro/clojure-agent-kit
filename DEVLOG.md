@@ -56,6 +56,20 @@ step by hand, named there.
 
 ## 2026-10-14
 
+### What the code prints and what models are told say "code reviewer" (plan 6.5, item 5)
+
+The documents said "code reviewer" from the day the security reviewer became a role; the code
+did not - about a hundred and forty lines of stop messages, usage text, docstrings, the triage,
+spec-review and runner prompts, the shipped profiles' comments, one rule's text, and the tests
+pinning them. One function did the sweep (a bare "Reviewer", not one already named by its kind,
+not an identifier: `ReviewerPacket` and the `:reviewer` key are what records and profiles carry,
+and stay). The blueprint review's prompt said "the six roles" of a method that has more; it says
+"the roles". What a model is told is a change to the run, so it was measured first: the proof
+build's saved prompts whose text the rename changes - two triage calls on a rejection, three spec
+reviews - asked once in the old words and once in the new. Triage routed the same both times; two
+spec reviews found nothing either time, and the third found the same seven things either time
+with one or two of its own on each side, a sample's spread, none about the code reviewer's rules.
+
 ### The retry cap is spent per role, and the stop names whose rounds are spent (plan 6.5, item 5)
 
 The cap was per task, spent by whichever role a round went to, on the argument that a Coder's

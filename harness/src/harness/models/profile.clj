@@ -10,7 +10,7 @@
   editor. Writing them down in one shape is what stops the question recurring.
 
   AND IT MAKES §05's INDEPENDENCE RULE CHECKABLE. *Verifier ≠ Coder family* is
-  the one decision the method rests on — the Tester and the Reviewer exist to
+  the one decision the method rests on — the Tester and the code reviewer exist to
   disagree with the Coder, and two roles from the same family share its blind
   spots. It has lived in prose since it was decided: method §05, and decision
   log P0-3. `violations` is the first thing that can fail on it.
@@ -84,7 +84,7 @@
 
 (def verifiers
   "The roles whose job is to disagree with the author of what they read. The
-  Tester and the Reviewer derive from the same Blueprint slice as the Coder and
+  Tester and the code reviewer derive from the same Blueprint slice as the Coder and
   may not share the family that wrote the code. The SPEC REVIEWER reads the
   Architect's contract before anyone works from it, and the Architect is the
   seat, whose family is the Coder's by convention (portability.md) — so \"not

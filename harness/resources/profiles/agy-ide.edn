@@ -28,7 +28,7 @@
 ;;   supports.
 ;;
 ;;   VERIFIER ≠ CODER FAMILY. Method §05 and decision log P0-3, and this one IS
-;;   checked. The Tester and the Reviewer both verify the Coder, so neither may
+;;   checked. The Tester and the code reviewer both verify the Coder, so neither may
 ;;   share its family, nor each other's. `bb profile` is the only place that
 ;;   rule has ever been anything but prose.
 ;;
@@ -46,7 +46,7 @@
   ;;
   ;; MEDIUM, NOT HIGH, AND THAT IS MEASURED. The original sketch put
   ;; :reasoning_effort "high" on every OpenRouter role, unexamined. On
-  ;; gemini-3.8-flash as Reviewer it produced minutes of thinking and an
+  ;; gemini-3.8-flash as code reviewer it produced minutes of thinking and an
   ;; EMPTY final message; the identical dispatch at medium answered quickly,
   ;; for less, with real findings. High reasoning on a flash tier spends
   ;; the budget thinking and has nothing left to say with.
@@ -74,7 +74,7 @@
            :params {:reasoning_effort "medium"
                     :provider {:only ["openai"] :allow_fallbacks false}}}
 
-  ;; REVIEWER — Claude Opus 5.5 at high effort, direct to Anthropic, which is
+  ;; CODE REVIEWER — Claude Opus 5.5 at high effort, direct to Anthropic, which is
   ;; the :anthropic tool-call shape: this role and the spec reviewer are the
   ;; KIT's only worked example of that shape, and they stay direct for that
   ;; reason. No :provider pin: that endpoint does no routing, so there is
@@ -88,19 +88,19 @@
   ;; code, is where a task's money goes - so the reader's price is the seat's
   ;; biggest lever; and Opus is the Blueprint reviewer in both shipped
   ;; profiles, where on that project it read a stage's Blueprint whole and
-  ;; drew findings the Architect acted on. A Reviewer reads a diff against a
+  ;; drew findings the Architect acted on. A code reviewer reads a diff against a
   ;; contract, the same kind of work. High, as claude.edn's reviewers run.
   ;; What is not measured is this seat as a whole: no run has used it, and no
-  ;; Anthropic model has been dispatched as a Reviewer at all - the bake-off
+  ;; Anthropic model has been dispatched as a code reviewer at all - the bake-off
   ;; that would test one could not, because every case's code was written by
   ;; an Anthropic Coder and §05 wants the verifier clear of the author's
   ;; family. The first agy-ide run tests it; `bb bake-off` is how to choose
   ;; from a measurement instead.
   ;;
   ;; :max_tokens 32,000, because thinking counts against that cap on this
-  ;; shape. A Reviewer's findings are short, so the risk is not a long answer
+  ;; shape. A code reviewer's findings are short, so the risk is not a long answer
   ;; but a budget spent thinking with nothing left to say it with — which this
-  ;; kit has seen once, on a flash tier at high as Reviewer (see claude.edn).
+  ;; kit has seen once, on a flash tier at high as code reviewer (see claude.edn).
   :reviewer {:family :anthropic
              :model "claude-opus-5-5"
              :shape :anthropic
@@ -139,9 +139,9 @@
                             :source "https://platform.claude.com/docs/en/about-claude/pricing"
                             :as-of "2026-10-05"}}
 
-  ;; SPEC REVIEWER — the Reviewer's family, for the Reviewer's reason: not the
+  ;; SPEC REVIEWER — the code reviewer's family, for the code reviewer's reason: not the
   ;; seat's family (Google here), and the seat is where the Architect writes
-  ;; the spec this role reads cold before `start`. The Reviewer's model too,
+  ;; the spec this role reads cold before `start`. The code reviewer's model too,
   ;; Opus 5.5 at high, the same dated selection of 2026-10-05 by analogy; it
   ;; was Fable 5.1 at low (2026-09-18).
   ;;
@@ -218,7 +218,7 @@
   ;; this file measures elsewhere, because a triage call is one completion
   ;; over a few thousand tokens with no tool loop — the empty-final-message
   ;; failure this file records for high on a flash tier came from a
-  ;; 24-iteration Reviewer dispatch, which this is not. If the first agy-ide
+  ;; 24-iteration code reviewer dispatch, which this is not. If the first agy-ide
   ;; run shows an empty verdict, the fallback routes mechanically and the
   ;; record says so; drop to medium then.
   ;;

@@ -138,7 +138,7 @@
   FORMS, when the file existed before (`before` is its previous content):
   one line saying what changed at the level of top-level forms - lost,
   gained, changed by name. A rewrite over one lint warning that drops a
-  helper is told so here, not by a Reviewer a round later. Silent when either
+  helper is told so here, not by a code reviewer a round later. Silent when either
   version does not parse (`harness.gates.forms`)."
   [dir path content before]
   (let [file (str (fs/path dir path))
@@ -427,7 +427,7 @@
 (defn for-role
   "Which tools a role may be given.
 
-  The Reviewer gets `read_file` and nothing else, because the rule
+  The code reviewer gets `read_file` and nothing else, because the rule
   `:review-read-only` says it writes nothing and has no REPL — and a rule
   that forbids what the tools still offer is a rule waiting to be broken.
   Its packet has no `:files/target` either, so `write_file` would refuse

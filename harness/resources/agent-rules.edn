@@ -144,7 +144,7 @@
   :audience #{:coder :tester}
   :from :awesome-copilot
   :title "Report what you evaluated."
-  :text "Nobody is watching your REPL session. Your final message is the only trace the Reviewer and triage will ever see, so state what you evaluated and what came back — not merely that you are done."}
+  :text "Nobody is watching your REPL session. Your final message is the only trace the code reviewer and triage will ever see, so state what you evaluated and what came back — not merely that you are done."}
 
  {:id :review-report
   :group :conventions
@@ -186,10 +186,10 @@
  ;; §10 lesson 12). NOTES.md row 12.
  {:id :shapes-are-the-contract
   :group :conventions
-  ;; THE REVIEWER IS TOLD THIS TOO (2026-09-15). It reached the Coder alone, so no Reviewer's
+  ;; THE CODE REVIEWER IS TOLD THIS TOO (2026-09-15). It reached the Coder alone, so no code reviewer's
   ;; prompt named the defect two early runs had carried — validation on every recursive call — and
-  ;; Reviewers sampled on those two cases found it seldom. A bake-off re-ran both cases with this
-  ;; rule in the Reviewer's prompt; its records are not in this repository.
+  ;; code reviewers sampled on those two cases found it seldom. A bake-off re-ran both cases with this
+  ;; rule in the code reviewer's prompt; its records are not in this repository.
   :audience #{:coder :human :reviewer}
   :title "Shapes are the contract."
   :text "Data-first: agree the shapes before the functions, and validate at the seams — once. A seam is a public entry, not every call: a function that recurses into itself crosses its own seam on every call and re-validates every subtree, which is quadratic on deep input. Validate at the entry, then recurse through a private helper that assumes the shape. <Name your validation library and the ex-info type a boundary failure throws.>"}
@@ -205,7 +205,7 @@
  ;; attribute" means) were never asked about again.
  ;;
  ;; EVERY AUDIENCE, THE TESTER INCLUDED. `:shapes-are-the-contract` reaches the Coder and the
- ;; Reviewer; a guarantee written into its placeholder does not reach the role most likely to test
+ ;; code reviewer; a guarantee written into its placeholder does not reach the role most likely to test
  ;; an input the guarantee rules out.
  {:id :data-conventions
   :group :conventions

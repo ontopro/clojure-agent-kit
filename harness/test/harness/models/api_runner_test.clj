@@ -298,7 +298,7 @@
         (name role)))
   (is (not (str/includes? (runner/packet-prompt (assoc (packet ".") :task/role :reviewer))
                           "edit_file"))
-      "the Reviewer has no such tool and is not told about one"))
+      "the code reviewer has no such tool and is not told about one"))
 
 (deftest a-dead-endpoint-is-a-failed-result-not-a-throw
   (let [r (runner/run-agent (runner/api-runner (profile "http://127.0.0.1:1")
@@ -353,14 +353,14 @@
       (finally @(srv/server-stop! stop)))))
 
 (defn- review
-  "One Reviewer dispatch over a stub model that answers `reply`."
+  "One code reviewer dispatch over a stub model that answers `reply`."
   [reply]
   (let [rev (-> (packet (git-repo)) (dissoc :files/target :repl/port) (assoc :task/role :reviewer))]
     (stub [(text reply)]
           #(runner/run-agent (runner/api-runner (profile %)) :reviewer rev))))
 
 (deftest the-reviewers-verdict-block-is-parsed-into-runner-meta
-  (testing "the Reviewer is asked for one, after its findings"
+  (testing "the code reviewer is asked for one, after its findings"
     (is (str/includes? (:reviewer runner/deliverables) "\"verdict\": \"approve\" | \"reject\""))
     (is (str/includes? (:reviewer runner/deliverables) "AFTER your findings")))
   (testing "approve, with no reasons"
@@ -485,7 +485,7 @@
         (is (shapes/valid-result? r))))
     (testing "the Tester, the same"
       (is (= :failed (:status (run :tester {:max-iterations 2})))))
-    (testing "the Reviewer is exempt — it writes nothing by design"
+    (testing "the code reviewer is exempt — it writes nothing by design"
       (is (= :done (:status (run :reviewer {:max-iterations 2})))))
     (testing "and a capped dispatch that DID write a file is still :done"
       (let [d (git-repo)
@@ -519,7 +519,7 @@
 ;; ---------------------------------------------------------------------------
 
 (deftest the-reviewer-is-asked-what-each-finding-breaks
-  ;; `reject` was defined in prose from the start and did not hold: one Reviewer
+  ;; `reject` was defined in prose from the start and did not hold: one code reviewer
   ;; rejected four times in eight tasks on findings that broke no target.
   (let [d (:reviewer runner/deliverables)]
     (is (str/includes? d "\"breaks\": \"target 3\" | \"slice\" | \"dependent\" | \"none\""))
@@ -527,7 +527,7 @@
     (is (str/includes? d "If every finding you have breaks \"none\", your verdict is `approve`"))))
 
 (deftest the-reviewer-is-told-that-an-input-which-cannot-occur-breaks-nothing
-  ;; One Reviewer rejected on a value that was valid by its type and impossible to write in the
+  ;; One code reviewer rejected on a value that was valid by its type and impossible to write in the
   ;; project's only input format; a round was paid. NARROW: twice an Architect had waved away an
   ;; input that COULD arrive, so only a source the rules name counts.
   (let [d (:reviewer runner/deliverables)]

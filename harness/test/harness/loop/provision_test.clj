@@ -280,8 +280,8 @@
           "and nothing was assembled — a half-built change must not reach the gates"))))
 
 (deftest the-review-diff-shows-the-files-a-task-created
-  ;; Every early driver built the Reviewer's diff with `git diff HEAD`, which
-  ;; omits untracked files — so the first Reviewers dispatched at all got a
+  ;; Every early driver built the code reviewer's diff with `git diff HEAD`, which
+  ;; omits untracked files — so the first code reviewers dispatched at all got a
   ;; layers.edn change and not one line of the code or tests they reviewed.
   (let [root (repo) wt (str (fs/create-temp-dir))
         coder (prov/provision! (provision-opts root wt :coder))

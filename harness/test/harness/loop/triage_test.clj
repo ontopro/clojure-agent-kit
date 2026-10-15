@@ -247,7 +247,7 @@
       (is (str/includes? prompt "REJECTED the change"))
       (is (str/includes? prompt "- clamp ignores hi when x is NaN") "the verdict's reasons")
       (is (str/includes? prompt "FINDING 1:") "the findings in full")
-      (is (str/includes? prompt "- the targets say nothing about NaN") "and the Reviewer's note about the contract")
+      (is (str/includes? prompt "- the targets say nothing about NaN") "and the code reviewer's note about the contract")
       (is (str/includes? prompt "(defn clamp [x lo hi] (widen x))") "impl as written")
       (is (str/includes? prompt "your guidance is ALL it will be sent"))
       (is (str/includes? prompt "\"route\": \"architect|coder|human|tester\""))
@@ -265,7 +265,7 @@
 
 (deftest a-rejection-s-findings-reach-the-coder-and-never-the-tester
   (let [trg (rejection)]
-    (testing "the Coder: guidance first, then the Reviewer's own text"
+    (testing "the Coder: guidance first, then the code reviewer's own text"
       (let [fb (triage/feedback-for {:route :coder :reason "r" :guidance "compare against hi"} trg)]
         (is (= [:triage :reviewer] (mapv :feedback/from fb)))
         (is (str/starts-with? (:feedback/text (second fb)) "FINDING 1:"))))
