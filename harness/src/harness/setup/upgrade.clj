@@ -2,7 +2,7 @@
   "What a pulled KIT expects that this workspace lacks - a report, never a
   migration.
 
-  The KIT's clone is upgraded with `git pull`, and a workspace's copies of what
+  The KIT's clone is upgraded with `bb upgrade`, and a workspace's copies of what
   `bb init` wrote - `workspace.edn`, the rules overlay, the profile, the plan's
   documents, the application's rule mirror - are the project's own decisions and
   are not rewritten by anyone. What a pull changes that a workspace does not

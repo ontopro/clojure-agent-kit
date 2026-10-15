@@ -53,6 +53,7 @@
     (fs/copy (fs/path real "harness" "bb.edn") (fs/path kit "harness" "bb.edn"))
     (fs/copy-tree (fs/path real "harness" "agents") (fs/path kit "harness" "agents"))
     (fs/copy (fs/path real "harness" "resources" "template-pins.edn") (fs/path kit "harness" "resources" "template-pins.edn"))
+    (fs/copy (fs/path real "harness" "resources" "known-good.edn") (fs/path kit "harness" "resources" "known-good.edn"))
     (fs/copy-tree (fs/path real "skills") (fs/path kit "skills"))
     (fs/create-dirs (fs/path kit "build-docs"))
     (spit (str (fs/path kit "build-docs" "README.md")) "# The plan's documents\n")
@@ -69,6 +70,7 @@
   (spit (str (fs/path kit "build-docs" "00-overview.md")) overview-v2)
   (spit (str (fs/path kit "build-docs" "01-new.md")) "# A document the release adds\n")
   (spit (str (fs/path kit "build-docs" "README.md")) "# The plan's documents\n\nRevised by the release.\n")
+  (fs/copy (fs/path (fs/parent (fs/real-path ".")) "harness" "resources" "toolchain.edn") (fs/path kit "harness" "resources" "toolchain.edn"))
   (spit (str (fs/path kit "harness" "agents" "interactive-programmer.md"))
         (str (slurp (str (fs/path kit "harness" "agents" "interactive-programmer.md"))) "\nA line the release adds.\n"))
   (git-out kit "add" "-A")
@@ -325,3 +327,108 @@
         (is (= :gone (get-in (open) [:app :state])))
         (is (some #(str/includes? % "gone and no merge is recorded") (upgrade/upgrade-lines (open))))))
     (is (not (fs/exists? (fs/path app "AGENTS.md.rej"))))))
+
+;; ---------------------------------------------------------------------------
+;; phase 1
+
+(deftest the-pure-parts-of-phase-one
+  (testing "the clone's version is the highest release tag reachable; throwaways and candidates are not releases"
+    (is (= "0.6.4" (ur/clone-version ["0.6.2" "0.6.4" "0.6.5-r0" "kit-v1.3" "pre-move-2026"])))
+    (is (nil? (ur/clone-version ["kit-v1.2"]))))
+  (testing "the newer releases, oldest first"
+    (is (= ["0.6.5" "0.6.6" "0.7.0"] (ur/newer-releases ["0.7.0" "0.6.4" "0.6.6" "0.6.5" "0.6.5-r0"] "0.6.4")))
+    (is (= ["0.6.4" "0.6.5"] (ur/newer-releases ["0.6.5" "0.6.4"] nil)) "no release tag reachable: every release is newer"))
+  (testing "the target: the latest by default, --to by name, the refusals by name"
+    (is (= {:tag "0.6.7"} (ur/choose-target ["0.6.5" "0.6.7"] "0.6.4" ["0.6.4" "0.6.5" "0.6.7"] nil)))
+    (is (= {:tag "0.6.5"} (ur/choose-target ["0.6.5" "0.6.7"] "0.6.4" ["0.6.4" "0.6.5" "0.6.7"] "0.6.5")))
+    (is (:nothing (ur/choose-target [] "0.6.7" ["0.6.7"] nil)))
+    (is (:nothing (ur/choose-target ["0.6.7"] "0.6.5" ["0.6.5" "0.6.7"] "0.6.5")))
+    (is (str/includes? (:error (ur/choose-target ["0.6.7"] "0.6.5" ["0.6.4" "0.6.5" "0.6.7"] "0.6.4")) "downgrade"))
+    (is (str/includes? (:error (ur/choose-target ["0.6.7"] "0.6.5" ["0.6.5" "0.6.7"] "0.9.9")) "not a tag the remote has"))
+    (is (str/includes? (:error (ur/choose-target ["0.6.7"] "0.6.5" ["0.6.5" "0.6.7"] "0.6.5-r0")) "not a release tag")))
+  (testing "local changes: the KIT's own record files apart from the rest"
+    (is (= {:records ["harness/health/records/macos-arm64.edn" "harness/resources/known-good.edn"] :other ["README.md"]}
+           (ur/local-changes " M harness/health/records/macos-arm64.edn\n M harness/resources/known-good.edn\n?? README.md\n")))
+    (is (= {:records [] :other []} (ur/local-changes ""))))
+  (testing "a newer release's row this version cannot probe is said, not decided"
+    (is (ur/checkable? {:tool :bb :via :flag :cmd ["bb" "--version"] :req :required :tier :gates}))
+    (is (not (ur/checkable? {:tool :x :via :docker :req :required})) "a :via this version does not know")
+    (is (not (ur/checkable? {:tool :x :via :flag :cmd ["x"] :req :required :arch :arm64})) "a key this version does not know")
+    (let [probe (fn [specs] (mapv #(assoc % :status (if (= :java (:tool %)) :missing :ok)) specs))
+          r (ur/requirement-check [{:tool :bb :via :flag :cmd ["bb" "--version"] :req :required}
+                                   {:tool :java :via :flag :cmd ["java" "-version"] :req :required :install "Temurin"}
+                                   {:tool :mise :via :flag :cmd ["mise" "--version"] :req :optional}
+                                   {:tool :x :via :docker :req :required}]
+                                  probe)]
+      (is (not (:ok? r)))
+      (is (= [{:tool :java :status :missing :install "Temurin"}] (:missing r)))
+      (is (= [:x] (:unchecked r)))
+      (is (:ok? (ur/requirement-check [{:tool :x :via :docker :req :required}] probe)) "unchecked alone does not fail")))
+  (testing "what a release changes that a person wants said"
+    (let [old [{:tool :java :req :required :major 21} {:tool :bb :req :required}]
+          new [{:tool :java :req :required :major 25} {:tool :bb :req :required} {:tool :docker :req :required}]]
+      (is (= ["the JDK major changes: 21 -> 25" "newly required: docker"] (ur/significant-changes old new nil nil)))
+      (is (= [] (ur/significant-changes old old nil nil)))))
+  (is (= ["bb" "--config" "KIT/harness/bb.edn" "upgrade" "--after-pull"] (ur/hand-over-command "KIT"))))
+
+(defn- clone-at!
+  "The fake KIT cloned to `dir` and checked out at `tag`, detached: an adopter's KIT/, its origin the fake."
+  [kit dir tag]
+  (git-out (fs/parent dir) "clone" "-q" kit (str dir))
+  (git-out dir "checkout" "-q" "--detach" tag)
+  (str dir))
+
+(deftest phase-one-refuses-by-name-then-fetches-checks-moves-and-hands-over
+  (let [fake (fake-kit!)
+        clone (clone-at! fake (fs/path (fs/real-path (fs/create-temp-dir)) "KIT") "0.6.4")
+        ws (workspace! clone)
+        ws-dir (:workspace/dir ws)
+        ok-probe (fn [specs] (mapv #(assoc % :status :ok) specs))
+        base {:reachable? (constantly true) :probe ok-probe :hand-over! (fn [_ _] 0)}
+        run (fn [opts] (try (binding [*out* (java.io.StringWriter.)] (ur/phase-one! ws clone (merge base opts)))
+                            (catch clojure.lang.ExceptionInfo e e)))
+        err (fn [opts] (let [r (run opts)] (if (instance? Throwable r) {:error (:upgrade/error (ex-data r)) :message (ex-message r)} r)))]
+    (testing "before the release exists on the remote: at the latest, nothing changed"
+      (is (:nothing (ex-data (run {}))))
+      (is (= "0.6.4" (git-out clone "describe" "--tags" "--abbrev=0"))))
+    (release! fake)
+    (testing "the network first"
+      (let [{:keys [error message]} (err {:reachable? (constantly false)})]
+        (is (= :network error))
+        (is (str/includes? message "nothing changed"))))
+    (testing "KIT/ with a local change is refused, the KIT's record files named with the discard command"
+      (spit (str (fs/path clone "skills" "README.md")) "edited\n")
+      (let [{:keys [error message]} (err {})]
+        (is (= :dirty error))
+        (is (str/includes? message "skills/README.md")))
+      (git-out clone "checkout" "--" "skills/README.md")
+      (spit (str (fs/path clone "harness" "resources" "known-good.edn")) "{:as-of \"today\"}\n")
+      (let [{:keys [error message]} (err {})]
+        (is (= :dirty-records error))
+        (is (str/includes? message "git -C ../KIT checkout -- harness/resources/known-good.edn") "the clone named as the workspace sees it: a sibling here"))
+      (git-out clone "checkout" "--" "harness/resources/known-good.edn"))
+    (testing "a release this machine cannot take is refused with what is missing and how to fix it"
+      (let [{:keys [error message]} (err {:probe (fn [specs] (mapv #(assoc % :status (if (= :java (:tool %)) :missing :ok)) specs))})]
+        (is (= :requirements error))
+        (is (str/includes? message "java is missing - Temurin"))
+        (is (str/includes? message "No newer release can be taken"))
+        (is (= "0.6.4" (git-out clone "describe" "--tags" "--abbrev=0")) "nothing moved")))
+    (testing "--to the clone's own, or a tag the remote has not got"
+      (is (:nothing (ex-data (run {:to "0.6.4"}))))
+      (is (= :target (:error (err {:to "0.9.9"})))))
+    (testing "the move: the tags fetched, the release checked from its tag, the clone detached at it, phase 2 handed a new process"
+      (let [seen (atom nil)
+            r (run {:hand-over! (fn [cmd dir] (reset! seen {:cmd cmd :dir dir}) 0)})]
+        (is (= :moved (:outcome r)) (pr-str r))
+        (is (= "0.6.5" (:tag r)))
+        (is (= 0 (:exit r)))
+        (is (= (git-out clone "rev-parse" "0.6.5^{commit}") (git-out clone "rev-parse" "HEAD")))
+        (is (not= 0 (:exit (p/shell {:dir clone :out :string :err :string :continue true} "git" "symbolic-ref" "-q" "HEAD"))) "detached")
+        (is (= {:cmd ["bb" "--config" "../KIT/harness/bb.edn" "upgrade" "--after-pull"] :dir ws-dir} @seen))
+        (is (= [{:tag "0.6.5" :ok? true}] (mapv #(select-keys % [:tag :ok?]) (:checks r))))
+        (is (not (:no-table (first (:checks r)))) "0.6.5's toolchain.edn was read from the tag")))
+    (testing "run again after the move: straight to phase 2, by this code, and it goes through"
+      (let [r (run {})]
+        (is (= :after-pull (:outcome r)) (pr-str r))
+        (is (:ok? (:result r)) (pr-str (:records (:result r))))
+        (is (= "0.6.5" (:workspace/kit-version (raw ws))))))))

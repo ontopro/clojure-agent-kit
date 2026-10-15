@@ -19,7 +19,7 @@
   `create!` writes what `layout` said and nothing else - so what `bb init` is
   about to do can be printed before it is done, and tested without doing it.
 
-  IT WRITES NOTHING INTO THE KIT'S CLONE. The clone is upgraded with `git pull`;
+  IT WRITES NOTHING INTO THE KIT'S CLONE. The clone is upgraded with `bb upgrade`;
   a project's file list in it would be a local change to carry for ever. What
   the harness must know about the project goes in `workspace.edn`.
 
@@ -144,7 +144,7 @@
   (let [source (rules/shipped)
         fillable (rules/placeholder-ids source)]
     (str ";; This project's rules, merged by :id over the KIT's rule source (" kit "/harness/resources/agent-rules.edn,\n"
-         ";; which no project edits: `git pull` upgrades the clone). Every rendering reads the merged set: each\n"
+         ";; which no project edits: `bb upgrade` upgrades the clone). Every rendering reads the merged set: each\n"
          ";; role's system prompt, and the application's AGENTS.md - `bb rules-sync`, run from the workspace folder,\n"
          ";; re-renders it after an edit here, and `bb rules-check` fails until it is run.\n"
          ";;   - an entry whose :id is a PLACEHOLDER rule of the source replaces that rule's :text: the entries\n"
@@ -189,12 +189,12 @@
        "Written by the KIT's `bb init`. This folder holds sibling git repositories and is not one\n"
        "itself; each has its own history and none is rewritten to change another.\n\n"
        "| Folder | What it is |\n|---|---|\n"
-       "| `" kit "` | the KIT (the Clojure Agent Kit): the method and the harness. Upgraded with `git pull`; nothing of this project is written into it |\n"
+       "| `" kit "` | the KIT (the Clojure Agent Kit): the method and the harness. Upgraded with `bb upgrade` from this folder; nothing of this project is written into it |\n"
        "| `" app "/` | the application. No harness code and no planning documents |\n"
        "| `" build "/` | the build: the plan's documents in `docs/` from the KIT's template, `rules.edn` this project's rules over the KIT's rule source, `profile.edn` the models per role, `loop.edn` defaults for runs, and `runs/` the run records with `RUNS.md` their published tables. Read before the first dispatch by `bb plan-check`, run from this folder |\n"
        "| `" work "/` | scratch, in no repository: `runs/<id>/` and `worktrees/`. Safe to delete between runs |\n"
        "| `workspace.edn` | which folder is which, for the harness |\n"
-       "| `bb.edn` | the front door: every KIT command a project runs is run from this folder; after a `git pull` of KIT, `bb front-door-sync` writes it again |\n"
+       "| `bb.edn` | the front door: every KIT command a project runs is run from this folder; `bb upgrade` writes it again (by hand, `bb front-door-sync`) |\n"
        "| `CLAUDE.md`, `.claude/` | orientation for a session started here, and the skills and the off-loop role it loads |\n\n"
        "Start sessions HERE, not inside one of the repositories. One workspace is one project.\n"))
 

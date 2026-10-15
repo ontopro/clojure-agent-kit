@@ -6,7 +6,7 @@
   stage's plan, a stage's end - as Claude Code loads it: `.claude/skills/<name>/
   SKILL.md`. The source is `<kit>/skills/<name>/SKILL.md`; what Claude Code
   reads is a RENDERING of it in a workspace's `.claude/skills/`, written by `bb
-  init` and updated by this command after a `git pull`, each copy saying it is
+  init` and updated by this command after an upgrade (`bb upgrade` runs it), each copy saying it is
   generated and from which KIT commit - held to the source the way the rule
   mirror is held to the rule source. The clone carries no rendering: a project's
   sessions open in the workspace, and scoping is the first of them.

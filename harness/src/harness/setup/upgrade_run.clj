@@ -41,10 +41,13 @@
   says what it would do."
   (:require
    [babashka.fs :as fs]
+   [babashka.http-client :as http]
    [babashka.process :as p]
    [clojure.edn :as edn]
    [clojure.pprint :as pp]
+   [clojure.set :as set]
    [clojure.string :as str]
+   [harness.setup.doctor :as doctor]
    [harness.setup.front-door :as front-door]
    [harness.setup.init :as init]
    [harness.setup.skills :as skills]
@@ -443,33 +446,253 @@
         (say "app: " (if moved (str "the template pin moved " (:git/tag (:from moved)) " -> " (:git/tag (:to moved)) ": template-upgrade, the mirror on its branch") "the pin as it was: a branch for the mirror if it changed"))
         (println "bb upgrade --dry-run: nothing was written.")))))
 
-(defn -main
-  "bb upgrade --after-pull [--dry-run] [--workspace <dir>]
+;; ---------------------------------------------------------------------------
+;; phase 1: the check and the move - the OLD version's code, touching nothing outside KIT/
+;; ---------------------------------------------------------------------------
 
-  Phase 2 of a KIT upgrade: the workspace brought up to the KIT this runs from. Phase 1 - the
-  check and the move of `KIT/` - comes with the next release; until then the first upgrade is
-  by hand: fetch, `git -C KIT checkout <tag>`, then `bb --config KIT/harness/bb.edn upgrade
-  --after-pull` from the workspace folder."
+(def release-re
+  "A release tag: `N.N.N`, the shape the KIT tags a plan's boundary with. Throwaway and
+  candidate tags (`0.6.5-r0`, `kit-v1.3`) are not releases."
+  #"\d+\.\d+\.\d+")
+
+(defn release-shaped? [tag] (boolean (re-matches release-re (str tag))))
+
+(defn version-key
+  "A release tag as a vector of its numbers, for ordering."
+  [tag]
+  (mapv parse-long (str/split (str tag) #"\.")))
+
+(defn clone-version
+  "The clone's own version: the highest release tag among `merged-tags`, the tags reachable from
+  HEAD (`git tag --merged HEAD`). A clone on a release tag reads as it; a clone past one - a
+  throwaway tag, a candidate's commit - reads as the release before; nil with none."
+  [merged-tags]
+  (->> merged-tags (filter release-shaped?) (sort-by version-key) last))
+
+(defn newer-releases
+  "The release tags among `all-tags` newer than `clone-version`, oldest first."
+  [all-tags clone-version]
+  (let [here (some-> clone-version version-key)]
+    (->> all-tags
+         (filter release-shaped?)
+         (filter #(or (nil? here) (pos? (compare (version-key %) here))))
+         (sort-by version-key)
+         vec)))
+
+(defn choose-target
+  "Which release the upgrade takes: the latest of `newer`, or `to` when named - as `{:tag t}`, or
+  `{:error message}`: nothing newer (nothing changed), `to` the clone's own or older (a
+  downgrade: phase 2 would run on code that does not know the newer workspace), `to` a tag the
+  remote has not got."
+  [newer clone-version all-tags to]
+  (cond
+    (nil? to) (if (seq newer)
+                {:tag (last newer)}
+                {:error (str "the clone is at the latest release" (when clone-version (str ", " clone-version)) ": nothing changed") :nothing true})
+    (= to clone-version) {:error (str "the clone is at " to " already: nothing changed") :nothing true}
+    (some #{to} newer) {:tag to}
+    (not (release-shaped? to)) {:error (str to " is not a release tag (N.N.N); the releases newer than " (or clone-version "this clone") ": " (if (seq newer) (str/join ", " newer) "none"))}
+    (some #{to} all-tags) {:error (str to " is older than the clone's " clone-version ": a downgrade, refused - phase 2 would run on code that does not know the newer workspace")}
+    :else {:error (str to " is not a tag the remote has: the releases newer than " (or clone-version "this clone") ": " (if (seq newer) (str/join ", " newer) "none"))}))
+
+(def record-paths
+  "The KIT's own record files: a local change there is the KIT's evidence written where it should
+  not be (`bb health --record` in a clone, before 0.6.5), discarded rather than kept."
+  #{"harness/resources/known-good.edn"})
+
+(defn local-changes
+  "`git status --porcelain` in the clone, sorted into `{:records [paths] :other [paths]}`."
+  [porcelain]
+  ;; by pattern, not by column: the first line may have lost its leading space to a trim
+  (let [paths (keep #(second (re-matches #"\s*[A-Z?!]{1,2}\s+(.*)" %)) (str/split-lines (str porcelain)))
+        record? #(or (contains? record-paths %) (str/starts-with? % "harness/health/records/"))]
+    {:records (vec (filter record? paths)) :other (vec (remove record? paths))}))
+
+(def known-row-keys
+  "What this version's probe reads of a toolchain row; a newer release's row with a key or a `:via`
+  outside these is said as uncheckable here, never passed or failed by code that does not know it."
+  #{:tool :via :cmd :req :tier :min :major :does :needed-for :install})
+
+(def known-vias #{:flag :bbin :which})
+
+(defn checkable?
+  "Can this version probe `spec`, a row of a (possibly newer) toolchain?"
+  [spec]
+  (and (map? spec) (contains? known-vias (:via spec)) (every? known-row-keys (keys spec))))
+
+(defn requirement-check
+  "A release's `specs` (its `toolchain.edn`) against this machine, probed by `probe` (`doctor/report`
+  over the checkable rows): `{:ok? :missing [{:tool :status :install}] :unchecked [tools]}` -
+  `:ok?` when every required, checkable row is usable; an unchecked required row is said, and
+  does not fail the check, since nothing here can decide it."
+  [specs probe]
+  (let [[checkable unchecked] ((juxt filter remove) checkable? specs)
+        results (if (seq checkable) (probe (vec checkable)) [])
+        missing (vec (for [{:keys [tool req status install]} results
+                           :when (and (= :required req) (not= :ok status))]
+                       {:tool tool :status status :install install}))]
+    {:ok? (empty? missing) :missing missing :unchecked (mapv :tool unchecked)}))
+
+(defn significant-changes
+  "What a release changes that a person wants said before taking it: the JDK's major, a new
+  required tool, the template pin moved - from the two toolchains and the two pins files."
+  [old-specs new-specs old-pins new-pins]
+  (let [major #(some (fn [s] (when (= :java (:tool s)) (:major s))) %)
+        required #(set (map :tool (filter (fn [s] (= :required (:req s))) %)))
+        moved (when (and old-pins new-pins) (upgrade/pin-moved old-pins new-pins))]
+    (cond-> []
+      (and (major old-specs) (major new-specs) (not= (major old-specs) (major new-specs)))
+      (conj (str "the JDK major changes: " (major old-specs) " -> " (major new-specs)))
+
+      (seq (set/difference (required new-specs) (required old-specs)))
+      (conj (str "newly required: " (str/join ", " (map name (sort (set/difference (required new-specs) (required old-specs)))))))
+
+      moved
+      (conj (str "the application template's pin moves: " (:git/tag (:from moved)) " -> " (:git/tag (:to moved))
+                 " (bb upgrade's phase 2 brings the application up on a branch)")))))
+
+(defn hand-over-command
+  "The new process phase 2 runs in, from the workspace folder: the KIT just checked out, by its
+  own `bb.edn`."
+  [kit-rel]
+  ["bb" "--config" (str kit-rel "/harness/bb.edn") "upgrade" "--after-pull"])
+
+(defn- remote-host
+  "The host a git remote URL names, or nil for a local path."
+  [url]
+  (or (second (re-matches #"(?:https?|ssh|git)://([^/]+)/.*" (str url)))
+      (second (re-matches #"[^@]+@([^:]+):.*" (str url)))))
+
+(defn- reachable?* [host]
+  (try (some? (http/head (str "https://" host "/") {:timeout 5000 :throw false}))
+       (catch Exception _ false)))
+
+(defn- show-at [kit tag path]
+  (let [{:keys [exit out]} (git kit "show" (str tag ":" path))]
+    (when (zero? exit) out)))
+
+(defn phase-one!
+  "The check and the move. Opts, for tests: `:reachable?` (host -> bool), `:probe` (specs ->
+  results), `:hand-over!` (argv dir -> exit), `:to`. Returns `{:outcome kw ...}`; a refusal
+  throws `ex-info` with `:upgrade/error` and the words."
+  [ws kit {:keys [reachable? probe hand-over! to] :or {reachable? reachable?* probe doctor/report}}]
+  (let [ws-dir (:workspace/dir ws)
+        kit-rel (str (fs/relativize ws-dir kit))
+        raw (raw-workspace ws)
+        head (git! kit "rev-parse" "HEAD")
+        merged (str/split-lines (:out (git kit "tag" "--merged" "HEAD")))
+        here (clone-version merged)
+        recorded-version (:workspace/kit-version raw)]
+    ;; ALREADY MOVED: KIT/ is past what the workspace records - a run stopped after the move, or a
+    ;; move by hand - so phase 2 is what is left, by this very code (it is the new version's)
+    (if (and (not= head (:workspace/kit-commit raw))
+             here recorded-version
+             (pos? (compare (version-key here) (version-key recorded-version))))
+      (do (println (str "bb upgrade: " kit-rel " is at " here " already (the workspace records " recorded-version
+                        "): the move is done, phase 2 picks up at its first step not done"))
+          {:outcome :after-pull :result (after-pull! ws kit {})})
+      (let [;; THE NETWORK FIRST, before anything moves
+            origin (:out (git kit "remote" "get-url" "origin"))
+            hosts (remove nil? (distinct [(remote-host origin) "repo.clojars.org" "repo1.maven.org"]))
+            down (remove reachable? hosts)
+            _ (when (seq down)
+                (throw (ex-info (str "cannot reach " (str/join ", " down) ": the upgrade needs the network (the KIT's remote, Clojars and Maven Central"
+                                     " for the application's dependencies); nothing changed")
+                                {:upgrade/error :network :hosts (vec down)})))
+            ;; KIT/ CLEAN: a convention nothing enforced; the KIT's own record files are named as such
+            {:keys [records other]} (local-changes (:out (git kit "status" "--porcelain")))
+            _ (when (seq other)
+                (throw (ex-info (str kit-rel " has local changes, which an upgrade would move under: " (str/join ", " other)
+                                     " - the clone is the KIT's and a project writes nothing into it; set them aside, then `bb upgrade` again")
+                                {:upgrade/error :dirty :files other})))
+            _ (when (seq records)
+                (throw (ex-info (str kit-rel " has local changes to the KIT's own record files: " (str/join ", " records)
+                                     " - records are the KIT's own, written by `bb health --record` in a clone before 0.6.5; discard them: "
+                                     "`git -C " kit-rel " checkout -- " (str/join " " records) "`, then `bb upgrade` again")
+                                {:upgrade/error :dirty-records :files records})))
+            ;; THE TAGS FETCHED, which moves nothing
+            _ (println (str "bb upgrade: fetching tags from " origin))
+            _ (git! kit "fetch" "--tags" "--quiet")
+            all-tags (str/split-lines (:out (git kit "tag")))
+            newer (newer-releases all-tags here)
+            {:keys [tag error nothing]} (choose-target newer here all-tags to)
+            _ (when error (throw (ex-info error {:upgrade/error (if nothing :nothing :target) :nothing nothing})))
+            ;; EACH NEWER RELEASE, its requirements read from its tag (never by running it), checked here
+            own-specs doctor/toolchain
+            own-pins (template/load-pins)
+            checks (for [t newer
+                         :let [text (show-at kit t "harness/resources/toolchain.edn")
+                               specs (when text (doctor/read-toolchain text))
+                               check (if specs (requirement-check specs probe) {:ok? true :missing [] :unchecked [] :no-table true})
+                               pins (some-> (show-at kit t "harness/resources/template-pins.edn") java.io.StringReader. template/load-pins)
+                               changes (significant-changes own-specs (or specs own-specs) own-pins pins)]]
+                     (assoc check :tag t :changes changes))
+            _ (println (str "  this clone: " (or here "no release tag") "; newer: " (str/join ", " newer)))
+            _ (doseq [{:keys [tag ok? missing unchecked no-table changes]} checks]
+                (println (str "  " tag ": " (cond no-table "no toolchain.edn at this tag - its requirements cannot be checked here"
+                                                  ok? "requirements met here"
+                                                  :else (str "NOT met here: " (str/join ", " (map #(str (name (:tool %)) " " (name (:status %))) missing))))
+                              (when (seq unchecked) (str "; cannot check here: " (str/join ", " (map name unchecked))))
+                              (when (seq changes) (str "; " (str/join "; " changes))))))
+            target (first (filter #(= tag (:tag %)) checks))
+            _ (when-not (:ok? target)
+                (let [takeable (last (filter :ok? checks))]
+                  (throw (ex-info (str tag " cannot be taken on this machine: "
+                                       (str/join "; " (for [{:keys [tool status install]} (:missing target)]
+                                                        (str (name tool) " is " (name status) (when install (str " - " install)))))
+                                       ", then `bb upgrade` again"
+                                       (if takeable (str ". The newest release this machine can take: " (:tag takeable) " (`bb upgrade --to " (:tag takeable) "`)")
+                                           ". No newer release can be taken here as it is"))
+                                  {:upgrade/error :requirements :tag tag :missing (:missing target)}))))
+            _ (when (and (nil? to) (> (count newer) 1))
+                (println (str "  taking the latest, " tag "; name another with `bb upgrade --to <tag>` if you do not want the latest")))
+            ;; THE MOVE, and nothing else in this process
+            _ (git! kit "checkout" "--quiet" "--detach" tag)
+            _ (println (str "  " kit-rel " moved to " tag " (detached, never a branch tip)"))
+            cmd (hand-over-command kit-rel)
+            _ (println (str "  phase 2, in a new process on " tag "'s code: " (str/join " " cmd)))
+            exit (if hand-over!
+                   (hand-over! cmd ws-dir)
+                   (:exit (apply p/shell {:dir ws-dir :continue true} cmd)))]
+        (println (str "\nAfter it: `bb self-check` in " kit-rel " proves the machine against " tag " - the version check is not the machine proved."))
+        {:outcome :moved :tag tag :exit exit :checks (vec checks)}))))
+
+(defn -main
+  "bb upgrade [--to <tag>] [--dry-run] [--workspace <dir>]   the whole upgrade, phase 1 then 2
+   bb upgrade --after-pull [--dry-run]                      phase 2 alone, on the KIT just checked out
+
+  Phase 1, the check and the move: the network reached, `KIT/` clean, the tags fetched, the
+  clone's version read, every newer release's requirements read from its tag and checked here,
+  the clone moved to the latest (or `--to`), then phase 2 in a new process on the new version's
+  code. A re-run after the move goes straight to phase 2's first step not done. The first time
+  is by hand, since the version before this had no `bb upgrade`: fetch, `git -C KIT checkout
+  <tag>`, then `bb --config KIT/harness/bb.edn upgrade --after-pull` from the workspace folder."
   [& args]
   (let [ws (workspace/current-or-exit args)
+        {:keys [args]} (workspace/split-args args)
         flags (set (filter #(str/starts-with? % "--") args))
+        to (second (drop-while #(not= "--to" %) args))
         kit (kit-dir)]
     (when-not ws
       (println "upgrade: no workspace here - run it from the workspace folder, or with --workspace <dir>")
       (System/exit 1))
-    (cond
-      (not (flags "--after-pull"))
-      (do (println (str "upgrade: this KIT runs phase 2 only, `bb upgrade --after-pull` - the check and the move of KIT/ are"
-                        " by hand until the next release: `git -C " (fs/relativize (:workspace/dir ws) (:workspace/kit ws))
-                        " fetch --tags && git -C " (fs/relativize (:workspace/dir ws) (:workspace/kit ws)) " checkout <tag>`, then this with --after-pull"))
-          (System/exit 2))
-
-      (flags "--dry-run") (dry-run! ws kit)
-
-      :else
-      (try
-        (let [{:keys [ok?]} (after-pull! ws kit {})]
-          (System/exit (if ok? 0 1)))
-        (catch clojure.lang.ExceptionInfo e
-          (println (str "upgrade: " (ex-message e)))
-          (System/exit (if (:nothing (ex-data e)) 0 1)))))))
+    (when (and (flags "--to") (nil? to))
+      (println "upgrade: --to needs a tag after it")
+      (System/exit 2))
+    (try
+      (cond
+        (and (flags "--after-pull") (flags "--dry-run")) (dry-run! ws kit)
+        (flags "--after-pull") (let [{:keys [ok?]} (after-pull! ws kit {})] (System/exit (if ok? 0 1)))
+        (flags "--dry-run")
+        (let [merged (str/split-lines (:out (git kit "tag" "--merged" "HEAD")))
+              here (clone-version merged)
+              newer (newer-releases (str/split-lines (:out (git kit "tag"))) here)]
+          (println (str "bb upgrade --dry-run: this clone is at " (or here "no release tag") "; newer releases known locally (no fetch): "
+                        (if (seq newer) (str/join ", " newer) "none")
+                        "\n  it would: check the network, require KIT/ clean, fetch the tags, check each newer release's requirements from its tag,"
+                        " move KIT/ to " (or to "the latest") " (detached), then run phase 2 in a new process. Nothing was written.")))
+        :else (let [{:keys [outcome exit result]} (phase-one! ws kit {:to to})]
+                (System/exit (case outcome :moved (or exit 1) :after-pull (if (:ok? result) 0 1) 1))))
+      (catch clojure.lang.ExceptionInfo e
+        (println (str "upgrade: " (ex-message e)))
+        (System/exit (if (:nothing (ex-data e)) 0 1))))))

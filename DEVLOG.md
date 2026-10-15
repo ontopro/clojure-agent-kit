@@ -56,6 +56,41 @@ step by hand, named there.
 
 ## 2026-10-14
 
+### `bb upgrade`: the check and the move, then the hand-over (plan 6.5, item 14d)
+
+The other half of the one command. Phase 1 is the clone's code as it is, and it touches nothing
+outside `KIT/`: the network first - the KIT's remote, Clojars and Maven Central for the
+application's dependencies - reached before anything moves, or "cannot reach <host>: nothing
+changed"; `KIT/` clean, a convention nothing enforced until now, the KIT's own record files named
+as such with the command that discards them and any other edit refused with the files named; the
+tags fetched, which moves nothing; the clone's own version read as the nearest release tag at or
+before HEAD, so a clone on a throwaway tag or a candidate's commit reads as the release before;
+then every release tag newer than it, release-shaped only, each with its requirements read from
+the tag - `git show <tag>:harness/resources/toolchain.edn`, the table item 14b made data, never by
+running the tag's code inside this one - and checked against this machine, with the significant
+changes said: a JDK major, a new required tool, the template pin moved. A row the newer table
+carries that this version's probe does not know - a `:via` it has no case for, a key it does not
+read - is said as uncheckable here, never passed or failed silently. The latest is the default and
+`--to <tag>` names another; a tag whose check fails is refused with what is missing and how to fix
+it, and the newest release this machine can take is named. Then the clone moved to the tag,
+detached and never a branch tip, and nothing else in this process: the hand-over to phase 2 is
+a new process, `bb --config KIT/harness/bb.edn upgrade --after-pull` from the workspace folder,
+because a namespace loaded after the move would be the new version's code inside the old one.
+A re-run after the move - a run stopped there, or a move by hand - goes straight to phase 2's
+first step not done, by this code, which is then the new version's. Refused by name: no
+workspace, the clone at the latest or at `--to` (nothing changed, exit 0), `--to` older than the
+clone (a downgrade: phase 2 would run on code that does not know the newer workspace), a tag the
+remote has not got. After the move, `bb self-check` is offered: the version check is not the
+machine proved. Every document that told an adopter to `git pull` in `KIT/` now says `bb upgrade`,
+and the README's note gives the first-time path, since `0.6.4` has no `bb upgrade`: the fetch and
+checkout by hand, then phase 2 alone. Tested: the pure parts (the clone's version, the newer
+releases, the target and its refusals, the local changes sorted, the uncheckable row, the
+requirement check, the significant changes) and the whole phase over a clone of a small KIT
+repository: at the latest before the release exists; the network, a local change, a record file
+and an unmet requirement each refused by name with nothing moved; then the tags fetched, the
+release's table read from its tag, the clone detached at it, the hand-over's command and folder;
+and a run after the move going through phase 2.
+
 ### The upgrade's run is the one `bb template-upgrade` resumes, and the notices follow it (plan 6.5, item 14c, after review)
 
 A review of the entry below against the plan's text and the sandbox baseline's filled build

@@ -16,9 +16,14 @@ template, not KIT.
 
 > **Clone it and build beside it.** KIT is what a project adopts: its clone sits in the
 > project's workspace next to the application it generates from a pinned template, upgraded
-> with `git pull`, and nothing of the project is written into it; `bb doctor` run in the
-> workspace then says what the pulled KIT expects that the workspace, made at an earlier commit,
-> lacks. KIT carries a version tag at each plan's boundary - `0.6.4` is the current one, and
+> with `bb upgrade` from the workspace folder - the network checked, the clone clean, the tags
+> fetched, each newer release's requirements read from its tag and checked against the machine,
+> the clone moved to the release, then the workspace brought up by the new version's own code,
+> step by step, with what it leaves for the Architect said by `bb doctor` and `bb next` until
+> resolved - and nothing of the project is written into it. The first upgrade from `0.6.4` is by
+> hand, since `0.6.4` has no `bb upgrade`: `git -C KIT fetch --tags && git -C KIT checkout <tag>`,
+> then `bb --config KIT/harness/bb.edn upgrade --after-pull` from the workspace folder.
+> KIT carries a version tag at each plan's boundary - `0.6.4` is the current one, and
 > the DEVLOG's heading for it says in a line what the plan added and anything a workspace made
 > before it needs; `bb init`
 > records the version beside the commit. There is no library to require; there is one commit
@@ -155,7 +160,7 @@ where the weak points are.
 | **[`build-docs/`](build-docs/)** | The build docs, half-written on purpose — the source a plan derives from, an overview with a ranked risk register, requirements with MVP/post-MVP scoping, architecture and method-and-tooling each in three parts (GIVEN by adopting KIT, CHOSEN once in stage 0's plan, THEIRS the domain), the decision log, and just-in-time stage docs. `bb init` copies it into the project's plan repository, beside the rules overlay, the profile and the run records that repository also holds, and `bb plan-check` reads the filled plan before the first dispatch. |
 | **[`harness/`](harness/)** | The code that runs, and its health check's first subject (`health/selfcheck/`, a deliberately trivial project with gates that execute and fixtures that make each fail): the doctor, `bb init` and the health check; the two readings of a filled plan (`bb plan-check`, the gate; `bb plan-review`, the model's pass); the packet assembler, the gate runner, gate 0 and the boundary gate, three-worktree provisioning, an API-backed runner, a per-run cost report that names the three commits it ran against, the rule source with a drift gate, a bake-off that compares candidates for a role with a judge reading blind, and the loop that drives them — stopping for a person at every branch it cannot decide. [Its own README](harness/README.md) is the inventory. |
 | **[`tools/`](tools/)** | Tool packs a project runs from KIT's clone, each with its own `bb.edn` and dependencies, against the project's own server whatever its framework — the way a project already runs the boundary gate. The first is `tools/browser/`: the stage-end checks in a real browser (screenshots as tall as the page with the overflow measure, an axe-core scan, the serve-check-stop skeleton), Etaoin under Babashka driving a headless Firefox through geckodriver. Beside it, `tools/svg/` checks the SVG files a project draws, and `tools/security/` tries from outside what a request can - the headers, the cookies, a POST without its token, the routes that need a login, the error pages, the static folders, TLS - at every stage's end and in `bb health`. [Its README](tools/README.md) is the list. |
-| **[`skills/`](skills/)** | One skill per step of the workflow that is a conversation with a person and has a defined output - `kit-scoping`, `kit-plan`, `kit-stage-plan`, `kit-stage-end`, and beside them `kit-start`, the orientation a project's first session begins with - in one anatomy (when it runs, reads, refuses when, asks, writes, done when), each a thin layer over the method section it cites. Claude Code's mechanism, loaded from `.claude/skills/`: `bb init` renders them into a workspace's, where `kit-start` is the first conversation; `bb skills-sync`, run from the workspace folder, renders them again after a `git pull`, and its `--check` in KIT's gates holds every cited heading to the method. The other seats follow the same sections by hand. [Its README](skills/README.md) says the rules. |
+| **[`skills/`](skills/)** | One skill per step of the workflow that is a conversation with a person and has a defined output - `kit-scoping`, `kit-plan`, `kit-stage-plan`, `kit-stage-end`, and beside them `kit-start`, the orientation a project's first session begins with - in one anatomy (when it runs, reads, refuses when, asks, writes, done when), each a thin layer over the method section it cites. Claude Code's mechanism, loaded from `.claude/skills/`: `bb init` renders them into a workspace's, where `kit-start` is the first conversation; `bb skills-sync`, run from the workspace folder, renders them again after an upgrade (`bb upgrade` runs it), and its `--check` in KIT's gates holds every cited heading to the method. The other seats follow the same sections by hand. [Its README](skills/README.md) says the rules. |
 
 **Each of the repository's own documents has one job**, and none of them repeats another:
 
@@ -199,7 +204,7 @@ The root `bb.edn` is KIT's own task list - setup (`self-check`, `init`), the gat
 development checks - most of them handed to `harness/`, where the harness and the rest of its tasks
 live. A project runs its KIT commands from its workspace folder, through the front door `bb init`
 writes there (`<xyx>/bb.edn`); `bb gates` there runs the workspace's own checks, and `bb front-door-sync`
-writes it again after a `git pull`.
+writes it again; `bb upgrade` runs it among its steps.
 
 `bb example` is the 60-second tour: it assembles a task packet, shows the Tester's context
 being stripped of the implementation, dispatches to a scripted runner, repairs the output,

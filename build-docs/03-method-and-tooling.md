@@ -138,7 +138,7 @@ cd .. && cd <name>-app && bb serve     # KIT's commands from the workspace; the 
 Three sibling repositories in a plain folder - the KIT, the application, the build - and
 `workspace.edn` naming which is which. Nothing of this project is written into the KIT's clone:
 the rules overlay, the profile, the loop defaults and the run records are all in `<name>-build/`,
-and `git pull` in the clone is the upgrade. Project-specific adaptation — stripping the example
+and `bb upgrade` from the workspace is the upgrade. Project-specific adaptation — stripping the example
 domain, defining protocols, the datastore swap — is **stage 0's first task**; the boundary gate is
 already live with the template's own graph in `<name>-app/layers.edn`.
 

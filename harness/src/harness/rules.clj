@@ -72,7 +72,7 @@
 ;; the overlay: a project's rules, over the KIT's
 ;; ---------------------------------------------------------------------------
 ;;
-;; The clone of the KIT a project builds with is upgraded with `git pull`, so no project
+;; The clone of the KIT a project builds with is upgraded with `bb upgrade`, so no project
 ;; edits `resources/agent-rules.edn`. What a project decides about its rules - the three
 ;; placeholders filled, rules of its own added - lives in the build repository, in the file
 ;; `workspace.edn` names as `:workspace/rules-overlay` (`bb init` writes it with the
@@ -408,7 +408,7 @@
     repository that wraps the harness;
   - the workspace's `:workspace/rule-mirrors` - the application's AGENTS.md.
     `bb init` records it THERE because it writes nothing into the KIT's clone:
-    a clone that `git pull` upgrades must not carry a project's file list.
+    a clone that `bb upgrade` upgrades must not carry a project's file list.
 
   The first two are relative to `seed-dir`; the workspace's come back absolute.
   With no workspace given, it is the one `seed-dir` is in by walking up; the

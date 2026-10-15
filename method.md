@@ -239,7 +239,7 @@ role, edited there), the run defaults in `loop.edn`, and `runs/` with `RUNS.md`,
 and worktrees, and `workspace.edn` naming which folder is which. A workspace is three sibling
 repositories in a plain folder: the KIT, the application, the build - three lifecycles, none
 rewritten to change another; everything a project decides or produces is in the build, and the
-KIT's clone is upgraded with `git pull` and written into by nobody. The plan is filled before any
+KIT's clone is upgraded with `bb upgrade` and written into by nobody. The plan is filled before any
 of this dispatches (§03), and `bb plan-check`, run from the workspace, is the gate on it: `start`
 runs it once per workspace before its first dispatch. The template's options (`:db`, `:auth`,
 `:deploy`, `:daisyui`) are the pin's defaults today; a second template, or none for an
@@ -1111,7 +1111,7 @@ When you do get there, [`harness/`](harness/) is a working starting point rather
 
 **What is in it, what is deliberately left out, and the order to add the rest back are its own README's business** — [`harness/README.md`](harness/README.md). Repeating the inventory here is how the two drifted apart once already: this section said "the first headless runner" was still to come for a week after the seed had one.
 
-`bb doctor && bb gates && bb example` runs green with no model calls and no network, and `bb health` certifies it against a generated application. It is **adopted, not copied**: a workspace holds a clone of the KIT beside the application it builds, upgraded with `git pull`, and nothing of the project is written into it.
+`bb doctor && bb gates && bb example` runs green with no model calls and no network, and `bb health` certifies it against a generated application. It is **adopted, not copied**: a workspace holds a clone of the KIT beside the application it builds, upgraded with `bb upgrade`, and nothing of the project is written into it.
 
 Two things to get right early because they're cheap now and expensive later: **auto-approving an agent's edits is only safe because it runs in an isolated workspace** — never the main checkout; and the **run log is the only artifact that survives a run**, so record task, attempts, status, cost, provider, and the failing gate's actual output.
 

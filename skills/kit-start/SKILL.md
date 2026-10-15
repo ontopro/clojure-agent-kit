@@ -49,7 +49,7 @@ list, each DONE or NEXT, then one instruction - nothing about scoping until the 
 Type next, or ask a question about the workspace.
 ```
 
-1. **The workspace.** Each folder and what it is for - KIT's clone (never written to; `git pull`
+1. **The workspace.** Each folder and what it is for - KIT's clone (never written to; `bb upgrade`
    upgrades it), the application, the build (the plan, the settings, the records), `work/`,
    `workspace.edn`, and `bb.edn`: every command is run from this folder.
 2. **The approach.** `method.md` from its opening to the "Distilled from…" callout: the stages
