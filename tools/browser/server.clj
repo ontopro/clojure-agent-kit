@@ -51,7 +51,7 @@
            "nothing found listening (lsof saw no listener)"))
        (catch Exception _ "unknown (lsof absent)")))
 
-(declare kill-listeners!)
+(declare listeners kill-listeners!)
 
 (defn start-server!
   "Starts the server and waits for it. Returns [process seconds-to-up]. THE PORT IS TOLD, NOT
@@ -67,7 +67,9 @@
         default-up? (fn [] (and (not= port 8000)
                                 (try (= 200 (:status (http/get (str "http://localhost:8000" health-path) {:throw false :timeout 1000})))
                                      (catch Exception _ false))))
-        default-quiet-before? (not (default-up?))
+        ;; QUIET = NO LISTENER AT ALL, not merely no /health: a program on 8000 with no such route is
+        ;; someone else's, and must never be the thing killed below
+        default-quiet-before? (and (not= port 8000) (empty? (listeners 8000)))
         proc (p/process {:cmd (p/tokenize serve-cmd) :out :string :err :string :shutdown :destroy-tree
                          :extra-env {"PORT" (str port)}})]
     (loop [i 0]

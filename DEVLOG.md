@@ -90,7 +90,11 @@ picked port would say "did not come up", pointing away from the cause. The packs
 now watches 8000 too, when it was quiet before the start, and stops with the cause and the two
 ways out: merge the template upgrade, or pass `--base http://localhost:8000` - and kills the JVM
 a tree kill misses before it throws, since the first try of this left one holding 8000. Run
-against the sandbox's pre-`kit-v1.3` application: the message, and 8000 free after it.
+against the sandbox's pre-`kit-v1.3` application: the message, and 8000 free after it. Then
+tighter, on a second reading: "quiet before the start" is no listener on 8000 at all, not merely
+no `/health` answering, so a program of someone else's on that port is never the thing killed;
+and both packs' scripts catch the start's refusal and print its words alone, exit 1, instead of
+babashka's error box around them.
 
 ### The pin moves to `kit-v1.3`, and a record from a local clone is refused (plan 6.5, item 15)
 

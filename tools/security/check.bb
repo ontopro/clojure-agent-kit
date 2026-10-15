@@ -225,5 +225,9 @@
 ;; that names `with-server` is read, and the settings are in place before the file reads them
 (doseq [[k v] (:env opts)] (System/setProperty (str "browser-check." k) v))
 (load-file (str pack-dir "/../browser/server.clj"))
-(when-not (if (:running? opts) (run-checks!) (with-server run-checks!))
+;; A REFUSAL READS AS ONE: the server start's words, not babashka's error box around them
+(when-not (try (if (:running? opts) (run-checks!) (with-server run-checks!))
+               (catch clojure.lang.ExceptionInfo e
+                 (println (str "security check: " (ex-message e)))
+                 (System/exit 1)))
   (System/exit 1))
