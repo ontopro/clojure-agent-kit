@@ -164,19 +164,34 @@
 
 ;; ---------------------------------------------------------------- facts
 
+(def known-good-path "harness/resources/known-good.edn")
+
+(defn known-good-moved?
+  "Did the known-good set change in what it SAYS between `then` and `now` (its EDN text at two
+  commits) - a version, a tool, the platform - and not only in its `:as-of` date? `bb health
+  --record` re-dates the set beside every record, and counting the date made the records it had
+  just written stale against the commit that held them (register row 127)."
+  [then now]
+  (let [read #(try (dissoc (edn/read-string (str %)) :as-of) (catch Exception _ ::unreadable))]
+    (not= (read then) (read now))))
+
 (defn read-records [root]
   (for [f (sort (map str (fs/glob (fs/path root records-dir) "*.edn")))
         :let [r (edn/read-string (slurp f))
-              sha (get-in r [:kit :sha])]]
+              sha (get-in r [:kit :sha])
+              changed (some-> (apply git root "diff" "--name-only" sha "HEAD" "--"
+                                     (concat health-paths [(str ":(exclude)" records-dir) (str ":(exclude)" known-good-path)]))
+                              str/split-lines
+                              (->> (remove str/blank?)))
+              ;; THE KNOWN-GOOD SET COUNTS WHEN IT SAYS SOMETHING NEW, not when it is re-dated
+              set-moved? (known-good-moved? (git root "show" (str sha ":" known-good-path))
+                                            (git root "show" (str "HEAD:" known-good-path)))]]
     {:platform (get-in r [:platform :key])
      :sha sha
      :dirty? (get-in r [:kit :dirty?])
      ;; a run with KIT_TEMPLATE_LOCAL set: the record names the pin it stood for, not what ran
      :local-root (:template/local-root r)
-     :changed (some-> (apply git root "diff" "--name-only" sha "HEAD" "--"
-                             (concat health-paths [(str ":(exclude)" records-dir)]))
-                      str/split-lines
-                      (->> (remove str/blank?)))}))
+     :changed (cond-> (vec changed) set-moved? (conj known-good-path))}))
 
 (defn- read-edn [f] (when (fs/exists? f) (edn/read-string (slurp (str f)))))
 

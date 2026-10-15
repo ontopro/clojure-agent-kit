@@ -56,6 +56,17 @@ step by hand, named there.
 
 ## 2026-10-14
 
+### `tag-check` no longer stales the records it just wrote (plan 6.5, item 15, register row 127)
+
+`bb health --record` re-dates `resources/known-good.edn` beside the record, and `tag-check`
+counted everything under `harness/resources/` as code the records ran on - so committing the
+records with the re-dated set made both records stale against the commit that held them, and
+the next `--run` ran both health checks again instead of the gates: one extra health run on each
+platform at plan 6.3's tag. The set now counts when it says something new - a version, a tool,
+the platform - and never when only its `:as-of` moved: the diff leaves the set out, and its text
+at the record's commit and at HEAD is compared with the date dropped. A `--run` goes from the
+records to the gates in one commit, which item 17's tag will show.
+
 ### The KIT's checks start the application on a port they pick, and a busy port is said with its holder (plan 6.5, item 15)
 
 Port 8000 was fixed in the health check's serve step and in the two packs' defaults, so a

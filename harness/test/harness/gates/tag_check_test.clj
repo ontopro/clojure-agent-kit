@@ -77,3 +77,13 @@
     (is (str/includes? (:detail (tc/health-check [local (fresh "linux-arm64")]))
                        "macos-arm64 (on aaaaaaa) is stale: recorded from a LOCAL CLONE of the template (/src/clojure-stack-lite), not the pin"))
     (is (= #{"macos-arm64"} (tc/stale-platforms [local (fresh "linux-arm64")])) "and --run records it again")))
+
+(deftest the-known-good-set-counts-when-it-says-something-new-not-when-it-is-re-dated
+  ;; row 127: `bb health --record` re-dates the set beside the record, and counting the date made
+  ;; the records just written stale against the very commit that held them
+  (let [then "{:as-of \"2026-10-12\" :platform \"macOS 27.0.1 arm64\" :tools {:bb \"1.13.225\" :java \"21.0.12.1\"}}"]
+    (is (not (tc/known-good-moved? then (str/replace then "2026-10-12" "2026-10-15"))) "a date alone")
+    (is (tc/known-good-moved? then (str/replace then "1.13.225" "1.13.230")) "a version")
+    (is (tc/known-good-moved? then (str/replace then ":java \"21.0.12.1\"" ":java \"21.0.12.1\" :mise \"2026.1\"")) "a tool")
+    (is (tc/known-good-moved? then nil) "no set at the record's commit")
+    (is (tc/known-good-moved? "{:as-of" then) "an unreadable set is a change")))
