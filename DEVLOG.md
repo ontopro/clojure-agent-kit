@@ -65,8 +65,10 @@ six, cheap first, the first red stopping it, and the front door offers it as `bb
 task offered under another name, since `gates` in the harness is the KIT's (`door-names`). The
 plan check is the one that needs a judgement: it reads every plan document, stage plans among
 them, and a plan being written carries its marks on purpose. So while `bb next`'s facts say a
-plan is being written - before stage 0's approval, or a stage pulled and not yet approved - its
-list is printed as information and the gates go on; past that, a mark left is red. The stage's
+plan is being written - before any stage, or in a stage until its blueprint is signed - its
+list is printed as information and the gates go on; past that, a mark left is red. The window
+first closed at the stage's approval; a review found stage 0's plan, and every blueprint, are
+written after it from a marked template, so it closes at the blueprint's signing. The stage's
 end now asks for it green. A workspace made before this gains it at `bb front-door-sync`, and
 `bb doctor` already says when a front door lacks a task.
 
@@ -94,8 +96,8 @@ what a plan step and a stage plan write - the Markdown, and a stage's gates reco
 record a KIT tool writes beside them: a stage's `*-security-review/` folder whole (its routing
 writes Markdown too), the security pack's and the interactions' `.edn`. And `bb next` sends the
 workflow to step 2 only before any stage or while stage 0 is unapproved; after that a problem is
-said on an `also:` line beside the stage's own step - as the stage plan being written while one
-is, otherwise as a plan document to fix before the next stage's plan.
+said on an `also:` line beside the stage's own step - as the stage plan and blueprint being written until
+the blueprint is signed, otherwise as a plan document to fix before the next stage's plan.
 
 ### An upgraded workspace drops a skill's old name (plan 6.5, item 3)
 

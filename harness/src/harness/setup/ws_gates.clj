@@ -9,7 +9,7 @@
 
   THE PLAN CHECK IS INFORMATION IN A PLAN STEP. `plan-check` reads the build's plan documents,
   stage plans among them, and a plan being written carries its marks by design: while one is -
-  before stage 0's approval, or a stage pulled and not yet approved (`next/plan-step?`) - its list
+  before any stage, or in a stage until its blueprint is signed (`next/plan-step?`) - its list
   is printed and does not fail the gates. Outside one, a mark left is a failure like any other.
 
   `steps` and `run-steps` are pure over a runner; `-main` runs each step as `bb <task>` in the
@@ -51,7 +51,7 @@
     (let [informed (filter #(and (:info? %) (not (zero? (:exit %)))) ran)]
       (str "gates: green - " (count ran) " checks"
            (when (seq informed)
-             " (plan-check's list is information: a plan is being written, and carries its marks until it is approved)")))))
+             " (plan-check's list is information: a plan or a blueprint is being written, and its marks stand until the blueprint is signed)")))))
 
 (defn -main
   "bb workspace-gates [--workspace <dir>] - `bb gates` at a workspace's front door.

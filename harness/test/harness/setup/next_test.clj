@@ -63,7 +63,15 @@
   (testing "a stage plan being written carries its marks: said, as that"
     (let [a (next/next-action (assoc ready :plan-problems ["docs/stages/stage-1-plan.md: 3 marks left to fill"]))]
       (is (= 7 (:step a)))
-      (is (str/includes? (:also a) "stage 1's plan is being written"))))
+      (is (str/includes? (:also a) "stage 1's plan and blueprint are being written"))))
+  (testing "the window runs until the blueprint is signed, whichever order the plan and the approval came in"
+    (let [approved {:stage/id "1" :stage/approved {:date "d" :cap 20 :by "Ada"}}]
+      (is (next/plan-step? nil) "before any stage")
+      (is (next/plan-step? (:stage ready)) "a later stage, its plan written and not approved")
+      (is (next/plan-step? {:id 0 :plan "stage-0-plan.md" :gates (assoc approved :stage/id "0")}) "stage 0, approved before its plan")
+      (is (next/plan-step? {:id 1 :plan "stage-1-plan.md" :blueprint "stage-1-blueprint.md" :gates approved}) "the blueprint being written")
+      (is (not (next/plan-step? {:id 1 :plan "p" :gates (assoc approved :blueprint/signed {:date "d" :by "Ada"})})) "signed: a mark now is left behind")
+      (is (not (next/plan-step? {:id 1 :plan "p" :gates (assoc approved :stage/closed {:date "d"})})) "closed")))
   (testing "before stage 0 is approved, the plan passes its check first: step 2"
     (is (= 2 (:step (next/next-action (assoc (with-stage {:id 0 :plan nil :gates nil}) :plan-problems ["x"])))))
     (is (= 2 (:step (next/next-action (assoc (with-stage {:id 0 :plan nil :gates {:stage/id "0" :stage/approved nil}}) :plan-problems ["x"]))))))

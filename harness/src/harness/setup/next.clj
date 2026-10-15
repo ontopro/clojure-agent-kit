@@ -228,13 +228,15 @@
               (str "stage " id " is closed")))))
 
 (defn plan-step?
-  "Is a plan being written - the plan, or a stage's plan - so that a mark plan-check finds is
-  one still to fill, not one left behind? Before any stage; and in a stage pulled and not yet
-  approved, or approved with no plan written. `stage` as `stage-action` reads it."
+  "Is a plan being written - the plan, a stage's plan or its blueprint - so that a mark
+  plan-check finds is one still to fill, not one left behind? Before any stage; and in a stage
+  until its blueprint is signed. Both are written from a marked template, and neither order
+  closes the window early: stage 0 is approved before its plan is written, a later stage after,
+  and every blueprint after the approval. `stage` as `stage-action` reads it."
   [stage]
-  (let [{:stage/keys [approved closed]} (:gates stage)]
+  (let [{:stage/keys [closed] :blueprint/keys [signed]} (:gates stage)]
     (or (nil? stage)
-        (and (nil? closed) (or (nil? approved) (nil? (:plan stage)))))))
+        (and (nil? closed) (nil? signed)))))
 
 (defn- plan-first?
   "Does plan-check's list send the workflow back to step 2: before any stage, or while stage 0
@@ -250,7 +252,7 @@
   (let [n (count problems)]
     (str "bb plan-check: " n " thing" (when (not= 1 n) "s") " left - "
          (if (plan-step? stage)
-           (str "stage " id "'s plan is being written, and carries its marks until it is approved")
+           (str "stage " id "'s plan and blueprint are being written - their marks stand until the blueprint is signed")
            (str (first problems) " - fix it before stage " (inc id) "'s plan")))))
 
 (defn- step-action
