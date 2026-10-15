@@ -68,7 +68,9 @@ attribute too: a template that renders a file into an image source leaks it ther
 is a review's). A test holds the real logo address, a URL with `/home/`, and a root-relative link,
 against eight paths a server could print, two of them in attributes. The path a row quotes ends at
 a quote or an angle bracket as well as at whitespace: it had carried the `"` or `</pre>` after it,
-and a row's text is now what an acceptance is keyed by. And the fail could not be accepted: it stood in the
+and a row's text is now what an acceptance is keyed by. And a drive letter takes one backslash,
+as a page prints a Windows path: the pattern had wanted two, and matched only a path escaped in a
+string - never, before or after the anchor, the shape an error page shows. And the fail could not be accepted: it stood in the
 stage plan with its reason and failed every run after. A fail or a warn the project has judged now
 goes in the routes file under `:accepted-findings`, keyed by the row's exact text, with a reason:
 the row says `accepted` and why, never `ok`, and fails nothing. An acceptance with no reason, or

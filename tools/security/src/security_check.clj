@@ -240,13 +240,15 @@
   address on the site; `/Users/`, `/root/`, `/var/folders/` and a drive letter are never routes,
   and a template that renders a file into an attribute leaks it there too. The path ends at
   whitespace, a quote or an angle bracket: the text a row quotes is the path, never the `\"` or
-  `</pre>` after it - that text is what an acceptance is keyed by."
+  `</pre>` after it - that text is what an acceptance is keyed by. A drive letter takes one
+  backslash, as a page prints a Windows path; it had wanted two, and matched only a path escaped
+  in a string."
   [[#"\bat [\w.$]+\([\w.]+\.(?:java|clj|cljc):\d+\)" "a stack frame"]
    [#"\b[a-z][\w-]*(?:\.[\w-]+)+\$[\w-]+" "a compiled function's class"]
    [#"\b[\w-]+\.(?:clj|cljc|java):\d+" "a source file and line"]
    [#"\b(?:java|clojure|javax|jakarta|org\.eclipse\.jetty)\.[\w.]+\.[A-Z]\w+" "a class name"]
    [#"\b\w*Exception(?:Info)?\b" "an exception's class"]
-   [#"(?:(?<=file://)|(?<![\w.~%/-]))(?:/Users/|/root/|/var/folders/|[A-Z]:\\\\|(?<!(?:href|src|action)=[\"'])/home/)[^\s\"'<>]+" "a path on a machine"]])
+   [#"(?:(?<=file://)|(?<![\w.~%/-]))(?:/Users/|/root/|/var/folders/|[A-Z]:\\|(?<!(?:href|src|action)=[\"'])/home/)[^\s\"'<>]+" "a path on a machine"]])
 
 (defn leak
   "What the body names that an error page must not: [what-it-is the-text], or nil."

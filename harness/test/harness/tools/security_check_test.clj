@@ -164,7 +164,10 @@
   (testing "the path quoted is the path, never the quote or the tag after it"
     (is (= "/home/deploy/app.clj" (second (sc/leak "<pre>/home/deploy/app.clj</pre>"))))
     (is (= "/Users/someone/img.png" (second (sc/leak "<img src=\"/Users/someone/img.png\">"))))
-    (is (= "/root/x.edn" (second (sc/leak "('/root/x.edn')"))))))
+    (is (= "/root/x.edn" (second (sc/leak "('/root/x.edn')")))))
+  (testing "a Windows path as a page prints it, one backslash, and as a string escapes it, two"
+    (is (= "C:\\Users\\someone\\app.clj" (second (sc/leak "<pre>C:\\Users\\someone\\app.clj</pre>"))))
+    (is (= "a path on a machine" (first (sc/leak "\"D:\\\\deploy\\\\app\""))))))
 
 (deftest a-finding-is-accepted-by-its-exact-text-with-a-reason
   (let [failing (sc/error-row (resp "/nope" 404 [] "<pre>/home/deploy/app.clj</pre>") "a page that does not exist")
