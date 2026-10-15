@@ -15,8 +15,9 @@ B · PROVE        stage 0            scope ▶ plan ▶ implement ▶ deploy loc
                                     criteria - and stage 0's own; its first packet, on your own
                                     models, proves the loop; what it owes is decisions
                                     confirmed or reversed, and working software, deployed
-                                    locally, however small - a page that says "Welcome to KIT"
-                                    is enough; code kept only where it passed its criterion
+                                    locally, however small - the project's own first page, in
+                                    place of bb init's welcome, is enough; code kept only where
+                                    it passed its criterion
 
 C · BUILD        stage 1            scope ▶ plan ▶ implement ▶ deploy locally
                  walking skeleton   one small function end to end through every layer; the first
@@ -84,7 +85,7 @@ A phase is the stages of one kind, not a slice of time that ends before the next
 | Phase | Stages | Produces | Shape | Ends when |
 |---|---|---|---|---|
 | **A · SETUP** | none | The machine checked, by the doctor and the health check on this machine. The workspace made: the application generated from the pin, the build repository with the plan's templates, `work/`, `workspace.edn`, `bb.edn` | Once, by the person; two commands, no model spend | `bb self-check` says healthy and `bb init` has made the workspace |
-| **B · PROVE** | stage 0, the spike | The brief and the scope. The project plan: a ranked risk register, the candidate architecture as provisional decisions each with its pass criterion, and a stage map by kind, with everything else OPEN with a named owner. Then each pass criterion answered by running code, the loop proved by the first packet on your own models, and **working software deployed locally, however small**: a page that says "Welcome to KIT" is enough | **As little as possible, as late as responsible**: the plan commits to stage 0 and nothing after it; the spike owes decisions and working software, and keeps code only where it passed its criterion | Every risk stage 0 names is answered, pass or fallback, its decisions are confirmed or reversed, **the application runs deployed locally**, and the person closes the stage |
+| **B · PROVE** | stage 0, the spike | The brief and the scope. The project plan: a ranked risk register, the candidate architecture as provisional decisions each with its pass criterion, and a stage map by kind, with everything else OPEN with a named owner. Then each pass criterion answered by running code, the loop proved by the first packet on your own models, and **working software deployed locally, however small**: the project's own first page, in place of the welcome `bb init` writes, is enough | **As little as possible, as late as responsible**: the plan commits to stage 0 and nothing after it; the spike owes decisions and working software, and keeps code only where it passed its criterion | Every risk stage 0 names is answered, pass or fallback, its decisions are confirmed or reversed, **the application runs deployed locally**, and the person closes the stage |
 | **C · BUILD** | stage 1, the walking skeleton; stages 2..N, the increments | Working software: one function end to end through every layer, then increments, each stage's requirements written when it is pulled | **Pulled, not scheduled**: each stage's end revises the scope, the stage map and the next stage's requirements | When an increment is worth releasing; each stage at its own gate |
 | **D · PRE-RELEASE** | one stage or more | What release needs and nothing earlier: host, publish, backup, restore, metrics, logging, auditing, the pre-publish gate. The deploy path rehearsed on a throwaway host | Stages like any other, a gate each; smaller before a later release | Its last stage's gate |
 | **E · RELEASE** | the release stage | The increment packaged and deployed on the server, or published for download | A stage like any other; repeats | Its gate; then back to C |
@@ -342,7 +343,7 @@ This is the step people skip, and it is the only one that produces evidence rath
 
 ## 03 — Phase B — PROVE: stage 0, the spike
 
-Stage 0 is a stage like every other: scope ▶ plan ▶ implement ▶ deploy locally, a cap, exit criteria, a gate. It is the heavy one in two ways. Its plan step writes the project plan as well as its own stage plan: the source, the scope, the risks, the candidate architecture, the decision log. And it proves two things at once: the architecture, by its spike's pass criteria, and the loop, by its first packet run on your own models. What it owes is decisions confirmed or reversed and working software deployed locally, however small - a page that says "Welcome to KIT" is enough. Code is kept only where it passed its criterion.
+Stage 0 is a stage like every other: scope ▶ plan ▶ implement ▶ deploy locally, a cap, exit criteria, a gate. It is the heavy one in two ways. Its plan step writes the project plan as well as its own stage plan: the source, the scope, the risks, the candidate architecture, the decision log. And it proves two things at once: the architecture, by its spike's pass criteria, and the loop, by its first packet run on your own models. What it owes is decisions confirmed or reversed and working software deployed locally, however small - the project's own first page, in place of the welcome `bb init` writes, is enough. Code is kept only where it passed its criterion.
 
 ### Scope — the scoping conversation, the first in the workspace
 
@@ -483,7 +484,7 @@ behind. Then the spike's packets, in the order its risks are ranked: each pass c
 
 ### Deploy locally — working software, however small
 
-Stage 0 ends as every stage does: the application served from a clean checkout, the browser checks, the owner's walk, the exit criteria checked, the decision log updated, and the person closes the stage (§04). What is deployed may be small - a page that says "Welcome to KIT", from the code the spike kept - but it runs, and stage 1 builds on it.
+Stage 0 ends as every stage does: the application served from a clean checkout, the browser checks, the owner's walk, the exit criteria checked, the decision log updated, and the person closes the stage (§04). What is deployed may be small - the project's own first page, in place of the welcome `bb init` writes, from the code the spike kept - but it runs, and stage 1 builds on it.
 
 ---
 
@@ -1142,7 +1143,7 @@ Two things to get right early because they're cheap now and expensive later: **a
 - [ ] Confirm no decision is ownerless; `bb plan-check` passes; approve stage 0 with its cap
 - [ ] Put the datastore behind a protocol before writing the first feature
 - [ ] Run the loop by hand, end to end, on stage 0's first packet, with your own models — before automating any of it
-- [ ] Deploy locally: working software, however small - a page that says "Welcome to KIT" is enough; close stage 0 on its exit criteria, its decisions confirmed or reversed
+- [ ] Deploy locally: working software, however small - the project's own first page, in place of `bb init`'s welcome, is enough; close stage 0 on its exit criteria, its decisions confirmed or reversed
 
 **C · BUILD, D · PRE-RELEASE, E · RELEASE** *(§04: pull, don't schedule)*
 - [ ] Stage 1 is the walking skeleton: one small function through every layer, the smallest breadth a person can walk — and the first owner's walk

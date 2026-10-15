@@ -5,6 +5,7 @@
    [clojure.edn :as edn]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [harness.gates.forms :as forms]
    [harness.loop.driver :as driver]
    [harness.rules :as rules]
    [harness.setup.app :as app]
@@ -18,15 +19,25 @@
 
 (def pin (template/pin (template/load-pins)))
 
+(def views-clj
+  "A `views.clj` shaped as the pinned template generates it: the ns, `base`, `error-page`, and
+  the `home-page` the KIT writes its first page over."
+  (str "(ns xyx.views\n  (:require [manifest-edn.core :as manifest]))\n\n"
+       "(defn base\n  \"Base component for html page.\"\n  [content]\n  [:html {:lang \"en\"} [:body content]])\n\n"
+       "(defn error-page\n  [text]\n  (base [:h1 text]))\n\n"
+       "(def home-page\n  (base\n    ; ========= TODO: Update home page  ========================\n    [:h1 \"Welcome to \" [:span \"Clojure Stack Lite\"]]))\n"))
+
 (defn- generator
   "Stands in for the JVM: a `clojure` argv writes `files` into the `:target-dir`
-  it was given and is recorded in `seen`; git runs for real."
+  it was given - with `views-clj` unless `files` names `src/xyx/views.clj` (nil: none) - and
+  is recorded in `seen`; git runs for real."
   [seen files]
   (fn [dir env argv]
     (if (= "clojure" (first argv))
       (let [target (edn/read-string (last argv))]
         (swap! seen conj {:dir (str dir) :argv argv})
-        (doseq [[path content] files]
+        (doseq [[path content] (merge {"src/xyx/views.clj" views-clj} files)
+                :when content]
           (fs/create-dirs (fs/parent (fs/path target path)))
           (spit (str (fs/path target path)) content))
         {:exit 0 :out ""})
@@ -47,13 +58,13 @@
              @seen)))
     (testing "commit one is what the template made, and says which commit of it"
       (let [first-commit (git-out app-dir "rev-list" "--max-parents=0" "HEAD")]
-        (is (= #{"deps.edn" "src/xyx/core.clj"}
+        (is (= #{"deps.edn" "src/xyx/core.clj" "src/xyx/views.clj"}
                (set (str/split-lines (git-out app-dir "ls-tree" "-r" "--name-only" first-commit)))))
         (is (str/includes? (git-out app-dir "log" "-1" "--format=%s" first-commit)
                            (str (:git/tag pin) " (" (subs (:git/sha pin) 0 7) ")")))))
     (testing "commit two is the KIT's hand, and only that"
       (is (= "2" (git-out app-dir "rev-list" "--count" "HEAD")))
-      (is (= #{"AGENTS.md" "CLAUDE.md" "layers.edn"}
+      (is (= #{"AGENTS.md" "CLAUDE.md" "layers.edn" "src/xyx/views.clj"}
              (set (str/split-lines (git-out app-dir "diff" "--name-only" "HEAD~1" "HEAD")))))
       (is (= "" (git-out app-dir "status" "--porcelain"))))
     (testing "the mirror is current against the rule source, and CLAUDE.md imports it"
@@ -145,3 +156,34 @@
         (is (str/includes? (slurp mirror) "FILLED BY THE PROJECT."))
         (is (= before (kit-state))
             "and nothing of it reached the KIT's clone: its status, its mirror and its rule source are as they were - committed or not")))))
+
+(deftest the-first-page-is-the-kits-written-over-the-templates
+  (let [page (app/home-page "xyx" "0.6.5")
+        out (app/with-home-page views-clj page "src/xyx/views.clj")]
+    (testing "the page names the KIT, the project, the next step and its version"
+      (doseq [s ["Welcome to " "Clojure Agent Kit" "(aka \\\"KIT\\\")" "\"xyx\"" "cd .." "claude" "/kit-start"
+                 "stage 0 replaces it" "Made by KIT 0.6.5"]]
+        (is (str/includes? page s) s)))
+    (testing "the one form replaced, every other line as it was"
+      (is (str/includes? out page))
+      (is (not (str/includes? out "Clojure Stack Lite\"]")))
+      (is (str/starts-with? out (subs views-clj 0 (str/index-of views-clj "(def home-page"))))
+      (is (str/ends-with? out "\n"))
+      (is (= ["ns" "defn" "defn" "def"] (mapv :kind (forms/table out)))))
+    (testing "no home-page, or two, is refused by name - never a page written beside it"
+      (doseq [[views n] [["(ns xyx.views)\n(defn base [c] c)\n" 0]
+                         [(str views-clj "\n(def home-page nil)\n") 2]]]
+        (let [e (try (app/with-home-page views page "src/xyx/views.clj") nil (catch clojure.lang.ExceptionInfo e e))]
+          (is (= {:app/error :no-home-page :path "src/xyx/views.clj" :found n} (ex-data e)))
+          (is (str/includes? (ex-message e) "src/xyx/views.clj")))))))
+
+(deftest a-template-with-no-home-page-stops-before-the-kits-commit
+  (let [app-dir (str (fs/path (fs/real-path (fs/create-temp-dir)) "xyx-app"))
+        e (try ((app/app-fn pin {:app-name "xyx" :git-env git-env
+                                 :run (generator (atom []) {"deps.edn" "{}" "src/xyx/views.clj" nil})})
+                app-dir)
+               nil
+               (catch clojure.lang.ExceptionInfo e e))]
+    (is (= :no-home-page (:app/error (ex-data e))))
+    (is (= "1" (git-out app-dir "rev-list" "--count" "HEAD")) "the generated commit alone")
+    (is (not (fs/exists? (fs/path app-dir "AGENTS.md"))) "nothing of the KIT's written")))

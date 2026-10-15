@@ -670,6 +670,7 @@
               ;; failed: a sentence, not a stack trace - and the truth about what is left behind.
             (try (create! lay {:app-fn (app/app-fn pin {:app-name project
                                                         :build-folder (get-in lay [:workspace :workspace/build])
+                                                        :kit-version (get-in lay [:workspace :workspace/kit-version])
                                                         :local-root local-root})})
                  (catch Exception e
                    (println (str "bb init: stopped - " (.getSimpleName (class e)) ": " (ex-message e)

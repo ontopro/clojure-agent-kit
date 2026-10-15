@@ -405,16 +405,22 @@
   (try (:status (http/get url {:throw false :timeout 2000}))
        (catch Exception _ nil)))
 
+(def kit-page-marks
+  "What `GET /` of a generated application carries: the KIT's first page, which `bb init` writes
+  over the template's (`app/home-page`) - its name and the next step. A pin whose template moved
+  its home page fails here, before any adopter generates from it."
+  ["Clojure Agent Kit" "/kit-start"])
+
 (defn check-serve
-  "`bb serve` in the application, `GET /` is 200, the process tree stopped, the
-  port free again. A busy port is reported, not tried around: the template's
+  "`bb serve` in the application, `GET /` is 200 and is the KIT's first page, the process tree
+  stopped, the port free again. A busy port is reported, not tried around: the template's
   port is configuration, not a flag."
   [{:keys [dir] :as subject}]
   (if-not (port-free? serve-port)
     (result :serve subject false 0
             (str "port " serve-port " is in use; stop what holds it and run again"))
     (let [url (str "http://localhost:" serve-port "/")
-          [[status] ms]
+          [[status body] ms]
           (timed
            (fn []
              (let [pr (p/process {:dir dir :out :string :err :string} "bb" "serve")
@@ -423,7 +429,8 @@
                  (loop []
                    (let [s (get-status url)]
                      (cond
-                       (= 200 s) [200]
+                       (= 200 s) [200 (try (:body (http/get url {:throw false :timeout 2000}))
+                                           (catch Exception _ nil))]
                        (> (System/currentTimeMillis) deadline) [:timeout]
                        (not (.isAlive (:proc pr))) [:exited (:exit @pr)]
                        :else (do (Thread/sleep 1000) (recur)))))
@@ -433,13 +440,16 @@
           freed? (loop [n 0]
                    (cond (port-free? serve-port) true
                          (> n 20) false
-                         :else (do (Thread/sleep 500) (recur (inc n)))))]
-      (result :serve subject (and (= 200 status) freed?) ms
+                         :else (do (Thread/sleep 500) (recur (inc n)))))
+          missing (remove #(str/includes? (str body) %) kit-page-marks)]
+      (result :serve subject (and (= 200 status) (empty? missing) freed?) ms
               (cond
                 (not= 200 status) (str "no 200 from " url " within " (quot serve-timeout-ms 1000) "s ("
                                        (pr-str status) ")")
+                (seq missing) (str "GET " url " -> 200, but not the KIT's first page: no "
+                                   (str/join ", " (map pr-str missing)) " - bb init writes it over the template's home-page")
                 (not freed?) (str "served 200, but port " serve-port " was still held after the stop")
-                :else (str "GET " url " -> 200, then stopped; port free"))))))
+                :else (str "GET " url " -> 200, the KIT's first page, then stopped; port free"))))))
 
 ;; ---------------------------------------------------------------------------
 ;; browser

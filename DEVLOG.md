@@ -56,6 +56,24 @@ step by hand, named there.
 
 ## 2026-10-14
 
+### A new workspace's application opens on the KIT's first page (plan 6.5, item 12a)
+
+The proof build served its new application and saw "Welcome to Clojure Stack Lite": the
+template's own page, pointing at a file the template does not generate, with nothing to say this
+was a KIT workspace or what came next - while `method.md` had told the newcomer to expect "Welcome
+to KIT". The page could have gone into the template fork, at the price of the fork no longer
+being an ordinary Clojure Stack Lite application; it is written by `bb init` instead, so a richer
+page later is a KIT change and not a fork release. The second commit, which already adds
+`AGENTS.md`, `CLAUDE.md` and `layers.edn`, now replaces the one top-level `(def home-page ...)` in
+`src/<ns>/views.clj`, found through the form table, every other line as it was and no new
+namespace: "Welcome to Clojure Agent Kit (aka "KIT")", the project's name, the next step (`cd ..`,
+a Claude Code session there, `/kit-start`), that stage 0 replaces it, and the KIT version - no
+folder name and no link out, so a moved workspace and an offline machine read it the same. A
+template with no such form, or two, stops `init` by name before anything of the KIT's is
+written. The health check's serve step now expects the page, so a pin whose template moved its
+home page fails there first. `method.md`'s stage 0 deliverable, "a page that says 'Welcome to
+KIT' is enough", now says the project's own first page in place of that welcome.
+
 ### From a workspace, `rules-sync` says which mirrors are the KIT's own (plan 6.5, item 11)
 
 Round 0's `bb rules-sync`, run from the workspace, printed "agent-rules already current:

@@ -65,7 +65,7 @@
 
  ;; the plan and the readings
  harness.setup.plan             #{harness.gates.boundary harness.gates.run harness.rules harness.setup.template harness.setup.workspace}
- harness.setup.app              #{harness.gates.boundary harness.rules harness.setup.template}
+ harness.setup.app              #{harness.gates.boundary harness.gates.forms harness.rules harness.setup.template}
  harness.contract.spec-review   #{harness.models.agent harness.models.profile harness.rules}
  harness.setup.plan-review      #{harness.models.agent harness.models.profile harness.setup.plan harness.setup.workspace}
  harness.setup.blueprint-review #{harness.models.agent harness.models.profile harness.setup.plan harness.setup.plan-review harness.setup.workspace}

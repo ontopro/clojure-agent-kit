@@ -11,15 +11,24 @@
   application after generation. The second adds `AGENTS.md` - a frame around a
   block generated from the KIT's rule source - and a `CLAUDE.md` stub importing
   it, and `layers.edn` - the pin's `:layers`, the template's require graph
-  declared under the application's name, which the boundary gate enforces.
-  Nothing else: the fork carries what an application needs on its own, and
-  what exists because of the harness stays out of the application."
+  declared under the application's name, which the boundary gate enforces - and
+  the KIT's first page in place of the template's (`home-page`). Nothing else: the
+  fork carries what an application needs on its own, and what exists because of
+  the harness stays out of the application.
+
+  THE FIRST PAGE IS THE KIT'S, AND THE FORK STAYS NEUTRAL. The template's own page
+  said \"Welcome to Clojure Stack Lite\" and pointed at a file it does not generate;
+  a person serving a new workspace's application learned nothing of the KIT or what
+  to do next. The fork could carry a KIT page, at the price of being an ordinary
+  Clojure Stack Lite application no longer; the page is written here instead, one
+  form replaced in place, so a richer page is a KIT change and not a fork release."
   (:require
    [babashka.fs :as fs]
    [babashka.process :as p]
    [clojure.pprint :as pp]
    [clojure.string :as str]
    [harness.gates.boundary :as boundary]
+   [harness.gates.forms :as forms]
    [harness.rules :as rules]
    [harness.setup.template :as template]))
 
@@ -76,6 +85,58 @@
   mirror, rather than a second generated copy."
   "@AGENTS.md\n\nThe rules for this project are in `AGENTS.md`. Read it.\n")
 
+(defn home-page
+  "The KIT's first page, as the source of the `(def home-page ...)` form that replaces the
+  template's in `src/<ns>/views.clj`: the template's look, its `base`, and what a person
+  serving a new workspace's application needs - that it is a KIT workspace's, and the next
+  step. Written already formatted for the application's own `fmt-check`, which is a loop
+  gate. No folder name - a workspace can be moved - and no link out: it works offline."
+  [app-name kit-version]
+  (let [code-class "[\"bg-slate-100\" \"px-1\" \"rounded\"]"
+        code #(str "[:code {:class " code-class "} \"" % "\"]")]
+    (str/join
+     "\n"
+     ["(def home-page"
+      "  ; THE KIT'S WELCOME, written by `bb init` over the template's own page. A placeholder: stage 0"
+      "  ; replaces it with the project's first page."
+      "  (base"
+      "    [:div"
+      "     {:class [\"text-slate-800\" \"min-h-screen\" \"flex\" \"flex-col\"]}"
+      "     [:main {:class [\"flex-grow\" \"flex\" \"items-center\" \"justify-center\"]}"
+      "      [:div {:class [\"container\" \"mx-auto\" \"px-4\" \"max-w-3xl\"]}"
+      "       [:h1 {:class [\"text-5xl\" \"font-bold\" \"mb-6\" \"text-slate-900\" \"text-center\"]} \"Welcome to \""
+      "        [:span {:class [\"bg-gradient-to-r\" \"from-emerald-400\" \"to-sky-400\" \"bg-clip-text\" \"text-transparent\"]}"
+      "         \"Clojure Agent Kit\"]"
+      "        \" (aka \\\"KIT\\\")\"]"
+      "       [:p {:class [\"text-xl\" \"mb-10\" \"text-slate-600\" \"text-center\"]}"
+      (str "        " (code app-name) " \" is the application of a KIT workspace - the folder above this one. The build has not started yet.\"]")
+      "       [:h2 {:class [\"text-2xl\" \"font-semibold\" \"mb-4\" \"text-slate-900\"]} \"The next step\"]"
+      "       [:ol {:class [\"list-decimal\" \"list-inside\" \"space-y-2\" \"text-lg\" \"mb-10\" \"text-slate-700\"]}"
+      (str "        [:li \"In a terminal, go to the workspace folder: \" " (code "cd ..") "]")
+      (str "        [:li \"Start a Claude Code session there - Opus 5.5, effort high: \" " (code "claude") "]")
+      (str "        [:li \"In the session, type \" " (code "/kit-start") " \" - it says what the workspace holds and begins the project.\"]]")
+      "       [:p {:class [\"text-base\" \"text-slate-500\"]}"
+      "        \"This page is a placeholder: stage 0 replaces it with the project's first page.\"]]]"
+      "     [:footer {:class [\"py-6\" \"text-center\" \"text-sm\" \"text-slate-500\"]}"
+      (str "      [:p \"Made by KIT " (or kit-version "(no version)") " from the Clojure Stack Lite template\"]]]))")])))
+
+(defn with-home-page
+  "`views-text`, the application's `views.clj`, with its one top-level `(def home-page ...)`
+  replaced by `page` (`home-page`'s source), every other line as it was. Throws, naming the
+  file, when there is no such form or more than one: the pin's template has it, so a miss means
+  a local template or a moved pin, and a page written beside it would be a broken view."
+  [views-text page views-path]
+  (let [hits (filter #(and (= "def" (:kind %)) (= "home-page" (:name %))) (forms/table views-text))
+        lines (str/split-lines views-text)]
+    (when-not (= 1 (count hits))
+      (throw (ex-info (str views-path " has " (if (empty? hits) "no" (count hits)) " top-level (def home-page ...)"
+                           " - the KIT writes its first page in place of the template's one; the template is not"
+                           " the one the pin names")
+                      {:app/error :no-home-page :path (str views-path) :found (count hits)})))
+    (let [{:keys [from to]} (first hits)]
+      (str (str/join "\n" (concat (take (dec from) lines) [page] (drop to lines)))
+           (when (str/ends-with? views-text "\n") "\n")))))
+
 (defn- run-process [dir env argv]
   (let [{:keys [exit out err]} (apply p/shell {:dir (str dir) :out :string :err :string
                                                :continue true :extra-env env}
@@ -100,10 +161,10 @@
   `p` is a `template/pin`. Opts: `:app-name`; `:build-folder` (the build
   repository's folder, for `agents-md`'s sentence; `<name>-build` when nil);
   `:local-root` (a local clone of the template instead of the pinned commit -
-  `KIT_TEMPLATE_LOCAL`); `:git-env`, extra environment for git; `:run`,
-  `(fn [dir env argv]) -> {:exit _ :out _}`, which a test replaces so that no
-  JVM starts."
-  [p {:keys [app-name build-folder local-root git-env run] :or {run run-process}}]
+  `KIT_TEMPLATE_LOCAL`); `:kit-version`, for the first page's foot; `:git-env`, extra
+  environment for git; `:run`, `(fn [dir env argv]) -> {:exit _ :out _}`, which a test
+  replaces so that no JVM starts."
+  [p {:keys [app-name build-folder local-root kit-version git-env run] :or {run run-process}}]
   (fn [app-dir]
     (let [git (fn [& args] (run-or-throw run app-dir git-env (into ["git"] args)))
           from (label p local-root)]
@@ -119,10 +180,20 @@
         (when (fs/exists? (fs/path app-dir f))
           (throw (ex-info (str "the template generated its own " f "; the KIT will not overwrite it")
                           {:app/error :exists :path (str (fs/path app-dir f))}))))
-      (spit (str (fs/path app-dir "AGENTS.md")) (agents-md app-name (or build-folder (str app-name "-build"))))
-      (rules/sync! (str (fs/path app-dir "AGENTS.md")))
-      (spit (str (fs/path app-dir "CLAUDE.md")) claude-md)
-      (spit (str (fs/path app-dir boundary/file-name)) (layers-edn app-name (:layers p)))
-      (git "add" "AGENTS.md" "CLAUDE.md" boundary/file-name)
-      (git "commit" "-q" "-m" (str "AGENTS.md from the KIT's rule source, the CLAUDE.md stub that imports it, "
-                                   "and layers.edn for the boundary gate")))))
+      ;; THE PAGE FIRST, BEFORE ANYTHING IS WRITTEN: a template with no home-page where the pin
+      ;; puts one stops here, with the generated commit alone in the application
+      (let [views (str "src/" (str/replace app-name "-" "_") "/views.clj")
+            views-path (fs/path app-dir views)
+            _ (when-not (fs/exists? views-path)
+                (throw (ex-info (str "the template generated no " views
+                                     " - the KIT writes its first page in place of the template's home-page there")
+                                {:app/error :no-home-page :path (str views-path) :found 0})))
+            page (with-home-page (slurp (str views-path)) (home-page app-name kit-version) views)]
+        (spit (str (fs/path app-dir "AGENTS.md")) (agents-md app-name (or build-folder (str app-name "-build"))))
+        (rules/sync! (str (fs/path app-dir "AGENTS.md")))
+        (spit (str (fs/path app-dir "CLAUDE.md")) claude-md)
+        (spit (str (fs/path app-dir boundary/file-name)) (layers-edn app-name (:layers p)))
+        (spit (str views-path) page)
+        (git "add" "AGENTS.md" "CLAUDE.md" boundary/file-name views)
+        (git "commit" "-q" "-m" (str "AGENTS.md from the KIT's rule source, the CLAUDE.md stub that imports it, "
+                                     "layers.edn for the boundary gate, and the KIT's first page in " views))))))
