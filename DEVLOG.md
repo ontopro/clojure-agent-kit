@@ -56,6 +56,15 @@ step by hand, named there.
 
 ## 2026-10-14
 
+### The doctor's missing-skills line names no date (plan 6.5, item 11)
+
+Round 0 - a copy of the proof build's workspace taken from 0.6.4 to this branch by the hand steps -
+showed the doctor saying the workspace "lacks the KIT's kit-plan, kit-scoping, kit-stage-end,
+kit-stage-plan skills (bb init writes them since 2026-10-07)". The `kit-` names are a week younger
+than that date, which was the skills' first rendering. The line now says the skills are ones
+`bb init` writes, and no date; the line beside it that removes the old names already gives the
+rename's.
+
 ### A workspace can be copied or moved: `{{kit}}` is resolved when a run starts (plan 6.5, item 10)
 
 `bb init` wrote the KIT clone's absolute path into the build's `loop.edn`: the boundary gate is

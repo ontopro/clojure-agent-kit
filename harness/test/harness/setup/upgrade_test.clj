@@ -76,7 +76,7 @@
       (is (some #(str/includes? % "/w/xyx-build/profile.edn has no :plan-reviewer") lines))))
   (testing "a skill the workspace lacks, and one it edited"
     (let [lines (upgrade/expectations (assoc complete :skills-missing ["kit-scoping" "kit-plan"] :skills-drifted ["kit-stage-end"]))]
-      (is (some #(str/includes? % ".claude/skills/ lacks the KIT's kit-scoping, kit-plan skills (bb init writes them since 2026-10-07): run `bb skills-sync`") lines))
+      (is (some #(str/includes? % ".claude/skills/ lacks the KIT's kit-scoping, kit-plan skills, which bb init writes: run `bb skills-sync`") lines))
       (is (some #(str/includes? % ".claude/skills/kit-stage-end/SKILL.md is not the rendering of the KIT's skills/kit-stage-end/SKILL.md: run `bb skills-sync`") lines))))
   (testing "nothing missing renders as such"
     (is (str/includes? (upgrade/render (assoc complete :made-at nil :behind nil

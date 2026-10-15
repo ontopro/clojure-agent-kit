@@ -157,7 +157,7 @@
       (seq skills-missing)
       (conj (str ".claude/skills/ lacks the KIT's " (str/join ", " skills-missing)
                  " skill" (when (not= 1 (count skills-missing)) "s")
-                 " (bb init writes them since 2026-10-07): run `bb skills-sync` from the workspace folder"))
+                 ", which bb init writes: run `bb skills-sync` from the workspace folder"))
 
       (and front-door (not (:existed? front-door)))
       (conj (str "no bb.edn at the workspace root - the front door every KIT command is run through (bb init writes it since 0.6.3): "
