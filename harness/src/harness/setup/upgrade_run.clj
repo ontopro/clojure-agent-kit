@@ -604,7 +604,10 @@
         head (git! kit "rev-parse" "HEAD")
         merged (str/split-lines (:out (git kit "tag" "--merged" "HEAD")))
         here (clone-version merged)
-        recorded-version (:workspace/kit-version raw)]
+        recorded-version (:workspace/kit-version raw)
+        _ (when-not (:workspace/kit-commit raw)
+            (throw (ex-info "workspace.edn records no :workspace/kit-commit: nothing says which KIT this workspace is at, so nothing can say what changed since - add the line `:workspace/kit-commit \"<the KIT commit this workspace was made at>\"`, then `bb upgrade` again"
+                            {:upgrade/error :no-commit})))]
     ;; ALREADY MOVED: KIT/ is past what the workspace records - a run stopped after the move, or a
     ;; move by hand - so phase 2 is what is left, by this very code (it is the new version's)
     ;; DECIDED BY COMMIT, not by version: a `git pull` out of habit, or a later commit of the same

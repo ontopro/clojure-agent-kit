@@ -100,7 +100,9 @@ release tag reachable from HEAD, and the move is decided by commit: HEAD past th
 is phase 2's, HEAD not descended from it is refused by name. Smaller: a new platform's record is
 untracked and `checkout --` cannot discard it, so the discard command says `clean -f --` for
 those; and the machine is probed once over every row the newer tables carry, each release then
-checked against that result, instead of once per release.
+checked against that result, instead of once per release. And the by-commit decision ran before
+anything else, so a `workspace.edn` with no recorded commit reached it with nil and the refusal's
+own words threw: phase 1 now refuses that first, in phase 2's words.
 
 ### The upgrade's run is the one `bb template-upgrade` resumes, and the notices follow it (plan 6.5, item 14c, after review)
 

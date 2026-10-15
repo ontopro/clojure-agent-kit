@@ -454,3 +454,14 @@
     (testing "a clone on a commit the recorded one is not behind is refused by name"
       (git-out clone "checkout" "-q" "--detach" "0.6.4")
       (is (= :diverged (:error (err {})))))))
+
+(deftest phase-one-refuses-a-workspace-with-no-recorded-commit-with-words
+  (let [fake (fake-kit!)
+        clone (clone-at! fake (fs/path (fs/real-path (fs/create-temp-dir)) "KIT") "0.6.4")
+        ws (workspace! clone)
+        f (fs/path (:workspace/dir ws) "workspace.edn")]
+    (spit (str f) (pr-str (dissoc (raw ws) :workspace/kit-commit)))
+    (let [e (try (binding [*out* (java.io.StringWriter.)] (ur/phase-one! ws clone {:reachable? (constantly true)})) nil
+                 (catch clojure.lang.ExceptionInfo e e))]
+      (is (= :no-commit (:upgrade/error (ex-data e))))
+      (is (str/includes? (ex-message e) ":workspace/kit-commit")))))
