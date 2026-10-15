@@ -1849,12 +1849,19 @@
     (when-not (some-> (:worktree/git-root gate) fs/exists?)
       (throw (ex-info "the gate worktree is gone — there is nothing to commit and merge"
                       {:run-loop/error :no-gate-worktree})))
-    (let [committed (or (last (filter #(= :merge-commit (:event/kind %)) (:events state)))
-                        (let [c (if (template-upgrade? state)
-                                  (upgrade-commit! ctx gate decision)
-                                  (commit-gate! ctx gate decision))]
-                          (event! ctx (assoc c :event/kind :merge-commit))
-                          c))
+    (let [recorded (last (filter #(= :merge-commit (:event/kind %)) (:events state)))
+          committed (if (template-upgrade? state)
+                      ;; READ AGAIN ON EVERY ATTEMPT, never reused: a merge that failed because main
+                      ;; moved is answered by a commit on the branch, gated again, and that tip is what
+                      ;; merges - the checks in `upgrade-commit!` hold it to the gates each time
+                      (let [c (upgrade-commit! ctx gate decision)]
+                        (when (not= (:commit recorded) (:commit c))
+                          (event! ctx (assoc c :event/kind :merge-commit)))
+                        c)
+                      (or recorded
+                          (let [c (commit-gate! ctx gate decision)]
+                            (event! ctx (assoc c :event/kind :merge-commit))
+                            c)))
           into-branch (:out (git-in repo-root "rev-parse" "--abbrev-ref" "HEAD"))
           _ (println (str "\n  merging " (:branch committed) " (" (subs (:commit committed) 0 7) ", "
                           (count (:files committed)) " file(s)) into " into-branch " at " repo-root))

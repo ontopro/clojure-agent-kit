@@ -227,7 +227,7 @@
   would fill it, the upgrade's own facts under `:template` and `:base`, and the gate session -
   the worktree the merge is in, on the upgrade's branch - under `:sessions`, where `merge`,
   `record` and `teardown` look for it."
-  [{:keys [id ws now from to template-commit base-branch base-commit worktree]}]
+  [{:keys [id ws now from to label template-commit base-branch base-commit worktree]}]
   {:run/kind :template-upgrade
    :started-ms now
    :config {:run/id id
@@ -236,7 +236,7 @@
             :kit/root (:workspace/kit ws)
             :plan/root (:workspace/build ws)
             :records/dir (:workspace/records ws)}
-   :template {:from from :to to :branch branch :commit template-commit}
+   :template {:from from :to to :label label :branch branch :commit template-commit}
    :base {:branch base-branch :commit base-commit}
    :sessions {:gate {:worktree/path (str worktree) :worktree/git-root (str worktree)
                      :worktree/branch id :task/id id :task/role :reviewer}}
@@ -291,7 +291,10 @@
   "`git merge template` in the upgrade's worktree: clean, the gates; a conflict, the Architect's."
   [ctx wt env gate-seq run-dir]
   (say (str "merging template into " (get-in @(:state ctx) [:sessions :gate :worktree/branch]) " in " wt))
-  (let [{:keys [exit]} (git wt env "merge" "--no-edit" branch)]
+  ;; THE COMMIT THE RUN RECORDED, not the branch by name: a newer release committed onto
+  ;; template since would otherwise merge under a state that names the older one
+  (let [{:keys [commit label]} (:template @(:state ctx))
+        {:keys [exit]} (git wt env "merge" "--no-edit" "-m" (str "Merge template at " (subs commit 0 7) ": " label) commit)]
     (if (zero? exit)
       (do (driver/event! ctx {:event/kind :merge :clean? true :commit (git! wt env "rev-parse" "HEAD")})
           (say "merged clean")
@@ -401,7 +404,7 @@
                 (git! app env "worktree" "add" "-q" "-b" id (str wt) base-branch))
             _ (fs/create-dirs run-dir)
             _ (spit (str state-file)
-                    (with-out-str (pp/pprint (initial-state {:id id :ws ws :now now :from from :to to
+                    (with-out-str (pp/pprint (initial-state {:id id :ws ws :now now :from from :to to :label label
                                                              :template-commit template-commit
                                                              :base-branch base-branch :base-commit base-commit
                                                              :worktree wt}))))

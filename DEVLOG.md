@@ -74,6 +74,16 @@ generated tree is copied with its file modes. `bb next`'s notice while the branc
 merge is item 14c's, with the upgrade's done record, and the plan said so beside it; the entry
 below had not. Each hole has a test over real git.
 
+A second reading found the same hole one step on: a merge that failed because `main` moved
+during a long resolution is answered by a commit on the branch, and the retried merge reused
+the `:merge-commit` it had recorded and merged the branch by name - the new tip, ungated. An
+upgrade's merge now reads its tip again on every attempt, under the same checks, and records the
+commit it merges; and a resumed run merges the template commit its state names, not the branch
+by name, so a newer release committed onto `template` since cannot slip under an older state.
+Tested: `main` moved, the first merge aborted, the branch brought up and gated again, that tip
+merged; and a candidate whose tree is `template`'s unmerged tip taken from the tip - the path
+the sandbox's candidate rounds take on a re-run.
+
 ### `bb template-upgrade`: a template release taken through a `template` branch (plan 6.5, item 13)
 
 A moved template pin was a report and a compare link, and nothing applied it: the template's

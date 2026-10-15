@@ -278,3 +278,66 @@
       (is (= ["src/xyx/views.clj"] (:conflicts r)))
       (is (str/includes? (slurp (str (fs/path wt "src" "xyx" "views.clj"))) "<<<<<<<"))
       (is (= [:template-commit :merge :stopped :merge :stopped] (mapv :event/kind (:events (state ws id))))))))
+
+(deftest a-merge-that-failed-because-main-moved-takes-the-newly-gated-tip-not-the-recorded-one
+  (let [ws (workspace!)
+        app (:workspace/app ws)
+        work (:workspace/work ws)
+        release (assoc generated-files "resources/new.txt" "the template's\n")
+        wt (str (fs/path work "worktrees" id "app"))
+        run-dir (str (fs/path work "runs" id))
+        decision (str (fs/path run-dir "decision.edn"))
+        merge! (fn [] (try (with-out-str (driver/merge! (driver/context run-dir) decision)) nil
+                           (catch clojure.lang.ExceptionInfo e e)))]
+    (is (= :awaiting-merge (:outcome (run-upgrade! ws release [[:fmt "true"]]))))
+    ;; main moves during a long resolution: the same new file, other words
+    (fs/create-dirs (fs/path app "resources"))
+    (spit (str (fs/path app "resources" "new.txt")) "main's\n")
+    (git-out app "add" "-A")
+    (git-out app "commit" "-q" "-m" "main moved")
+    (spit decision (pr-str {:decision "x"}))
+    (testing "the first merge fails and is aborted; main is as it was"
+      (is (= :merge-failed (:run-loop/error (ex-data (merge!)))))
+      (is (= "main moved" (git-out app "log" "-1" "--format=%s" "main")))
+      (is (= :merge-failed (:event/kind (last (:events (state ws id)))))))
+    (testing "the Architect brings main in on the branch, gates again, and THAT tip merges"
+      (is (not= 0 (:exit (p/shell {:dir wt :out :string :err :string :continue true :extra-env git-env} "git" "merge" "--no-edit" "main"))))
+      (spit (str (fs/path wt "resources" "new.txt")) "both\n")
+      (git-out wt "add" "-A")
+      (git-out wt "commit" "-q" "-m" "main merged in, the file resolved")
+      (is (= :not-gated (:run-loop/error (ex-data (merge!)))) "the new tip is ungated: refused, not the recorded commit merged by name")
+      (is (= :awaiting-merge (:outcome (run-upgrade! ws release [[:fmt "true"]]))))
+      (is (nil? (merge!)))
+      (is (= "both\n" (slurp (str (fs/path app "resources" "new.txt")))) "main has the resolution")
+      (is (= 2 (count (filter #(= :merge-commit (:event/kind %)) (:events (state ws id)))))
+          "the second attempt recorded the tip it merged"))))
+
+(deftest a-candidates-tree-equal-to-templates-unmerged-tip-is-taken-from-the-tip
+  ;; item 16's candidate rounds on a re-run: the same local clone generates the same tree
+  (let [ws (workspace!)
+        app (:workspace/app ws)
+        work (:workspace/work ws)
+        release (assoc generated-files "resources/new.txt" "new\n")
+        run (fn [generate] (tu/upgrade! ws {:pin pin :local-root "/src/template" :env git-env :gates [[:fmt "true"]] :generate generate}))
+        write (fn [target] (fs/create-dirs target) (write-tree! target release))
+        local-id "template-upgrade-local"]
+    (is (= :awaiting-merge (:outcome (run write))))
+    (is (= {:template (str (:template pin)) :local-root "/src/template"} (tu/generated-from (git-out app "log" "-1" "--format=%s" "template"))))
+    (fs/delete-tree (fs/path work "runs" local-id))
+    (git-out app "worktree" "remove" "--force" (str (fs/path work "worktrees" local-id "app")))
+    (git-out app "branch" "-D" local-id)
+    (let [tip (git-out app "rev-parse" "template")
+          generated (atom 0)
+          r (run (fn [target] (swap! generated inc) (write target)))]
+      (is (= :awaiting-merge (:outcome r)))
+      (is (= 1 @generated) "a candidate is generated: only its tree can say it is the tip's")
+      (is (= tip (git-out app "rev-parse" "template")) "no third commit on template")
+      (is (= tip (:commit (first (:events (state ws local-id)))))))
+    (testing "and merged, the same candidate again is nothing to upgrade to"
+      (let [run-dir (str (fs/path work "runs" local-id))
+            decision (str (fs/path run-dir "decision.edn"))]
+        (spit decision (pr-str {:decision "x"}))
+        (with-out-str (driver/merge! (driver/context run-dir) decision))
+        (let [e (try (run write) nil (catch clojure.lang.ExceptionInfo e e))]
+          (is (:nothing-to-upgrade (ex-data e)))
+          (is (str/includes? (ex-message e) "and it is merged")))))))
