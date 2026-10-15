@@ -85,7 +85,28 @@
   (is (not (plan/governing? "stages/stage-N-gates-template.edn")))
   (is (plan/governing? "stages/stage-1-gates.edn") "a stage's record, once copied, is read like a stage plan")
   (is (plan/governing? "stages/stage-1-foundation.md") "a stage document written from the template is read")
-  (is (not (plan/governing? "stages/stage-N-template.md"))))
+  (is (not (plan/governing? "stages/stage-N-template.md")))
+  (is (plan/governing? "api-notes/a-library.md") "an Architect's note is a plan document")
+  (testing "a record a KIT tool writes is never read"
+    (doseq [rel ["stages/stage-0-security-review/model-tracer-20261013.edn"
+                 "stages/stage-0-security-review/security-fixes.md"
+                 "stages/stage-0-security-review/model-tracer-20261013-tests/test/app/review_test.clj"
+                 "stages/stage-0-security.edn" "stages/stage-0-security-deps.edn"
+                 "stages/stage-0-security-secrets.edn" "stages/stage-0-interactions.edn"]]
+      (is (not (plan/governing? rel)) rel))))
+
+(deftest a-security-review-quoting-the-applications-brackets-is-not-a-mark-left
+  ;; The proof build's stage 0 closed with a security review whose record quoted the
+  ;; template's deploy file - ERB tags, `<%= ENV['SERVER_IP'] %>` - and plan-check counted
+  ;; them as four marks to fill; `bb next` then sent the closed stage back to the plan.
+  (let [docs (fs/create-temp-dir {:prefix "plan-docs-"})
+        review (fs/path docs "stages" "stage-0-security-review")]
+    (fs/create-dirs review)
+    (spit (str (fs/path docs "00-overview.md")) "# Overview\n\nFilled.\n")
+    (spit (str (fs/path review "r.edn")) "{:quote \"<%= ENV['SERVER_IP'] %>\"}\n")
+    (spit (str (fs/path review "security-fixes.md")) "server: <%= ENV['SERVER_IP'] %>\n")
+    (is (= ["00-overview.md"] (plan/governing (str docs))))
+    (is (= [] (plan/document-problems (str docs) template-dir)))))
 
 (deftest a-given-parts-blockquote-is-prose-not-an-instruction
   ;; The fifth project kept 03 §10's five quoted lines, as the README says a given part is

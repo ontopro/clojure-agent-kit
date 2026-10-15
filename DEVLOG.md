@@ -56,6 +56,20 @@ step by hand, named there.
 
 ## 2026-10-14
 
+### `bb plan-check` reads the plan, and `bb next` keeps a stage past it (plan 6.5, item 4)
+
+The proof build closed stage 0 and `bb next` said "step 2 - the plan, for stage 0". `plan-check`
+read every file under the build's `docs/`, and the stage's end writes the security review's
+record there: the record quoted the application's deploy file, whose template tags are angle
+brackets, and four of them were counted as marks to fill. `bb next` puts plan-check's list before
+the stage's status, so a closed stage was sent back to its plan. Two changes. `plan-check` reads
+what a plan step and a stage plan write - the Markdown, and a stage's gates record - and never a
+record a KIT tool writes beside them: a stage's `*-security-review/` folder whole (its routing
+writes Markdown too), the security pack's and the interactions' `.edn`. And `bb next` sends the
+workflow to step 2 only before any stage or while stage 0 is unapproved; after that a problem is
+said on an `also:` line beside the stage's own step - as the stage plan being written while one
+is, otherwise as a plan document to fix before the next stage's plan.
+
 ### An upgraded workspace drops a skill's old name (plan 6.5, item 3)
 
 The prefix leaves every workspace made before it with `.claude/skills/plan/` and the rest

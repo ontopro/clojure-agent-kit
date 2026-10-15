@@ -166,6 +166,32 @@
                             (gates-file (inc id)) ", then /kit-stage-plan")
               (str "stage " id " is closed")))))
 
+(defn plan-step?
+  "Is a plan being written - the plan, or a stage's plan - so that a mark plan-check finds is
+  one still to fill, not one left behind? Before any stage; and in a stage pulled and not yet
+  approved, or approved with no plan written. `stage` as `stage-action` reads it."
+  [stage]
+  (let [{:stage/keys [approved closed]} (:gates stage)]
+    (or (nil? stage)
+        (and (nil? closed) (or (nil? approved) (nil? (:plan stage)))))))
+
+(defn- plan-first?
+  "Does plan-check's list send the workflow back to step 2: before any stage, or while stage 0
+  is not approved - the plan passes its check before stage 0's approval."
+  [stage]
+  (or (nil? stage)
+      (and (zero? (:id stage)) (nil? (get-in stage [:gates :stage/approved])))))
+
+(defn- plan-beside
+  "The line said beside a stage's own step when plan-check finds something: in a plan step, the
+  plan being written; outside one, a plan document to fix - never step 2 of a stage that is past it."
+  [{:keys [id] :as stage} problems]
+  (let [n (count problems)]
+    (str "bb plan-check: " n " thing" (when (not= 1 n) "s") " left - "
+         (if (plan-step? stage)
+           (str "stage " id "'s plan is being written, and carries its marks until it is approved")
+           (str (first problems) " - fix it before stage " (inc id) "'s plan")))))
+
 (defn- step-action
   [{:keys [workspace? brief? plan-problems stage]}]
   (cond
@@ -177,7 +203,7 @@
     (action 1 (str person ", with an Architect session") "/kit-start, then /kit-scoping - it writes work/brief.md - then bb brief files it"
             "docs/source.md §1 still says <the brief>")
 
-    (seq plan-problems)
+    (and (seq plan-problems) (plan-first? stage))
     (action 2 architect "/kit-plan; bb plan-check lists what is left, bb plan-review before the approval"
             (str "bb plan-check: " (count plan-problems) " thing" (when (not= 1 (count plan-problems)) "s") " left"))
 
@@ -185,7 +211,8 @@
     (action 5 person "copy docs/stages/stage-N-gates-template.edn to docs/stages/stage-0-gates.edn and set :stage/approved with the cap"
             "the plan passes its check and docs/stages/ has no stage yet")
 
-    :else (stage-action stage)))
+    :else (cond-> (stage-action stage)
+            (seq plan-problems) (assoc :also (plan-beside stage plan-problems)))))
 
 (defn- in-build
   "`s` with every `docs/` path put under the build folder `build`, so a command
@@ -200,11 +227,14 @@
   not run); `:stage` the stage in progress as `stage-action` reads it, or nil
   when docs/stages/ has none; `:build` the build folder as the workspace names
   it, which every `docs/` path printed is put under. Returns `{:step :name
-  :owner :run :because}`."
+  :owner :run :because}`, and `:also` when plan-check finds something once stage 0
+  is approved: said beside the stage's own step, never in its place."
   [{:keys [build] :as facts}]
-  (-> (step-action facts)
-      (update :run (partial in-build build))
-      (update :because (partial in-build build))))
+  (let [a (step-action facts)]
+    (cond-> (-> a
+                (update :run (partial in-build build))
+                (update :because (partial in-build build)))
+      (:also a) (update :also (partial in-build build)))))
 
 ;; ---------------------------------------------------------------------------
 ;; the edge: facts
@@ -277,11 +307,12 @@
 
 (defn render
   "The action as `bb next` prints it."
-  [{:keys [step name owner run because]}]
+  [{:keys [step name owner run because also]}]
   (str "next: step " step " - " name "\n"
        "  owner:   " owner "\n"
        "  run:     " run "\n"
-       "  because: " because))
+       "  because: " because
+       (when also (str "\n  also:    " also))))
 
 (defn -main
   "bb next [--workspace <dir>]

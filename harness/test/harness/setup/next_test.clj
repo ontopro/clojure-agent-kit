@@ -46,6 +46,31 @@
     (is (= [5 "the person"] ((juxt :step :owner) a)) "the plan passes and no stage exists: stage 0's approval")
     (is (str/includes? (:run a) "stage-0-gates.edn"))))
 
+(deftest a-plan-check-problem-is-said-beside-a-stage-past-its-plan-never-instead
+  ;; The proof build closed stage 0 and plan-check found four "marks" in a record a KIT tool
+  ;; wrote; `bb next` then said "step 2 - the plan, for stage 0" of a closed stage.
+  (let [problems ["docs/stages/stage-0-security-review/r.edn: 4 marks left to fill"]
+        closed (-> (with-stage {:id 0 :plan "stage-0-plan.md" :blueprint "stage-0-blueprint.md" :reviewed? true
+                                :packets ["t-01"] :merged #{"t-01"}})
+                   (assoc-in [:stage :gates] {:stage/id "0" :stage/approved {:date "d" :cap 20 :by "Ada"}
+                                              :blueprint/signed {:date "d" :by "Ada"} :stage/closed {:date "d"}})
+                   (assoc :plan-problems problems :build "xyx-build"))
+        a (next/next-action closed)]
+    (is (= 7 (:step a)) "stage 0 is closed: the next stage is pulled, not the plan")
+    (is (= "bb plan-check: 1 thing left - xyx-build/docs/stages/stage-0-security-review/r.edn: 4 marks left to fill - fix it before stage 1's plan"
+           (:also a)))
+    (is (str/includes? (next/render a) "\n  also:    bb plan-check: 1 thing left")))
+  (testing "a stage plan being written carries its marks: said, as that"
+    (let [a (next/next-action (assoc ready :plan-problems ["docs/stages/stage-1-plan.md: 3 marks left to fill"]))]
+      (is (= 7 (:step a)))
+      (is (str/includes? (:also a) "stage 1's plan is being written"))))
+  (testing "before stage 0 is approved, the plan passes its check first: step 2"
+    (is (= 2 (:step (next/next-action (assoc (with-stage {:id 0 :plan nil :gates nil}) :plan-problems ["x"])))))
+    (is (= 2 (:step (next/next-action (assoc (with-stage {:id 0 :plan nil :gates {:stage/id "0" :stage/approved nil}}) :plan-problems ["x"]))))))
+  (testing "no problem, no line"
+    (is (nil? (:also (next/next-action ready))))
+    (is (not (str/includes? (next/render (next/next-action ready)) "also:")))))
+
 (deftest the-stages-three-gates-walk-the-table
   (testing "stage 0: approval before its plan"
     (let [s0 (with-stage {:id 0 :plan nil :gates nil})]
@@ -199,7 +224,10 @@
       (is (= #{"t1"} (:merged s)))
       (is (= {"t2" :awaiting-merge} (:runs s)) "the latest record's status, by its start")
       (is (seq (:plan-problems f)) "the plan check ran, and this workspace has no overlay, no layers.edn, no loop.edn")
-      (is (= 2 (:step (next/next-action f))) "so the plan comes first")
+      (let [a (next/next-action f)]
+        (is (= 13 (:step a)) "a stage under way keeps its own step")
+        (is (str/starts-with? (:also a) "bb plan-check: ") "and plan-check is said beside it")
+        (is (str/includes? (:also a) "fix it before stage 2's plan")))
       (is (= 13 (:step (next/next-action (assoc f :plan-problems [])))) "with the plan passing: t2's run awaits its merge")
       (is (= "xyx-build" (:build f)) "the build folder, as the workspace names it")
       (let [a (next/next-action (-> f (assoc :plan-problems []) (assoc-in [:stage :merged] #{})))]
