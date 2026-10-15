@@ -107,7 +107,8 @@
 
 **Spec review:** <finding count from `bb run-loop spec-review`, and what was fixed> — a spec that
 draws ten findings is not ready; write targets one promise each, as checkable statements, with
-marker attributes for anything a test must find (method §06).
+marker attributes for anything a test must find, a value's source named, and a requirement's words
+quoted in a target - a view's words and markers, never its whole Hiccup (method §06).
 
 > Per-role deltas from the same base packet: the **Tester's** `:files/context` **omits the
 > Coder's implementation file** — enforce this in the packet assembler, not by discipline.

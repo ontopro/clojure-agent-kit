@@ -56,6 +56,27 @@ step by hand, named there.
 
 ## 2026-10-14
 
+### The blueprint review reads the requirements, and two rules for targets (plan 6.5, item 7)
+
+The proof build's first stage paid for two things its blueprint review passed. A composition root
+took "a context" no target said the source of, so every map the type admits was in its domain,
+and its code review rejected twice on a sorted map and a record nothing could send. And a
+placeholder page's target pinned the page's whole Hiccup with the title alone: the requirement's
+sentence, the words a person was to read, was in no target, and a person's ask to restyle the
+page needed the contract changed. `method.md` §06 gains rules 13 and 14 for both, and the review's
+checklist carries them, being read from that section. The second could not have been caught by a
+checklist line: the review was sent the stage plan and the blueprint, and the requirement's words
+were only in the requirements, which the stage plan summarised as "a placeholder". The review now
+reads `docs/01-requirements.md` too, and its prompt names the two rules, with three finding kinds.
+
+What a model is told is a change to the run, so it was measured on the proof build's stage 0
+documents as signed. The review as it was found none of the three; with the rules and the
+requirements, worded first as "the requirements this stage's plan takes on, never a later
+stage's", it found the whole Hiccup but left the sentence out - the requirements assign that
+requirement to the next stage, though this stage built the page. Worded as what a packet builds,
+whichever stage the requirement is assigned to, it found all three, and named the menu that could
+never open, a fault the first stage's code reviews had only noted. One sample each.
+
 ### Guidance that names a defined term is sent the term's definition (plan 6.5, item 6)
 
 The proof build lost a round to a paraphrase. The Architect's guidance for a Coder retry named

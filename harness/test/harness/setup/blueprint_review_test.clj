@@ -20,6 +20,8 @@
     (is (not (str/includes? c "### The spec review")) "the step ends before the spec review's")
     (is (str/includes? c "### Data shapes first"))
     (is (str/includes? c "One promise per target"))
+    (is (str/includes? c "A target that takes a value names where the value comes from") "rule 13")
+    (is (str/includes? c "never its whole Hiccup") "rule 14")
     (is (not (str/includes? c "### Per-role deltas")) "§06 ends before the per-role deltas")
     (is (< (str/index-of c "### The blueprint") (str/index-of c "### Data shapes first")) "the question, then the rules"))
   (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no '### The blueprint — the plan step's end'"
@@ -37,14 +39,17 @@
   (is (= "stage-2-search" (br/stage-key "/p/docs/stages/stage-2-search-blueprint.md")))
   (is (= "odd-name" (br/stage-key "/p/docs/stages/odd-name.md"))))
 
-(deftest the-input-is-the-stage-document-then-the-blueprint-then-the-checklist
-  (let [text (br/review-input "stage-1-x.md" "the stage" "stage-1-blueprint.md" "the blueprint" "- the rules")]
+(deftest the-input-is-the-stage-document-the-requirements-the-blueprint-then-the-checklist
+  (let [text (br/review-input "stage-1-x.md" "the stage" "FR-8 This page is being prepared." "stage-1-blueprint.md" "the blueprint" "- the rules")]
     (is (< (str/index-of text "=== stage-1-x.md ===\nthe stage")
+           (str/index-of text "=== 01-requirements.md ===\nFR-8 This page is being prepared.")
            (str/index-of text "=== stage-1-blueprint.md ===\nthe blueprint")
            (str/index-of text "=== THE CHECKLIST")))
     (is (str/ends-with? text "- the rules")))
-  (is (str/starts-with? (br/review-input "stage-1-x.md" nil "b.md" "b" "c") "=== stage-1-x.md (not found) ===")
-      "a named stage document that is not there is said so, and the read goes on"))
+  (is (str/starts-with? (br/review-input "stage-1-x.md" nil "r" "b.md" "b" "c") "=== stage-1-x.md (not found) ===")
+      "a named stage document that is not there is said so, and the read goes on")
+  (is (str/includes? (br/review-input "stage-1-x.md" "s" nil "b.md" "b" "c") "=== 01-requirements.md (not found) ===")
+      "and so are requirements that are not there"))
 
 (deftest the-prompt-asks-both-questions-and-names-the-given-parts
   (is (str/includes? br/system-prompt "OVER-ENGINEERED"))
@@ -79,6 +84,7 @@
         stages (fs/path plan "docs" "stages")]
     (fs/create-dirs stages)
     (spit (str (fs/path stages "stage-1-slice.md")) "# Stage 1 — Slice\n\nthe stage's goal and its task list\n")
+    (spit (str (fs/path plan "docs" "01-requirements.md")) "# Requirements\n\nFR-8 the words a person reads\n")
     (spit (str (fs/path stages "stage-1-blueprint.md"))
           "# Stage 1 Blueprint — Slice\n\n**Input:** `stage-1-slice.md` · **Method:** `../03.md`\n\n## 1. Data shapes\n\nthe shapes\n")
     (spit (str (fs/path plan "profile.edn"))
@@ -98,7 +104,7 @@
         written (edn/read-string (slurp (str (fs/path plan "reviews" "stage-1" "blueprint-review.edn"))))]
     (is (= 2 (:count written)))
     (is (= "a cache no task needs" (-> written :findings first :finding)))
-    (is (= ["stage-1-slice.md" "stage-1-blueprint.md"] (:documents written)))
+    (is (= ["stage-1-slice.md" "01-requirements.md" "stage-1-blueprint.md"] (:documents written)))
     (is (= "m-served" (:model written)))
     (is (= 1 (count (:reviews written))))
     (is (str/includes? out "blueprint review: 2 findings"))
@@ -107,6 +113,7 @@
     (testing "the model saw the stage document, then the Blueprint, then both sections of the method"
       (let [sent (json/generate-string (first seen))]
         (is (< (str/index-of sent "the stage's goal and its task list")
+               (str/index-of sent "FR-8 the words a person reads")
                (str/index-of sent "the shapes")
                (str/index-of sent "The blueprint — the plan step")))
         (is (str/includes? sent "One promise per target"))

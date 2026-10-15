@@ -651,7 +651,7 @@ The same shapes and interfaces the Coder implements against are what the Tester 
 
 ### Writing property targets
 
-Twelve rules, each paid for once by a round or a stop in the projects built on this kit:
+Fourteen rules, each paid for once by a round or a stop in the projects built on this kit:
 
 1. **One promise per target.** A two-clause target is "accounted for" when one clause is tested.
 2. **State a target as something checkable** — an equality, a named error — not a description.
@@ -731,6 +731,19 @@ Twelve rules, each paid for once by a round or a stop in the projects built on t
     test needs - the page, the tree, the request the function under test takes - is named in the
     input target that needs it, as what the seam before the function would produce: a Tester given
     a target with no fixture to test it against searches for one until its rounds run out (§10).
+13. **A target that takes a value names where the value comes from.** A function given "a map" or
+    "any value" with no source said has every value the type admits in its domain (rule 10): one
+    project's composition root was rejected twice, on a sorted map and on a record, inputs nothing
+    in the application could send, because its targets said what the context was and not where it
+    came from. Name the source in the target or in `:data-conventions`' WHERE INPUT COMES FROM - the
+    caller, the file, the request - and what lies outside it is outside the domain.
+14. **Each requirement a packet serves has its words in a target, and a view's target names its
+    words and markers, never its whole Hiccup.** A placeholder page's target pinned the page's whole
+    Hiccup with the title alone, and the requirement's sentence - the words a person was to read -
+    was in no target, so nothing built or tested it. The same target held the markup exactly, so a
+    person's ask to restyle the page needed the contract changed. The words a user is to see are
+    the requirement's, quoted; the markers are what a test finds (rule 3); the rest is presentation
+    (rule 11).
 
 And one rule that is not about writing but about reading, set by a person after every model in the
 loop got it wrong on the same sentence: **types are followed as the language defines them.** A type

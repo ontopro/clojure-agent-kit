@@ -37,6 +37,7 @@
   method's over-engineering question, then §06's rules for targets and shapes,
   then the two ways a Blueprint disagrees with its own stage document."
   ["over-engineered" "target-two-promises" "target-not-checkable" "target-no-marker"
+   "target-source-unnamed" "requirement-words-missing" "target-whole-hiccup"
    "shape-undefined" "shape-not-granted" "seam-unstated" "packet-task-mismatch"
    "interface-malformed"])
 
@@ -46,8 +47,8 @@
        "against it and a Tester derives tests from it, each from one task packet at a time, and a "
        "spec review reads each packet before it dispatches. You read the whole, once, for what a packet "
        "cannot show.\n\n"
-       "You are given the stage document the Blueprint derives from, the Blueprint, and two sections of "
-       "the method the project adopted: the step that asks whether the Blueprint is over-engineered, and "
+       "You are given the stage document the Blueprint derives from, the project's requirements, the Blueprint, "
+       "and two sections of the method the project adopted: the step that asks whether the Blueprint is over-engineered, and "
        "the rules its data shapes and property targets must follow. Answer both questions, and check the "
        "Blueprint against its stage document.\n\n"
        "OVER-ENGINEERED means: a layer, a namespace, a shape or an abstraction that this stage's task list "
@@ -60,7 +61,15 @@
        "seam guarantees written where every role reads it; a shape a packet names under :shapes must be "
        "defined in §1 or inline, and a var a target requires the code to refer to must be granted under "
        ":deps-sigs, and every :deps-sigs entry is qualified, ns/f, because the calls gate grants by qualified "
-       "name. An interface is (name [args]) for a function and (name) for a var, never a bare name.\n\n"
+       "name. An interface is (name [args]) for a function and (name) for a var, never a bare name. "
+       "A function a packet grants that takes a map, a context or any value names where that value comes "
+       "from - its caller, the file, the request - in a target or the data conventions' WHERE INPUT COMES "
+       "FROM; a value with no source said is every value its type admits, a sorted map and a record among "
+       "them, and a target that only shows one example value names no source. Each requirement a packet "
+       "serves has its words in a target: where a packet builds what a requirement describes - whichever "
+       "stage the requirements assign it to - the words that requirement gives a person to read are quoted "
+       "in a target; and a view's target names its words and its markers, never its whole Hiccup, which "
+       "holds presentation to the contract.\n\n"
        "The stack, the layering as the boundary file declares it, the roles, the packet, the gates and "
        "the retry cap are GIVEN by the method and are not the Blueprint's to have decided - do not report "
        "them. Report only what a reader could act on: name the section, the packet id or the target, quote "
@@ -114,12 +123,21 @@
       (subs nm 0 (- (count nm) (count "-blueprint.md")))
       (str/replace nm #"\.md$" ""))))
 
+;; THE REQUIREMENTS, BECAUSE A STAGE PLAN SUMMARISES THEM. A placeholder page's target left out the
+;; sentence its requirement gives a person to read, and the review could not see it: the stage plan
+;; said "a placeholder", and the requirement's words were in a document the review was not sent.
+(def requirements-name
+  "The requirements document, under the plan's `docs/`, that the review reads beside the stage document."
+  "01-requirements.md")
+
 (defn review-input
   "The text the review reads: the stage document (named, or said to be not
-  found), the Blueprint, then the checklist."
-  [stage-name stage-text blueprint-name blueprint-text checklist]
+  found), the requirements (the same), the Blueprint, then the checklist."
+  [stage-name stage-text requirements-text blueprint-name blueprint-text checklist]
   (str "=== " (or stage-name "the stage document") (when-not stage-text " (not found)") " ===\n"
        (or stage-text "")
+       "\n\n=== " requirements-name (when-not requirements-text " (not found)") " ===\n"
+       (or requirements-text "")
        "\n\n=== " blueprint-name " ===\n" blueprint-text
        "\n\n=== THE CHECKLIST (method.md §07, the blueprint, and §06's rules for shapes and targets) ===\n"
        checklist))
@@ -163,7 +181,9 @@
         stage-name (stage-document-name bp-text)
         stage-file (when stage-name (fs/path (fs/parent blueprint-path) stage-name))
         stage-text (when (and stage-file (fs/exists? stage-file)) (slurp (str stage-file)))
-        input (review-input stage-name stage-text bp-name bp-text (checklist (slurp (str method-path))))
+        req-file (fs/path plan-dir "docs" requirements-name)
+        req-text (when (fs/exists? req-file) (slurp (str req-file)))
+        input (review-input stage-name stage-text req-text bp-name bp-text (checklist (slurp (str method-path))))
         t0 (System/currentTimeMillis)
         r (agent/converse! role system-prompt input {:dir plan-dir} {:max-iterations 1 :tools #{}})]
     (when (= :failed (:status r))
@@ -174,7 +194,7 @@
                       {:blueprint-review/error :call-failed
                        :error (select-keys (:error r) [:harness/error :status])})))
     (merge {:findings (plan-review/parse-findings (:text r))
-            :documents (vec (remove nil? [(when stage-text stage-name) bp-name]))
+            :documents (vec (remove nil? [(when stage-text stage-name) (when req-text requirements-name) bp-name]))
             :ms (- (System/currentTimeMillis) t0)
             :input input
             :text (:text r)}
