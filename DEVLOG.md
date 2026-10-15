@@ -56,6 +56,19 @@ step by hand, named there.
 
 ## 2026-10-14
 
+### `bb next` reads the blueprint's human prep before a packet (plan 6.5, item 4)
+
+The proof build signed its stage-0 blueprint with three rows of §0, *Dispatch preconditions*,
+still open and each blocking the first packet, and `bb next` named the packet: the Architect's
+session read §0 first and listed the prep, but nothing made it, and a person at a terminal would
+have gone straight to the dispatch. `bb next` now reads §0's table before it starts a packet's
+run: a row whose Blocks names the packet (as a word) or says `every task`, and whose Status is
+open, comes first - the person's, with the row and where to mark it done. Status is read
+strictly: one that begins `done` is settled, one that begins `per run` is named in the packet's
+step as done again before every run, and anything else is open - a note such as "green" on a
+check made before each dispatch holds the packet until the row says `per run`, which is what
+it is. A run already under way is not held back. The template's §0 says the three words.
+
 ### `bb plan-check` reads the plan, and `bb next` keeps a stage past it (plan 6.5, item 4)
 
 The proof build closed stage 0 and `bb next` said "step 2 - the plan, for stage 0". `plan-check`

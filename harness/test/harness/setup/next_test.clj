@@ -165,6 +165,43 @@
                      (gate :security/signed {:date "d" :by ""}))]
       (is (= [14 "the person"] (step closed)) "the threat model's signature, before the next stage"))))
 
+(deftest the-blueprints-human-prep-comes-before-the-packet-it-blocks
+  ;; The proof build signed its blueprint with three of §0's rows open, each blocking t-01, and
+  ;; `bb next` said "step 11 - a packet"; the Architect's session read §0 first, this time.
+  (let [text (str "# Blueprint\n\n## 0. Dispatch preconditions — HUMAN PREP (not task packets)\n\n"
+                  "> guidance\n\n| # | Prep | Blocks | Status |\n|---|---|---|---|\n"
+                  "| HP-0 | | t-0n | |\n"
+                  "| HP-1 | a library pinned | t-01 | done 2026-10-13 |\n"
+                  "| HP-2 | the content synced | t-01, t-02 | |\n"
+                  "| HP-3 | the balance above the floor | every task | per run |\n"
+                  "| HP-4 | colour tokens | t-04 | open |\n"
+                  "| HP-5 | an account | t-010 | |\n"
+                  "\n## 1. Data shapes\n\n| # | Prep | Blocks | Status |\n|---|---|---|---|\n| HP-9 | not §0 | t-01 | |\n")
+        rows (next/preconditions text)
+        signed (with-stage {:blueprint "stage-1-blueprint.md" :reviewed? true :packets ["t-01" "t-02" "t-04"]
+                            :gates {:stage/id "1" :stage/approved {:date "d" :cap 20 :by "Ada"} :blueprint/signed {:date "d" :by "Ada"}}
+                            :preconditions rows})]
+    (is (= ["HP-1" "HP-2" "HP-3" "HP-4" "HP-5"] (mapv :id rows)) "§0 only; the template's empty HP-0 is not a row")
+    (is (= [:done :open :per-run :open :open] (mapv (comp next/precondition-state :status) rows)))
+    (is (= :open (next/precondition-state "green 2026-10-13")) "a word that is not done or per run is open")
+    (is (= :done (next/precondition-state "**Done** 2026-10-13")))
+    (is (not (next/blocks? "t-010" "t-01")) "an id is a word")
+    (is (next/blocks? "Every task" "t-07"))
+    (let [a (next/next-action signed)]
+      (is (= [11 "the person (with the Architect's session)"] ((juxt :step :owner) a)))
+      (is (str/starts-with? (:run a) "do HP-2 (the content synced), then set its Status to done in docs/stages/stage-1-blueprint.md §0"))
+      (is (= "HP-2 is open in docs/stages/stage-1-blueprint.md §0 and blocks t-01" (:because a))))
+    (testing "settled, the packet - with the per-run prep named in its step, not as a stop"
+      (let [a (next/next-action (assoc-in signed [:stage :preconditions 1 :status] "done"))]
+        (is (= [11 "the Architect's session"] ((juxt :step :owner) a)))
+        (is (str/starts-with? (:run a) "per run, first HP-3 (docs/stages/stage-1-blueprint.md §0); then bb spec-from-blueprint"))))
+    (testing "a row blocking another packet does not stop this one; it stops its own"
+      (let [s (-> signed (assoc-in [:stage :preconditions 1 :status] "done") (assoc-in [:stage :merged] #{"t-01" "t-02"}))]
+        (is (= "HP-4 is open in docs/stages/stage-1-blueprint.md §0 and blocks t-04" (:because (next/next-action s))))))
+    (testing "a run already under way is not held back"
+      (is (= 12 (:step (next/next-action (assoc-in signed [:stage :runs] {"t-01" :running}))))))
+    (is (= [] (next/preconditions "# A blueprint with no §0\n")))))
+
 (deftest a-stage-plans-kind-is-its-kind-line
   (is (= "pre-release" (next/stage-kind "# Stage 5\n\n**Status:** PLANNED\n**Kind:** pre-release  \n**Version:** 0.1\n")))
   (is (= "walking skeleton" (next/stage-kind "**Kind:** walking skeleton\n")))
@@ -223,6 +260,7 @@
       (is (= ["t1" "t2"] (:packets s)) "in the blueprint's order")
       (is (= #{"t1"} (:merged s)))
       (is (= {"t2" :awaiting-merge} (:runs s)) "the latest record's status, by its start")
+      (is (= [] (:preconditions s)) "a blueprint with no §0 has no human prep")
       (is (seq (:plan-problems f)) "the plan check ran, and this workspace has no overlay, no layers.edn, no loop.edn")
       (let [a (next/next-action f)]
         (is (= 13 (:step a)) "a stage under way keeps its own step")

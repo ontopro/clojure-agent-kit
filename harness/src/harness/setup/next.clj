@@ -12,8 +12,8 @@
   FIVE FACTS, EVERY ONE A FILE. Is there a workspace; does the plan check
   pass; which stage is pulled and where its human gates stand
   (`docs/stages/stage-N-gates.edn`, the record the person writes); is its
-  blueprint written, reviewed, signed; which of its packets have a merged
-  record under the build's `runs/`. Before a workspace exists the next action
+  blueprint written, reviewed, signed, and its §0's human prep done; which of
+  its packets have a merged record under the build's `runs/`. Before a workspace exists the next action
   is setup (`bb self-check`, `bb init` in KIT's clone); in a workspace whose
   `source.md` names no brief yet, scoping - `/kit-scoping`, then `bb brief`.
 
@@ -67,6 +67,51 @@
              (str/blank? by)
              (contains? names-no-one (str/lower-case (str/trim by)))))))
 
+;; ---------------------------------------------------------------------------
+;; the blueprint's §0: what a person does before a packet is dispatched
+;; ---------------------------------------------------------------------------
+
+(defn- cells [line]
+  (mapv str/trim (str/split (str/replace (str/trim line) #"^\||\|$" "") #"\|" -1)))
+
+(defn preconditions
+  "The rows of a blueprint's §0, *Dispatch preconditions* (the template's `# | Prep | Blocks |
+  Status` table), as `{:id :prep :blocks :status}` in document order: every row whose `#` is
+  `HP-n` and whose Prep is written - the template's empty `HP-0` row is not one."
+  [text]
+  (let [section (->> (str/split-lines text)
+                     (drop-while #(not (re-find #"^## 0\." %)))
+                     rest
+                     (take-while #(not (re-find #"^#{1,2} " %))))
+        [header & rows] (filter #(str/starts-with? (str/trim %) "|") section)
+        col (when header (into {} (map-indexed (fn [i c] [(str/lower-case c) i]) (cells header))))]
+    (vec (for [r rows
+               :let [c (cells r)
+                     at #(get c (get col % -1) "")
+                     id (str/replace (at "#") #"[*`]" "")]
+               :when (and (re-matches #"HP-\d+" id) (not (str/blank? (at "prep"))))]
+           {:id id :prep (at "prep") :blocks (at "blocks") :status (at "status")}))))
+
+(defn precondition-state
+  "`:done`, `:per-run` or `:open`, from a §0 row's Status: one that begins `done` is settled,
+  one that begins `per run` is done again before every run of what it blocks, and anything
+  else - blank, `open`, `green`, a note - is open."
+  [status]
+  (let [s (-> status str/lower-case (str/replace #"[*_`]" "") str/trim)]
+    (cond (str/starts-with? s "done") :done
+          (str/starts-with? s "per run") :per-run
+          :else :open)))
+
+(defn blocks?
+  "Does a §0 row's Blocks name the packet `task-id` - the id as a word, or `every task`?"
+  [blocks task-id]
+  (or (boolean (re-find #"(?i)\bevery task\b" blocks))
+      (boolean (re-find (re-pattern (str "(?<![\\w-])" (java.util.regex.Pattern/quote task-id) "(?![\\w-])")) blocks))))
+
+(defn- prep-line [{:keys [id prep]}]
+  (let [p (str/replace prep #"\s+" " ")]
+    (str id " (" (if (> (count p) 90) (str (subs p 0 90) "…") p) ")")))
+
 (def ^:private signed-gates
   "The gates that are a sign-off, in the order they are passed; `:stage/closed` names no signer."
   [:stage/approved :blueprint/signed :security/signed])
@@ -79,14 +124,25 @@
   with a merged record, `:runs` task id → the latest record's status for the
   rest. A pre-release stage has a fourth gate, its threat model signed, which
   comes before its close. A sign-off whose `:by` names no one (`unnamed?`) is
-  said before anything that follows it."
-  [{:keys [id plan kind gates blueprint reviewed? packets merged runs]}]
+  said before anything that follows it. Before a packet's run is started, the blueprint's §0
+  (`:preconditions`): a row still open that blocks it comes first, the person's; a `per run` row
+  is named with the packet's step."
+  [{:keys [id plan kind gates blueprint reviewed? packets merged runs preconditions]}]
   (let [{:stage/keys [approved closed] :blueprint/keys [signed]} gates
         spike? (= 0 id)
         unsigned-threat-model? (and (= "pre-release" kind) (nil? (:security/signed gates)))
         sign-threat-model (str "every line of docs/02-architecture.md §15 answered with its evidence, then "
                                ":security/signed {:date :by <name>} in " (gates-file id))
-        unnamed-gate (first (filter #(unnamed? (get gates %)) signed-gates))]
+        unnamed-gate (first (filter #(unnamed? (get gates %)) signed-gates))
+        next-packet (first (remove merged packets))
+        prep-for (fn [state] (filter #(and (= state (precondition-state (:status %))) (blocks? (:blocks %) next-packet))
+                                     preconditions))
+        open-prep (when (and next-packet (contains? #{nil :abandoned} (get runs next-packet))) (prep-for :open))
+        per-run (when next-packet (seq (map :id (prep-for :per-run))))
+        start-packet (fn [t because]
+                       (action 11 architect (str (when per-run (str "per run, first " (str/join ", " per-run) " (docs/stages/" blueprint " §0); then "))
+                                                 "bb spec-from-blueprint docs/stages/" blueprint " " t " <run-dir>/spec.edn, then bb run-loop start <run-dir>")
+                               because))]
     (cond
       (nil? gates)
       (action (if spike? 5 7) person
@@ -135,18 +191,23 @@
       (action 8 architect (str "add the packets to docs/stages/" blueprint)
               (str "docs/stages/" blueprint " carries no packet (a fence whose first form has a :task/id)"))
 
+      (seq open-prep)
+      (let [[hp & more] open-prep]
+        (action 11 (str person " (with the Architect's session)")
+                (str "do " (prep-line hp) ", then set its Status to done in docs/stages/" blueprint " §0")
+                (str (:id hp) " is open in docs/stages/" blueprint " §0 and blocks " next-packet
+                     (when (seq more) (str "; open before it too: " (str/join ", " (map :id more)))))))
+
       (some #(not (merged %)) packets)
-      (let [t (first (remove merged packets))
+      (let [t next-packet
             status (get runs t)]
         (case status
           :awaiting-merge (action 13 person (str "bb run-loop merge <run-dir> <decision.edn> for " t)
                                   (str "the run for " t " is stopped :awaiting-merge"))
           :escalated (action 12 person (str "read the run for " t " and decide; then bb run-loop run <run-dir>")
                              (str "the run for " t " is :escalated"))
-          :abandoned (action 11 architect (str "bb spec-from-blueprint docs/stages/" blueprint " " t " <run-dir>/spec.edn, then bb run-loop start <run-dir>")
-                             (str "the run for " t " was abandoned; no merged record"))
-          nil (action 11 architect (str "bb spec-from-blueprint docs/stages/" blueprint " " t " <run-dir>/spec.edn, then bb run-loop start <run-dir>")
-                      (str t " has no run record; " (count merged) " of " (count packets) " packets merged"))
+          :abandoned (start-packet t (str "the run for " t " was abandoned; no merged record"))
+          nil (start-packet t (str t " has no run record; " (count merged) " of " (count packets) " packets merged"))
           (action 12 architect (str "bb run-loop run <run-dir> for " t)
                   (str "the run for " t " is " status))))
 
@@ -290,8 +351,8 @@
           stages (stage-files (fs/path build "docs" "stages"))
           [id files] (last stages)
           statuses (run-statuses (:workspace/records ws))
-          packets (when-let [bp (:blueprint files)]
-                    (mapv :task/id (blueprint/packets (slurp (str (fs/path build "docs" "stages" bp))))))]
+          bp-text (some->> (:blueprint files) (fs/path build "docs" "stages") str slurp)
+          packets (when bp-text (mapv :task/id (blueprint/packets bp-text)))]
       {:workspace? true
        :build (str (fs/relativize (fs/absolutize (:workspace/dir ws)) (fs/absolutize build)))
        :brief? (and (fs/exists? source) (not (str/includes? (slurp (str source)) "<the brief>")))
@@ -302,6 +363,7 @@
                         :kind (some->> (:plan files) (fs/path build "docs" "stages") str slurp stage-kind)
                         :reviewed? (fs/exists? (fs/path build "reviews" (str "stage-" id) "blueprint-review.edn"))
                         :packets (or packets [])
+                        :preconditions (if bp-text (preconditions bp-text) [])
                         :merged (into #{} (filter #(= :merged (statuses %))) packets)
                         :runs (into {} (for [t packets :let [s (statuses t)] :when (and s (not= :merged s))] [t s]))}))})))
 

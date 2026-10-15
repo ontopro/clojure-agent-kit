@@ -16,6 +16,10 @@
 > Anything a task depends on that no agent can do: an account, a licensed download, a
 > signed agreement, a provisioned machine. Naming these up front is cheaper than
 > discovering them at attempt one.
+>
+> Status is `done` and its date once the prep is done, or `per run` when it is done again before
+> every run of what it blocks; anything else is open. Blocks names a packet's id, or `every task`:
+> `bb next` holds a packet behind a row still open that blocks it.
 
 | # | Prep | Blocks | Status |
 |---|---|---|---|
