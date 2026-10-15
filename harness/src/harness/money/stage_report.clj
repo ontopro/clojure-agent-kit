@@ -174,8 +174,9 @@
                "none in the blueprint"))
         (when (or security-checks (= "pre-release" kind))
           (str "  Security checks: "
-               (if-let [{:keys [ok warn fail skipped]} (:counts security-checks)]
-                 (str ok " ok, " warn " warn, " fail " fail, " skipped " skipped (" (:date security-checks) ")")
+               (if-let [{:keys [ok warn fail skipped accepted]} (:counts security-checks)]
+                 (str ok " ok, " warn " warn, " fail " fail, " skipped " skipped"
+                      (when (pos? (or accepted 0)) (str ", " accepted " accepted")) " (" (:date security-checks) ")")
                  "no record (the kit-stage-end skill runs the security pack with --record docs/stages/stage-N-security.edn)")))
         (for [[k label cmd] [[:deps "Dependencies" "deps"] [:secrets "Secrets" "secrets"]]]
           (when (or (get security-scans k) (= "pre-release" kind))

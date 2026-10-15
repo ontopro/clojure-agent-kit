@@ -203,8 +203,9 @@
     (when-let [f (:record opts)]
       (some-> (fs/parent f) fs/create-dirs)
       (spit f edn-text))
-    (println (format "\n  %d ok, %d warn, %d fail, %d skipped - %s/security.md%s"
-                     (:ok counts) (:warn counts) (:fail counts) (:skipped counts) dir
+    (println (format "\n  %d ok, %d warn, %d fail, %d skipped%s - %s/security.md%s"
+                     (:ok counts) (:warn counts) (:fail counts) (:skipped counts)
+                     (if (:accepted counts) (str ", " (:accepted counts) " accepted") "") dir
                      (if-let [f (:record opts)] (str ", recorded to " f) "")))
     (:ok? record)))
 

@@ -6,7 +6,9 @@
   A response is `{:path :method :status :headers [[name value] ...] :body}`, names in lower
   case, a header that came twice twice; or `{:path :method :error \"...\"}` when no answer came.
   A row is `{:check :status :subject :says :fix}`, `:status` one of `:ok`, `:warn`, `:fail` and
-  `:skipped`; only a `:fail` makes the run fail, and a warn or a skip says why in `:says`."
+  `:skipped`, or `:accepted` - a fail or a warn the project read and accepted, by its exact
+  text, in the routes file (`accept`); only a `:fail` makes the run fail, and a warn, a skip or an
+  acceptance says why in `:says`."
   (:require [clojure.string :as str]))
 
 ;; ---------------------------------------------------------------------------
@@ -228,13 +230,19 @@
 (def leaks
   "What an error page must not carry, as [pattern what-it-is]: a stack frame, a compiled
   Clojure function's class (`ns$fn`), a source file and line, an exception's class name, an
-  absolute path on a machine."
+  absolute path on a machine.
+
+  A PATH ON A MACHINE STARTS A PATH. Unanchored, `/home/` matched inside the application's own
+  asset address - `/assets/content/extracted/pictures/home/home-logo.jpg`, a folder named `home` -
+  and failed a page not found. So the path begins the text, or follows a space, a quote, a `>` or
+  `file://`; never a path segment (a letter, a digit, `.`, `-`, `~`, `%`, `/`), and never an
+  `href`, `src` or `action` value, which is an address on the site."
   [[#"\bat [\w.$]+\([\w.]+\.(?:java|clj|cljc):\d+\)" "a stack frame"]
    [#"\b[a-z][\w-]*(?:\.[\w-]+)+\$[\w-]+" "a compiled function's class"]
    [#"\b[\w-]+\.(?:clj|cljc|java):\d+" "a source file and line"]
    [#"\b(?:java|clojure|javax|jakarta|org\.eclipse\.jetty)\.[\w.]+\.[A-Z]\w+" "a class name"]
    [#"\b\w*Exception(?:Info)?\b" "an exception's class"]
-   [#"(?:/Users/|/home/|/root/|/var/folders/|[A-Z]:\\\\)\S+" "a path on a machine"]])
+   [#"(?:(?<=file://)|(?<![\w.~%/-])(?<!(?:href|src|action)=[\"']))(?:/Users/|/home/|/root/|/var/folders/|[A-Z]:\\\\)\S+" "a path on a machine"]])
 
 (defn leak
   "What the body names that an error page must not: [what-it-is the-text], or nil."
@@ -298,31 +306,51 @@
 ;; the whole table, and its renderings
 ;; ---------------------------------------------------------------------------
 
+(defn accept
+  "`rows` with each fail or warn whose `:says` is exactly a key of `accepted` - the routes
+  file's `:accepted-findings {\"the row's text\" {:reason \"...\"}}` - made `:accepted`, its reason
+  added to what it says. An acceptance with no reason accepts nothing.
+
+  A KNOWN FALSE ALARM HAD NOWHERE TO GO. A fail the project had read and judged - a pattern
+  matching its own asset address - stood in the stage plan with its reason, and failed every
+  run after. By the exact text, so the acceptance lapses the moment the row says anything else:
+  a new page, a new path, a new leak is a new row. Shown as accepted, never as ok."
+  [rows accepted]
+  (mapv (fn [{:keys [status says] :as r}]
+          (let [reason (some-> (get accepted says) :reason str str/trim not-empty)]
+            (if (and reason (#{:fail :warn} status))
+              (-> r (assoc :status :accepted :says (str says " - accepted: " reason)) (dissoc :fix))
+              r)))
+        rows))
+
 (defn rows
   "Every row, from what the probe got: `probes` is `{:pages [resp] :not-found resp :malformed
   resp :throws [resp] :forms [[resp default?]] :protected [resp] :listings [resp] :traversals
   [resp] :tls tls-or-nil}`; `routes` the routes file merged over its defaults; `https?` the
-  base's scheme. The header rows read every response the probe got."
+  base's scheme. The header rows read every response the probe got; the routes file's
+  `:accepted-findings` are applied last (`accept`)."
   [{:keys [pages not-found malformed throws forms protected listings traversals tls]} routes https?]
   (let [all (concat pages [not-found] throws (map first forms) protected listings
                     (map #(assoc % :odd? true) (cons malformed traversals)))]
-    (vec (concat (header-rows all https?)
-                 [(csp-row all (= :required (:csp routes)))
-                  (server-row all)]
-                 (cookie-rows all https?)
-                 (map (fn [[r default?]] (csrf-row r default?)) forms)
-                 (if (seq protected)
-                   (map #(protected-row % (:login routes)) protected)
-                   [(row :protected :skipped ":protected" "the routes file names no route that needs a login")])
-                 [(error-row not-found "a page that does not exist")
-                  (error-row malformed "a malformed request")]
-                 (map #(error-row % "a route the project makes throw") throws)
-                 (map listing-row listings)
-                 (map traversal-row traversals)
-                 [(tls-row tls)]))))
+    (accept
+     (vec (concat (header-rows all https?)
+                  [(csp-row all (= :required (:csp routes)))
+                   (server-row all)]
+                  (cookie-rows all https?)
+                  (map (fn [[r default?]] (csrf-row r default?)) forms)
+                  (if (seq protected)
+                    (map #(protected-row % (:login routes)) protected)
+                    [(row :protected :skipped ":protected" "the routes file names no route that needs a login")])
+                  [(error-row not-found "a page that does not exist")
+                   (error-row malformed "a malformed request")]
+                  (map #(error-row % "a route the project makes throw") throws)
+                  (map listing-row listings)
+                  (map traversal-row traversals)
+                  [(tls-row tls)]))
+     (:accepted-findings routes))))
 
 (defn counts
-  "How many rows of each status."
+  "How many rows of each status; `:accepted` only when a row is."
   [rows]
   (merge {:ok 0 :warn 0 :fail 0 :skipped 0} (frequencies (map :status rows))))
 

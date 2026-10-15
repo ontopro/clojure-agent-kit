@@ -145,3 +145,44 @@
     (is (= 1 (:warn counts)) "the missing CSP")
     (is (every? #(contains? sc/fixes (:check %)) rows))
     (is (str/includes? (sc/markdown {:base "http://localhost:8000" :at "now"} rows) "| csp | warn |"))))
+
+(deftest a-path-on-a-machine-starts-a-path
+  (testing "a machine's path, where an error page would print one"
+    (doseq [body ["/home/deploy/app/config.edn" "loading /home/deploy/app/config.edn failed"
+                  "<pre>/Users/someone/app/src/hc/db.clj</pre>" "file:///home/deploy/app.jar"
+                  "\"/root/.m2/repository\"" "C:\\\\Users\\\\someone\\\\app"]]
+      (is (= "a path on a machine" (first (sc/leak body))) body)))
+  (testing "a folder named home inside the site's own address is not one"
+    (doseq [body ["<img src=\"/assets/content/extracted/pictures/home/home-logo-new-with-ribbon.jpg\">"
+                  "see https://example.org/home/about"
+                  "<a href=\"/home/about\">Home</a>"
+                  "<img src='/home/logo.png'>"
+                  "/assets/content/extracted/pictures/home/home-logo.jpg"]]
+      (is (nil? (sc/leak body)) body))))
+
+(deftest a-finding-is-accepted-by-its-exact-text-with-a-reason
+  (let [failing (sc/error-row (resp "/nope" 404 [] "<pre>/home/deploy/app.clj</pre>") "a page that does not exist")
+        says (:says failing)
+        ok-row (sc/row :static :ok "/assets/" "404, no listing")]
+    (is (= :fail (:status failing)))
+    (testing "accepted: the status says so, the reason is shown, the fix is gone, and it fails nothing"
+      (let [[r ok] (sc/accept [failing ok-row] {says {:reason "the page quotes the deploy guide on purpose"}})]
+        (is (= :accepted (:status r)))
+        (is (= (str says " - accepted: the page quotes the deploy guide on purpose") (:says r)))
+        (is (nil? (:fix r)))
+        (is (= ok-row ok))
+        (is (= {:ok 1 :warn 0 :fail 0 :skipped 0 :accepted 1} (sc/counts [r ok])))))
+    (testing "not by other text, and not without a reason"
+      (is (= [failing] (sc/accept [failing] {(str says " ") {:reason "r"}})))
+      (is (= [failing] (sc/accept [failing] {says {:reason "  "}})))
+      (is (= [failing] (sc/accept [failing] {says {}}))))
+    (testing "an ok row is never made accepted"
+      (is (= [ok-row] (sc/accept [ok-row] {"404, no listing" {:reason "r"}}))))
+    (testing "the whole table applies the routes file's acceptances"
+      (let [probes {:pages [(resp "/" 200)] :not-found (resp "/nope" 404 good-headers "<pre>/home/deploy/app.clj</pre>")
+                    :malformed (resp "/%zz%" 400) :throws [] :forms [] :protected []
+                    :listings [] :traversals [] :tls nil}
+            rows (sc/rows probes {:csp :optional :accepted-findings {says {:reason "known"}}} false)]
+        (is (zero? (:fail (sc/counts rows))))
+        (is (= 1 (:accepted (sc/counts rows))))
+        (is (str/includes? (sc/markdown {:base "b" :at "now"} rows) "| errors | accepted |"))))))

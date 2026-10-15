@@ -25,6 +25,7 @@ one already serving. Defaults are the Stack Lite template's: `bb serve`, `/healt
 > Only a failing row fails the run (exit 1). A warn is a choice the project has not made yet,
 > or a weakness that is not the application's; a skip says what was not tried and why. Read
 > both - a skipped CSRF row on an application with forms means the routes file is missing them.
+> An accepted row is a fail or a warn the project read and accepted in the routes file.
 
 ## The rows
 
@@ -36,7 +37,7 @@ one already serving. Defaults are the Stack Lite template's: `bb serve`, `/healt
 | `cookies` | every `Set-Cookie` seen | no `HttpOnly`, no `SameSite`, `SameSite=None` without `Secure`; no `Secure` on an https base |
 | `csrf` | a POST with no token to each `:forms` route, `/` when none is named | accepted, redirected or an error; a named route taking no POST (the list is wrong). `/` taking no POST is a skip |
 | `protected` | each `:protected` route, with no session | answered 2xx, redirected anywhere but `:login`, or a 404 (the list is wrong) |
-| `errors` | a page that does not exist, a malformed path, each `:throws` route | the page carries a stack frame, a compiled function's class, a source file and line, a class name, an exception's name or a path on a machine; a missing page answering 200 is a warn |
+| `errors` | a page that does not exist, a malformed path, each `:throws` route | the page carries a stack frame, a compiled function's class, a source file and line, a class name, an exception's name or a path on a machine (one that starts a path - not a folder named `home` inside the site's own address, nor an `href` or `src` value); a missing page answering 200 is a warn |
 | `static` | each `:static` folder itself, and five paths out of it (`..` as written, escaped, with an escaped slash) | a listing; a file from outside the folder coming back (a page coming back is a warn) |
 | `tls` | a handshake, on an https base | the certificate or the host name does not validate, or the protocol is older than TLS 1.2 |
 
@@ -74,6 +75,17 @@ stage plan says what it adds:
 
 Every key is optional; the defaults are the ones shown for `:static` and `:csp`, and none for
 the rest. A public site with no forms and no login has no file at all.
+
+A fail or a warn the project has read and judged is accepted by its exact text - the row's
+"Says" as the table printed it - with its reason:
+
+```clojure
+{:accepted-findings {"a page that does not exist, 404: the page carries ..." {:reason "why it is not a leak"}}}
+```
+
+The row then says `accepted` and its reason, never `ok`, and fails nothing. An acceptance with no
+reason accepts nothing, and one whose row now says anything else accepts nothing: a new page, path
+or leak is a new row to read.
 
 ## Where it writes
 

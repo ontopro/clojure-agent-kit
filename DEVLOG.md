@@ -56,6 +56,21 @@ step by hand, named there.
 
 ## 2026-10-14
 
+### The security pack's path check starts a path, and a judged finding can be accepted (plan 6.5, item 8)
+
+The proof build's first stage ended with the pack failing its page not found for "a path on a
+machine": `/home/home-logo-new-with-ribbon.jpg`, the tail of the application's own logo address,
+`/assets/content/extracted/pictures/home/...` - a folder named `home`. The pattern had no anchor.
+It now matches a path only where one starts: at the text's start or after a space, a quote, a
+`>` or `file://`, never after a path segment, and never as an `href`, `src` or `action` value, an
+address on the site. A test holds the real logo address, a URL with `/home/`, and a root-relative
+link, against six paths a server could print. And the fail could not be accepted: it stood in the
+stage plan with its reason and failed every run after. A fail or a warn the project has judged now
+goes in the routes file under `:accepted-findings`, keyed by the row's exact text, with a reason:
+the row says `accepted` and why, never `ok`, and fails nothing. An acceptance with no reason, or
+whose row now says anything else, accepts nothing - a new page or a new leak is a new row. The
+pack's summary and the stage report count accepted rows where there are any.
+
 ### The blueprint review reads the requirements, and two rules for targets (plan 6.5, item 7)
 
 The proof build's first stage paid for two things its blueprint review passed. A composition root
