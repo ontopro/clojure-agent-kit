@@ -336,3 +336,14 @@
     (is (nil? (:template/local-root (health/record kit-dir checks pin []))) "no key when the pin was used")
     (is (str/includes? (health/render {"x" (assoc rec :platform {:key "x" :label "X"} :kit {:short "abc1234" :dirty? false})})
                        "`kit-v1` (`a2c0eaa`) from a LOCAL CLONE, not the pin"))))
+
+(deftest the-serve-check-picks-its-own-port-and-a-busy-one-is-said-with-its-holder
+  (let [port (health/free-port)]
+    (is (< 1024 port 65536))
+    (is (health/port-free? port) "free when picked")
+    (with-open [_held (java.net.ServerSocket. port)]
+      (is (not (health/port-free? port)))
+      (is (string? (health/port-holder port)))
+      (is (or (str/includes? (health/port-holder port) "pid ")
+              (str/includes? (health/port-holder port) "lsof"))
+          "the holder named, or lsof said absent"))))

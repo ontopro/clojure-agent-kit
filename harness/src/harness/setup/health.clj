@@ -392,8 +392,35 @@
 ;; serve
 ;; ---------------------------------------------------------------------------
 
-(def serve-port 8000)
 (def serve-timeout-ms 120000)
+
+(defn free-port
+  "A port nothing holds, picked by binding 0 and reading what the kernel gave. THE CHECK'S OWN
+  PORT, NEVER THE PERSON'S: the serve step bound 8000, the template's default, and a `bb serve`
+  of this project's or another's left running - the first project met one from an archived
+  site - failed the check for a reason that was not the KIT's. The template (kit-v1.3) takes
+  `PORT`, so the application is told the port rather than found on one."
+  []
+  (with-open [s (java.net.ServerSocket. 0)] (.getLocalPort s)))
+
+(defn port-holder
+  "What holds `port`, for a message: `pid <n> (<command>) in <folder>` per listener, from
+  `lsof`; \"unknown (lsof absent)\" where it is not installed. A busy port said as a number is a
+  fact; said with its holder it is a thing to stop."
+  [port]
+  (try (let [out (:out (p/shell {:out :string :err :discard :continue true}
+                                "lsof" "-nP" (str "-iTCP:" port) "-sTCP:LISTEN" "-Fpc"))
+             ;; -F: one field per line, `p<pid>` then `c<command>`
+             pairs (->> (str/split-lines (str out))
+                        (partition-by #(str/starts-with? % "p"))
+                        (partition 2)
+                        (map (fn [[[p] cs]] [(subs p 1) (some #(when (str/starts-with? % "c") (subs % 1)) cs)])))
+             cwd (fn [pid] (some->> (:out (p/shell {:out :string :err :discard :continue true} "lsof" "-a" "-p" pid "-d" "cwd" "-Fn"))
+                                    str/split-lines (some #(when (str/starts-with? % "n") (subs % 1)))))]
+         (if (seq pairs)
+           (str/join ", " (for [[pid cmd] pairs] (str "pid " pid " (" cmd ")" (when-let [d (cwd pid)] (str " in " d)))))
+           "nothing found listening (lsof saw no listener)"))
+       (catch Exception _ "unknown (lsof absent)")))
 
 (defn- answers?
   "Does anything accept a connection on `port` at `addr`?"
@@ -429,45 +456,47 @@
   stopped, the port free again. A busy port is reported, not tried around: the template's
   port is configuration, not a flag."
   [{:keys [dir] :as subject}]
-  (if-not (port-free? serve-port)
-    (result :serve subject false 0
-            (str "port " serve-port " is in use; stop what holds it and run again"))
-    (let [url (str "http://localhost:" serve-port "/")
-          [[status body missing-asset] ms]
-          (timed
-           (fn []
-             (let [pr (p/process {:dir dir :out :string :err :string} "bb" "serve")
-                   deadline (+ (System/currentTimeMillis) serve-timeout-ms)]
-               (try
-                 (loop []
-                   (let [s (get-status url)]
-                     (cond
+  (let [serve-port (free-port)]
+    (if-not (port-free? serve-port)
+    ;; picked free a moment ago and taken since: said with its holder, never tried around
+      (result :serve subject false 0
+              (str "port " serve-port ", picked free, is in use by " (port-holder serve-port) "; run again"))
+      (let [url (str "http://localhost:" serve-port "/")
+            [[status body missing-asset] ms]
+            (timed
+             (fn []
+               (let [pr (p/process {:dir dir :out :string :err :string} "bb" "serve" "--port" (str serve-port))
+                     deadline (+ (System/currentTimeMillis) serve-timeout-ms)]
+                 (try
+                   (loop []
+                     (let [s (get-status url)]
+                       (cond
                        ;; AND A MISSING ASSET ASKED FOR: the template's cached handler once answered
                        ;; 200 with an empty body, cached for a year, where a 404 belonged
-                       (= 200 s) [200 (try (:body (http/get url {:throw false :timeout 2000}))
-                                           (catch Exception _ nil))
-                                  (get-status (str url "assets/no-such-file-" (System/currentTimeMillis) ".css"))]
-                       (> (System/currentTimeMillis) deadline) [:timeout]
-                       (not (.isAlive (:proc pr))) [:exited (:exit @pr)]
-                       :else (do (Thread/sleep 1000) (recur)))))
-                 (finally
-                   (p/destroy-tree pr)
-                   (deref pr 10000 nil))))))
-          freed? (loop [n 0]
-                   (cond (port-free? serve-port) true
-                         (> n 20) false
-                         :else (do (Thread/sleep 500) (recur (inc n)))))
-          missing (remove #(str/includes? (str body) %) kit-page-marks)]
-      (result :serve subject (and (= 200 status) (empty? missing) (= 404 missing-asset) freed?) ms
-              (cond
-                (not= 200 status) (str "no 200 from " url " within " (quot serve-timeout-ms 1000) "s ("
-                                       (pr-str status) ")")
-                (seq missing) (str "GET " url " -> 200, but not the KIT's first page: no "
-                                   (str/join ", " (map pr-str missing)) " - bb init writes it over the template's home-page")
-                (not= 404 missing-asset) (str "GET " url " -> 200, but a missing asset under /assets/ answered "
-                                              (pr-str missing-asset) ", not 404 - the template's asset handler (kit-v1.3 answers 404 in every profile)")
-                (not freed?) (str "served 200, but port " serve-port " was still held after the stop")
-                :else (str "GET " url " -> 200, the KIT's first page, a missing asset 404, then stopped; port free"))))))
+                         (= 200 s) [200 (try (:body (http/get url {:throw false :timeout 2000}))
+                                             (catch Exception _ nil))
+                                    (get-status (str url "assets/no-such-file-" (System/currentTimeMillis) ".css"))]
+                         (> (System/currentTimeMillis) deadline) [:timeout]
+                         (not (.isAlive (:proc pr))) [:exited (:exit @pr)]
+                         :else (do (Thread/sleep 1000) (recur)))))
+                   (finally
+                     (p/destroy-tree pr)
+                     (deref pr 10000 nil))))))
+            freed? (loop [n 0]
+                     (cond (port-free? serve-port) true
+                           (> n 20) false
+                           :else (do (Thread/sleep 500) (recur (inc n)))))
+            missing (remove #(str/includes? (str body) %) kit-page-marks)]
+        (result :serve subject (and (= 200 status) (empty? missing) (= 404 missing-asset) freed?) ms
+                (cond
+                  (not= 200 status) (str "no 200 from " url " within " (quot serve-timeout-ms 1000) "s ("
+                                         (pr-str status) ")")
+                  (seq missing) (str "GET " url " -> 200, but not the KIT's first page: no "
+                                     (str/join ", " (map pr-str missing)) " - bb init writes it over the template's home-page")
+                  (not= 404 missing-asset) (str "GET " url " -> 200, but a missing asset under /assets/ answered "
+                                                (pr-str missing-asset) ", not 404 - the template's asset handler (kit-v1.3 answers 404 in every profile)")
+                  (not freed?) (str "served 200, but port " serve-port " was still held after the stop")
+                  :else (str "GET " url " -> 200, the KIT's first page, a missing asset 404, then stopped; port free")))))))
 
 ;; ---------------------------------------------------------------------------
 ;; browser

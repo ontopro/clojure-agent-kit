@@ -723,4 +723,4 @@
                       "  cd " ws-dir " && claude\n\n"
                       "Every KIT command is run from there; `bb next` says what comes next at any point.\n"
                       "The application's own commands run in its folder - to see it:\n\n"
-                      "  cd " (fs/path ws-dir app) " && bb serve     # http://localhost:8000"))))))
+                      "  cd " (fs/path ws-dir app) " && bb serve     # it prints its address: http://localhost:8000, or a free port when 8000 is taken"))))))

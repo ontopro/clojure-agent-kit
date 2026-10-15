@@ -5,7 +5,8 @@
 ;;   bb --config <kit>/tools/browser/bb.edn check [--serve "<cmd>"] [--health <path>] [--base <url>]
 ;;        [--out <dir>] [--running] [--only screenshots|accessibility] [--width N]... [path ...]
 ;;
-;; Defaults: `bb serve`, `/health`, `http://localhost:8000`, both checks, width 1440, the path
+;; Defaults: `bb serve`, `/health`, a free port this pack picks (told to the server as PORT; `--base`
+;; names one instead, and `--running` keeps the template's 8000), both checks, width 1440, the path
 ;; `/`, the output under the workspace's `work/browser/<app>/` or `.local/browser/` (driver.clj).
 ;; `--running` uses the application already serving instead of starting one.
 ;;
@@ -29,7 +30,18 @@
           (= a "--out") (recur (rest more) (assoc-in m [:env "BROWSER_OUT"] (str (fs/absolutize (first more)))))
           :else (recur more (update m :rest conj a)))))
 
-(def opts (parse-args *command-line-args*))
+(defn with-own-port
+  "THE PACK'S OWN PORT, NEVER THE PERSON'S. With no `--base` and no APP_BASE, and a server to
+  start, the base is a free port picked here - the server is told it through PORT (server.clj),
+  the scripts through APP_BASE - so a `bb serve` left running, this project's or another's,
+  cannot clash with the check. `--running` keeps the template's default, the one already serving."
+  [opts]
+  (if (or (:running? opts) (get-in opts [:env "APP_BASE"]) (System/getenv "APP_BASE"))
+    opts
+    (assoc-in opts [:env "APP_BASE"]
+              (str "http://localhost:" (with-open [s (java.net.ServerSocket. 0)] (.getLocalPort s))))))
+
+(def opts (with-own-port (parse-args *command-line-args*)))
 
 (defn run! [script args]
   (let [{:keys [exit]} (apply p/shell {:continue true :extra-env (:env opts)} "bb" (str pack-dir "/" script) args)]

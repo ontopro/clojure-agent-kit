@@ -33,12 +33,33 @@
   (try (= 200 (:status (http/get (str base health-path) {:throw false :timeout 1000})))
        (catch Exception _ false)))
 
-(defn start-server!
-  "Starts the server and waits for it. Returns [process seconds-to-up]."
+(defn port-holder
+  "What holds the port, for a message: `pid <n> (<command>) in <folder>` per listener, from
+  `lsof`; \"unknown (lsof absent)\" where it is not installed. A busy port said as a number is a
+  fact; said with its holder it is a thing to stop."
   []
-  (when (up?) (throw (ex-info (str "something already answers on " base " - stop it, or pass --running") {:base base})))
+  (try (let [out (:out (p/shell {:out :string :err :discard :continue true}
+                                "lsof" "-nP" (str "-iTCP:" port) "-sTCP:LISTEN" "-Fpc"))
+             pairs (->> (str/split-lines (str out))
+                        (partition-by #(str/starts-with? % "p"))
+                        (partition 2)
+                        (map (fn [[[p] cs]] [(subs p 1) (some #(when (str/starts-with? % "c") (subs % 1)) cs)])))
+             cwd (fn [pid] (some->> (:out (p/shell {:out :string :err :discard :continue true} "lsof" "-a" "-p" pid "-d" "cwd" "-Fn"))
+                                    str/split-lines (some #(when (str/starts-with? % "n") (subs % 1)))))]
+         (if (seq pairs)
+           (str/join ", " (for [[pid cmd] pairs] (str "pid " pid " (" cmd ")" (when-let [d (cwd pid)] (str " in " d)))))
+           "nothing found listening (lsof saw no listener)"))
+       (catch Exception _ "unknown (lsof absent)")))
+
+(defn start-server!
+  "Starts the server and waits for it. Returns [process seconds-to-up]. THE PORT IS TOLD, NOT
+  FOUND: the serve command gets `PORT` - the KIT's template takes it - so the application comes up
+  where this pack will look, on the port the pack picked (`check.bb`) or the one `--base` named."
+  []
+  (when (up?) (throw (ex-info (str "something already answers on " base " - " (port-holder) " - stop it, or pass --running") {:base base})))
   (let [t0 (System/nanoTime)
-        proc (p/process {:cmd (p/tokenize serve-cmd) :out :string :err :string :shutdown :destroy-tree})]
+        proc (p/process {:cmd (p/tokenize serve-cmd) :out :string :err :string :shutdown :destroy-tree
+                         :extra-env {"PORT" (str port)}})]
     (loop [i 0]
       (cond (up?) [proc (/ (- (System/nanoTime) t0) 1e9)]
             (not (.isAlive (:proc proc))) (throw (ex-info (str "`" serve-cmd "` exited before " health-path " answered")

@@ -18,8 +18,9 @@ bb --config <kit>/tools/security/bb.edn check [--serve "<cmd>"] [--health <path>
 
 Like the browser pack, it serves the application, checks and stops it - through the browser
 pack's own `server.clj`, so the two packs travel together - or, with `--running`, checks the
-one already serving. Defaults are the Stack Lite template's: `bb serve`, `/health`,
-`http://localhost:8000`.
+one already serving. Defaults are the Stack Lite template's: `bb serve`, `/health`, and a free port
+the pack picks and tells the server through `PORT` - never the person's 8000; `--base` names one,
+`--running` uses the one already serving.
 
 > [!IMPORTANT]
 > Only a failing row fails the run (exit 1). A warn is a choice the project has not made yet,

@@ -56,6 +56,22 @@ step by hand, named there.
 
 ## 2026-10-14
 
+### The KIT's checks start the application on a port they pick, and a busy port is said with its holder (plan 6.5, item 15)
+
+Port 8000 was fixed in the health check's serve step and in the two packs' defaults, so a
+`bb serve` left running - this project's, or another's from an archived site, as the first
+project met - failed a check for a reason that was not the KIT's. The template's `kit-v1.3`
+takes `PORT` (its layer 1, item 12), and this is the KIT's layer 2: the health check's serve
+step picks a free port and starts `bb serve --port <n>`; the browser pack and the security pack,
+with no `--base` and a server to start, pick one in `check.bb`, hand it to the server through
+`PORT` (`server.clj`) and to their scripts through `APP_BASE`, so the application comes up where
+the check will look and never on the person's port. `--base` names a port instead, `--running`
+keeps the template's default for the server already serving. Layer 4: wherever a port is still
+checked - the health step's own pick taken in the moment between, the packs' start finding
+something already answering - the busy port is said with what holds it, pid, command and
+folder, from `lsof`, or that `lsof` is absent; a busy port said as a number is a fact, said with
+its holder it is a thing to stop. `bb init`'s closing line no longer promises 8000.
+
 ### The pin moves to `kit-v1.3`, and a record from a local clone is refused (plan 6.5, item 15)
 
 `template-pins.edn` names the fork's candidate - `kit-v1.3`, commit `1c1838a`, the tag not yet

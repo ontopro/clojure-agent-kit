@@ -5,7 +5,8 @@
 ;;   bb --config <kit>/tools/security/bb.edn check [--serve "<cmd>"] [--health <path>] [--base <url>]
 ;;        [--running] [--routes <file>] [--out <dir>] [--record <file>]
 ;;
-;; Defaults: `bb serve`, `/health`, `http://localhost:8000` - the Stack Lite template's - and
+;; Defaults: `bb serve`, `/health`, a free port this pack picks (told to the server as PORT; `--base`
+;; names one, `--running` keeps the template's 8000) - and
 ;; the routes file's defaults (`security_check.clj` has the judgements, README.md the rows).
 ;; `--running` probes the application already serving instead of starting one; the serving is
 ;; the browser pack's `server.clj`, loaded from beside this pack, not a copy of it.
@@ -43,7 +44,18 @@
           (= a "--record") (recur (rest more) (assoc m :record (str (fs/absolutize (first more)))))
           :else (do (println "unknown argument:" a) (System/exit 2)))))
 
-(def opts (parse-args *command-line-args*))
+(defn with-own-port
+  "THE PACK'S OWN PORT, NEVER THE PERSON'S - as the browser pack's check.bb: with no `--base`,
+  no APP_BASE and a server to start, a free port picked here, told to the server through PORT
+  (the browser pack's server.clj) and read as the base below. `--running` keeps the template's
+  default, the one already serving."
+  [opts]
+  (if (or (:running? opts) (get-in opts [:env "APP_BASE"]) (System/getenv "APP_BASE"))
+    opts
+    (assoc-in opts [:env "APP_BASE"]
+              (str "http://localhost:" (with-open [s (java.net.ServerSocket. 0)] (.getLocalPort s))))))
+
+(def opts (with-own-port (parse-args *command-line-args*)))
 
 (def base (or (get-in opts [:env "APP_BASE"]) (System/getenv "APP_BASE") "http://localhost:8000"))
 (def uri (URI. base))

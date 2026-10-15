@@ -14,7 +14,10 @@ bb --config <kit>/tools/browser/bb.edn check [--serve "<cmd>"] [--health <path>]
 ```
 
 `<kit>` is the KIT's clone - the path a workspace's `loop.edn` already carries for the boundary
-gate. Defaults are the Stack Lite template's: `bb serve`, `/health`, `http://localhost:8000`.
+gate. Defaults are the Stack Lite template's: `bb serve`, `/health`, and a free port the pack picks and tells
+the server through `PORT` - never the person's 8000, so a `bb serve` left running cannot clash with a check;
+`--base` names a port instead, and `--running` uses the one already serving (8000 by default). A busy port
+is said with what holds it (pid, command, folder).
 A Biff application is `--serve "clj -M:dev" --base http://localhost:8080`; a bare deps project,
 whatever starts it.
 
