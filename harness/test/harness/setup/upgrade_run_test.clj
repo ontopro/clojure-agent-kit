@@ -347,23 +347,31 @@
     (is (str/includes? (:error (ur/choose-target ["0.6.7"] "0.6.5" ["0.6.5" "0.6.7"] "0.9.9")) "not a tag the remote has"))
     (is (str/includes? (:error (ur/choose-target ["0.6.7"] "0.6.5" ["0.6.5" "0.6.7"] "0.6.5-r0")) "not a release tag")))
   (testing "local changes: the KIT's own record files apart from the rest"
-    (is (= {:records ["harness/health/records/macos-arm64.edn" "harness/resources/known-good.edn"] :other ["README.md"]}
+    (is (= {:records ["harness/health/records/macos-arm64.edn" "harness/resources/known-good.edn"] :other ["README.md"] :untracked #{"README.md"}}
            (ur/local-changes " M harness/health/records/macos-arm64.edn\n M harness/resources/known-good.edn\n?? README.md\n")))
-    (is (= {:records [] :other []} (ur/local-changes ""))))
+    (is (= {:records [] :other [] :untracked #{}} (ur/local-changes "")))
+    (is (= #{"harness/health/records/linux-x64.edn"} (:untracked (ur/local-changes "?? harness/health/records/linux-x64.edn
+ M harness/resources/known-good.edn"))))
+    (is (= "`git -C KIT checkout -- harness/resources/known-good.edn`; `git -C KIT clean -f -- harness/health/records/linux-x64.edn`"
+           (ur/discard-command "KIT" ["harness/resources/known-good.edn" "harness/health/records/linux-x64.edn"] #{"harness/health/records/linux-x64.edn"}))))
   (testing "a newer release's row this version cannot probe is said, not decided"
     (is (ur/checkable? {:tool :bb :via :flag :cmd ["bb" "--version"] :req :required :tier :gates}))
     (is (not (ur/checkable? {:tool :x :via :docker :req :required})) "a :via this version does not know")
     (is (not (ur/checkable? {:tool :x :via :flag :cmd ["x"] :req :required :arch :arm64})) "a key this version does not know")
     (let [probe (fn [specs] (mapv #(assoc % :status (if (= :java (:tool %)) :missing :ok)) specs))
-          r (ur/requirement-check [{:tool :bb :via :flag :cmd ["bb" "--version"] :req :required}
-                                   {:tool :java :via :flag :cmd ["java" "-version"] :req :required :install "Temurin"}
-                                   {:tool :mise :via :flag :cmd ["mise" "--version"] :req :optional}
-                                   {:tool :x :via :docker :req :required}]
-                                  probe)]
+          specs [{:tool :bb :via :flag :cmd ["bb" "--version"] :req :required}
+                 {:tool :java :via :flag :cmd ["java" "-version"] :req :required :install "Temurin"}
+                 {:tool :mise :via :flag :cmd ["mise" "--version"] :req :optional}
+                 {:tool :x :via :docker :req :required}]
+          rows (ur/rows-to-probe [specs])
+          _ (is (= #{:bb :java :mise} (set (map :tool rows))) "one row per tool this version can probe")
+          r (ur/requirement-check specs (probe rows))]
       (is (not (:ok? r)))
       (is (= [{:tool :java :status :missing :install "Temurin"}] (:missing r)))
       (is (= [:x] (:unchecked r)))
-      (is (:ok? (ur/requirement-check [{:tool :x :via :docker :req :required}] probe)) "unchecked alone does not fail")))
+      (is (:ok? (ur/requirement-check [{:tool :x :via :docker :req :required}] [])) "unchecked alone does not fail")
+      (is (= [{:tool :bb :status :unprobed :install nil}] (:missing (ur/requirement-check [{:tool :bb :via :flag :cmd ["bb"] :req :required}] [])))
+          "a checkable row with no result is not passed")))
   (testing "what a release changes that a person wants said"
     (let [old [{:tool :java :req :required :major 21} {:tool :bb :req :required}]
           new [{:tool :java :req :required :major 25} {:tool :bb :req :required} {:tool :docker :req :required}]]
@@ -392,6 +400,7 @@
       (is (:nothing (ex-data (run {}))))
       (is (= "0.6.4" (git-out clone "describe" "--tags" "--abbrev=0"))))
     (release! fake)
+    (git-out fake "tag" "0.6.5-r0")
     (testing "the network first"
       (let [{:keys [error message]} (err {:reachable? (constantly false)})]
         (is (= :network error))
@@ -431,4 +440,17 @@
       (let [r (run {})]
         (is (= :after-pull (:outcome r)) (pr-str r))
         (is (:ok? (:result r)) (pr-str (:records (:result r))))
-        (is (= "0.6.5" (:workspace/kit-version (raw ws))))))))
+        (is (= "0.6.5" (:workspace/kit-version (raw ws))) "the release, not the throwaway tag on the same commit")))
+    (testing "a later commit of the same release, pulled by hand: phase 2 follows, decided by commit"
+      (spit (str (fs/path fake "build-docs" "README.md")) "# The plan's documents\n\nRevised again.\n")
+      (git-out fake "commit" "-q" "-am" "a commit past 0.6.5, no release")
+      (git-out clone "fetch" "-q" "origin")
+      (git-out clone "checkout" "-q" "--detach" "origin/main")
+      (let [r (run {})]
+        (is (= :after-pull (:outcome r)) (pr-str r))
+        (is (:ok? (:result r)))
+        (is (= (git-out clone "rev-parse" "HEAD") (:workspace/kit-commit (raw ws))))
+        (is (= "0.6.5" (:workspace/kit-version (raw ws))) "still the release")))
+    (testing "a clone on a commit the recorded one is not behind is refused by name"
+      (git-out clone "checkout" "-q" "--detach" "0.6.4")
+      (is (= :diverged (:error (err {})))))))

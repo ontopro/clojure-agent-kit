@@ -91,6 +91,17 @@ and an unmet requirement each refused by name with nothing moved; then the tags 
 release's table read from its tag, the clone detached at it, the hand-over's command and folder;
 and a run after the move going through phase 2.
 
+A review the same day: the two phases read the version differently - phase 2 by `git describe`,
+which names any tag, so a sandbox round would have recorded a throwaway `0.6.5-r0` as the
+version and named its branch after it - and phase 1's "already moved" asked whether a strictly
+newer release was recorded, so a `git pull` out of habit, or a later commit of the same release,
+read as "at the latest" while phase 2 never ran. Both phases now read the version as the highest
+release tag reachable from HEAD, and the move is decided by commit: HEAD past the recorded commit
+is phase 2's, HEAD not descended from it is refused by name. Smaller: a new platform's record is
+untracked and `checkout --` cannot discard it, so the discard command says `clean -f --` for
+those; and the machine is probed once over every row the newer tables carry, each release then
+checked against that result, instead of once per release.
+
 ### The upgrade's run is the one `bb template-upgrade` resumes, and the notices follow it (plan 6.5, item 14c, after review)
 
 A review of the entry below against the plan's text and the sandbox baseline's filled build

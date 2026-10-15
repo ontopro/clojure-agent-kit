@@ -67,6 +67,26 @@
 ;; pure
 ;; ---------------------------------------------------------------------------
 
+(def release-re
+  "A release tag: `N.N.N`, the shape the KIT tags a plan's boundary with. Throwaway and
+  candidate tags (`0.6.5-r0`, `kit-v1.3`, `pre-move-2026-09-21`) are not releases."
+  #"\d+\.\d+\.\d+")
+
+(defn release-shaped? [tag] (boolean (re-matches release-re (str tag))))
+
+(defn version-key
+  "A release tag as a vector of its numbers, for ordering."
+  [tag]
+  (mapv parse-long (str/split (str tag) #"\.")))
+
+(defn clone-version
+  "The clone's own version: the highest release tag among `merged-tags`, the tags reachable from
+  HEAD (`git tag --merged HEAD`). A clone on a release tag reads as it; a clone past one - a
+  throwaway tag, a candidate's commit - reads as the release before; nil with none. BOTH PHASES
+  READ IT SO: `git describe` would name any tag, and a throwaway named the release in a record."
+  [merged-tags]
+  (->> merged-tags (filter release-shaped?) (sort-by version-key) last))
+
 (defn upgrade-id
   "The upgrade's folder under `work/upgrades/`, deterministic: a run after a failure finds it."
   [from to version]
@@ -385,7 +405,7 @@
         from (or (:workspace/kit-commit raw)
                  (throw (ex-info "workspace.edn records no :workspace/kit-commit: nothing says which KIT this workspace is at, so nothing can say what changed since" {:upgrade/error :no-commit})))
         head (git! kit "rev-parse" "HEAD")
-        version (let [{:keys [exit out]} (git kit "describe" "--tags" "--abbrev=0")] (when (zero? exit) out))
+        version (clone-version (str/split-lines (:out (git kit "tag" "--merged" "HEAD"))))
         _ (when (= from head)
             (throw (ex-info (str "the workspace is at this KIT's commit already (" (subs head 0 7) "): nothing to bring up") {:upgrade/error :current :nothing true})))
         _ (when-not (zero? (:exit (git kit "merge-base" "--is-ancestor" from head)))
@@ -430,7 +450,7 @@
   (let [raw (raw-workspace ws)
         from (:workspace/kit-commit raw)
         head (git! kit "rev-parse" "HEAD")
-        version (let [{:keys [exit out]} (git kit "describe" "--tags" "--abbrev=0")] (when (zero? exit) out))]
+        version (clone-version (str/split-lines (:out (git kit "tag" "--merged" "HEAD"))))]
     (if-not from
       (say "workspace.edn records no :workspace/kit-commit: the upgrade would refuse")
       (let [files (parse-diff (:out (git kit "diff" from head "--" "build-docs/")))
@@ -449,25 +469,6 @@
 ;; ---------------------------------------------------------------------------
 ;; phase 1: the check and the move - the OLD version's code, touching nothing outside KIT/
 ;; ---------------------------------------------------------------------------
-
-(def release-re
-  "A release tag: `N.N.N`, the shape the KIT tags a plan's boundary with. Throwaway and
-  candidate tags (`0.6.5-r0`, `kit-v1.3`) are not releases."
-  #"\d+\.\d+\.\d+")
-
-(defn release-shaped? [tag] (boolean (re-matches release-re (str tag))))
-
-(defn version-key
-  "A release tag as a vector of its numbers, for ordering."
-  [tag]
-  (mapv parse-long (str/split (str tag) #"\.")))
-
-(defn clone-version
-  "The clone's own version: the highest release tag among `merged-tags`, the tags reachable from
-  HEAD (`git tag --merged HEAD`). A clone on a release tag reads as it; a clone past one - a
-  throwaway tag, a candidate's commit - reads as the release before; nil with none."
-  [merged-tags]
-  (->> merged-tags (filter release-shaped?) (sort-by version-key) last))
 
 (defn newer-releases
   "The release tags among `all-tags` newer than `clone-version`, oldest first."
@@ -504,9 +505,22 @@
   "`git status --porcelain` in the clone, sorted into `{:records [paths] :other [paths]}`."
   [porcelain]
   ;; by pattern, not by column: the first line may have lost its leading space to a trim
-  (let [paths (keep #(second (re-matches #"\s*[A-Z?!]{1,2}\s+(.*)" %)) (str/split-lines (str porcelain)))
+  (let [entries (keep #(when-let [[_ status path] (re-matches #"\s*([A-Z?!]{1,2})\s+(.*)" %)] [status path])
+                      (str/split-lines (str porcelain)))
+        paths (map second entries)
         record? #(or (contains? record-paths %) (str/starts-with? % "harness/health/records/"))]
-    {:records (vec (filter record? paths)) :other (vec (remove record? paths))}))
+    {:records (vec (filter record? paths)) :other (vec (remove record? paths))
+     ;; a record for a platform not yet in the repository is untracked: `checkout --` cannot discard it
+     :untracked (set (for [[status path] entries :when (= "??" status)] path))}))
+
+(defn discard-command
+  "How the record files in `records` are discarded in the clone `kit-rel`: tracked ones by
+  `checkout --`, untracked ones (a new platform's record) by `clean -f --`."
+  [kit-rel records untracked]
+  (let [[new old] ((juxt filter remove) untracked records)]
+    (str/join "; " (cond-> []
+                     (seq old) (conj (str "`git -C " kit-rel " checkout -- " (str/join " " old) "`"))
+                     (seq new) (conj (str "`git -C " kit-rel " clean -f -- " (str/join " " new) "`"))))))
 
 (def known-row-keys
   "What this version's probe reads of a toolchain row; a newer release's row with a key or a `:via`
@@ -525,13 +539,21 @@
   over the checkable rows): `{:ok? :missing [{:tool :status :install}] :unchecked [tools]}` -
   `:ok?` when every required, checkable row is usable; an unchecked required row is said, and
   does not fail the check, since nothing here can decide it."
-  [specs probe]
+  [specs results]
   (let [[checkable unchecked] ((juxt filter remove) checkable? specs)
-        results (if (seq checkable) (probe (vec checkable)) [])
-        missing (vec (for [{:keys [tool req status install]} results
+        status-of (into {} (map (juxt :tool :status) results))
+        missing (vec (for [{:keys [tool req install]} checkable
+                           :let [status (get status-of tool :unprobed)]
                            :when (and (= :required req) (not= :ok status))]
                        {:tool tool :status status :install install}))]
     {:ok? (empty? missing) :missing missing :unchecked (mapv :tool unchecked)}))
+
+(defn rows-to-probe
+  "One row per tool across the newer releases' tables, the newest table's row winning: the
+  machine is probed ONCE (`doctor/report` shells `bbin ls`), and each release is checked
+  against that result."
+  [tables]
+  (vec (vals (reduce (fn [m spec] (if (checkable? spec) (assoc m (:tool spec) spec) m)) {} (apply concat tables)))))
 
 (defn significant-changes
   "What a release changes that a person wants said before taking it: the JDK's major, a new
@@ -585,11 +607,16 @@
         recorded-version (:workspace/kit-version raw)]
     ;; ALREADY MOVED: KIT/ is past what the workspace records - a run stopped after the move, or a
     ;; move by hand - so phase 2 is what is left, by this very code (it is the new version's)
-    (if (and (not= head (:workspace/kit-commit raw))
-             here recorded-version
-             (pos? (compare (version-key here) (version-key recorded-version))))
-      (do (println (str "bb upgrade: " kit-rel " is at " here " already (the workspace records " recorded-version
-                        "): the move is done, phase 2 picks up at its first step not done"))
+    ;; DECIDED BY COMMIT, not by version: a `git pull` out of habit, or a later commit of the same
+    ;; release, is a move phase 2 has not followed, and "at the latest" would hide it
+    (when (and (not= head (:workspace/kit-commit raw))
+               (not (zero? (:exit (git kit "merge-base" "--is-ancestor" (str (:workspace/kit-commit raw)) head)))))
+      (throw (ex-info (str kit-rel " is at " (subs head 0 7) ", which does not descend from the commit the workspace records ("
+                           (subs (str (:workspace/kit-commit raw)) 0 7) "): not an upgrade path - check out that commit, or a later release, then `bb upgrade` again")
+                      {:upgrade/error :diverged :head head :recorded (:workspace/kit-commit raw)})))
+    (if (not= head (:workspace/kit-commit raw))
+      (do (println (str "bb upgrade: " kit-rel " is at " (subs head 0 7) (when here (str " (" here ")")) " already, past the commit the workspace records"
+                        (when recorded-version (str " (" recorded-version ")")) ": the move is done, phase 2 picks up at its first step not done"))
           {:outcome :after-pull :result (after-pull! ws kit {})})
       (let [;; THE NETWORK FIRST, before anything moves
             origin (:out (git kit "remote" "get-url" "origin"))
@@ -600,7 +627,7 @@
                                      " for the application's dependencies); nothing changed")
                                 {:upgrade/error :network :hosts (vec down)})))
             ;; KIT/ CLEAN: a convention nothing enforced; the KIT's own record files are named as such
-            {:keys [records other]} (local-changes (:out (git kit "status" "--porcelain")))
+            {:keys [records other untracked]} (local-changes (:out (git kit "status" "--porcelain")))
             _ (when (seq other)
                 (throw (ex-info (str kit-rel " has local changes, which an upgrade would move under: " (str/join ", " other)
                                      " - the clone is the KIT's and a project writes nothing into it; set them aside, then `bb upgrade` again")
@@ -608,7 +635,7 @@
             _ (when (seq records)
                 (throw (ex-info (str kit-rel " has local changes to the KIT's own record files: " (str/join ", " records)
                                      " - records are the KIT's own, written by `bb health --record` in a clone before 0.6.5; discard them: "
-                                     "`git -C " kit-rel " checkout -- " (str/join " " records) "`, then `bb upgrade` again")
+                                     (discard-command kit-rel records untracked) ", then `bb upgrade` again")
                                 {:upgrade/error :dirty-records :files records})))
             ;; THE TAGS FETCHED, which moves nothing
             _ (println (str "bb upgrade: fetching tags from " origin))
@@ -620,10 +647,13 @@
             ;; EACH NEWER RELEASE, its requirements read from its tag (never by running it), checked here
             own-specs doctor/toolchain
             own-pins (template/load-pins)
+            tables (into {} (for [t newer :let [text (show-at kit t "harness/resources/toolchain.edn")]]
+                              [t (when text (doctor/read-toolchain text))]))
+            ;; THE MACHINE PROBED ONCE, over every row the newer tables carry that this version can probe
+            results (let [rows (rows-to-probe (remove nil? (vals tables)))] (if (seq rows) (probe rows) []))
             checks (for [t newer
-                         :let [text (show-at kit t "harness/resources/toolchain.edn")
-                               specs (when text (doctor/read-toolchain text))
-                               check (if specs (requirement-check specs probe) {:ok? true :missing [] :unchecked [] :no-table true})
+                         :let [specs (get tables t)
+                               check (if specs (requirement-check specs results) {:ok? true :missing [] :unchecked [] :no-table true})
                                pins (some-> (show-at kit t "harness/resources/template-pins.edn") java.io.StringReader. template/load-pins)
                                changes (significant-changes own-specs (or specs own-specs) own-pins pins)]]
                      (assoc check :tag t :changes changes))
