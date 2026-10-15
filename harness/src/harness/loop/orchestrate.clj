@@ -124,12 +124,16 @@
         failed-step (driver/last-dispatch-failed state)
         failed-event (when failed-step (last (filter #(= :dispatch (:event/kind %)) events)))
         review (current-review events)
+        ;; BEFORE TRIAGE, ONLY WHEN NO ROLE HAS A ROUND LEFT: the cap is spent per role, and
+        ;; which role a round goes to is triage's answer - `triage!` stops when it names a spent one.
         capped (fn [what]
                  (let [cap (driver/retry-cap (:spec state))
-                       round (driver/rounds state)]
-                   (when (>= round cap)
+                       rs (driver/per-role-rounds state)]
+                   (when (every? #(>= % cap) (vals rs))
                      (stop :capped :human
-                           (str "the retry cap of " cap " is spent — " round " dispatch rounds, " what)))))]
+                           (str "the retry cap of " cap " per role is spent by both - "
+                                (str/join " and " (for [[r n] rs] (str (driver/role-name r) "'s " n " rounds")))
+                                ", " what)))))]
     (cond
       (empty? (:sessions state))
       {:action :start}
@@ -245,8 +249,10 @@
              "otherwise fix it outside this run (its own run through the loop, or by hand), then:"
              "bb run-loop continue <run-dir> <decision.edn>     ; on a note: {:decision \"the machine is fixed because…\"}"
              "bb run-loop record <run-dir> && bb run-loop teardown <run-dir> && bb run-loop start <run-dir>   ; on a red gate: the worktrees cannot see a fix made after they were cut"]
-   :capped ["nothing more is dispatched for this task. Read the run, then:"
-            "bb run-loop record <run-dir> && bb run-loop teardown <run-dir>"]
+   :capped ["the role named above has spent its rounds; nothing more is dispatched to it. Read the run, then one of:"
+            "bb run-loop amend <run-dir> <spec-before.edn> <reason> --not-counted   ; the last round followed guidance that contradicted the contract: it is not counted, and `run` carries on"
+            "raise :gates {:retry-cap n} in spec.edn, then bb run-loop amend <run-dir> <spec-before.edn> <reason>   ; a decision, logged"
+            "bb run-loop record <run-dir> && bb run-loop teardown <run-dir>   ; or stop here"]
    :reviewed ["read the Reviewer's findings above. To merge — the gate worktree, one commit, --no-ff into the base checkout:"
               "bb run-loop merge <run-dir> <decision.edn>   ; {:decision \"why this merges\"}; then records and tears down"
               "To deny it, type nothing: the run stays :awaiting-merge with its worktrees and branches in place. Or:"
@@ -403,8 +409,20 @@
     (say! kind v)
     (case (:route v)
       (:coder :tester)
-      (do (driver/retry-with! ctx (:route v) {:decision (:reason v) :feedback feedback} false (on-event v))
-          nil)
+      (let [state @(:state ctx)
+            cap (driver/retry-cap (:spec state))
+            role (:route v)
+            others (for [r driver/capped-roles :when (not= r role)
+                         :let [n (driver/role-rounds state r)]]
+                     (str (driver/role-name r) " has " (max 0 (- cap n)) " left"))]
+        (if (>= (driver/role-rounds state role) cap)
+          ;; THE STOP NAMES WHOSE ROUNDS ARE SPENT, after the triage that said whose round it was
+          (assoc (stop :capped :human
+                       (str "triage sent the round to " (driver/role-name role) ", whose " cap " rounds are spent"
+                            " (the cap is per role; " (str/join ", " others) ") - triage: " (:reason v)))
+                 :triage (on-event v))
+          (do (driver/retry-with! ctx role {:decision (:reason v) :feedback feedback} false (on-event v))
+              nil)))
 
       :continue
       (do (driver/continue-with! ctx (:reason v) (on-event v))

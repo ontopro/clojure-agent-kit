@@ -933,7 +933,7 @@ flowchart LR
 
 **Exit:** formatted, lint-clean, independently-authored tests green, boundaries green, code reviewer approved.
 
-> **The circuit breaker.** Every loop gets a hard retry cap; hitting it escalates to a human rather than retrying forever. The number is arbitrary per project — the discipline isn't. And escalate means *hand off what's there*, not discard it: if an agent had already produced usable output before the cap fired, let the gates judge it. A cap that fires with nothing produced is still an unambiguous failure.
+> **The circuit breaker.** Every loop gets a hard retry cap; hitting it escalates to a human rather than retrying forever. The number is arbitrary per project — the discipline isn't. Spend it per role, not per task: a test that mis-encodes the contract should not spend the implementer's rounds, and the stop should say whose ran out. And escalate means *hand off what's there*, not discard it: if an agent had already produced usable output before the cap fired, let the gates judge it. A cap that fires with nothing produced is still an unambiguous failure.
 
 ### The merge — per task (Human)
 

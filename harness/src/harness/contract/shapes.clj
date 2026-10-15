@@ -31,7 +31,8 @@
    [:deps-sigs {:optional true} [:sequential :any]]])
 
 (def Gates
-  "Only :retry-cap. The upstream version also carried a :cmd string naming
+  "Only :retry-cap: the rounds EACH ROLE the cap is spent by (the Coder, the Tester) may have,
+  its first dispatch included - 3 is three rounds the Coder's and three the Tester's. The upstream version also carried a :cmd string naming
   the gate command — one writer, zero readers; it rode in every packet doing
   nothing. The gate command belongs to the gate runner, not the packet."
   [:map
@@ -467,7 +468,11 @@
    ;; them; nil where there is no such repository. Optional: records before them have none.
    [:run/kit-commit {:optional true} [:maybe :string]]
    [:run/app-commit {:optional true} [:maybe :string]]
-   [:run/plan-commit {:optional true} [:maybe :string]]])
+   [:run/plan-commit {:optional true} [:maybe :string]]
+   ;; Each role's rounds against the retry cap, and the cap - spent per role. Optional:
+   ;; records before the cap was per role have neither, and the report derives the rounds.
+   [:run/rounds {:optional true} [:map-of :keyword nat-int?]]
+   [:run/retry-cap {:optional true} pos-int?]])
 
 ;; ---------------------------------------------------------------------------
 

@@ -56,6 +56,26 @@ step by hand, named there.
 
 ## 2026-10-14
 
+### The retry cap is spent per role, and the stop names whose rounds are spent (plan 6.5, item 5)
+
+The cap was per task, spent by whichever role a round went to, on the argument that a Coder's
+retry and a Tester's are often two attempts at one failure and that a cap per role lets a task be
+dispatched twice as often before anything escalates. The proof build's view packets answered it:
+their rounds went to the Coder, to the Tester's own fixtures and to the Architect's guidance, the
+cap was raised a round at a time - each raise a stop and a decision - and the count said a task
+was hard when it should have said who was struggling. Now each role's rounds are counted
+against the cap (`driver/role-rounds`): its first dispatch and every triage decision that sent it
+back. An existing `:retry-cap 3` reads as three each; nothing is migrated. Before triage the loop
+stops only when neither role has a round left, since whose round it is is triage's answer; when
+triage names a role whose rounds are spent, the stop says so - "triage sent the round to the
+Coder, whose 3 rounds are spent (the cap is per role; the Tester has 2 left)" - one triage call
+paid for the name. A round that followed guidance contradicting the contract is nobody's, and the
+harness cannot tell: `bb run-loop amend ... --not-counted` is the person's mark on the last round,
+with the amendment's reason, refused when there is no round or it is already marked. The record
+grows `:run/rounds` and `:run/retry-cap`, and `bb report` says each role's rounds against the cap
+and any not counted - only for a record that has them, so a published table re-renders unchanged.
+The task's total stays what the reports count.
+
 ### A workspace has its own `bb gates` (plan 6.5, item 4)
 
 A workspace had six checks - the rule mirror, the skills' renderings, the front door, the plan,

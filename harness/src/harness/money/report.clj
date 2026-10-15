@@ -313,6 +313,21 @@
                       (if c (str (fmt-cost c) "  ") "")
                       (truncate (str/replace (str decision) #"\s+" " ") 110)))))))
 
+(defn role-round-lines
+  "Each role's rounds against the retry cap, which is spent per role, and the rounds a person
+  marked not counted (`amend --not-counted`, on the `:amend` events) with why; nil for a record
+  written before the cap was per role (no `:run/rounds`), so its report re-renders unchanged."
+  [{:keys [run/rounds run/retry-cap run/events]}]
+  (when (seq rounds)
+    (let [uncounted (keep :not-counted (filter #(= :amend (:event/kind %)) events))]
+      (into [(str "  Rounds per role, against the cap: "
+                  (str/join " · " (for [[r n] (sort-by (comp name key) rounds)]
+                                    (str (name r) " " n (when retry-cap (str " of " retry-cap))
+                                         (when (and retry-cap (>= n retry-cap)) ", SPENT")))))]
+            (for [{:keys [role attempt reason]} uncounted]
+              (str "        not counted: " (name role) "-r" (dec attempt) " - "
+                   (truncate (str/replace (str reason) #"\s+" " ") 100)))))))
+
 (defn dispatch-round-lines
   "The rounds each dispatch took, against the role's limit where the record
   knows it (`:run/roles`' `:max-rounds`), or nil when no step recorded its
@@ -358,6 +373,7 @@
   (str/join "\n" (concat ["" "  ── performance ──"]
                          (time-lines run) [""] (money-lines run) [""] (token-lines run) [""]
                          (round-lines run)
+                         (role-round-lines run)
                          ;; only when a step recorded its rounds: older reports re-render unchanged
                          (when-let [ls (dispatch-round-lines run)] (cons "" ls))
                          [""] (role-lines run) [""] (commit-lines run))))

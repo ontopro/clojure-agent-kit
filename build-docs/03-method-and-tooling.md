@@ -107,9 +107,13 @@ output and routes to the owning role — `coder` (an implementation bug), `teste
 test), `architect` (a design flaw or an ambiguous contract), `human`, or `tooling` (the machine is
 at fault, not the run: a merged file no role owns, the build, the harness) — with a mechanical
 proposal as its fallback. The decision is written **before** the retry it justifies. A task has a
-retry cap (the number is §13), spent in dispatch rounds - the first, and one per triage decision,
-whichever role it went to; on hitting it the loop stops, hands off whatever was
-produced, and leaves the worktrees in place for inspection. The spec review runs once per spec,
+retry cap (the number is §13), spent per role in dispatch rounds - the Coder's first dispatch and
+one per triage decision that sends it back, and the Tester's the same - so a mis-encoded test does
+not spend the Coder's rounds. When triage sends a round to a role whose rounds are spent, the loop
+stops, names that role, hands off whatever was produced, and leaves the worktrees in place for
+inspection. A round that followed guidance contradicting the contract is nobody's, which no
+harness can decide: the person marks it with `bb run-loop amend` and its `--not-counted` flag, and
+it counts against neither. The spec review runs once per spec,
 at `start`, and stops for the Architect when it finds something; an edited spec is read again (§13
 caps how often).
 
@@ -290,7 +294,7 @@ justifies the extra call, or the reason it isn't justified here>.
 
 | What | Where | Default | This project | Why |
 |---|---|---|---|---|
-| Retry cap, dispatch rounds per task | `:gates {:retry-cap n}` in a task spec (`packet/default-gates`) | 3 | <n> | <…> |
+| Retry cap, dispatch rounds per role (the Coder's, the Tester's) | `:gates {:retry-cap n}` in a task spec (`packet/default-gates`) | 3 | <n> | <…> |
 | Rounds per dispatch - completions before the harness stops a role | `:max-rounds n` in the role's block in `profile.edn` | the harness's 24 | <Coder n / Tester n> | <…; the Tester writes a test per target and takes more> |
 | Spec reviews that found something before a person reads them | `:spec-review/max` in `loop.edn` | 2 | <n> | <…> |
 | Money cap for a stage, and the floor a run must not start below | held by the person; `bb balance` before and after every run | — | <$cap / $floor> | <…> |

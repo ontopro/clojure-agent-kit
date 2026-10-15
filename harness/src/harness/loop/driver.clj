@@ -54,7 +54,10 @@
                                               The Tester's feedback is refused if it
                                               names the implementation, unless the flag
                                               records the judgement to send it anyway
-    amend     <run-dir> <spec-before.edn> <reason>   record a change to spec.edn
+    amend     <run-dir> <spec-before.edn> <reason> [--not-counted]
+                                              record a change to spec.edn; --not-counted: the last
+                                              round followed guidance that contradicted the contract,
+                                              and does not count against its role's cap
     mutation  <run-dir> <mutation.edn>        record a mutation check as an event
     record    <run-dir>                       copy the gated files to final/<path> (and
                                               what gate 0 changed to final/as-written/),
@@ -224,17 +227,49 @@
 
 (defn rounds
   "Dispatch rounds this task has had: the first, plus one for every triage
-  decision recorded.
-
-  THE CAP IS PER TASK, NOT PER ROLE, and this is the number it is spent
-  against. A per-role cap of 3 lets one task be dispatched six times before
-  anything escalates, which is not a cap anyone chose; and it counts a Coder
-  retry and a Tester retry as unrelated when they are two attempts at the same
-  failure. Counting `:triage` events rather than attempts also means a hand
+  decision recorded. What the reports count; the cap is spent per role, by
+  `role-rounds`. Counting `:triage` events rather than attempts means a hand
   `retry` and the loop agree without either telling the other: the decision
   file is recorded before the dispatch, so it is the one thing both see."
   [state]
   (inc (count (filter #(= :triage (:event/kind %)) (:events state)))))
+
+(def capped-roles
+  "The roles the retry cap is spent by: the two a triage sends back."
+  [:coder :tester])
+
+(defn not-counted
+  "The rounds a person marked not counted, from `amend --not-counted`: `[{:role :attempt
+  :reason}]`, each the triage round before that amendment."
+  [events]
+  (vec (keep :not-counted (filter #(= :amend (:event/kind %)) events))))
+
+(defn role-rounds
+  "The rounds `role` has had against the cap: its first dispatch, plus one for every triage
+  decision that sent it back, less the rounds a person marked not counted.
+
+  THE CAP IS PER ROLE. It was per task, spent by whichever role a round went to, on the
+  argument that a Coder's retry and a Tester's are often two attempts at one failure. The
+  proof build's view packets answered it: one task's rounds went two to the Coder, two to the
+  Tester's own fixtures and one to the Architect's guidance, and the cap was raised a round at
+  a time, each raise a stop - the count said a task was hard when it said who was struggling.
+  Per role, a mis-encoded test does not spend the Coder's rounds, and the stop names whose are
+  spent. A round that followed guidance contradicting the contract is nobody's - which no
+  harness can decide - so the person marks it, with `amend --not-counted`."
+  [state role]
+  (let [events (:events state)]
+    (- (inc (count (filter #(and (= :triage (:event/kind %)) (= role (:role %))) events)))
+       (count (filter #(= role (:role %)) (not-counted events))))))
+
+(defn per-role-rounds
+  "`{:coder n :tester n}`, `role-rounds` for each role the cap is spent by."
+  [state]
+  (into {} (for [r capped-roles] [r (role-rounds state r)])))
+
+(defn role-name
+  "A role as a sentence names it: `the Coder`."
+  [role]
+  (str "the " (str/capitalize (name role))))
 
 (defn retry-cap
   "The task's retry cap, from its spec, or the packet default."
@@ -377,6 +412,9 @@
            ;; (`next-attempt`). It is NOT the number of dispatch rounds - that is `rounds`,
            ;; the cap's count, and the report's `Rounds:` line derives it from the events.
            :run/attempts (apply max 1 (vals (:attempts state)))
+           ;; each role's rounds against the cap, and the cap: the cap is spent per role
+           :run/rounds (per-role-rounds state)
+           :run/retry-cap (retry-cap (:spec state))
            :run/wall-ms (apply max 0 (keep #(when (#{:dispatch :gates} (:event/kind %)) (:event/at-ms %))
                                            (:events state)))
            :run/steps (:steps state)
@@ -1288,16 +1326,16 @@
   guidance and cost there, so the record shows a routed retry and a typed one
   as the same kind of event with a different `:by`.
 
-  ONE `:triage` EVENT PER ROUND, whoever decided. `rounds` counts them, so
-  a retry the model routed and a retry a person typed spend the same cap."
+  ONE `:triage` EVENT PER ROUND, whoever decided. `role-rounds` counts them per role, so
+  a retry the model routed and a retry a person typed spend the same cap - the role's."
   [ctx role {:keys [decision feedback]} allow? extra]
   (let [base (first-packet ctx role)
         cap (:retry-cap (:gates base))
-        round (rounds @(:state ctx))
+        round (role-rounds @(:state ctx) role)
         _ (when (>= round cap)
-            (throw (ex-info (str "retry cap " cap " reached — this task has had " round
-                                 " dispatch rounds. Escalate; do not dispatch again.")
-                            {:run-loop/error :retry-cap :cap cap :rounds round})))
+            (throw (ex-info (str "retry cap reached - " (role-name role) " has had " round " rounds of its " cap
+                                 ". Escalate; do not dispatch it again.")
+                            {:run-loop/error :retry-cap :cap cap :rounds round :role role})))
         attempt (next-attempt (:attempts @(:state ctx)) role)
         checked (leak-check role (spec-of ctx)
                             (when (= :tester role) (impl-names ctx))
@@ -1325,9 +1363,23 @@
 (defn amend!
   "The Architect edited spec.edn. Record before and after, because a packet
   rebuilt from an edited spec otherwise carries the change with no trace of it.
-  Announce it to the roles as `:architect` feedback in the next triage file."
-  [ctx before-file reason]
-  (let [before (edn/read-string (slurp before-file))
+  Announce it to the roles as `:architect` feedback in the next triage file.
+
+  `--not-counted` marks the last triage round as not counted against its role's cap, `reason`
+  being why: the person's judgement that the round followed guidance which contradicted the
+  contract. Refused with no round to mark, or one already marked."
+  [ctx before-file reason & flags]
+  (let [uncount? (boolean (some #{"--not-counted"} flags))
+        last-round (last (filter #(= :triage (:event/kind %)) (:events @(:state ctx))))
+        marked (set (map (juxt :role :attempt) (not-counted (:events @(:state ctx)))))
+        _ (when uncount?
+            (cond (nil? last-round)
+                  (throw (ex-info "--not-counted: no round to mark - nothing has been retried" {:run-loop/error :not-counted}))
+                  (marked ((juxt :role :attempt) last-round))
+                  (throw (ex-info (str "--not-counted: " (role-name (:role last-round)) "'s round " (:attempt last-round)
+                                       " is already marked")
+                                  {:run-loop/error :not-counted}))))
+        before (edn/read-string (slurp before-file))
         after (spec-of ctx)
         slice-changed? (not= (:blueprint/slice before) (:blueprint/slice after))
         tester (:tester (sessions ctx))
@@ -1347,9 +1399,13 @@
                          :property-targets/before (:property-targets before)
                          :property-targets/after (:property-targets after)
                          :slice-changed? slice-changed?}
-                  restubbed (assoc :stub-rewritten restubbed)))
+                  restubbed (assoc :stub-rewritten restubbed)
+                  uncount? (assoc :not-counted {:role (:role last-round) :attempt (:attempt last-round) :reason reason})))
     (println "recorded amendment"
-             (if restubbed (str "— the slice changed, so the Tester's stub was regenerated at " restubbed) ""))))
+             (if restubbed (str "— the slice changed, so the Tester's stub was regenerated at " restubbed) ""))
+    (when uncount?
+      (println (str "  " (role-name (:role last-round)) "'s round " (:attempt last-round)
+                    " is not counted against the cap: " (role-rounds @(:state ctx) (:role last-round)) " counted now")))))
 
 (defn mutation!
   "Record a mutation check. A document that cites its result needs it in the

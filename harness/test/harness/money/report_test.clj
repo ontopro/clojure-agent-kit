@@ -91,6 +91,20 @@
       (is (nil? (report/dispatch-round-lines old)))
       (is (not (str/includes? (report/render old) "Dispatch rounds"))))))
 
+(deftest each-roles-rounds-are-said-against-the-cap-it-is-spent-by
+  (let [run {:run/rounds {:tester 2 :coder 3} :run/retry-cap 3
+             :run/events [{:event/kind :triage :role :tester :attempt 2}
+                          {:event/kind :amend :reason "r"
+                           :not-counted {:role :tester :attempt 2 :reason "the guidance contradicted   the contract"}}]}]
+    (is (= ["  Rounds per role, against the cap: coder 3 of 3, SPENT · tester 2 of 3"
+            "        not counted: tester-r1 - the guidance contradicted the contract"]
+           (report/role-round-lines run)))
+    (is (= ["  Rounds per role, against the cap: coder 1 · tester 1"]
+           (report/role-round-lines {:run/rounds {:coder 1 :tester 1}}))
+        "no cap on the record, no claim about one"))
+  (testing "a record from before the cap was per role renders as it did"
+    (is (nil? (report/role-round-lines {:run/events []})))))
+
 (deftest a-repriced-step-with-no-provider-counts-in-the-openrouter-sum
   ;; Three steps priced later by `bb reprice`, each without a provider, summed to
   ;; $0.000000 beside the key's $0.17: `some->` over a nil provider dropped them.

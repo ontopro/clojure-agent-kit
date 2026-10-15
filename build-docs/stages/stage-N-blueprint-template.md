@@ -72,7 +72,7 @@
  :files/context    ["src/app/<dep>.clj"]                ; read-only, to every role; the Tester's omits :files/impl
  :layer/name       :<layer>                             ; the boundary gate's layer for :files/impl
  :property-targets ["<one promise, checkable, in full>"] ; method §06's rules; every role receives them
- :gates            {:retry-cap 3}}                      ; optional; 3 is the harness's default
+ :gates            {:retry-cap 3}}                      ; optional; per role; 3 is the harness's default
 ```
 
 > **This is the task spec the harness reads - `spec.edn`, key for key.** `bb spec-from-blueprint`

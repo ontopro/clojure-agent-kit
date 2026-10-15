@@ -382,9 +382,9 @@
       (is (= {:leaks [] :allowed? false} (:leak-check t)) "checked, clean, and recorded as such"))
     (teardown! rd)))
 
-(deftest the-cap-is-spent-on-rounds-and-the-third-red-one-escalates
-  ;; The cap is per task: two hand retries and the loop refuses a third,
-  ;; whichever roles those retries went to.
+(deftest the-cap-is-spent-per-role-and-the-stop-names-whose-rounds-are-spent
+  ;; The cap is per role: the Coder's two retries spend its three rounds, the Tester's are
+  ;; its own, and triage routing the Coder again is a stop that names the Coder.
   (let [repo (scratch-repo)
         rd (run-dir! repo {:gates [[:red "false"]]})
         triage (str (fs/path rd "triage.edn"))
@@ -395,18 +395,32 @@
                    #(with-out-str (driver/retry! (driver/context rd) role triage))))]
     (is (= :red-gate (:stop/kind (drive! rd {}))) "round 1")
     (retry! "coder")
-    (is (= :red-gate (:stop/kind (drive! rd {}))) "round 2, still under the cap")
-    (retry! "tester")
+    (is (= :red-gate (:stop/kind (drive! rd {}))) "the Coder's round 2, still under the cap")
+    (retry! "coder")
     (let [asked (atom 0)
           res (drive! rd {:triage (fn [_] (swap! asked inc) {:route :coder :reason "again"})})]
-      (is (= :capped (:stop/kind res)) "round 3 is the cap, and the roles differed")
+      (is (= :capped (:stop/kind res)) "the Coder's three rounds are spent")
       (is (= :escalated (:status res)))
-      (is (= 3 (:attempts res)))
-      (is (str/includes? (:reason res) "retry cap of 3"))
-      (is (zero? @asked) "at the cap nothing is asked: there is nothing left to route"))
-    (testing "and a further retry by hand is refused with the same number"
-      (is (thrown-with-msg? Exception #"retry cap 3 reached"
+      (is (= 3 (:attempts res)) "the task's rounds, as the reports count them")
+      (is (= "triage sent the round to the Coder, whose 3 rounds are spent (the cap is per role; the Tester has 2 left) - triage: again"
+             (:reason res)))
+      (is (= 1 @asked) "triage is asked whose round it is; the Tester's are not spent"))
+    (testing "a further Coder retry by hand is refused, and names the role"
+      (is (thrown-with-msg? Exception #"retry cap reached - the Coder has had 3 rounds of its 3"
                             (driver/retry! (driver/context rd) "coder" triage))))
+    (testing "the Tester's rounds are its own"
+      (retry! "tester")
+      (is (= {:coder 3 :tester 2} (driver/per-role-rounds @(:state (driver/context rd))))))
+    (testing "a round marked not counted gives the role it back"
+      (let [before (str (fs/path rd "spec-before.edn"))]
+        (spit before (slurp (str (fs/path rd "spec.edn"))))
+        (with-out-str (driver/amend! (driver/context rd) before "the guidance contradicted the contract" "--not-counted"))
+        (is (= {:coder 3 :tester 1} (driver/per-role-rounds @(:state (driver/context rd)))) "the last round was the Tester's")
+        (is (= [{:role :tester :attempt 2 :reason "the guidance contradicted the contract"}]
+               (driver/not-counted (events rd))))
+        (is (thrown-with-msg? Exception #"already marked"
+                              (driver/amend! (driver/context rd) before "again" "--not-counted"))
+            "one round is marked once")))
     (testing "the worktrees are left in place for whoever picks it up"
       (is (fs/exists? (fs/path rd "wt" "a-test-coder"))))
     (teardown! rd)))
@@ -943,11 +957,17 @@
         (let [a (action (reviewed {:verdict :approve :reasons []}))]
           (is (= :reviewed (:stop/kind a)))
           (is (= :awaiting-merge (:run/status a)))))
-      (testing "a rejection is triaged under the cap, and escalates at it without asking"
+      (testing "a rejection is triaged under the cap, and escalates without asking once no role has a round left"
         (is (= {:action :triage :trigger :rejection} (action (reviewed {:verdict :reject :reasons ["r"]}))))
+        (is (= {:action :triage :trigger :rejection}
+               (action (update (reviewed {:verdict :reject :reasons ["r"]}) :events
+                               #(into [{:event/kind :triage :role :coder} {:event/kind :triage :role :coder}] %))))
+            "the Coder's rounds are spent, the Tester's are not: triage is asked whose round it is")
         (let [a (action (update (reviewed {:verdict :reject :reasons ["r"]}) :events
-                                #(into [{:event/kind :triage} {:event/kind :triage}] %)))]
+                                #(into [{:event/kind :triage :role :coder} {:event/kind :triage :role :coder}
+                                        {:event/kind :triage :role :tester} {:event/kind :triage :role :tester}] %)))]
           (is (= :capped (:stop/kind a)))
+          (is (str/includes? (:reason a) "per role is spent by both - the Coder's 3 rounds and the Tester's 3 rounds"))
           (is (str/includes? (:reason a) "the Reviewer rejected"))))
       (testing "a review with no verdict is a person's, and is not awaiting a merge"
         (let [a (action (reviewed nil))]
@@ -1006,13 +1026,20 @@
           (is (= {:action :triage :trigger :red-gate}
                  (action (update red :events into [{:event/kind :amend} {:event/kind :gates}])))
               "and a gate run AFTER the amendment is current: still red is triaged"))
-        (is (= :capped (:stop/kind (action (update red :events into
-                                                   [{:event/kind :triage} {:event/kind :triage}])))))
-        (is (= :triage (:action (action (-> red
-                                            (assoc-in [:spec :gates :retry-cap] 5)
-                                            (update :events into [{:event/kind :triage}
-                                                                  {:event/kind :triage}])))))
-            "the cap comes from the spec")))))
+        (let [both-spent [{:event/kind :triage :role :coder} {:event/kind :triage :role :coder}
+                          {:event/kind :triage :role :tester} {:event/kind :triage :role :tester}]]
+          (is (= :triage (:action (action (update red :events into (take 3 both-spent)))))
+              "the Tester has a round left: the cap is per role")
+          (is (= :capped (:stop/kind (action (update red :events into both-spent)))))
+          (is (= :triage (:action (action (-> red
+                                              (assoc-in [:spec :gates :retry-cap] 5)
+                                              (update :events into both-spent)))))
+              "the cap comes from the spec")
+          (is (= :triage (:action (action (update red :events into
+                                                  (conj both-spent {:event/kind :amend
+                                                                    :not-counted {:role :tester :attempt 3 :reason "guidance"}}
+                                                        {:event/kind :gates})))))
+              "a round the person marked not counted gives it back"))))))
 
 ;; ---------------------------------------------------------------------------
 ;; a retried role starts from the bytes the gates judged
