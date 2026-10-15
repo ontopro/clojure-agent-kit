@@ -150,9 +150,11 @@
   (testing "a machine's path, where an error page would print one"
     (doseq [body ["/home/deploy/app/config.edn" "loading /home/deploy/app/config.edn failed"
                   "<pre>/Users/someone/app/src/hc/db.clj</pre>" "file:///home/deploy/app.jar"
-                  "\"/root/.m2/repository\"" "C:\\\\Users\\\\someone\\\\app"]]
+                  "\"/root/.m2/repository\"" "C:\\\\Users\\\\someone\\\\app"
+                  "<img src=\"/Users/someone/project/resources/img.png\">"
+                  "<a href=\"/var/folders/1v/T/x.edn\">"]]
       (is (= "a path on a machine" (first (sc/leak body))) body)))
-  (testing "a folder named home inside the site's own address is not one"
+  (testing "a folder named home inside the site's own address, or a site route under /home/, is not one"
     (doseq [body ["<img src=\"/assets/content/extracted/pictures/home/home-logo-new-with-ribbon.jpg\">"
                   "see https://example.org/home/about"
                   "<a href=\"/home/about\">Home</a>"

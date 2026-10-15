@@ -235,14 +235,16 @@
   A PATH ON A MACHINE STARTS A PATH. Unanchored, `/home/` matched inside the application's own
   asset address - `/assets/content/extracted/pictures/home/home-logo.jpg`, a folder named `home` -
   and failed a page not found. So the path begins the text, or follows a space, a quote, a `>` or
-  `file://`; never a path segment (a letter, a digit, `.`, `-`, `~`, `%`, `/`), and never an
-  `href`, `src` or `action` value, which is an address on the site."
+  `file://`; never a path segment (a letter, a digit, `.`, `-`, `~`, `%`, `/`). And `/home/` -
+  the one prefix a site route plausibly has - never as an `href`, `src` or `action` value, an
+  address on the site; `/Users/`, `/root/`, `/var/folders/` and a drive letter are never routes,
+  and a template that renders a file into an attribute leaks it there too."
   [[#"\bat [\w.$]+\([\w.]+\.(?:java|clj|cljc):\d+\)" "a stack frame"]
    [#"\b[a-z][\w-]*(?:\.[\w-]+)+\$[\w-]+" "a compiled function's class"]
    [#"\b[\w-]+\.(?:clj|cljc|java):\d+" "a source file and line"]
    [#"\b(?:java|clojure|javax|jakarta|org\.eclipse\.jetty)\.[\w.]+\.[A-Z]\w+" "a class name"]
    [#"\b\w*Exception(?:Info)?\b" "an exception's class"]
-   [#"(?:(?<=file://)|(?<![\w.~%/-])(?<!(?:href|src|action)=[\"']))(?:/Users/|/home/|/root/|/var/folders/|[A-Z]:\\\\)\S+" "a path on a machine"]])
+   [#"(?:(?<=file://)|(?<![\w.~%/-]))(?:/Users/|/root/|/var/folders/|[A-Z]:\\\\|(?<!(?:href|src|action)=[\"'])/home/)\S+" "a path on a machine"]])
 
 (defn leak
   "What the body names that an error page must not: [what-it-is the-text], or nil."

@@ -37,7 +37,7 @@ one already serving. Defaults are the Stack Lite template's: `bb serve`, `/healt
 | `cookies` | every `Set-Cookie` seen | no `HttpOnly`, no `SameSite`, `SameSite=None` without `Secure`; no `Secure` on an https base |
 | `csrf` | a POST with no token to each `:forms` route, `/` when none is named | accepted, redirected or an error; a named route taking no POST (the list is wrong). `/` taking no POST is a skip |
 | `protected` | each `:protected` route, with no session | answered 2xx, redirected anywhere but `:login`, or a 404 (the list is wrong) |
-| `errors` | a page that does not exist, a malformed path, each `:throws` route | the page carries a stack frame, a compiled function's class, a source file and line, a class name, an exception's name or a path on a machine (one that starts a path - not a folder named `home` inside the site's own address, nor an `href` or `src` value); a missing page answering 200 is a warn |
+| `errors` | a page that does not exist, a malformed path, each `:throws` route | the page carries a stack frame, a compiled function's class, a source file and line, a class name, an exception's name or a path on a machine (one that starts a path - not a folder named `home` inside the site's own address, nor a site route under `/home/` as an `href`, `src` or `action` value); a missing page answering 200 is a warn |
 | `static` | each `:static` folder itself, and five paths out of it (`..` as written, escaped, with an escaped slash) | a listing; a file from outside the folder coming back (a page coming back is a warn) |
 | `tls` | a handshake, on an https base | the certificate or the host name does not validate, or the protocol is older than TLS 1.2 |
 

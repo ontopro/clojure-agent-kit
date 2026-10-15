@@ -62,9 +62,11 @@ The proof build's first stage ended with the pack failing its page not found for
 machine": `/home/home-logo-new-with-ribbon.jpg`, the tail of the application's own logo address,
 `/assets/content/extracted/pictures/home/...` - a folder named `home`. The pattern had no anchor.
 It now matches a path only where one starts: at the text's start or after a space, a quote, a
-`>` or `file://`, never after a path segment, and never as an `href`, `src` or `action` value, an
-address on the site. A test holds the real logo address, a URL with `/home/`, and a root-relative
-link, against six paths a server could print. And the fail could not be accepted: it stood in the
+`>` or `file://`, never after a path segment; and `/home/`, the one prefix a site route
+plausibly has, never as an `href`, `src` or `action` value. Every other prefix matches in an
+attribute too: a template that renders a file into an image source leaks it there (the narrowing
+is a review's). A test holds the real logo address, a URL with `/home/`, and a root-relative link,
+against eight paths a server could print, two of them in attributes. And the fail could not be accepted: it stood in the
 stage plan with its reason and failed every run after. A fail or a warn the project has judged now
 goes in the routes file under `:accepted-findings`, keyed by the row's exact text, with a reason:
 the row says `accepted` and why, never `ok`, and fails nothing. An acceptance with no reason, or
