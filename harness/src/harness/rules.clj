@@ -168,6 +168,79 @@
   ([] (project-rules (workspace/current)))
   ([source] (edn/read-string (slurp source))))
 
+(defn data-conventions
+  "The project's `:data-conventions` rule text, once the project has FILLED it; nil while the
+  placeholder stands. With no argument, the rules `load-rules` reads."
+  ([] (data-conventions (load-rules)))
+  ([rs]
+   (let [r (first (filter #(= :data-conventions (:id %)) rs))]
+     (when (and r (empty? (unfilled [r])))
+       (:text r)))))
+
+;; THE DEFINED TERMS. A project's data conventions define their terms under ALL-CAPS headings -
+;; THE WORDS OF A TREE, WHERE INPUT COMES FROM - and a retry's guidance that restated one cost a
+;; round: it said an image adds nothing to a head cell's words, where the definition makes it a
+;; word boundary, and the Coder followed the guidance over the contract. So the guidance's terms
+;; are found and their definitions sent with it, word for word (`harness.loop.driver`).
+
+(def ^:private caps-word "[A-Z][A-Z'’]*(?:-[A-Z][A-Z'’]*)*")
+
+(def ^:private caps-run
+  (re-pattern (str "(?<![\\w'’-])" caps-word "(?:[ \\t]+" caps-word ")*(?![\\w'’-])")))
+
+(defn- mask-code
+  "`text` with each backtick span blanked to spaces of its length: a literal is quoted, not defined."
+  [text]
+  (str/replace text #"`[^`]*`" #(apply str (repeat (count %) \space))))
+
+(defn- term-words
+  "A caps run's words, a leading A or AN dropped: `A FIXTURE` is the term FIXTURE."
+  [run]
+  (let [ws (str/split (str/trim run) #"\s+")]
+    (if (and (next ws) (#{"A" "AN"} (first ws))) (vec (rest ws)) ws)))
+
+(defn defined-terms
+  "The terms `conventions` - the `:data-conventions` text - defines, in text order, as
+  `[{:term str :definition str}]`.
+
+  A HEADING is a caps run that starts a sentence: two words or more, or one word followed by
+  `:`, `.`, `is` or `are` (`A WORD is`, `PRESENTATION is`, never `HTML comments`). Its definition
+  runs from it to the next heading. A run of two caps words or more inside a sentence (`a PICTURE
+  TABLE - a table any of whose cells`) is a term too, and its definition is the heading's it sits
+  under. Nothing inside backticks is a term."
+  [conventions]
+  (let [masked (mask-code conventions)
+        m (re-matcher caps-run masked)
+        runs (loop [acc []]
+               (if (.find m)
+                 (recur (conj acc {:start (.start m) :end (.end m) :words (term-words (.group m))}))
+                 acc))
+        sentence-start? (fn [i] (let [before (str/trimr (subs masked 0 i))]
+                                  (or (str/blank? before) (re-find #"[.!?]$" before))))
+        heading? (fn [{:keys [start end words]}]
+                   (and (sentence-start? start)
+                        (some #(> (count %) 1) words)
+                        (or (next words) (re-find #"^\s*(?::|\.|\s(?:is|are)\b)" (subs masked end)))))
+        heads (filterv heading? runs)
+        starts (mapv :start heads)
+        chunk (fn [i] (let [from (or (last (filter #(<= % i) starts)) 0)
+                            to (or (first (filter #(> % from) starts)) (count conventions))]
+                        (str/trim (subs conventions from to))))]
+    (->> runs
+         (filter #(or (heading? %) (next (:words %))))
+         (map (fn [{:keys [start words]}] {:term (str/join " " words) :definition (chunk start)}))
+         (reduce (fn [acc t] (if (some #(= (:term t) (:term %)) acc) acc (conj acc t))) []))))
+
+(defn terms-named
+  "The ones of `terms` (`defined-terms`) that `text` names: the term's words, whole, in any case."
+  [terms text]
+  (filterv (fn [{:keys [term]}]
+             (re-find (re-pattern (str "(?i)(?<![\\w'’-])"
+                                       (str/join "\\s+" (map #(java.util.regex.Pattern/quote %) (str/split term #" ")))
+                                       "(?![\\w'’-])"))
+                      text))
+           terms))
+
 (defn rules-for-mirror
   "The rules a mirror renders from: the project's when `path` is one of the
   mirrors its workspace lists (`:workspace/rule-mirrors`), the source for every

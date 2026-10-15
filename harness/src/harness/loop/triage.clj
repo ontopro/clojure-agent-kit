@@ -171,11 +171,8 @@
   a contract, it does not write - but whether a rejected input can occur is
   decided by where the project says its input comes from, and that is said here
   and nowhere else."
-  ([] (data-conventions (rules/load-rules)))
-  ([rs]
-   (let [r (first (filter #(= :data-conventions (:id %)) rs))]
-     (when (and r (empty? (rules/unfilled [r])))
-       (:text r)))))
+  ([] (rules/data-conventions))
+  ([rs] (rules/data-conventions rs)))
 
 (defn- trigger-section
   [{:keys [trigger payload]}]
@@ -335,6 +332,13 @@
      "the Tester cannot, and a test must hold for EVERY implementation the targets allow. "
      "Tell the Tester what a target requires, in the target's own terms — never a count, "
      "a position, an ordering or a structure that you know only from reading the code.\n\n"
+     ;; A RESTATED DEFINITION COST A ROUND: guidance said an image adds nothing to a head cell's
+     ;; words, where the project's definition makes it a word boundary, and the Coder followed
+     ;; the guidance. The driver sends each definition the guidance names; this asks for the name.
+     "QUOTE A DEFINED TERM, NEVER RESTATE IT. Where your guidance turns on a term the project's "
+     "data conventions define under an ALL-CAPS heading, name the term in capitals and keep to "
+     "its words: a paraphrase is a second definition, and the role follows the contract over it. "
+     "The harness sends each definition your guidance names with it, word for word.\n\n"
      "Task: " (:task/id spec) " — " (:task/title spec) "\n"
      "Blueprint slice (contract): " (pr-str (:blueprint/slice spec)) "\n"
      "Property targets: " (pr-str (:property-targets spec)) "\n"

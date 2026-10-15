@@ -1160,3 +1160,24 @@
           (is (contains? r2 :run/plan-commit))
           (is (nil? (:run/plan-commit r2)) "no plan: nil, written, so the report says — and not 'not recorded'")
           (is (shapes/valid-run? r2)))))))
+
+(deftest guidance-naming-a-defined-term-carries-its-definition-word-for-word
+  (let [dc (str "A WORD is a run of characters. THE WORDS OF A TREE: inline nodes joined, every other "
+                "node a word boundary. A FIXTURE is a string written in the test.")
+        guidance {:feedback/from :triage :feedback/text "an image adds nothing to THE WORDS OF A TREE"}
+        gate {:feedback/from :gate :feedback/text "fmt failed: a FIXTURE"}]
+    (testing "the definition goes right after the guidance, before the gate's output"
+      (let [{:keys [feedback terms]} (loop/quoted-definitions dc [guidance gate])]
+        (is (= ["THE WORDS OF A TREE"] terms))
+        (is (= [:triage :conventions :gate] (mapv :feedback/from feedback)))
+        (is (str/ends-with? (:feedback/text (second feedback))
+                            "THE WORDS OF A TREE: inline nodes joined, every other node a word boundary."))))
+    (testing "only the guidance is read - a gate's output naming a term adds nothing"
+      (is (= {:feedback [gate] :terms []} (loop/quoted-definitions dc [gate]))))
+    (testing "the Architect's announcement is guidance too; two terms, two definitions"
+      (let [{:keys [feedback terms]} (loop/quoted-definitions
+                                      dc [{:feedback/from :architect :feedback/text "a word, and the fixture"}])]
+        (is (= ["WORD" "FIXTURE"] terms))
+        (is (= [:architect :conventions :conventions] (mapv :feedback/from feedback)))))
+    (testing "conventions not filled: nothing is added"
+      (is (= {:feedback [guidance] :terms []} (loop/quoted-definitions nil [guidance]))))))

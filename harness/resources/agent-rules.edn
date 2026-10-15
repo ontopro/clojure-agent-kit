@@ -119,6 +119,17 @@
   :title "Say what the contract did not."
   :text "When the Blueprint is silent about a case you had to decide, when a `:deps-sigs` entry looks wrong, or when you made an assumption someone should check — call the `note` tool. Do NOT save it for your final message: a note is carried into the next dispatch as feedback and a final message is not, so an observation left only in prose dies with your turn. Deciding quietly is the failure this prevents; the next role derives from the same contract and will decide differently."}
 
+ ;; Set by a person after a retry's guidance restated a defined term - an image adds nothing to a
+ ;; head cell's words, where the project's definition makes it a word boundary - and the Coder
+ ;; followed the guidance; the code reviewer rejected on the contract, one round later. The
+ ;; driver sends each definition the guidance names with it; this is the rule for the writer of
+ ;; guidance (triage's prompt says it too) and for the role that reads it.
+ {:id :guidance-quotes-the-contract
+  :group :non-negotiable
+  :audience #{:coder :tester :reviewer :human}
+  :title "Guidance quotes a defined term; the contract holds over it."
+  :text "Guidance on a retry - triage's or the Architect's - quotes a term this project's data conventions define, under its ALL-CAPS name and in its own words, and never restates it: a paraphrase is a second definition. Where guidance and the contract differ, the contract holds - follow the contract, and say the difference with the `note` tool."}
+
  {:id :label-fabricated
   :group :non-negotiable
   :audience #{:coder :tester :reviewer :human}

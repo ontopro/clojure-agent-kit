@@ -1319,6 +1319,33 @@
           (println (str "\n  synced from the gate worktree, so the " (name role)
                         " starts from the bytes the gates judged: " (str/join ", " synced))))))))
 
+(defn quoted-definitions
+  "`feedback` with the definition of each term its guidance names - the `:triage` and
+  `:architect` items - from `conventions`, the project's `:data-conventions` text, as
+  `{:feedback/from :conventions}` items placed right after the guidance. Returns
+  `{:feedback [...] :terms [str]}`; unchanged and no terms when nil `conventions` or no term named.
+
+  GUIDANCE QUOTES A DEFINED TERM; THE DEFINITION TRAVELS WITH IT. A retry's guidance once
+  restated THE WORDS OF A TREE - an image adds nothing to a head cell's words, where the
+  definition makes it a word boundary - and the Coder followed the guidance; the code reviewer
+  rejected on the contract, one round and a stop later. The role held the definition among its
+  rules all along; sent beside the guidance, it is what the guidance is read against.
+  Mechanical, as a packet inlines its slice's shapes word for word."
+  [conventions feedback]
+  (let [feedback (vec feedback)
+        guidance? #(#{:triage :architect} (:feedback/from %))
+        guidance (str/join "\n" (map :feedback/text (filter guidance? feedback)))
+        named (when (and conventions (not (str/blank? guidance)))
+                (rules/terms-named (rules/defined-terms conventions) guidance))]
+    (if (empty? named)
+      {:feedback feedback :terms []}
+      (let [at (inc (last (keep-indexed #(when (guidance? %2) %1) feedback)))
+            items (for [d (distinct (map :definition named))]
+                    {:feedback/from :conventions
+                     :feedback/text (str "As this project's data conventions define it, word for word:\n" d)})]
+        {:feedback (vec (concat (subvec feedback 0 at) items (subvec feedback at)))
+         :terms (mapv :term named)}))))
+
 (defn retry-with!
   "`retry!` with the decision as data: `triage` is `{:decision \"...\"
   :feedback [Feedback ...]}`, `allow?` is `--allow-leak`, and `extra` is
@@ -1339,9 +1366,17 @@
         attempt (next-attempt (:attempts @(:state ctx)) role)
         checked (leak-check role (spec-of ctx)
                             (when (= :tester role) (impl-names ctx))
-                            feedback allow?)]
+                            feedback allow?)
+        ;; AFTER the leak check: a definition is rule text every role already holds, and a
+        ;; namespace it names is the project's contract, not the implementation leaking
+        {feedback :feedback quoted :terms} (quoted-definitions (rules/data-conventions) feedback)]
     (event! ctx (cond-> (merge extra {:event/kind :triage :role role :attempt attempt :decision decision})
-                  checked (assoc :leak-check checked)))
+                  checked (assoc :leak-check checked)
+                  (seq quoted) (assoc :quoted-terms quoted)))
+    (when (seq quoted)
+      (println (str "  guidance names " (str/join ", " quoted)
+                    " - " (if (next quoted) "their definitions are" "its definition is")
+                    " sent with it, word for word")))
     (swap! (:state ctx) assoc-in [:attempts role] attempt)
     (persist! ctx)
     ;; AFTER the decision is recorded and BEFORE the dispatch: the decision

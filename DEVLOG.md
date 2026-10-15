@@ -56,6 +56,29 @@ step by hand, named there.
 
 ## 2026-10-14
 
+### Guidance that names a defined term is sent the term's definition (plan 6.5, item 6)
+
+The proof build lost a round to a paraphrase. The Architect's guidance for a Coder retry named
+THE WORDS OF A TREE, the project's own defined term, and restated it - an image adds nothing to
+a head cell's words - where the definition makes an image a word boundary. The Coder held the
+definition among its rules, followed the guidance, and the code reviewer rejected on the
+contract: one round and a ten-minute stop. Nothing in the KIT said guidance quotes.
+
+Now the driver does it mechanically, the way a packet inlines its slice's shapes. `retry-with!`,
+which a routed retry and a typed one both pass through, reads the guidance - the `:triage` and
+`:architect` feedback, never gate output or the code reviewer's findings - for the terms the
+project's filled `:data-conventions` defines, and sends each one named as a new feedback source,
+`:conventions`, word for word, right after the guidance. A term is an ALL-CAPS heading that starts
+a sentence, its definition running to the next heading, or a run of caps words inside one,
+defined by the heading it sits under; matched as whole words in any case (`harness.rules`,
+`defined-terms`). The definitions are added after the Tester's leak check - rule text every role
+holds already, whose namespaces are the contract's - and the round's event records
+`:quoted-terms`. On the proof build's conventions the parser finds its twenty terms, and the
+guidance that went wrong names two, THE WORDS OF A TREE and WORD, so both definitions would have
+gone with it. A rule for every role and the person, `:guidance-quotes-the-contract`: guidance
+quotes a defined term and never restates it, and where it differs from the contract the contract
+holds. Triage's prompt asks the same of the model.
+
 ### An approval with notes says so at the stop (plan 6.5, item 5)
 
 The proof build merged a layout packet whose code reviews each approved with notes naming real

@@ -270,3 +270,41 @@
     (testing "a mirror given its rules renders those"
       (rules/sync! kit-mirror :rules sample)
       (is (str/includes? (slurp kit-mirror) "Gamma.")))))
+
+(def ^:private conventions
+  (str "WHAT A FILE IS. A file is a front matter block and the page text; `HOW TO READ THIS` is a "
+       "comment. THE PAGE TEXT is the text without the head row of a PICTURE TABLE - a table holding "
+       "an image. HTML comments are records. A WORD is a run of characters. THE WORDS OF A TREE: the "
+       "text of its inline nodes joined, every other node a word boundary. A FIXTURE is a string "
+       "written in the test. PRESENTATION is the views'."))
+
+(deftest defined-terms-are-the-all-caps-headings-and-the-terms-inside-them
+  (let [terms (rules/defined-terms conventions)
+        by-term (into {} (map (juxt :term :definition)) terms)]
+    (is (= ["WHAT A FILE IS" "THE PAGE TEXT" "PICTURE TABLE" "WORD" "THE WORDS OF A TREE" "FIXTURE" "PRESENTATION"]
+           (mapv :term terms))
+        "in text order; a leading A dropped; a single word only before is, are, a colon or a stop")
+    (testing "a heading's definition runs to the next heading"
+      (is (= "THE WORDS OF A TREE: the text of its inline nodes joined, every other node a word boundary."
+             (by-term "THE WORDS OF A TREE")))
+      (is (str/starts-with? (by-term "THE PAGE TEXT") "THE PAGE TEXT is"))
+      (is (str/ends-with? (by-term "THE PAGE TEXT") "HTML comments are records.")
+          "HTML starting a sentence is no heading: one word, followed by a word"))
+    (testing "a caps run inside a sentence is a term defined by the heading it sits under"
+      (is (= (by-term "THE PAGE TEXT") (by-term "PICTURE TABLE"))))
+    (testing "a literal in backticks is quoted, not defined"
+      (is (not-any? #(str/includes? (:term %) "HOW TO READ") terms)))))
+
+(deftest a-term-is-named-by-its-whole-words-in-any-case
+  (let [terms (rules/defined-terms conventions)
+        named #(mapv :term (rules/terms-named terms %))]
+    (is (= ["THE WORDS OF A TREE"] (named "count the words of a tree as defined")))
+    (is (= ["WORD" "FIXTURE"] (named "an image is not a word; write the fixture again")))
+    (is (= [] (named "the words of the cell; fixtures; a presentational class"))
+        "words is not WORD, fixtures not FIXTURE")
+    (is (= [] (named "")))))
+
+(deftest data-conventions-is-the-filled-text-or-nil
+  (is (= "Content comes from an EDN file." (rules/data-conventions [{:id :data-conventions :text "Content comes from an EDN file."}])))
+  (is (nil? (rules/data-conventions [{:id :data-conventions :text "<Say once, for every role, what this data is.>"}])))
+  (is (nil? (rules/data-conventions []))))

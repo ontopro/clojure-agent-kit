@@ -382,6 +382,32 @@
       (is (= {:leaks [] :allowed? false} (:leak-check t)) "checked, clean, and recorded as such"))
     (teardown! rd)))
 
+(deftest a-retry-whose-guidance-names-a-defined-term-is-sent-its-definition
+  ;; The definition names the implementation's file: the project's own contract, which every
+  ;; role holds, so it is added after the leak check and the Tester is still dispatched.
+  (let [repo (scratch-repo)
+        rd (run-dir! repo {:gates [[:fixed (str "grep -q fixed " test-path)]]})
+        writes {:coder {impl-path impl-src}
+                :tester (fn [pkt] {test-path (if (:task/feedback pkt) (str test-src ";; fixed\n") test-src)})}
+        dc (str "A FIXTURE is a string written in the test, never read from " impl-path ". "
+                "WHERE INPUT COMES FROM: a file.")
+        res (with-redefs-fn {#'rules/data-conventions (fn [& _] dc)}
+              #(drive! rd {:writes writes
+                           :triage (constantly {:route :tester :reason "the test misreads the contract"
+                                                :guidance "write the fixture as the contract says, and write fixed"})}))]
+    (is (= :reviewed (:stop/kind res)))
+    (let [t (first (filter #(= :triage (:event/kind %)) (events rd)))
+          retry (first (filter #(= :tester-r1 (:event/step %)) (events rd)))]
+      (is (= ["FIXTURE"] (:quoted-terms t)) "the record says which terms went with the guidance")
+      (is (= {:leaks [] :allowed? false} (:leak-check t)))
+      (is (= [:triage :conventions :gate] (mapv :feedback/from (:feedback retry))))
+      (is (str/ends-with? (:feedback/text (second (:feedback retry)))
+                          (str "A FIXTURE is a string written in the test, never read from " impl-path "."))))
+    (testing "and the record validates"
+      (with-out-str (driver/record! (driver/context rd)))
+      (is (nil? (shapes/explain-run (edn/read-string (slurp (str (fs/path rd "run.edn"))))))))
+    (teardown! rd)))
+
 (deftest the-cap-is-spent-per-role-and-the-stop-names-whose-rounds-are-spent
   ;; The cap is per role: the Coder's two retries spend its three rounds, the Tester's are
   ;; its own, and triage routing the Coder again is a stop that names the Coder.

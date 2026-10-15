@@ -87,9 +87,13 @@
   `:architect` announces a change to the contract. A run once amended its
   property targets between attempts and nothing could say so: a role had to notice the
   packet had changed. An amendment is not a finding and not a routing
-  decision, so it is neither `:reviewer` nor `:triage`."
+  decision, so it is neither `:reviewer` nor `:triage`.
+
+  `:conventions` is a definition from the project's data conventions, word for word, sent
+  because the guidance before it names the term. Guidance once restated a defined term wrongly
+  and the role followed it; the definition is the contract's, so it is its own source."
   [:map {:closed true}
-   [:feedback/from [:enum :gate :reviewer :coder :tester :triage :architect]]
+   [:feedback/from [:enum :gate :reviewer :coder :tester :triage :architect :conventions]]
    [:feedback/text [:string {:min 1}]]])
 
 (def PacketBase
