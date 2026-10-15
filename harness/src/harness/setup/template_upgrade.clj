@@ -32,6 +32,7 @@
    [harness.gates.boundary :as boundary]
    [harness.gates.run :as gates]
    [harness.loop.driver :as driver]
+   [harness.rules :as rules]
    [harness.setup.app :as app]
    [harness.setup.template :as template]
    [harness.setup.workspace :as workspace]))
@@ -82,6 +83,25 @@
     (loop [n 1]
       (let [id (if (= 1 n) base (str base "-" n))]
         (if (taken? id) (recur (inc n)) id)))))
+
+(defn open-run-id
+  "The id of an open template upgrade under `runs-dir` - a run of `:run/kind :template-upgrade`
+  not yet merged, the latest started when there are several - or nil. `bb template-upgrade`
+  resumes it whatever its id: an upgrade's run (`upgrade-<version>`, `bb upgrade`'s) stopped on a
+  conflict is the run the Architect resolved, and a second run on the same release would orphan
+  that resolution."
+  [runs-dir]
+  (when (fs/directory? runs-dir)
+    (->> (fs/list-dir runs-dir)
+         (keep (fn [d]
+                 (let [f (fs/path d "state.edn")]
+                   (when (fs/exists? f)
+                     (let [s (edn/read-string {:default tagged-literal} (slurp (str f)))]
+                       (when (and (= :template-upgrade (:run/kind s)) (not (merged? s)))
+                         [(:started-ms s 0) (str (fs/file-name d))]))))))
+         (sort-by first)
+         last
+         second)))
 
 (defn last-stop
   "The last `:stopped` event's status, or nil."
@@ -227,9 +247,11 @@
   would fill it, the upgrade's own facts under `:template` and `:base`, and the gate session -
   the worktree the merge is in, on the upgrade's branch - under `:sessions`, where `merge`,
   `record` and `teardown` look for it."
-  [{:keys [id ws now from to label template-commit base-branch base-commit worktree]}]
+  [{:keys [id ws now from to label template-commit base-branch base-commit worktree hook]}]
   {:run/kind :template-upgrade
    :started-ms now
+   ;; what runs on the branch before its gates, by name, so a resume by any entry point does it
+   :hook hook
    :config {:run/id id
             :repo/root (:workspace/app ws)
             :worktrees/dir (str (fs/path (:workspace/work ws) "worktrees" id))
@@ -252,6 +274,27 @@
 (defn- stop! [ctx kind route status reason]
   (driver/event! ctx {:event/kind :stopped :stop/kind kind :route route :reason reason :run/status status}))
 
+(defn rule-mirror-hook
+  "The `:before-gates` step `bb upgrade` asks for, by name in the run's state (`:hook`): the
+  application's rule mirrors re-rendered in the worktree from the project's rules - never the
+  shipped ones, which `rules/sync!` would pick for a path the workspace does not list - and
+  committed there when changed, with `release` in the message. Idempotent."
+  [ws release]
+  (fn [wt]
+    (let [app (:workspace/app ws)
+          rels (for [m (:workspace/rule-mirrors ws) :when (str/starts-with? m (str app "/"))]
+                 (str (fs/relativize app m)))
+          changed (doall (for [rel rels
+                               :let [path (fs/path wt rel)]
+                               :when (fs/exists? path)
+                               :let [{:keys [changed?]} (rules/sync! (str path) :rules (rules/project-rules ws))]
+                               :when changed?]
+                           rel))]
+      (when (seq changed)
+        (apply git! wt nil "add" "--" changed)
+        (git! wt nil "commit" "-q" "-m" (str "KIT " release ": the rule mirror re-rendered from the release's rule source"))
+        (say (str "the rule mirror re-rendered on the branch: " (str/join ", " changed)))))))
+
 (declare gates-on!)
 
 (defn- gates!
@@ -259,8 +302,13 @@
   branch first (the rule mirror re-rendered, for `bb upgrade`), run on every path to the gates
   and idempotent: it commits only a change. A branch left with nothing past its base is nothing
   to merge, and the run is removed again."
-  [ctx wt {:keys [gates before-gates env]} run-dir]
-  (when before-gates (before-gates (str wt)))
+  [ctx wt {:keys [gates before-gates env ws]} run-dir]
+  ;; THE HOOK THE RUN RECORDED, when the caller passed none: a resume by `bb template-upgrade`
+  ;; of a run `bb upgrade` started still re-renders the mirror before the gates
+  (let [state @(:state ctx)
+        hook (cond (fn? before-gates) before-gates
+                   (= :rule-mirror (get-in state [:hook :kind])) (rule-mirror-hook ws (get-in state [:hook :release])))]
+    (when hook (hook (str wt))))
   (let [state @(:state ctx)
         head (git! wt env "rev-parse" "HEAD")]
     (if (and (nil? (get-in state [:template :commit])) (= head (get-in state [:base :commit])))
@@ -369,7 +417,7 @@
   (`bb upgrade` re-renders the rule mirror there); `:branch-anyway?`, a branch and a run even
   when the template is as it was - for what `:before-gates` adds; nothing added, no run.
   Returns `{:outcome kw ...}`; a refusal throws `ex-info` with `:template-upgrade/error`."
-  [ws {:keys [pin local-root generate env now id branch-anyway?] :or {now (System/currentTimeMillis)} :as opts}]
+  [ws {:keys [pin local-root generate env now id branch-anyway? before-gates release] :or {now (System/currentTimeMillis)} :as opts}]
   (let [app (:workspace/app ws)
         work (:workspace/work ws)
         _ (when-not (fs/directory? (fs/path app ".git"))
@@ -380,10 +428,12 @@
             (refuse (str "the application at " app " has no branch checked out (detached HEAD): check out main first") {:app app}))
         from (ensure-template-branch! app env)
         runs-dir (fs/path work "runs")
-        id (fresh-id runs-dir (or id (run-id pin local-root)))
+        ;; AN OPEN RUN IS RESUMED WHATEVER ITS ID: `bb upgrade` names its run `upgrade-<version>`, and
+        ;; `bb template-upgrade` after a conflict must find that one, not start a second
+        id (or id (open-run-id runs-dir) (fresh-id runs-dir (run-id pin local-root)))
         run-dir (str (fs/path runs-dir id))
         state-file (fs/path run-dir "state.edn")
-        opts (-> opts (update :gates #(or % [])) (assoc :env env))]
+        opts (-> opts (update :gates #(or % [])) (assoc :env env :ws ws))]
     (if (fs/exists? state-file)
       ;; A RUN NOT MERGED IS RESUMED, whatever template's tip says: it holds this release already
       (do (say (str "run " id " exists - resuming it"))
@@ -431,6 +481,7 @@
             _ (fs/create-dirs run-dir)
             _ (spit (str state-file)
                     (with-out-str (pp/pprint (initial-state {:id id :ws ws :now now :from from :to to :label label
+                                                             :hook (when (= :rule-mirror before-gates) {:kind :rule-mirror :release release})
                                                              :template-commit template-commit
                                                              :base-branch base-branch :base-commit base-commit
                                                              :worktree wt}))))

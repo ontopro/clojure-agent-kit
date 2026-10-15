@@ -341,3 +341,32 @@
         (let [e (try (run write) nil (catch clojure.lang.ExceptionInfo e e))]
           (is (:nothing-to-upgrade (ex-data e)))
           (is (str/includes? (ex-message e) "and it is merged")))))))
+
+(deftest bb-template-upgrade-resumes-an-upgrades-run-whatever-its-id-and-keeps-its-hook
+  ;; `bb upgrade` names its run upgrade-<version> and asks for the rule mirror before the gates; after
+  ;; a conflict the Architect resolves there and runs `bb template-upgrade`, which passes no id and
+  ;; no hook - it must find THAT run, and still re-render the mirror on it
+  (let [ws (workspace!)
+        app (:workspace/app ws)
+        work (:workspace/work ws)
+        build (:workspace/build ws)
+        _ (spit (str (fs/path build "rules.edn")) (pr-str [{:id :layer-boundaries :text "Respect the boundaries of layer {{layer}}. FILLED."}]))
+        release (assoc generated-files "src/xyx/views.clj" (str/replace views-clj "Clojure Stack Lite" "Clojure Stack Lite 2"))
+        generate (fn [target] (fs/create-dirs target) (write-tree! target release))
+        r1 (tu/upgrade! ws {:pin new-pin :env git-env :gates [[:fmt "true"]] :generate generate
+                            :id "upgrade-0.6.5" :release "0.6.5" :branch-anyway? true :before-gates :rule-mirror})
+        wt (str (fs/path work "worktrees" "upgrade-0.6.5" "app"))]
+    (is (= :conflict (:outcome r1)))
+    (is (= {:kind :rule-mirror :release "0.6.5"} (:hook (state ws "upgrade-0.6.5"))) "the hook recorded by name")
+    (spit (str (fs/path wt "src" "xyx" "views.clj")) (str "(ns xyx.views)\n(defn base [c] c)\n" (app/home-page "xyx" "0.6.5") "\n"))
+    (git-out wt "add" "-A")
+    (git-out wt "commit" "-q" "-m" "resolved")
+    (testing "the entry point's call: no id, no hook - the same run, the mirror on it, gated, awaiting its merge"
+      (let [r2 (tu/upgrade! ws {:pin new-pin :env git-env :gates [[:fmt "true"]] :generate generate})]
+        (is (= :awaiting-merge (:outcome r2)))
+        (is (not (fs/exists? (fs/path work "runs" "template-upgrade-kit-v9.9"))) "no second run")
+        (is (= [:template-commit :merge :stopped :resolved :gates :stopped] (mapv :event/kind (:events (state ws "upgrade-0.6.5")))))
+        (is (str/includes? (git-out app "log" "-1" "--format=%s" "upgrade-0.6.5") "the rule mirror re-rendered"))
+        (is (str/includes? (git-out app "show" "upgrade-0.6.5:AGENTS.md") "FILLED."))
+        (is (= (git-out app "rev-parse" "upgrade-0.6.5") (:head (last (filter #(= :gates (:event/kind %)) (:events (state ws "upgrade-0.6.5"))))))
+            "the gates ran on the tip with the mirror")))))

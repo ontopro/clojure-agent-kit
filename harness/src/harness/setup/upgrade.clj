@@ -194,6 +194,10 @@
       (and app (= :merged (:state app)))
       (conj (str "upgraded to " v ": the application's branch " (:branch app) " is merged"))
 
+      (and app (= :gone (:state app)))
+      (conj (str "upgraded to " v ": the application's branch " (:branch app) " is gone and no merge is recorded - abandoned by hand;"
+                 " `bb template-upgrade` makes it again if the release is still wanted"))
+
       (and app (= :awaiting-merge (:state app)))
       (conj (str "upgraded to " v ": the application's branch " (:branch app) " is gated green and awaits its merge - "
                  "`bb run-loop merge " (:run-dir app) " <decision.edn>`, a decision-log entry with it"))
@@ -246,10 +250,27 @@
     (let [dir (:workspace/dir ws)
           app-dir (:workspace/app ws)
           branch (:branch app)
+          ;; THE RUN'S STATE, NOT THE STATE RECORDED AT UPGRADE TIME: the Architect resolves the
+          ;; conflict and the gates go green, and the notice must follow; the recorded state is
+          ;; the fallback when the run directory is gone
+          state (let [f (some-> (:run-dir app) (fs/path "state.edn"))]
+                  (when (and f (fs/exists? f)) (edn/read-string {:default tagged-literal} (slurp (str f)))))
+          from-state (when state
+                       (if (some #(= :merged (:event/kind %)) (:events state))
+                         :merged
+                         (when-let [stop (last (filter #(= :stopped (:event/kind %)) (:events state)))]
+                           (case (:run/status stop)
+                             :awaiting-merge :awaiting-merge
+                             (case (:stop/kind stop) :merge-conflict :conflict :gates-red :gates-red (:state app))))))
           exists? (and branch (some? (git app-dir "rev-parse" "-q" "--verify" (str "refs/heads/" branch))))
-          merged? (and branch (or (not exists?) (some? (git app-dir "merge-base" "--is-ancestor" branch "HEAD"))))]
+          merged? (and branch (or (= :merged from-state)
+                                  (and exists? (some? (git app-dir "merge-base" "--is-ancestor" branch "HEAD")))))]
       {:version version :at at
-       :app (when branch (if merged? (assoc app :state :merged) app))
+       :app (when branch
+              (cond merged? (assoc app :state :merged)
+                    ;; a branch gone with no merge recorded: abandoned by hand, not merged
+                    (not exists?) (assoc app :state :gone)
+                    :else (assoc app :state (or from-state (:state app)))))
        :conflicts (filterv #(fs/exists? (fs/path dir %)) conflicts)
        :new (filterv #(fs/exists? (fs/path dir %)) new)})))
 

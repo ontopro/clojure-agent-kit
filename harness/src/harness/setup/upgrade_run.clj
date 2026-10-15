@@ -45,7 +45,6 @@
    [clojure.edn :as edn]
    [clojure.pprint :as pp]
    [clojure.string :as str]
-   [harness.rules :as rules]
    [harness.setup.front-door :as front-door]
    [harness.setup.init :as init]
    [harness.setup.skills :as skills]
@@ -126,8 +125,9 @@
   hunk whose removed instruction is gone but which adds a heading, a row or a section is
   content the project would lose without a word."
   [{:keys [lines]} doc-text]
-  (let [removed (map #(subs % 1) (filter #(str/starts-with? % "-") lines))
-        added (map #(subs % 1) (filter #(str/starts-with? % "+") lines))
+  ;; blank lines say nothing either way: an instruction paragraph goes with its blank line
+  (let [removed (remove str/blank? (map #(subs % 1) (filter #(str/starts-with? % "-") lines)))
+        added (remove str/blank? (map #(subs % 1) (filter #(str/starts-with? % "+") lines)))
         doc-lines (set (map str/trim (str/split-lines (str doc-text))))]
     (if (and (seq removed)
              (every? instruction-line? removed)
@@ -255,45 +255,50 @@
         diff (:out (git kit "diff" from head "--" "build-docs/"))
         files (parse-diff diff)
         conflicts-dir (fs/path dir "conflicts")
+        ;; EVERY TARGET CHECKED BEFORE ANYTHING IS WRITTEN: a refusal after some documents were
+        ;; patched would leave the upgrade's own edits uncommitted, and the re-run refusing them
+        _ (doseq [{:keys [path]} files
+                  :let [rel (subs path (count "build-docs/"))]]
+            (when-not (str/blank? (:out (git build "status" "--porcelain" "--" (str "docs/" rel))))
+              (throw (ex-info (str "docs/" rel " has uncommitted edits in " build ": commit or set them aside, then `bb upgrade --after-pull` again - nothing was written")
+                              {:upgrade/error :uncommitted :path (str (fs/path build "docs" rel))}))))
         results (for [{:keys [path new? deleted? hunks]} files
                       :let [rel (subs path (count "build-docs/"))
                             target (fs/path build "docs" rel)]]
-                  (do
-                    (when-not (str/blank? (:out (git build "status" "--porcelain" "--" (str "docs/" rel))))
-                      (throw (ex-info (str "docs/" rel " has uncommitted edits in " build ": commit or set them aside, then `bb upgrade --after-pull` again")
-                                      {:upgrade/error :uncommitted :path (str target)})))
-                    (cond
-                      deleted? {:rel rel :outcome :deleted-in-kit}
-                      new? (let [content (:out (git kit "show" (str head ":" path)))]
-                             (cond (not (fs/exists? target)) (do (fs/create-dirs (fs/parent target)) (spit (str target) (str content "\n")) {:rel rel :outcome :added :touched true})
-                                   (= (str/trim (slurp (str target))) (str/trim content)) {:rel rel :outcome :same}
-                                   :else (let [c (fs/path conflicts-dir "docs" (str rel ".new"))]
-                                           (fs/create-dirs (fs/parent c)) (spit (str c) content) {:rel rel :outcome :conflict :conflicts [(str (fs/relativize (:workspace/dir ws) c))]})))
-                      (not (fs/exists? target)) {:rel rel :outcome :not-in-build}
-                      :else
-                      (let [r (reduce (fn [acc [n hunk]]
-                                        (let [patch (fs/path dir "patches" (str rel "." n ".patch"))
-                                              _ (fs/create-dirs (fs/parent patch))
-                                              _ (spit (str patch) (hunk-patch rel hunk))
-                                              {:keys [exit]} (git build "apply" "--check" "--recount" (str patch))]
-                                          (if (zero? exit)
-                                            (do (git! build "apply" "--recount" (str patch)) (update acc :applied inc))
-                                            (case (hunk-class hunk (slurp (str target)))
-                                              :instruction-removed (update acc :dropped inc)
-                                              :conflict (let [c (fs/path conflicts-dir "docs" (str rel "." n ".patch"))]
-                                                          (fs/create-dirs (fs/parent c))
-                                                          (fs/copy patch c {:replace-existing true})
-                                                          (update acc :conflicts conj (str (fs/relativize (:workspace/dir ws) c))))))))
-                                      {:applied 0 :dropped 0 :conflicts []}
-                                      (map-indexed (fn [i h] [(inc i) h]) hunks))]
-                        (assoc r :rel rel :outcome :patched :touched (pos? (:applied r)))))))
+                  (cond
+                    deleted? {:rel rel :outcome :deleted-in-kit}
+                    new? (let [content (:out (git kit "show" (str head ":" path)))]
+                           (cond (not (fs/exists? target)) (do (fs/create-dirs (fs/parent target)) (spit (str target) (str content "\n")) {:rel rel :outcome :added :touched true})
+                                 (= (str/trim (slurp (str target))) (str/trim content)) {:rel rel :outcome :same}
+                                 :else (let [c (fs/path conflicts-dir "docs" (str rel ".new"))]
+                                         (fs/create-dirs (fs/parent c)) (spit (str c) content) {:rel rel :outcome :conflict :conflicts [(str (fs/relativize (:workspace/dir ws) c))]})))
+                    (not (fs/exists? target)) {:rel rel :outcome :not-in-build}
+                    :else
+                    (let [r (reduce (fn [acc [n hunk]]
+                                      (let [patch (fs/path dir "patches" (str rel "." n ".patch"))
+                                            _ (fs/create-dirs (fs/parent patch))
+                                            _ (spit (str patch) (hunk-patch rel hunk))
+                                            {:keys [exit]} (git build "apply" "--check" "--recount" (str patch))]
+                                        (if (zero? exit)
+                                          (do (git! build "apply" "--recount" (str patch)) (update acc :applied inc))
+                                          (case (hunk-class hunk (slurp (str target)))
+                                            :instruction-removed (update acc :dropped inc)
+                                            :conflict (let [c (fs/path conflicts-dir "docs" (str rel "." n ".patch"))]
+                                                        (fs/create-dirs (fs/parent c))
+                                                        (fs/copy patch c {:replace-existing true})
+                                                        (update acc :conflicts conj (str (fs/relativize (:workspace/dir ws) c))))))))
+                                    {:applied 0 :dropped 0 :conflicts []}
+                                    (map-indexed (fn [i h] [(inc i) h]) hunks))]
+                      (assoc r :rel rel :outcome :patched :touched (pos? (:applied r))))))
         results (vec results)
         touched (map #(str "docs/" (:rel %)) (filter :touched results))
         conflicts (vec (mapcat :conflicts results))]
     (when (seq touched)
       (apply git! build "add" "--" touched)
-      (git! build "commit" "-q" "-m" (str "KIT " (or version (subs head 0 7)) ": the build documents the release changed, from "
-                                          (subs from 0 7) " to " (subs head 0 7))))
+      ;; ONLY THESE PATHS: a commit without a pathspec would sweep up whatever the person had staged
+      (apply git! build "commit" "-q" "-m" (str "KIT " (or version (subs head 0 7)) ": the build documents the release changed, from "
+                                                (subs from 0 7) " to " (subs head 0 7))
+             "--" touched))
     {:status :done
      :detail (str (count files) " file" (when (not= 1 (count files)) "s") " changed in build-docs/: "
                   (str/join "; " (for [{:keys [rel outcome applied dropped] cs :conflicts} results]
@@ -311,50 +316,42 @@
     (if-not (fs/exists? f)
       {:status :done :detail "no loop.edn"}
       (let [[out changed?] (rewrite-kit-path (slurp (str f)))]
-        (if-not changed?
-          {:status :done :detail "names no literal KIT path"}
+        (cond
+          (not changed?) {:status :done :detail "names no literal KIT path"}
+
+          (not (str/blank? (:out (git build "status" "--porcelain" "--" "loop.edn"))))
+          (throw (ex-info (str "loop.edn has uncommitted edits in " build ": commit or set them aside, then `bb upgrade --after-pull` again")
+                          {:upgrade/error :uncommitted :path (str f)}))
+
+          :else
           (do (spit (str f) out)
               (git! build "add" "--" "loop.edn")
-              (git! build "commit" "-q" "-m" (str "KIT " (or version (subs head 0 7)) ": loop.edn names the KIT by {{kit}}, so the workspace can be copied or moved"))
+              (git! build "commit" "-q" "-m" (str "KIT " (or version (subs head 0 7)) ": loop.edn names the KIT by {{kit}}, so the workspace can be copied or moved")
+                    "--" "loop.edn")
               {:status :done :detail "the literal KIT path rewritten to {{kit}}, committed in the build"}))))))
 
-(defn- mirror-hook
-  "`:before-gates` for the application's branch: the rule mirrors re-rendered in the worktree
-  from the project's rules, committed there when changed. Idempotent."
-  [ws version]
-  (fn [wt]
-    (let [app (:workspace/app ws)
-          rels (for [m (:workspace/rule-mirrors ws) :when (str/starts-with? m (str app "/"))]
-                 (str (fs/relativize app m)))
-          changed (doall (for [rel rels
-                               :let [path (fs/path wt rel)]
-                               :when (fs/exists? path)
-                               :let [{:keys [changed?]} (rules/sync! (str path) :rules (rules/project-rules ws))]
-                               :when changed?]
-                           rel))]
-      (when (seq changed)
-        (apply git! wt "add" "--" changed)
-        (git! wt "commit" "-q" "-m" (str "KIT " version ": the rule mirror re-rendered from the release's rule source"))
-        (say "the rule mirror re-rendered on the branch: " (str/join ", " changed))))))
-
-(defn- step-app! [{:keys [ws version generate gates]}]
-  (let [r (tu/upgrade! ws (cond-> {:pin (template/pin (template/load-pins))
+(defn- step-app! [{:keys [ws release generate gates]}]
+  (let [id (str "upgrade-" release)
+        ;; THE HOOK BY NAME, recorded in the run: `bb template-upgrade` resuming this run after a
+        ;; conflict re-renders the mirror too (`tu/rule-mirror-hook`)
+        r (tu/upgrade! ws (cond-> {:pin (template/pin (template/load-pins))
                                    :local-root (some-> (System/getenv "KIT_TEMPLATE_LOCAL") not-empty fs/absolutize fs/normalize str)
                                    :gates (or gates (tu/project-gates ws))
-                                   :id (str "upgrade-" version)
+                                   :id id
+                                   :release release
                                    :branch-anyway? true
-                                   :before-gates (mirror-hook ws version)}
+                                   :before-gates :rule-mirror}
                             generate (assoc :generate generate)))
-        run-dir (str (fs/path (:workspace/work ws) "runs" (str "upgrade-" version)))]
+        run-dir (str (fs/path (:workspace/work ws) "runs" id))]
     {:status :done
      :detail (case (:outcome r)
-               :awaiting-merge (str "the branch upgrade-" version " is gated green and awaits its merge: " (tu/merge-command run-dir))
+               :awaiting-merge (str "the branch " id " is gated green and awaits its merge: " (tu/merge-command run-dir))
                :conflict (str "the template's merge stopped on " (str/join ", " (:conflicts r)) " - the Architect's, in the worktree; `bb template-upgrade` after")
                :gates-red (str "the gate " (name (:failed r)) " is red on the branch - the Architect's; `bb template-upgrade` after")
                :nothing "the application needs nothing: the template as it was and the mirror current"
                (str (:outcome r)))
      :app (when (not= :nothing (:outcome r))
-            {:branch (str "upgrade-" version) :run-dir run-dir :state (:outcome r)})}))
+            {:branch id :run-dir run-dir :state (:outcome r)})}))
 
 (defn- step-workspace-edn! [{:keys [ws before from head version at records]}]
   (backup! before (:workspace/dir ws) workspace/file-name)
@@ -396,7 +393,8 @@
         done-file (fs/path dir "done.edn")
         at (str (or now (java.time.LocalDate/now)))
         _ (fs/create-dirs before)
-        facts {:id id :from from :to head :head head :version version :at at}]
+        release (or version (subs head 0 7))
+        facts {:id id :from from :to head :head head :version version :release release :at at}]
     (println (str "bb upgrade --after-pull: " (:workspace/dir ws) " from " (subs from 0 7) " to " (subs head 0 7)
                   (when version (str " (" version ")")) " - " dir))
     (loop [[s & more] steps records (read-done done-file)]
@@ -407,7 +405,10 @@
         (if (= :done (get-in records [s :status]))
           (do (say (name s) ": done before - " (get-in records [s :detail]))
               (recur more records))
-          (let [r (try ((step-fns s) (merge opts facts {:ws ws :kit kit :dir dir :before before :records records}))
+          ;; THE WORKSPACE READ AGAIN FOR EVERY STEP: the first step migrates its renamed keys, and a
+          ;; step reading a copy from before it would see the old key as nil
+          (let [ws (or (workspace/find-workspace (:workspace/dir ws)) ws)
+                r (try ((step-fns s) (merge opts facts {:ws ws :kit kit :dir dir :before before :records records}))
                        ;; ANY failure is a stopped step, recorded and said - never a stack trace over a half-done upgrade
                        (catch Exception e
                          {:status :stopped :detail (str (when-not (instance? clojure.lang.ExceptionInfo e) (str (.getSimpleName (class e)) ": ")) (ex-message e))}))

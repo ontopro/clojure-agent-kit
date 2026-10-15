@@ -5,6 +5,7 @@
    [clojure.edn :as edn]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [harness.loop.driver :as driver]
    [harness.setup.app :as app]
    [harness.setup.front-door :as front-door]
    [harness.setup.init :as init]
@@ -67,6 +68,7 @@
   [kit]
   (spit (str (fs/path kit "build-docs" "00-overview.md")) overview-v2)
   (spit (str (fs/path kit "build-docs" "01-new.md")) "# A document the release adds\n")
+  (spit (str (fs/path kit "build-docs" "README.md")) "# The plan's documents\n\nRevised by the release.\n")
   (spit (str (fs/path kit "harness" "agents" "interactive-programmer.md"))
         (str (slurp (str (fs/path kit "harness" "agents" "interactive-programmer.md"))) "\nA line the release adds.\n"))
   (git-out kit "add" "-A")
@@ -263,3 +265,63 @@
         (is (= :done (get-in r2 [:records :build-docs :status])))
         (is (= ["CLAUDE.md.new"] (:new (:workspace/upgraded-to (raw ws)))))
         (is (some #(str/includes? % "CLAUDE.md.new") (upgrade/upgrade-lines (upgrade/open-after-upgrade ws (raw ws)))))))))
+
+(deftest a-workspace-on-a-renamed-key-is-migrated-first-and-the-run-goes-through
+  (let [kit (fake-kit!)
+        ws0 (workspace! kit)
+        f (fs/path (:workspace/dir ws0) "workspace.edn")
+        _ (spit (str f) (str/replace (slurp (str f)) ":workspace/build" ":workspace/plan"))
+        ws (workspace/find-workspace (:workspace/dir ws0))
+        _ (is (nil? (:workspace/build ws)) "read through this version's code, the old key is nil")
+        _ (release! kit)
+        r (binding [*out* (java.io.StringWriter.)] (ur/after-pull! ws kit {:gates [[:fmt "true"]]}))]
+    (is (:ok? r) (pr-str (:records r)))
+    (is (= "renamed: :workspace/plan -> :workspace/build" (get-in r [:records :workspace-keys :detail])))
+    (let [w (raw ws)]
+      (is (contains? w :workspace/build))
+      (is (not (contains? w :workspace/plan))))))
+
+(deftest a-document-with-uncommitted-edits-stops-the-step-before-anything-is-written
+  (let [kit (fake-kit!)
+        ws (workspace! kit)
+        build (:workspace/build ws)
+        _ (release! kit)
+        ;; two documents change in the release; the SECOND has uncommitted edits
+        _ (spit (str (fs/path build "docs" "README.md")) "# The plan's documents\n\nmy uncommitted note\n")
+        r1 (binding [*out* (java.io.StringWriter.)] (ur/after-pull! ws kit {:gates [[:fmt "true"]]}))]
+    (is (= :build-docs (:stopped r1)))
+    (is (str/includes? (get-in r1 [:records :build-docs :detail]) "docs/README.md has uncommitted edits"))
+    (is (not (str/includes? (slurp (str (fs/path build "docs" "00-overview.md"))) "revised")) "the first document was not patched")
+    (is (not (fs/exists? (fs/path build "docs" "01-new.md"))) "nothing added either")
+    (git-out build "commit" "-q" "-am" "the note")
+    (let [r2 (binding [*out* (java.io.StringWriter.)] (ur/after-pull! ws kit {:gates [[:fmt "true"]]}))]
+      (is (:ok? r2) (pr-str (:records r2)))
+      (is (str/includes? (slurp (str (fs/path build "docs" "00-overview.md"))) "Content line A, revised."))
+      (is (str/includes? (slurp (str (fs/path build "docs" "README.md"))) "my uncommitted note") "the project's line kept")
+      (is (= "" (git-out build "status" "--porcelain"))))))
+
+(deftest the-notice-follows-the-runs-state-and-says-when-a-branch-is-gone
+  (let [kit (fake-kit!)
+        ws (workspace! kit)
+        app (:workspace/app ws)
+        build (:workspace/build ws)
+        _ (spit (str (fs/path build "rules.edn")) (pr-str [{:id :layer-boundaries :text "Respect the boundaries of layer {{layer}}. FILLED."}]))
+        _ (git-out build "commit" "-q" "-am" "the rules filled")
+        _ (release! kit)
+        r (binding [*out* (java.io.StringWriter.)] (ur/after-pull! ws kit {:gates [[:fmt "true"]]}))
+        run-dir (get-in r [:records :app :app :run-dir])
+        open #(upgrade/open-after-upgrade ws (raw ws))]
+    (is (:ok? r))
+    (is (= :awaiting-merge (get-in (open) [:app :state])))
+    (testing "merged through the loop: the run's :merged event says so, the branch gone with it"
+      (spit (str (fs/path run-dir "decision.edn")) (pr-str {:decision "x"}))
+      (binding [*out* (java.io.StringWriter.)] (driver/merge! (driver/context run-dir) (str (fs/path run-dir "decision.edn"))))
+      (is (= :merged (get-in (open) [:app :state])))
+      (is (some #(str/includes? % "is merged") (upgrade/upgrade-lines (open)))))
+    (testing "a branch deleted by hand with no merge recorded is gone, not merged"
+      (let [w (raw ws)
+            w2 (-> w (assoc-in [:workspace/upgraded-to :app :branch] "upgrade-x") (assoc-in [:workspace/upgraded-to :app :run-dir] "/nowhere"))]
+        (spit (str (fs/path (:workspace/dir ws) "workspace.edn")) (pr-str w2))
+        (is (= :gone (get-in (open) [:app :state])))
+        (is (some #(str/includes? % "gone and no merge is recorded") (upgrade/upgrade-lines (open))))))
+    (is (not (fs/exists? (fs/path app "AGENTS.md.rej"))))))

@@ -56,6 +56,26 @@ step by hand, named there.
 
 ## 2026-10-14
 
+### The upgrade's run is the one `bb template-upgrade` resumes, and the notices follow it (plan 6.5, item 14c, after review)
+
+A review of the entry below against the plan's text and the sandbox baseline's filled build
+found four holes and four smaller things. The worst: after a conflict, the upgrade's run was
+named `upgrade-<version>` and its notice said "`bb template-upgrade` after", but that command
+looked for a run of its own name, found none, saw `template` ahead of `main`, and started a
+second run - the same merge, the same conflict, in another worktree - orphaning the Architect's
+resolution and never re-rendering the mirror; the first project's `server.clj` conflict would
+have met exactly this. `bb template-upgrade` now resumes an open run of its kind whatever its
+id, and the run records the step it wants before its gates by name (`:hook`), so the resume
+re-renders the mirror too. The notices read the run's `state.edn` rather than the state recorded
+at upgrade time, so a conflict resolved and gated reads as awaiting its merge, a merge recorded
+reads as merged, and a branch gone with no merge recorded reads as abandoned, not merged. The
+workspace is read again for every step, so a renamed key migrated by the first step is seen by
+the rest in the same run - the point of migrating first. Every target document is checked for
+uncommitted edits before any is written, so a stop leaves nothing half done and the re-run is not
+refused by the upgrade's own edits. Smaller: the build's commits name their paths, so staged work
+of the person's is not swept up; `loop.edn` gets the same check; a clone with no reachable tag
+names the release by its commit; blank lines count for nothing in the hunk rule. Each has a test.
+
 ### `bb upgrade --after-pull`: the workspace brought up by the new KIT's own code (plan 6.5, item 14c)
 
 A KIT upgrade was a README's list of hand steps, each run when someone remembered: round 0 of
