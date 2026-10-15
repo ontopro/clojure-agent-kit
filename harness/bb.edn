@@ -134,7 +134,7 @@
                 :requires ([harness.rules :as rules])
                 :task (apply rules/prompt-main *command-line-args*)}
 
-  report {:doc "Render a run record (EDN on stdin) as a timing and cost report"
+  report {:doc "bb report <run.edn | run-dir | record.edn>, or a record on stdin: a run record rendered as its timing and cost report - a run directory's run.edn or a published <name>-build/runs/<id>.edn; with neither, its usage"
           :requires ([harness.money.report :as report])
           :task (apply report/-main *command-line-args*)}
 

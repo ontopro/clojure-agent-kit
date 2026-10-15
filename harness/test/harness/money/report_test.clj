@@ -630,3 +630,28 @@
     (is (= {:md-path (str (fs/path ws "p" "RUNS.md")) :dir (str (fs/path ws "p" "runs"))}
            (report/check-targets [] (workspace/current ["--workspace" ws] elsewhere)))
         "pointed at it, the workspace's two; the flag is not a target")))
+
+(deftest bb-report-takes-a-path-a-run-dir-or-stdin
+  (let [dir (fs/create-temp-dir {:prefix "report-src-"})
+        run-edn (fs/path dir "run.edn")
+        empty-dir (fs/create-dirs (fs/path dir "empty"))]
+    (spit (str run-edn) "{:run/id \"r1\"}")
+    (testing "a file as given; a run directory's run.edn"
+      (is (= {:file (str run-edn)} (report/record-source [(str run-edn)] true)))
+      (is (= {:file (str run-edn)} (report/record-source [(str dir)] true))))
+    (testing "no path: stdin when it is piped, the usage when it is a terminal"
+      (is (= {:stdin true} (report/record-source [] false)))
+      (is (= {:error :usage} (report/record-source [] true))))
+    (testing "a directory with no run.edn, a missing path, two paths: said, not thrown"
+      (is (str/includes? (:error (report/record-source [(str empty-dir)] true)) "bb run-loop record"))
+      (is (str/starts-with? (:error (report/record-source ["/no/such"] true)) "no such file"))
+      (is (str/starts-with? (:error (report/record-source ["a" "b"] true)) "one record at a time")))
+    (fs/delete-tree dir)))
+
+(deftest a-text-that-is-no-run-record-is-said-so
+  (is (= {:record {:run/id "r1"}} (report/read-record "{:run/id \"r1\"}" "r.edn")))
+  (is (= {:error "stdin is empty"} (report/read-record "  \n" "stdin")))
+  (is (str/starts-with? (:error (report/read-record "# RUNS.md\n#{" "RUNS.md")) "RUNS.md is not EDN"))
+  (is (= {:error "x.edn is not a run record - not a map"} (report/read-record "[1 2]" "x.edn")))
+  (testing "a record's tagged literals read, as report-check reads them"
+    (is (:record (report/read-record "{:at #inst \"2026-10-13T00:00:00Z\"}" "r.edn")))))

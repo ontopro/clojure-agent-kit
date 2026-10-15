@@ -56,6 +56,20 @@ step by hand, named there.
 
 ## 2026-10-14
 
+### `bb report` takes a path (plan 6.5, item 9)
+
+`bb report` read its record from stdin and nothing else. Given a run directory, the way a person
+reaching for a run's report would call it, it waited on stdin and threw "EOF while reading" with a
+stack trace. It now takes a path: a `run.edn`, a run directory (its `run.edn`, or a line saying
+none is written yet and that `bb run-loop record` writes it), or a published record under the
+build's `runs/`. With no path it reads a piped record; with nothing piped either - stdin a
+terminal - it prints its usage instead of waiting. A missing path, two paths, an empty input, a
+file that is not EDN or not a map each get a line and the usage, exit 2, never a trace; tagged
+literals read as `report-check` reads them. The text `bb init` writes into a workspace showed
+`bb report < runs/<id>.edn` "from the workspace folder", where that path does not exist; it now
+names the build folder, `bb report <name>-build/runs/<id>.edn`, and so does `report-check`'s
+line for a drifted report.
+
 ### The security pack's path check starts a path, and a judged finding can be accepted (plan 6.5, item 8)
 
 The proof build's first stage ended with the pack failing its page not found for "a path on a

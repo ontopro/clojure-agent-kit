@@ -194,7 +194,7 @@
        "`" kit "/harness/README.md` and are run from HERE - this folder's `bb.edn` hands each on; the application's own, such as `bb serve`, in its folder; Clojure written by hand, outside "
        "the loop, is the role in `.claude/agents/interactive-programmer.md`.\n"))
 
-(defn- plan-readme [project {:workspace/keys [kit]}]
+(defn- plan-readme [project {:workspace/keys [kit build]}]
   (str "# " project " - the build\n\n"
        "The reasoning, the contracts and the money for `" project "`, in its own repository so that it can\n"
        "stay private while the application is public.\n\n"
@@ -227,7 +227,8 @@
        "  directory and set `:run/id`.\n"
        "- `runs/` - one record per run, `<run-id>.edn`, copied here by the loop's `record` (the run's own\n"
        "  directory under `../work/runs/` is scratch). Each names the KIT, application and plan commits it was\n"
-       "  taken at. `RUNS.md` publishes their tables (`bb report < runs/<id>.edn` renders one), and the KIT's\n"
+       "  taken at. `RUNS.md` publishes their tables (`bb report " build "/runs/<id>.edn`, from the workspace\n"
+       "  folder, renders one), and the KIT's\n"
        "  `bb report-check` holds the two to each other. `bb init` made the folder and the document's header;\n"
        "  git tracks the folder from the first record.\n"))
 
@@ -236,10 +237,10 @@
   plain fenced block opening `Run <id> ·`, which is what `report/published-reports`
   finds, so this prose publishes nothing and `bb report-check` holds an empty
   `runs/` to it from the first gate run."
-  [project _ws]
+  [project {:workspace/keys [build]}]
   (str "# " project " - the run records, published\n\n"
        "Every run the loop records is copied to `runs/<id>.edn` by `bb run-loop record`, and its tables\n"
-       "are published here: `bb report < runs/<id>.edn`, run from the workspace folder like every KIT command,\n"
+       "are published here: `bb report " build "/runs/<id>.edn`, run from the workspace folder like every KIT command,\n"
        "renders one report; paste it into a plain fenced block (three backticks, no label) under a heading\n"
        "of your own, newest first or oldest first as you like. `bb report-check` holds this document to\n"
        "`runs/`: every report re-renders from its record, and every\n"

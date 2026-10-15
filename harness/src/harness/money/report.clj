@@ -28,6 +28,7 @@
   report that was taken for a record of model calls that never happened."
   (:require
    [babashka.fs :as fs]
+   [babashka.process :as p]
    [clojure.edn :as edn]
    [clojure.string :as str]
    [harness.contract.shapes :as shapes]
@@ -644,7 +645,7 @@
                          (pr-str detail) ". A record that fails its own schema is not evidence"
                          " of the shape it claims; fix the record, or the schema if the schema is wrong.")
     :drift (str "  " rid ": the report in " md-path " does not match " dir "/" rid ".edn"
-                " — regenerate it with `bb report < " dir "/" rid ".edn`.")))
+                " — regenerate it with `bb report " dir "/" rid ".edn`.")))
 
 (defn published-state
   "`:nothing` when neither the document nor the records directory exists,
@@ -726,7 +727,53 @@
               (System/exit 1))
           (println (str "reports in sync: " (count records) " in " md-path)))))))
 
+(def usage
+  (str "usage: bb report <run.edn | run-dir | record.edn>    or    bb report < run.edn\n"
+       "  a run's record - `run.edn`, or the run directory holding it - or a published one\n"
+       "  (`<name>-build/runs/<id>.edn`), rendered as its timing and cost report"))
+
+(defn record-source
+  "Where `bb report`'s record comes from, for its arguments `args` and whether stdin is a
+  terminal: `{:file path}` - a file as given, a directory's `run.edn` - `{:stdin true}`, or
+  `{:error message}` (`:usage` when there is nothing to read).
+
+  A PATH, NOT ONLY A PIPE. Given a run directory, the report waited on stdin and threw \"EOF
+  while reading\" with a stack trace: it read stdin only, and said nothing of it."
+  [args stdin-tty?]
+  (let [[a & more] (remove #(str/starts-with? % "--") args)]
+    (cond
+      (seq more) {:error (str "one record at a time - " (count args) " given")}
+      (nil? a) (if stdin-tty? {:error :usage} {:stdin true})
+      (fs/directory? a) (let [f (fs/path a "run.edn")]
+                          (if (fs/exists? f)
+                            {:file (str f)}
+                            {:error (str "no run.edn in " a " - `bb run-loop record " a "` writes it when the run is done")}))
+      (fs/exists? a) {:file a}
+      :else {:error (str "no such file or directory: " a)})))
+
+(defn read-record
+  "The run record in `text` (from `where`, for the message), or `{:error message}` when it is
+  not one: not EDN, or not a map."
+  [text where]
+  (let [r (when-not (str/blank? text)
+            (try (edn/read-string {:default tagged-literal} text)
+                 (catch Exception e {::error (str where " is not EDN: " (ex-message e))})))]
+    (cond (str/blank? text) {:error (str where " is empty")}
+          (::error r) {:error (::error r)}
+          (not (map? r)) {:error (str where " is not a run record - not a map")}
+          :else {:record r})))
+
 (defn -main
-  "bb report — render a run record read from stdin as EDN."
-  [& _]
-  (println (render (read-string (slurp *in*)))))
+  "bb report <run.edn | run-dir | record.edn> - render a run record; with no path, from stdin.
+  With neither, its usage."
+  [& args]
+  (let [tty? (zero? (:exit (p/shell {:in :inherit :out :string :err :string :continue true} "test" "-t" "0")))
+        {:keys [file error]} (record-source args tty?)
+        _ (when error
+            (println (if (= :usage error) usage (str "report: " error "\n" usage)))
+            (System/exit 2))
+        {:keys [record error]} (read-record (slurp (or file *in*)) (or file "stdin"))]
+    (when error
+      (println (str "report: " error "\n" usage))
+      (System/exit 2))
+    (println (render record))))
