@@ -104,7 +104,8 @@
     (is (str/includes? content "THE PLAN IS FILLED HERE") "the Architect's session is told the plan is its job")
     (is (str/includes? content "THE RULES ARE FILLED HERE TOO") "and where the rule source's placeholders are filled")
     (is (not (str/includes? content "REPL-first")) "no rule from the source is restated")
-    (is (< (count (str/split-lines content)) 29) "orientation, one screen; not a second rules file")))
+    (is (= :current (init/marker-state content)) "marked: the upgrade knows its own while the hash below the first line holds")
+    (is (< (count (str/split-lines content)) 30) "orientation, one screen (plus the marker line); not a second rules file")))
 
 (deftest what-the-application-generator-knows-is-passed-in-not-known-here
   (let [lay (init/layout (request {:kit-dir "/tools/clojure-agent-kit"

@@ -56,6 +56,47 @@ step by hand, named there.
 
 ## 2026-10-14
 
+### `bb upgrade --after-pull`: the workspace brought up by the new KIT's own code (plan 6.5, item 14c)
+
+A KIT upgrade was a README's list of hand steps, each run when someone remembered: round 0 of
+the fifth project's upgrade, done that way on a copy, left the application and the build dirty,
+a `.rej` in the build that the workspace's gates passed over, and nothing saying to commit. The
+upgrade is one command in two phases, split by whose code runs: phase 1, the check and the move
+of `KIT/`, is the old version's and comes with item 14d; phase 2 is this, the new version's, in a
+new process after the move, because the new version alone knows what its release changed. Nine
+steps in the plan's order, each recorded in `work/upgrades/<id>/done.edn` as it finishes, so a run
+after a failure picks up at the first step not done, and every root file copied to `before/`
+there before it is rewritten - the workspace root is no repository, and that folder is the way
+back. `workspace.edn`'s renamed keys go first, since every later step reads the file through this
+version's code and a renamed key reads as nil until then.
+
+Three things needed a judgement. The orientation: the workspace `CLAUDE.md` and the role file
+were written once by `bb init` and re-synced by nothing, and the text is a string in `init.clj`,
+so "as the old version wrote it" would mean running the old version. `bb init` now writes a first
+line carrying a hash of the text below it; an upgrade rewrites a file whose hash still matches,
+and leaves one edited or unmarked - the fifth project's - alone, the new text beside it as
+`CLAUDE.md.new`, marked too, so taking it whole re-adopts the file. The role file is compared
+with the old commit's copy, which git holds. The build documents: the diff from the recorded KIT
+commit to HEAD over `build-docs/`, applied to the build's `docs/` hunk by hunk; a hunk that does
+not apply is dropped as "instruction already removed" only when every line it removes is a
+template instruction now gone from the document AND every line it adds is one too - the added
+lines count, or a heading or a row the release adds beside a reworded instruction is lost without
+a word; anything else, round 0's filled table row among them, is a conflict saved under
+`conflicts/` and named, never a `.rej` in the build; a document with uncommitted edits stops the
+step by name; the documents touched are committed in the build with the release named. And the
+application: `bb template-upgrade` with the rule mirror re-rendered on the upgrade branch before
+its gates, so the tip the gates saw is the tip that merges - and the branch is made even when
+the release leaves the template pin alone, since the mirror still changes; a branch with nothing
+on it is no run. One source of truth for "which KIT is this workspace at": phase 2 moves
+`:workspace/kit-commit`, which the doctor's report and the next upgrade both read, and records
+the upgrade under `:workspace/upgraded-to` with what it left for the Architect - the branch, the
+saved hunks, the `.new` files - which the doctor and `bb next` say in the same words until each
+is resolved, so a green `bb gates` does not pass over a saved conflict unread. Tested over a small
+KIT repository with two releases and a workspace made from the first: every step, the three
+hunk outcomes, the new document, the rewritten path, the mirror's branch gated and awaiting its
+merge, the record; and a run stopped by an uncommitted document, resumed after the commit, with
+an edited `CLAUDE.md` given its `.new`.
+
 ### The toolchain is data: `resources/toolchain.edn` (plan 6.5, item 14b)
 
 The doctor's requirement table - every tool, its tier, whether it is required, the one exact

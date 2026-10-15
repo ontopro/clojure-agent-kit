@@ -116,6 +116,12 @@
                     :requires ([harness.setup.template-upgrade :as template-upgrade])
                     :task (apply template-upgrade/-main *command-line-args*)}
 
+  ;; The KIT upgrade's phase 2: the workspace brought up to the KIT just checked out, by that KIT's
+  ;; own code - run as a new process after the move. Phase 1 (the check and the move) comes next.
+  upgrade {:doc "bb upgrade --after-pull [--dry-run] [--workspace <dir>]: phase 2 of a KIT upgrade - the workspace brought up to the KIT this runs from: workspace.edn's renamed keys, the front door, the skills, the orientation (CLAUDE.md rewritten while its marker matches, else a .new beside it), the build documents hunk by hunk (a conflict saved under work/upgrades/<id>/conflicts/, never a .rej), loop.edn's literal KIT path, the application's upgrade branch with the rule mirror re-rendered on it (bb template-upgrade), workspace.edn's commit moved and the upgrade recorded, the doctor. Each step recorded in work/upgrades/<id>/done.edn; a re-run picks up at the first step not done; root files copied to before/ first"
+           :requires ([harness.setup.upgrade-run :as upgrade-run])
+           :task (apply upgrade-run/-main *command-line-args*)}
+
   ;; The harness's own inventory, rendered into its README from src/harness/ between markers and
   ;; drift-gated like the health block; the hand-written table beneath it is held to the source
   ;; by name.

@@ -69,6 +69,8 @@
     (str "https://github.com/" repo "/compare/" (short-sha from) "..." (short-sha to))
     (str "`git diff " (short-sha from) " " (short-sha to) "` in a clone of " (:git/url to))))
 
+(declare upgrade-lines)
+
 (defn expectations
   "The report's lines from `facts`:
 
@@ -96,7 +98,7 @@
   Each line names what is expected, what is here, and the command that shows
   the difference. An empty vector means nothing is missing."
   [{:keys [dir kit keys-present made-at made-version head head-version behind template-changed pin-moved guidance-changed
-           mirrors-drifted profile profile-missing skills-missing skills-drifted skills-stale front-door]}]
+           mirrors-drifted profile profile-missing skills-missing skills-drifted skills-stale front-door upgrade]}]
   (let [present (set keys-present)
         ;; the version beside the commit where one is known: a tag at a plan's boundary, for a person
         at (fn [commit version] (str commit (when version (str " (version " version ")"))))]
@@ -175,7 +177,39 @@
       (seq skills-drifted)
       (into (for [s skills-drifted]
               (str ".claude/skills/" s "/SKILL.md is not the rendering of the KIT's skills/" s
-                   "/SKILL.md: run `bb skills-sync` from the workspace folder (a project's own skill under another name is never touched)"))))))
+                   "/SKILL.md: run `bb skills-sync` from the workspace folder (a project's own skill under another name is never touched)")))
+
+      ;; WHAT THE LAST UPGRADE LEFT, until it is resolved: the branch to merge, the hunks and the
+      ;; .new files to take by hand - said here and by `bb next`, so a green `bb gates` does not
+      ;; pass over a saved conflict unread
+      upgrade
+      (into (upgrade-lines upgrade)))))
+
+(defn upgrade-lines
+  "What the last upgrade left for the Architect, as lines - the doctor's and `bb next`'s, the
+  same words: `open` is `open-after-upgrade`'s map. Empty when nothing is left."
+  [{:keys [version app conflicts new]}]
+  (let [v (or version "the release")]
+    (cond-> []
+      (and app (= :merged (:state app)))
+      (conj (str "upgraded to " v ": the application's branch " (:branch app) " is merged"))
+
+      (and app (= :awaiting-merge (:state app)))
+      (conj (str "upgraded to " v ": the application's branch " (:branch app) " is gated green and awaits its merge - "
+                 "`bb run-loop merge " (:run-dir app) " <decision.edn>`, a decision-log entry with it"))
+
+      (and app (#{:conflict :gates-red} (:state app)))
+      (conj (str "upgraded to " v ": the application's branch " (:branch app)
+                 (if (= :conflict (:state app)) " stopped on a conflict - the Architect's, in its worktree" " has a red gate - the Architect's, in its worktree")
+                 "; `bb template-upgrade` after, then the merge"))
+
+      (seq conflicts)
+      (conj (str "upgraded to " v ": " (count conflicts) " hunk" (when (not= 1 (count conflicts)) "s") " of the build documents did not apply - "
+                 (str/join ", " conflicts) " - apply each by hand or decide against it, then remove the file"))
+
+      (seq new)
+      (conj (str "upgraded to " v ": " (str/join ", " new) " - the new text beside a file the project edited; merge by hand, "
+                 "or take it whole (it carries the marker), then remove the .new")))))
 
 (defn render
   "The report as `bb doctor` prints it."
@@ -201,6 +235,23 @@
   absolute and adds its own keys, and this report is about what the FILE says."
   [ws]
   (edn/read-string (slurp (str (fs/path (:workspace/dir ws) workspace/file-name)))))
+
+(defn open-after-upgrade
+  "What the last upgrade (`:workspace/upgraded-to` in `raw`, as `bb upgrade` wrote it) still
+  leaves for the Architect, read against the workspace as it is now: the application's
+  branch as merged (gone, or an ancestor of the checkout) or as it was left; the saved
+  document conflicts and the `.new` files that still exist. Nil with no upgrade recorded."
+  [ws raw]
+  (when-let [{:keys [version at app conflicts new]} (:workspace/upgraded-to raw)]
+    (let [dir (:workspace/dir ws)
+          app-dir (:workspace/app ws)
+          branch (:branch app)
+          exists? (and branch (some? (git app-dir "rev-parse" "-q" "--verify" (str "refs/heads/" branch))))
+          merged? (and branch (or (not exists?) (some? (git app-dir "merge-base" "--is-ancestor" branch "HEAD"))))]
+      {:version version :at at
+       :app (when branch (if merged? (assoc app :state :merged) app))
+       :conflicts (filterv #(fs/exists? (fs/path dir %)) conflicts)
+       :new (filterv #(fs/exists? (fs/path dir %)) new)})))
 
 (defn- placeholder-texts
   "The shipped placeholder rules' `:id -> :text` in `source-text` (the rule
@@ -274,7 +325,8 @@
      :skills-missing (vec (for [r (skills/sync! kit-dir (:workspace/dir ws) :check? true) :when (not (:existed? r))] (:name r)))
      :skills-drifted (vec (for [r (skills/sync! kit-dir (:workspace/dir ws) :check? true) :when (and (:existed? r) (:changed? r))] (:name r)))
      :skills-stale (skills/stale kit-dir (:workspace/dir ws))
-     :front-door (select-keys (front-door/sync! kit-dir (:workspace/dir ws) :check? true) [:existed? :generated? :missing])}))
+     :front-door (select-keys (front-door/sync! kit-dir (:workspace/dir ws) :check? true) [:existed? :generated? :missing])
+     :upgrade (open-after-upgrade ws raw)}))
 
 (defn report
   "The report for the workspace a command runs in, or nil outside one. `kit-dir`

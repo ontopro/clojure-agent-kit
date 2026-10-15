@@ -30,6 +30,7 @@
    [clojure.string :as str]
    [harness.contract.blueprint :as blueprint]
    [harness.setup.plan :as plan]
+   [harness.setup.upgrade :as upgrade]
    [harness.setup.workspace :as workspace]))
 
 ;; ---------------------------------------------------------------------------
@@ -256,7 +257,7 @@
            (str (first problems) " - fix it before stage " (inc id) "'s plan")))))
 
 (defn- step-action
-  [{:keys [workspace? brief? plan-problems stage]}]
+  [{:keys [workspace? brief? plan-problems stage upgrade]}]
   (cond
     (not workspace?)
     (action 0 person "in KIT's clone: bb self-check, then bb init; then a session in the workspace folder"
@@ -274,8 +275,12 @@
     (action 5 person "copy docs/stages/stage-N-gates-template.edn to docs/stages/stage-0-gates.edn and set :stage/approved with the cap"
             "the plan passes its check and docs/stages/ has no stage yet")
 
-    :else (cond-> (stage-action stage)
-            (seq plan-problems) (assoc :also (plan-beside stage plan-problems)))))
+    :else (let [left (when upgrade (upgrade/upgrade-lines upgrade))]
+            (cond-> (stage-action stage)
+              (seq plan-problems) (assoc :also (plan-beside stage plan-problems))
+              ;; WHAT THE LAST UPGRADE LEFT - the branch to merge, hunks and .new files to take by hand -
+              ;; said beside the step, the Architect's, until it is resolved
+              (seq left) (update :also #(str/join "\n           " (remove nil? (cons % left))))))))
 
 (defn- in-build
   "`s` with every `docs/` path put under the build folder `build`, so a command
@@ -367,7 +372,8 @@
                         :packets (or packets [])
                         :preconditions (if bp-text (preconditions bp-text) [])
                         :merged (into #{} (filter #(= :merged (statuses %))) packets)
-                        :runs (into {} (for [t packets :let [s (statuses t)] :when (and s (not= :merged s))] [t s]))}))})))
+                        :runs (into {} (for [t packets :let [s (statuses t)] :when (and s (not= :merged s))] [t s]))}))
+       :upgrade (upgrade/open-after-upgrade ws (read-edn (fs/path (:workspace/dir ws) workspace/file-name)))})))
 
 (defn render
   "The action as `bb next` prints it."

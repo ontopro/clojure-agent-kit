@@ -252,10 +252,30 @@
 (defn- stop! [ctx kind route status reason]
   (driver/event! ctx {:event/kind :stopped :stop/kind kind :route route :reason reason :run/status status}))
 
-(defn- gates! [ctx wt gate-seq run-dir]
+(declare gates-on!)
+
+(defn- gates!
+  "The project's gates on the branch, after `:before-gates` - a step the caller adds on the
+  branch first (the rule mirror re-rendered, for `bb upgrade`), run on every path to the gates
+  and idempotent: it commits only a change. A branch left with nothing past its base is nothing
+  to merge, and the run is removed again."
+  [ctx wt {:keys [gates before-gates env]} run-dir]
+  (when before-gates (before-gates (str wt)))
+  (let [state @(:state ctx)
+        head (git! wt env "rev-parse" "HEAD")]
+    (if (and (nil? (get-in state [:template :commit])) (= head (get-in state [:base :commit])))
+      (let [app (:repo/root (:config state))
+            id (:run/id (:config state))]
+        (say "the branch carries nothing past its base: nothing to merge, and no run is kept")
+        (git app env "worktree" "remove" "--force" (str wt))
+        (git app env "branch" "-D" id)
+        (fs/delete-tree run-dir)
+        {:outcome :nothing})
+      (gates-on! ctx wt gates env run-dir head))))
+
+(defn- gates-on! [ctx wt gate-seq _env run-dir head]
   (say (str "the project's gates, in " wt))
-  (let [gr (gates/run-gates! (str wt) gate-seq)
-        head (git! wt nil "rev-parse" "HEAD")]
+  (let [gr (gates/run-gates! (str wt) gate-seq)]
     (doseq [{:keys [gate status ms]} (:gates/report gr)]
       (driver/step! ctx {:step/name gate :step/kind :gate :step/status status :step/ms ms}))
     (swap! (:state ctx) assoc :last-gates gr)
@@ -289,7 +309,7 @@
 
 (defn- merge-template!
   "`git merge template` in the upgrade's worktree: clean, the gates; a conflict, the Architect's."
-  [ctx wt env gate-seq run-dir]
+  [ctx wt {:keys [env] :as opts} run-dir]
   (say (str "merging template into " (get-in @(:state ctx) [:sessions :gate :worktree/branch]) " in " wt))
   ;; THE COMMIT THE RUN RECORDED, not the branch by name: a newer release committed onto
   ;; template since would otherwise merge under a state that names the older one
@@ -298,12 +318,12 @@
     (if (zero? exit)
       (do (driver/event! ctx {:event/kind :merge :clean? true :commit (git! wt env "rev-parse" "HEAD")})
           (say "merged clean")
-          (gates! ctx wt gate-seq run-dir))
+          (gates! ctx wt opts run-dir))
       (let [conflicts (:conflicts (worktree-facts wt env))]
         (driver/event! ctx {:event/kind :merge :clean? false :conflicts conflicts})
         (conflict! ctx wt conflicts run-dir)))))
 
-(defn- resume! [ws ctx gate-seq env run-dir]
+(defn- resume! [ws ctx {:keys [env] :as opts} run-dir]
   (let [state @(:state ctx)
         wt (get-in state [:sessions :gate :worktree/path])
         id (:run/id (:config state))
@@ -328,8 +348,9 @@
                      (cond
                        ;; THE BRANCH WITHOUT THE TEMPLATE'S COMMIT - a worktree lost mid-conflict and checked
                        ;; out again from a branch the merge never reached - is merged again, never gated as it is
-                       (not (ancestor? wt env (get-in state [:template :commit]) head))
-                       (merge-template! ctx wt env gate-seq run-dir)
+                       (and (get-in state [:template :commit])
+                            (not (ancestor? wt env (get-in state [:template :commit]) head)))
+                       (merge-template! ctx wt opts run-dir)
 
                        (and (= :awaiting-merge (last-stop state)) (= head gated-at))
                        (do (say (str "already green and awaiting the merge - " (merge-command run-dir)))
@@ -337,15 +358,18 @@
 
                        :else
                        (do (driver/event! ctx {:event/kind :resolved :commit head})
-                           (gates! ctx wt gate-seq run-dir))))))))
+                           (gates! ctx wt opts run-dir))))))))
 
 (defn upgrade!
   "The upgrade, from the workspace `ws`. Opts: `:pin` (the KIT's); `:local-root`
   (`KIT_TEMPLATE_LOCAL`, a candidate); `:gates`, the project's gate sequence, `{{kit}}` resolved;
   `:generate`, `(fn [target-dir])` that generates the application there (`app/generate!`, or a
-  test's stand-in); `:env` for git; `:now`. Returns `{:outcome kw ...}`; a refusal throws
-  `ex-info` with `:template-upgrade/error`."
-  [ws {:keys [pin local-root gates generate env now] :or {now (System/currentTimeMillis)}}]
+  test's stand-in); `:env` for git; `:now`; `:id`, the run's id in place of `run-id`'s;
+  `:before-gates`, `(fn [worktree])` run on the branch before its gates on every path to them
+  (`bb upgrade` re-renders the rule mirror there); `:branch-anyway?`, a branch and a run even
+  when the template is as it was - for what `:before-gates` adds; nothing added, no run.
+  Returns `{:outcome kw ...}`; a refusal throws `ex-info` with `:template-upgrade/error`."
+  [ws {:keys [pin local-root generate env now id branch-anyway?] :or {now (System/currentTimeMillis)} :as opts}]
   (let [app (:workspace/app ws)
         work (:workspace/work ws)
         _ (when-not (fs/directory? (fs/path app ".git"))
@@ -356,14 +380,14 @@
             (refuse (str "the application at " app " has no branch checked out (detached HEAD): check out main first") {:app app}))
         from (ensure-template-branch! app env)
         runs-dir (fs/path work "runs")
-        id (fresh-id runs-dir (run-id pin local-root))
+        id (fresh-id runs-dir (or id (run-id pin local-root)))
         run-dir (str (fs/path runs-dir id))
         state-file (fs/path run-dir "state.edn")
-        gate-seq (or gates [])]
+        opts (-> opts (update :gates #(or % [])) (assoc :env env))]
     (if (fs/exists? state-file)
       ;; A RUN NOT MERGED IS RESUMED, whatever template's tip says: it holds this release already
       (do (say (str "run " id " exists - resuming it"))
-          (resume! ws (driver/context run-dir) gate-seq env run-dir))
+          (resume! ws (driver/context run-dir) opts run-dir))
       ;; NOTHING TO DO IS A QUESTION ABOUT THE BASE, not about template's tip: is the tip merged into
       ;; the branch? A tip ahead of the base with no run - a run that failed between the template
       ;; commit and its state, a run directory deleted to start over - is the release still to take,
@@ -377,7 +401,8 @@
             template-commit
             (cond
               (and (same-source? from pin local-root) tip-merged?)
-              (nothing! (str "the application is generated from " (:tag from) " (" (:sha7 from) ") already, which is the pin, and it is merged"))
+              (when-not branch-anyway?
+                (nothing! (str "the application is generated from " (:tag from) " (" (:sha7 from) ") already, which is the pin, and it is merged")))
 
               (same-source? from pin local-root)
               (do (say (str "template already holds " (subs tip 0 7) ", the pin, not yet merged into " base-branch ": taken from there"))
@@ -392,7 +417,8 @@
                 (fs/delete-tree (fs/parent generated))
                 (cond
                   c (do (say (str "template now holds " (subs c 0 7) ": " label)) c)
-                  tip-merged? (nothing! (str "the tree generated from " label " is template's tip already, commit for commit, and it is merged"))
+                  tip-merged? (when-not branch-anyway?
+                                (nothing! (str "the tree generated from " label " is template's tip already, commit for commit, and it is merged")))
                   :else (do (say (str "the tree generated from " label " is template's tip already, " (subs tip 0 7)
                                       ", not yet merged into " base-branch ": taken from there"))
                             tip))))
@@ -409,8 +435,13 @@
                                                              :base-branch base-branch :base-commit base-commit
                                                              :worktree wt}))))
             ctx (driver/context run-dir)]
-        (driver/event! ctx {:event/kind :template-commit :commit template-commit :label label})
-        (merge-template! ctx wt env gate-seq run-dir)))))
+        (if template-commit
+          (do (driver/event! ctx {:event/kind :template-commit :commit template-commit :label label})
+              (merge-template! ctx wt opts run-dir))
+          ;; THE TEMPLATE AS IT WAS: the branch is for what else the caller adds before the gates
+          (do (driver/event! ctx {:event/kind :template-unchanged :label label})
+              (say (str "the template is as it was (" label "): the branch is for what else the upgrade adds"))
+              (gates! ctx wt opts run-dir)))))))
 
 ;; ---------------------------------------------------------------------------
 ;; the command
