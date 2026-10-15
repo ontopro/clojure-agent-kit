@@ -56,6 +56,19 @@ step by hand, named there.
 
 ## 2026-10-14
 
+### The toolchain is data: `resources/toolchain.edn` (plan 6.5, item 14b)
+
+The doctor's requirement table - every tool, its tier, whether it is required, the one exact
+major and the one floor, what installs a miss - was a vector in `doctor.clj`, plain data
+already, with one function call in it for three install lines. It is now
+`harness/resources/toolchain.edn`, which the doctor reads at load and reports exactly as before;
+the three install lines are written out with their tag. The reason is the upgrade: phase 1
+(item 14d) checks a release's requirements against this machine before the clone moves to it,
+and it must read them from the fetched tag - `git show <tag>:harness/resources/toolchain.edn`,
+plain EDN, no reader macro - never by running the release's code inside the old one.
+`read-toolchain` is that reader, the same one the doctor uses on its own copy; a test holds the
+doctor's table to the file and the file to the shape the doctor reads.
+
 ### The health records are the KIT's own: a workspace's clone does not write them (plan 6.5, item 14a)
 
 `bb self-check` passed `--record` on to `bb health`, which writes `health/records/<platform>.edn`

@@ -49,143 +49,22 @@
 ;; The toolchain
 ;; ---------------------------------------------------------------------------
 
-(defn- mcp-light-install
-  "The install of one clojure-mcp-light tool, from its README (read 2026-09-22):
-  the hook is the repository's default, the other two are the same install
-  with `--as` and `--main-opts`."
-  [tool-name main-ns]
-  (str "bbin install https://github.com/bhauman/clojure-mcp-light.git --tag v0.2.2"
-       (when main-ns
-         (str " --as " tool-name " --main-opts '[\"-m\" \"clojure-mcp-light." main-ns "\"]'"))))
+(def toolchain-resource "toolchain.edn")
+
+(defn read-toolchain
+  "The toolchain table read from `text`, the resource as EDN - the same reader `bb upgrade`
+  uses on a release's copy taken from its tag (`git show <tag>:harness/resources/toolchain.edn`),
+  so a release's requirements are known without running its code."
+  [text]
+  (edn/read-string text))
 
 (def toolchain
-  "Every tool the loop touches, why, how to ask it its version, and what installs it.
-
-  :req      :required   — the loop cannot run without it; a miss fails `bb doctor`
-            :recommended — the loop degrades without it; reported, never fatal
-            :optional    — convenience
-  :tier     :gates — the KIT's own gates need it (Babashka, no JVM)
-            :loop  — a loop against a project needs it as well
-  :via      :flag  — run :cmd and parse stdout+stderr
-            :bbin  — look it up in `bbin ls` AND run it with --help
-            :which — presence on PATH only
-  :min      a floor; :major an exact major, the one constraint with a reason
-  :install  what fixes a miss: a command where one is documented, else the page"
-  [{:tool :bb :via :flag :cmd ["bb" "--version"] :req :required :tier :gates :min "1.12.212"
-    :does "Task runner; the harness itself runs on it"
-    :needed-for "The bb.edn task surface; bbin requires >= 1.12.212"
-    :install "https://github.com/babashka/babashka#installation (brew install borkdude/brew/babashka)"}
-
-   {:tool :java :via :flag :cmd ["java" "-version"] :req :required :tier :loop :major 21
-    :does "JVM the project and its nREPL run on"
-    :needed-for "JDK 21, exactly that major: XTDB v2 documents a minimum of 21, and
-                 2.0.0 and 2.1.0 failed at class-load on newer JDKs (not re-checked
-                 on later releases). A .mise.toml pin is read too"
-    :install "Temurin 21: https://adoptium.net/temurin/releases/?version=21 (brew install --cask temurin@21)"}
-
-   {:tool :clojure :via :flag :cmd ["clojure" "--version"] :req :required :tier :loop
-    :does "Clojure CLI: deps, aliases, the nREPL server"
-    :needed-for "clojure -Srepro -M:nrepl per worktree, and `bb init`'s generation"
-    :install "https://clojure.org/guides/install_clojure (brew install clojure/tools/clojure)"}
-
-   {:tool :git :via :flag :cmd ["git" "--version"] :req :required :tier :gates
-    :does "Version control, and worktrees"
-    :needed-for "One isolated workspace per task"
-    :install "https://git-scm.com/downloads"}
-
-   {:tool :cljfmt :via :flag :cmd ["cljfmt" "--version"] :req :required :tier :gates
-    :does "Formatter"
-    :needed-for "Gate 1, and gate 0's format-on-write"
-    :install "https://github.com/weavejester/cljfmt#installation"}
-
-   {:tool :clj-kondo :via :flag :cmd ["clj-kondo" "--version"] :req :required :tier :gates
-    :does "Linter — run it fail-on-warning, not just fail-on-error"
-    :needed-for "Gate 2"
-    :install "https://github.com/clj-kondo/clj-kondo/blob/master/doc/install.md (brew install borkdude/brew/clj-kondo)"}
-
-   {:tool :clj-nrepl-eval :via :bbin :req :required :tier :loop
-    :does "CLI nREPL bridge — uniform REPL access across model families"
-    :needed-for "Coder/Tester eval; --discover-ports finds a worktree's port"
-    :install (mcp-light-install "clj-nrepl-eval" "nrepl-eval")}
-
-   {:tool :clj-paren-repair :via :bbin :req :required :tier :gates
-    :does "On-demand delimiter repair"
-    :needed-for "Gate 0, `bb repair`, for agents whose client has no write hook"
-    :install (mcp-light-install "clj-paren-repair" "paren-repair")}
-
-   {:tool :clj-paren-repair-claude-hook :via :bbin :req :optional
-    :does "Zero-token delimiter repair at write time, for Claude Code"
-    :needed-for "One client's write-time accelerant, not the mechanism. `bb
-                 repair` is the floor and runs everywhere; every client can
-                 still edit through the shell and bypass any hook. Other
-                 clients have the same capability under other names —
-                 Antigravity's .agents/hooks.json, an OpenCode plugin, a Pi
-                 extension"
-    :install (mcp-light-install "clj-paren-repair-claude-hook" nil)}
-
-   ;; THE BROWSER THE STAGE-END CHECKS DRIVE. Optional and in no tier: the gates and the
-   ;; loop never open a browser; the KIT's browser pack (`tools/browser/`) and `bb health`'s
-   ;; browser check do, through Etaoin. Firefox has no row - it is an application, not a
-   ;; command on the PATH - and `--version` here proves little anyway: on macOS the permission
-   ;; to use Firefox belongs to the terminal application, and a shell under a daemon gets a
-   ;; silent refusal that only a real start shows. `bb health` starts one.
-   {:tool :geckodriver :via :flag :cmd ["geckodriver" "--version"] :req :optional
-    :does "WebDriver for Firefox - the stage-end checks in a real browser (Etaoin, headless)"
-    :needed-for "The KIT's browser pack, `bb --config <kit>/tools/browser/bb.edn check`, and the browser check of `bb health`; with Firefox installed"
-    :install "https://github.com/mozilla/geckodriver/releases (brew install geckodriver); Firefox from mozilla.org"}
-
-   {:tool :bbin :via :flag :cmd ["bbin" "--version"] :req :recommended
-    :does "Installs single-file Babashka tools"
-    :needed-for "Installing the three tools above"
-    :install "https://github.com/babashka/bbin#installation"}
-
-   ;; The interactive seats. All five were verified to answer --version
-   ;; without dispatching anything — do that yourself before adding a sixth,
-   ;; because the SAFETY RULE above applies with most force to a client that
-   ;; takes a prompt as a positional argument. ALL FIVE STAY (decided 2026-09-24):
-   ;; portability across seats is the design, and the KIT is proved in one seat
-   ;; first and run in the others afterwards - so each entry says where it
-   ;; stands: whether a profile example ships for it (`bb init --seat` refuses a
-   ;; seat without one, by name) and whether a build has run from it.
-   {:tool :claude :via :flag :cmd ["claude" "--version"] :req :optional
-    :does "Claude Code — reads CLAUDE.md; write hooks in .claude/settings.json"
-    :needed-for "The seat the KIT is proved in: every build so far ran from it,
-                 and the health check's profile names it. Its profile example
-                 ships (resources/profiles/claude.edn), the default for bb init"
-    :install "https://claude.com/claude-code"}
-
-   {:tool :agy-ide :via :flag :cmd ["agy-ide" "--version"] :req :optional
-    :does "Antigravity IDE launcher — the IDE's agent reads AGENTS.md"
-    :needed-for "An interactive seat. The CLI itself is a VS Code-style launcher
-                 (--diff, --goto, --install-extension), not an agent: there is no
-                 headless mode and nothing to dispatch to. Antigravity's whole
-                 integration with this kit is AGENTS.md, plus optional
-                 .agents/hooks.json for write-time gate 0. Its profile example
-                 ships (bb init --seat agy-ide); no build has run from it yet"}
-
-   {:tool :opencode :via :flag :cmd ["opencode" "--version"] :req :optional
-    :does "OpenCode v1 — reads AGENTS.md; agents in .opencode/agents/"
-    :needed-for "Coexists with v2 as a separate binary, so both are listed. No
-                 profile example yet, so bb init --seat refuses it; no build has
-                 run from it"}
-
-   {:tool :opencode2 :via :flag :cmd ["opencode2" "--version"] :req :optional
-    :does "OpenCode v2 — ordered {action, resource, effect} permissions"
-    :needed-for "The only seat that can enforce read-only review and `never run
-                 the gates` as client rules rather than prompt text. Still beta:
-                 its plugin and SDK contracts are not final. No profile example
-                 yet, so bb init --seat refuses it; no build has run from it"}
-
-   {:tool :pi :via :flag :cmd ["pi" "--version"] :req :optional
-    :does "Pi — reads AGENTS.md; .pi/SYSTEM.md replaces the system prompt"
-    :needed-for "The programmable seat: TypeScript extensions can replace tools.
-                 No profile example yet, so bb init --seat refuses it; no build
-                 has run from it"}
-
-   {:tool :mise :via :flag :cmd ["mise" "--version"] :req :optional
-    :does "Pins language/tool versions per project"
-    :needed-for "The template's projects ship a .mise.toml; `mise install` is one route to the JDK and tools"
-    :install "https://mise.jdx.dev/getting-started.html"}])
+  "Every tool the loop touches, why, how to ask it its version, and what installs it - the
+  table in `resources/toolchain.edn`, where the keys are explained. DATA, NOT CODE, since
+  2026-10-15: the doctor reads it, and so does the upgrade, from a tag, without running the
+  tag."
+  (read-toolchain (slurp (or (io/resource toolchain-resource)
+                             (throw (ex-info "toolchain.edn not on the classpath" {:resource toolchain-resource}))))))
 
 (def flag-allowlist
   "Probe flags that are safe because the tool documents them. A tool that

@@ -318,3 +318,25 @@
     (testing "a directory with no config anywhere above it yields no pins"
       ;; fs/create-temp-dir sits outside any repo, so nothing is inherited
       (is (= {} (doctor/mise-pins (str (fs/create-temp-dir))))))))
+
+(deftest the-toolchain-is-data-a-release-can-be-read-from-its-tag
+  ;; `bb upgrade` reads a release's requirements as `git show <tag>:harness/resources/toolchain.edn`,
+  ;; without running the release's code: the table is plain EDN, and what the doctor reads is it.
+  (let [text (slurp (str (fs/path (fs/parent (fs/real-path ".")) "harness" "resources" doctor/toolchain-resource)))
+        from-text (doctor/read-toolchain text)]
+    (is (= doctor/toolchain from-text) "the doctor's table is the file, nothing added in code")
+    (is (not (str/includes? text "#(")) "plain EDN: no reader macros, readable at any tag")
+    (is (= 17 (count from-text)))
+    (doseq [{:keys [tool via cmd req tier install]} from-text]
+      (is (#{:flag :bbin :which} via) (str tool))
+      (is (#{:required :recommended :optional} req) (str tool))
+      (when (= :flag via) (is (vector? cmd) (str tool)))
+      (when (= :required req)
+        (is (#{:gates :loop} tier) (str tool " names its tier"))
+        (is (string? install) (str tool " names its fix"))))
+    (testing "the one exact major and the one floor survive as data"
+      (is (= 21 (:major (first (filter #(= :java (:tool %)) from-text)))))
+      (is (= "1.12.212" (:min (first (filter #(= :bb (:tool %)) from-text))))))
+    (testing "the bbin tools' install lines carry the pinned tag"
+      (doseq [t [:clj-nrepl-eval :clj-paren-repair :clj-paren-repair-claude-hook]]
+        (is (str/includes? (:install (first (filter #(= t (:tool %)) from-text))) "--tag v0.2.2") (str t))))))
