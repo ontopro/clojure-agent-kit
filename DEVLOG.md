@@ -83,6 +83,15 @@ something already answering - the busy port is said with what holds it, pid, com
 folder, from `lsof`, or that `lsof` is absent; a busy port said as a number is a fact, said with
 its holder it is a thing to stop. `bb init`'s closing line no longer promises 8000.
 
+A review caught the application that ignores `PORT`: every one generated before `kit-v1.3` -
+the fifth project's, from the moment it takes `0.6.5` until its upgrade branch is merged - and
+any custom `--serve`. It comes up on 8000 whatever it was told, and the pack waiting on the
+picked port would say "did not come up", pointing away from the cause. The packs' server start
+now watches 8000 too, when it was quiet before the start, and stops with the cause and the two
+ways out: merge the template upgrade, or pass `--base http://localhost:8000` - and kills the JVM
+a tree kill misses before it throws, since the first try of this left one holding 8000. Run
+against the sandbox's pre-`kit-v1.3` application: the message, and 8000 free after it.
+
 ### The pin moves to `kit-v1.3`, and a record from a local clone is refused (plan 6.5, item 15)
 
 `template-pins.edn` names the fork's candidate - `kit-v1.3`, commit `1c1838a`, the tag not yet

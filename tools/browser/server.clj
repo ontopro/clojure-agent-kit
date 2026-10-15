@@ -51,30 +51,57 @@
            "nothing found listening (lsof saw no listener)"))
        (catch Exception _ "unknown (lsof absent)")))
 
+(declare kill-listeners!)
+
 (defn start-server!
   "Starts the server and waits for it. Returns [process seconds-to-up]. THE PORT IS TOLD, NOT
   FOUND: the serve command gets `PORT` - the KIT's template takes it - so the application comes up
   where this pack will look, on the port the pack picked (`check.bb`) or the one `--base` named."
   []
   (when (up?) (throw (ex-info (str "something already answers on " base " - " (port-holder) " - stop it, or pass --running") {:base base})))
+  ;; AN APPLICATION THAT IGNORES PORT comes up on the template's 8000 whatever it was told: one
+  ;; generated before kit-v1.3, or a custom --serve. Waiting on the picked port would end in "did
+  ;; not come up", pointing away from the cause; so 8000 is watched too, and only if it was quiet
+  ;; before the start - a server already there is someone else's, not this one's
   (let [t0 (System/nanoTime)
+        default-up? (fn [] (and (not= port 8000)
+                                (try (= 200 (:status (http/get (str "http://localhost:8000" health-path) {:throw false :timeout 1000})))
+                                     (catch Exception _ false))))
+        default-quiet-before? (not (default-up?))
         proc (p/process {:cmd (p/tokenize serve-cmd) :out :string :err :string :shutdown :destroy-tree
                          :extra-env {"PORT" (str port)}})]
     (loop [i 0]
       (cond (up?) [proc (/ (- (System/nanoTime) t0) 1e9)]
+            (and default-quiet-before? (default-up?))
+            (do (p/destroy-tree proc)
+                ;; the JVM a tree kill misses would hold 8000 for the next run
+                (kill-listeners! 8000)
+                (throw (ex-info (str "the application came up on 8000, not on PORT " port " it was told - it ignores PORT: generated"
+                                     " before the template's kit-v1.3, or a `--serve` command that does not pass it on. Merge the"
+                                     " template upgrade, or pass --base http://localhost:8000")
+                                {:port port :came-up-on 8000})))
             (not (.isAlive (:proc proc))) (throw (ex-info (str "`" serve-cmd "` exited before " health-path " answered")
                                                           {:exit (:exit @proc) :err (str/join "\n" (take-last 10 (str/split-lines (str (:err @proc)))))}))
-            (> i 90) (do (p/destroy-tree proc) (throw (ex-info "the application did not come up in 180 s" {})))
+            (> i 90) (do (p/destroy-tree proc)
+                         (kill-listeners! port)
+                         (throw (ex-info (str "the application did not come up on " base " in 180 s (it was told PORT " port ")") {:port port})))
             :else (do (Thread/sleep 2000) (recur (inc i)))))))
 
 (defn- wait-down [] (loop [i 0] (when (and (up?) (< i 30)) (Thread/sleep 500) (recur (inc i)))))
 
 (defn- listeners
-  "The pids listening on the port, by lsof; none where lsof is absent."
-  []
-  (try (->> (:out (p/shell {:out :string :err :discard :continue true} "lsof" "-t" (str "-iTCP:" port) "-sTCP:LISTEN"))
-            (re-seq #"\d+") (map parse-long) distinct)
-       (catch Exception _ [])))
+  "The pids listening on a port (this one by default), by lsof; none where lsof is absent."
+  ([] (listeners port))
+  ([p]
+   (try (->> (:out (p/shell {:out :string :err :discard :continue true} "lsof" "-t" (str "-iTCP:" p) "-sTCP:LISTEN"))
+             (re-seq #"\d+") (map parse-long) distinct)
+        (catch Exception _ []))))
+
+(defn- kill-listeners!
+  "Kill what listens on port `p` - the JVM a tree kill missed - and wait for it to go."
+  [p]
+  (doseq [pid (listeners p)] (p/shell {:continue true :out :discard :err :discard} "kill" "-9" (str pid)))
+  (loop [i 0] (when (and (seq (listeners p)) (< i 20)) (Thread/sleep 500) (recur (inc i)))))
 
 (defn stop-server!
   "Stops the server: the process tree, then whatever still listens on the port, each followed
