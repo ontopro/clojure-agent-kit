@@ -56,6 +56,24 @@ step by hand, named there.
 
 ## 2026-10-14
 
+### The template upgrade's merge takes the gated tip, and "nothing to do" asks the base (plan 6.5, item 13, after review)
+
+A review of the entry below found two holes and a plan line left over. The merge took the
+branch's tip as it stood, checked clean and not mid-merge, and nothing else: a commit made after
+the run reached `:awaiting-merge` would have merged ungated. The gates record the commit they ran
+on, so the merge now refuses a tip that is not that commit, and one that does not hold the
+template's commit, each with "`bb template-upgrade` again". And "nothing to upgrade to" was read
+off `template`'s tip - is it the pin? - when the question is whether the tip is merged into the
+base branch: a run that failed between the template's commit and its state, or a run directory
+deleted to start over, left `template` ahead of `main` and every later run refusing with exit 0.
+Now a tip not yet merged is the release still to take, taken from the tip as it stands without
+generating again, and a worktree lost mid-conflict and checked out again from a branch the merge
+never reached is merged again, never gated as it is. Smaller: a merge with every conflict staged
+and not committed is said as that; `--dry-run` names the run id a real run would get; the
+generated tree is copied with its file modes. `bb next`'s notice while the branch awaits its
+merge is item 14c's, with the upgrade's done record, and the plan said so beside it; the entry
+below had not. Each hole has a test over real git.
+
 ### `bb template-upgrade`: a template release taken through a `template` branch (plan 6.5, item 13)
 
 A moved template pin was a report and a compare link, and nothing applied it: the template's

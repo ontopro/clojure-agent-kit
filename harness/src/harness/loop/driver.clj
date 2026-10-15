@@ -1759,7 +1759,20 @@
       (throw (ex-info (str "the upgrade's worktree " root (if merging? " has a merge unresolved" " has uncommitted changes")
                            " - resolve and commit there, then `bb template-upgrade` again, before the merge")
                       {:run-loop/error :not-committed :worktree root})))
-    (let [commit (:out (git-in root "rev-parse" "HEAD"))]
+    (let [commit (:out (git-in root "rev-parse" "HEAD"))
+          gated-at (:head (last (filter #(= :gates (:event/kind %)) (:events state))))
+          template-commit (get-in state [:template :commit])]
+      ;; THE TIP IS WHAT THE GATES RAN ON, and it holds the template's commit: a commit made after
+      ;; the run reached :awaiting-merge is ungated, and a branch the template's merge never reached
+      ;; is not the upgrade. `bb template-upgrade` again gates the one and merges the other.
+      (when (not= commit gated-at)
+        (throw (ex-info (str "the upgrade's branch moved since its gates ran (" (subs commit 0 7) ", gated at "
+                             (if gated-at (subs gated-at 0 7) "nothing") "): `bb template-upgrade` again, so the gates see what would merge")
+                        {:run-loop/error :not-gated :commit commit :gated-at gated-at})))
+      (when (and template-commit (not (zero? (:exit (git-in root "merge-base" "--is-ancestor" template-commit commit)))))
+        (throw (ex-info (str "the upgrade's branch does not hold the template's commit " (subs template-commit 0 7)
+                             ": `bb template-upgrade` again merges it")
+                        {:run-loop/error :not-upgraded :commit commit :template-commit template-commit})))
       {:branch (:worktree/branch gate)
        :commit commit
        :files (vec (remove str/blank? (str/split-lines (:out (git-in root "diff" "--name-only" (get-in state [:base :commit]) commit)))))

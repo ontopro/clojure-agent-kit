@@ -93,7 +93,9 @@
   stands unresolved (`merge-head?` or `conflicts`), `:uncommitted` with changes not committed,
   else `:committed`."
   [{:keys [merge-head? conflicts porcelain]}]
-  (cond (or merge-head? (seq conflicts)) :merging
+  (cond (seq conflicts) :merging
+        ;; every conflict staged and the merge not yet committed: resolved, one commit short
+        merge-head? :resolved
         (not (str/blank? porcelain)) :uncommitted
         :else :committed))
 
@@ -189,9 +191,15 @@
     (if (fs/directory? f) (fs/delete-tree f) (fs/delete f)))
   (doseq [f (fs/list-dir generated)]
     (let [to (fs/path dir (fs/file-name f))]
+      ;; with their attributes: a mode the template sets is part of the tree it generates
       (if (fs/directory? f)
-        (fs/copy-tree f to)
-        (fs/copy f to)))))
+        (fs/copy-tree f to {:copy-attributes true})
+        (fs/copy f to {:copy-attributes true})))))
+
+(defn- ancestor?
+  "Is `a` an ancestor of `b` in `dir` - `git merge-base --is-ancestor`?"
+  [dir env a b]
+  (zero? (:exit (git dir env "merge-base" "--is-ancestor" a b))))
 
 (defn commit-template!
   "The tree `generated` committed onto `template` as the whole tree, with `label`'s subject,
@@ -279,6 +287,19 @@
             " (its record: " run-dir ")"))
   {:outcome :conflict :conflicts conflicts})
 
+(defn- merge-template!
+  "`git merge template` in the upgrade's worktree: clean, the gates; a conflict, the Architect's."
+  [ctx wt env gate-seq run-dir]
+  (say (str "merging template into " (get-in @(:state ctx) [:sessions :gate :worktree/branch]) " in " wt))
+  (let [{:keys [exit]} (git wt env "merge" "--no-edit" branch)]
+    (if (zero? exit)
+      (do (driver/event! ctx {:event/kind :merge :clean? true :commit (git! wt env "rev-parse" "HEAD")})
+          (say "merged clean")
+          (gates! ctx wt gate-seq run-dir))
+      (let [conflicts (:conflicts (worktree-facts wt env))]
+        (driver/event! ctx {:event/kind :merge :clean? false :conflicts conflicts})
+        (conflict! ctx wt conflicts run-dir)))))
+
 (defn- resume! [ws ctx gate-seq env run-dir]
   (let [state @(:state ctx)
         wt (get-in state [:sessions :gate :worktree/path])
@@ -294,14 +315,24 @@
                      (doseq [f (:conflicts facts)] (say (str "  " f)))
                      (say "resolve and commit there, then `bb template-upgrade` again")
                      {:outcome :conflict :conflicts (:conflicts facts)})
+        :resolved (do (say (str "the merge in " wt " is resolved and not committed: `git commit` there, then `bb template-upgrade` again"))
+                      {:outcome :uncommitted})
         :uncommitted (do (say (str "the worktree " wt " has uncommitted changes: commit the resolution there first"))
                          (println (str/join "\n" (map #(str "    " %) (str/split-lines (:porcelain facts)))))
                          {:outcome :uncommitted})
         :committed (let [head (git! wt env "rev-parse" "HEAD")
                          gated-at (:head (last (filter #(= :gates (:event/kind %)) (:events state))))]
-                     (if (and (= :awaiting-merge (last-stop state)) (= head gated-at))
+                     (cond
+                       ;; THE BRANCH WITHOUT THE TEMPLATE'S COMMIT - a worktree lost mid-conflict and checked
+                       ;; out again from a branch the merge never reached - is merged again, never gated as it is
+                       (not (ancestor? wt env (get-in state [:template :commit]) head))
+                       (merge-template! ctx wt env gate-seq run-dir)
+
+                       (and (= :awaiting-merge (last-stop state)) (= head gated-at))
                        (do (say (str "already green and awaiting the merge - " (merge-command run-dir)))
                            {:outcome :awaiting-merge})
+
+                       :else
                        (do (driver/event! ctx {:event/kind :resolved :commit head})
                            (gates! ctx wt gate-seq run-dir))))))))
 
@@ -330,22 +361,38 @@
       ;; A RUN NOT MERGED IS RESUMED, whatever template's tip says: it holds this release already
       (do (say (str "run " id " exists - resuming it"))
           (resume! ws (driver/context run-dir) gate-seq env run-dir))
-      (let [_ (when (same-source? from pin local-root)
-                (refuse (str "the application is generated from " (:tag from) " (" (:sha7 from) ") already, which is the pin: nothing to upgrade to")
-                        {:from from :nothing-to-upgrade true}))
+      ;; NOTHING TO DO IS A QUESTION ABOUT THE BASE, not about template's tip: is the tip merged into
+      ;; the branch? A tip ahead of the base with no run - a run that failed between the template
+      ;; commit and its state, a run directory deleted to start over - is the release still to take,
+      ;; and it is taken from the tip as it stands, without generating again.
+      (let [tip (git! app env "rev-parse" branch)
+            tip-merged? (ancestor? app env tip base-branch)
             label (app/generation-label pin local-root)
             to (if local-root {:template (str (:template pin)) :local-root local-root}
                    {:template (str (:template pin)) :tag (:git/tag pin) :sha7 (subs (:git/sha pin) 0 7)})
-            _ (say (str "generating the application from " label " - a JVM starts…"))
-            generated (str (fs/path (fs/create-temp-dir {:prefix "template-upgrade-"}) (fs/file-name app)))
-            _ (if generate (generate generated) (app/generate! pin {:app-name app-name :target-dir generated :local-root local-root}))
-            template-wt (fs/path work "worktrees" id "template")
-            template-commit (commit-template! app env template-wt generated label)
-            _ (fs/delete-tree (fs/parent generated))
-            _ (when-not template-commit
-                (refuse (str "the tree generated from " label " is template's tip already, commit for commit: nothing to upgrade to")
-                        {:from from :to to :nothing-to-upgrade true}))
-            _ (say (str "template now holds " (subs template-commit 0 7) ": " label))
+            nothing! (fn [why] (refuse (str why ": nothing to upgrade to") {:from from :to to :nothing-to-upgrade true}))
+            template-commit
+            (cond
+              (and (same-source? from pin local-root) tip-merged?)
+              (nothing! (str "the application is generated from " (:tag from) " (" (:sha7 from) ") already, which is the pin, and it is merged"))
+
+              (same-source? from pin local-root)
+              (do (say (str "template already holds " (subs tip 0 7) ", the pin, not yet merged into " base-branch ": taken from there"))
+                  tip)
+
+              :else
+              (let [_ (say (str "generating the application from " label " - a JVM starts…"))
+                    generated (str (fs/path (fs/create-temp-dir {:prefix "template-upgrade-"}) (fs/file-name app)))
+                    _ (if generate (generate generated) (app/generate! pin {:app-name app-name :target-dir generated :local-root local-root}))
+                    template-wt (fs/path work "worktrees" id "template")
+                    c (commit-template! app env template-wt generated label)]
+                (fs/delete-tree (fs/parent generated))
+                (cond
+                  c (do (say (str "template now holds " (subs c 0 7) ": " label)) c)
+                  tip-merged? (nothing! (str "the tree generated from " label " is template's tip already, commit for commit, and it is merged"))
+                  :else (do (say (str "the tree generated from " label " is template's tip already, " (subs tip 0 7)
+                                      ", not yet merged into " base-branch ": taken from there"))
+                            tip))))
             base-commit (git! app env "rev-parse" "HEAD")
             wt (fs/path work "worktrees" id "app")
             _ (fs/create-dirs (fs/parent wt))
@@ -358,17 +405,9 @@
                                                              :template-commit template-commit
                                                              :base-branch base-branch :base-commit base-commit
                                                              :worktree wt}))))
-            ctx (driver/context run-dir)
-            _ (driver/event! ctx {:event/kind :template-commit :commit template-commit :label label})
-            _ (say (str "merging template into " id " (off " base-branch ") in " wt))
-            {:keys [exit]} (git wt env "merge" "--no-edit" branch)]
-        (if (zero? exit)
-          (do (driver/event! ctx {:event/kind :merge :clean? true :commit (git! wt env "rev-parse" "HEAD")})
-              (say "merged clean")
-              (gates! ctx wt gate-seq run-dir))
-          (let [conflicts (:conflicts (worktree-facts wt env))]
-            (driver/event! ctx {:event/kind :merge :clean? false :conflicts conflicts})
-            (conflict! ctx wt conflicts run-dir)))))))
+            ctx (driver/context run-dir)]
+        (driver/event! ctx {:event/kind :template-commit :commit template-commit :label label})
+        (merge-template! ctx wt env gate-seq run-dir)))))
 
 ;; ---------------------------------------------------------------------------
 ;; the command
@@ -408,7 +447,9 @@
             has-branch? (branch-exists? app nil branch)
             tip (when has-branch? (generated-from (:out (git app nil "log" "-1" "--format=%s" branch))))]
         (say (str "template branch: " (if has-branch? (str "exists, at " (pr-str tip)) "would be made at the first commit")))
-        (say (str "run: work/runs/" (run-id pin local-root) ", worktree work/worktrees/" (run-id pin local-root) "/app"))
+        (say (let [id (fresh-id (fs/path (:workspace/work ws) "runs") (run-id pin local-root))]
+               (str "run: work/runs/" id (when (fs/exists? (fs/path (:workspace/work ws) "runs" id "state.edn")) " (exists: resumed)")
+                    ", worktree work/worktrees/" id "/app")))
         (say (str "gates: " (str/join " · " (map (comp name first) (project-gates ws)))))
         (println "template-upgrade --dry-run: nothing was written."))
       (try

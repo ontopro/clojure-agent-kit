@@ -97,7 +97,7 @@
     (is (= "x" (tu/fresh-id runs "x")) "a run not merged is resumed, not renamed")
     (spit (str (fs/path runs "x" "state.edn")) (pr-str {:events [{:event/kind :merged}]}))
     (is (= "x-2" (tu/fresh-id runs "x")) "a merged run's id is taken"))
-  (is (= :merging (tu/worktree-state {:merge-head? true :conflicts [] :porcelain ""})))
+  (is (= :resolved (tu/worktree-state {:merge-head? true :conflicts [] :porcelain ""})) "every conflict staged, the merge not committed")
   (is (= :merging (tu/worktree-state {:merge-head? false :conflicts ["a.clj"] :porcelain "UU a.clj"})))
   (is (= :uncommitted (tu/worktree-state {:merge-head? false :conflicts [] :porcelain " M a.clj"})))
   (is (= :committed (tu/worktree-state {:merge-head? false :conflicts [] :porcelain ""})))
@@ -227,3 +227,54 @@
     (let [r (run-upgrade! ws (assoc generated-files "resources/new.txt" "new\n") [[:fmt "true"]])]
       (is (= :awaiting-merge (:outcome r)))
       (is (= root (git-out app "rev-parse" "template~1")) "made at the first commit, then the release on it"))))
+
+(deftest a-commit-after-the-gates-is-refused-at-the-merge-until-gated-again
+  (let [ws (workspace!)
+        work (:workspace/work ws)
+        release (assoc generated-files "resources/new.txt" "new\n")
+        wt (str (fs/path work "worktrees" id "app"))
+        run-dir (str (fs/path work "runs" id))
+        decision (str (fs/path run-dir "decision.edn"))]
+    (is (= :awaiting-merge (:outcome (run-upgrade! ws release [[:fmt "true"]]))))
+    (git-out wt "commit" "-q" "--allow-empty" "-m" "a commit after the gates")
+    (spit decision (pr-str {:decision "x"}))
+    (let [e (try (with-out-str (driver/merge! (driver/context run-dir) decision)) nil (catch clojure.lang.ExceptionInfo e e))]
+      (is (= :not-gated (:run-loop/error (ex-data e))))
+      (is (str/includes? (ex-message e) "bb template-upgrade")))
+    (is (= :awaiting-merge (:outcome (run-upgrade! ws release [[:fmt "true"]]))) "gated again")
+    (with-out-str (driver/merge! (driver/context run-dir) decision))
+    (is (str/starts-with? (git-out (:workspace/app ws) "log" "-1" "--format=%s" "main") "Merge branch"))))
+
+(deftest a-template-tip-ahead-of-main-with-no-run-is-taken-without-generating
+  ;; a run that failed between the template commit and its state, or a run directory deleted to
+  ;; start over: template is ahead of main, and the release is still to take
+  (let [ws (workspace!)
+        app (:workspace/app ws)
+        work (:workspace/work ws)
+        release (assoc generated-files "resources/new.txt" "new\n")]
+    (is (= :awaiting-merge (:outcome (run-upgrade! ws release [[:fmt "true"]]))))
+    (fs/delete-tree (fs/path work "runs" id))
+    (git-out app "worktree" "remove" "--force" (str (fs/path work "worktrees" id "app")))
+    (git-out app "branch" "-D" id)
+    (let [tip (git-out app "rev-parse" "template")
+          r (tu/upgrade! ws {:pin new-pin :env git-env :gates [[:fmt "true"]]
+                             :generate (fn [_] (throw (ex-info "generated again" {})))})]
+      (is (= :awaiting-merge (:outcome r)))
+      (is (= tip (git-out app "rev-parse" "template")) "template as it was")
+      (is (= tip (:commit (first (:events (state ws id))))) "the run's template commit is the tip")
+      (is (= "2" (git-out app "rev-list" "--count" "template"))))))
+
+(deftest a-worktree-lost-mid-conflict-is-merged-again-not-gated-as-it-is
+  (let [ws (workspace!)
+        app (:workspace/app ws)
+        work (:workspace/work ws)
+        release (assoc generated-files "src/xyx/views.clj" (str/replace views-clj "Clojure Stack Lite" "Clojure Stack Lite 2"))
+        wt (str (fs/path work "worktrees" id "app"))]
+    (is (= :conflict (:outcome (run-upgrade! ws release [[:fmt "true"]]))))
+    (git-out app "worktree" "remove" "--force" wt)
+    (is (not (fs/exists? wt)))
+    (let [r (run-upgrade! ws release [[:fmt "true"]])]
+      (is (= :conflict (:outcome r)) "merged again, the conflict again - never the base gated as the upgrade")
+      (is (= ["src/xyx/views.clj"] (:conflicts r)))
+      (is (str/includes? (slurp (str (fs/path wt "src" "xyx" "views.clj"))) "<<<<<<<"))
+      (is (= [:template-commit :merge :stopped :merge :stopped] (mapv :event/kind (:events (state ws id))))))))
