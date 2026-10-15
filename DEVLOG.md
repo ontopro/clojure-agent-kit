@@ -70,6 +70,13 @@ The method's line that named `bb self-check --record` names `bb health --record`
 own clone. The upgrade's own check for local changes in `KIT/`, which names record files as such
 with how to discard them, is item 14d's.
 
+Two limits, known. A KIT kept outside its workspace - `workspace.edn` naming the clone by an
+absolute path, nothing above the clone - is not caught: the refusal reads the clone's place, and
+such a clone can still record; 14d's local-changes check sees the files it would write. And any
+clone under a workspace is refused, not only that workspace's own KIT: a second clone inside a
+workspace folder is an adopter's machine too, and the records are not its to write. Both
+refusals exit 1; the self-check's has a test that runs the task and sees nothing else run.
+
 ### The template upgrade's merge takes the gated tip, and "nothing to do" asks the base (plan 6.5, item 13, after review)
 
 A review of the entry below found two holes and a plan line left over. The merge took the

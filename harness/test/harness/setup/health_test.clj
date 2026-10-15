@@ -322,3 +322,9 @@
     (let [task (re-find #"(?s)self-check \{:doc \"[^\"]*\"" (slurp (str (fs/path kit-dir "bb.edn"))))]
       (is (str/includes? task "flags passed on: --keep, --selfcheck-only)"))
       (is (str/includes? task "Never --record")))))
+
+(deftest bb-self-check-refuses-to-record-before-the-doctor-runs
+  (let [{:keys [exit out]} (p/shell {:dir kit-dir :out :string :err :string :continue true} "bb" "self-check" "--record")]
+    (is (= 1 exit))
+    (is (str/includes? out "self-check does not record"))
+    (is (not (str/includes? out "doctor")) "nothing ran: the refusal is the first thing the task does")))

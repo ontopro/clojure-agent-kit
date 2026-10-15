@@ -97,7 +97,7 @@
                               (println (str "self-check does not record: the health records are the KIT's own evidence, written by "
                                             "`bb health --record` in harness/ by whoever certifies a machine for the KIT, never by a "
                                             "workspace's clone. Run `bb self-check` without it."))
-                              (System/exit 2))
+                              (System/exit 1))
                           {:keys [exit]} (shell {:dir "harness" :continue true} "bb" "doctor")]
                       (when-not (zero? exit)
                         (println (str "\nself-check: the doctor says this machine is not ready - the table above says "
