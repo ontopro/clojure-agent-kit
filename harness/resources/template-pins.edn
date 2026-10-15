@@ -18,7 +18,7 @@
  {:clojure-stack-lite
   {:template io.github.ontopro/clojure-stack-lite
    :git/url "https://github.com/ontopro/clojure-stack-lite.git"
-   :git/sha "f9089ada8bda1b12cba9bc4416dc09317f270929"
+   :git/sha "f12268d32585d98358a0413a300e20ef74e95635"
    :git/tag "kit-v1.3"
    :as-of "2026-10-15"
    ;; upstream is abogoyavlensky/clojure-stack-lite (MIT); `git diff master..kit` in the fork is

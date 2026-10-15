@@ -123,6 +123,16 @@ the pin moves to it, `f9089ad`, as the plan foresaw a round would make it; item 
 against the candidate runs again. The round ends there: a fixed template is a new tree, so the
 next round starts fresh.
 
+Round 2, from a fresh copy at the branch tip: phase 2 clean, its notices right, the conflict
+resolved the same way, and the gates red again on the format gate - the test the fork's fix
+added laid its options map on one line, which `cljfmt` breaks over three, and `fmt-check` is a
+gate in every generated project; the health check against the candidate failed the same way on
+the generated application's gates. The fork gains the layout `cljfmt` wants, `f12268d`, the pin
+moves to it, and round 3 starts fresh. Two lessons the fork's own checks did not teach: the
+fork's `bb test` runs the template's config tests, not the generated project's gates, so a
+change to a generated test file is proved only by generating - the KIT's health check does it,
+and from now on it runs before the pin moves, not after.
+
 ### The pin moves to `kit-v1.3`, and a record from a local clone is refused (plan 6.5, item 15)
 
 `template-pins.edn` names the fork's candidate - `kit-v1.3`, commit `1c1838a`, the tag not yet
