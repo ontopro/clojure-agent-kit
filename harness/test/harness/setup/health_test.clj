@@ -308,3 +308,17 @@
                                  :results [{:check :gates :ms 1000}] :doctor []})]
       (is (= ["  READY - KIT 0.6.3 at 304eecd, on p" "    toolchain  every required tool ok" "    health     1 of 1 checks ok in 1s"]
              lines)))))
+
+(deftest the-record-is-the-kits-own-and-a-workspaces-clone-is-refused-it
+  ;; The first project's clone had no local changes only because the documented path never
+  ;; passed --record: `bb self-check --record` would have written the KIT's evidence into it.
+  (let [ws {:workspace/dir "/w/xyx" :workspace/kit "/w/xyx/KIT"}]
+    (is (nil? (health/record-refusal "/dev/clojure-agent-kit" nil)) "the KIT's own clone, in no workspace, records")
+    (let [why (health/record-refusal "/w/xyx/KIT" ws)]
+      (is (str/includes? why "records are the KIT's own"))
+      (is (str/includes? why "/w/xyx/workspace.edn"))
+      (is (str/includes? why "a workspace's clone does not write them"))))
+  (testing "and bb self-check no longer offers the flag: its doc names it only to refuse it"
+    (let [task (re-find #"(?s)self-check \{:doc \"[^\"]*\"" (slurp (str (fs/path kit-dir "bb.edn"))))]
+      (is (str/includes? task "flags passed on: --keep, --selfcheck-only)"))
+      (is (str/includes? task "Never --record")))))

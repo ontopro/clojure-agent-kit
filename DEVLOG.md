@@ -56,6 +56,20 @@ step by hand, named there.
 
 ## 2026-10-14
 
+### The health records are the KIT's own: a workspace's clone does not write them (plan 6.5, item 14a)
+
+`bb self-check` passed `--record` on to `bb health`, which writes `health/records/<platform>.edn`
+and rewrites the known-good set - tracked files, the KIT's evidence of a machine it certified.
+In a workspace's clone of the KIT they are local changes with no home: noise that blocks a
+clean upgrade, and a record nobody would commit. The first project's clone had none only because
+the documented path never passed the flag. Now `bb health --record` is refused, before the
+minutes are spent, where a `workspace.edn` is found above the clone: "records are the KIT's
+own; a workspace's clone does not write them" - the run itself goes on without the flag. And
+`bb self-check` no longer offers it: given `--record` it says whose the records are and exits.
+The method's line that named `bb self-check --record` names `bb health --record` in the KIT's
+own clone. The upgrade's own check for local changes in `KIT/`, which names record files as such
+with how to discard them, is item 14d's.
+
 ### The template upgrade's merge takes the gated tip, and "nothing to do" asks the base (plan 6.5, item 13, after review)
 
 A review of the entry below found two holes and a plan line left over. The merge took the

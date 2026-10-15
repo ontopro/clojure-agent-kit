@@ -76,6 +76,19 @@
   []
   (str (fs/parent (fs/normalize (fs/absolutize ".")))))
 
+(defn record-refusal
+  "Why `--record` is refused for the clone at `kit`, given `ws` - the workspace found at or
+  above the clone (`workspace/find-workspace`), nil when there is none - or nil when it may
+  record. RECORDS ARE THE KIT'S OWN: `health/records/` and the known-good set are the KIT's
+  evidence of a machine it certified, tracked files, and written into a workspace's clone
+  they are local changes that block a clean upgrade. The first project's clone had none only
+  because the documented path never passed the flag."
+  [kit ws]
+  (when ws
+    (str "--record refused: records are the KIT's own, and " kit " is a workspace's clone ("
+         (fs/path (:workspace/dir ws) workspace/file-name) " is above it); a workspace's clone does not write them."
+         " The run itself is fine without the flag.")))
+
 (defn- git! [dir & args]
   (let [{:keys [exit err]} (apply p/shell {:dir (str dir) :out :string :err :string :continue true} "git" args)]
     (when-not (zero? exit)
@@ -848,6 +861,11 @@
         kit (kit-dir)
         doctor-results (doctor/report)]
     (say "\nbb health - " kit)
+    ;; BEFORE THE MINUTES ARE SPENT: a clone that may not record is told so now, not after the run
+    (when (flags "--record")
+      (when-let [why (record-refusal kit (workspace/find-workspace kit))]
+        (say "  " why)
+        (System/exit 1)))
     (say "\n  doctor: gates tier " (if (doctor/ok? doctor-results :gates) "ok" "NOT OK")
          ", loop tier " (if (doctor/ok? doctor-results :loop) "ok" "NOT OK") " (`bb doctor` has the table)")
     (when-not (doctor/ok? doctor-results :loop)

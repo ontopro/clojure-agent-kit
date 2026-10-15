@@ -335,7 +335,7 @@ This is the step people skip, and it is the only one that produces evidence rath
 ### Setup is done when
 
 1. **The toolchain reports green.** `bb doctor`, both verdicts *yes*. A missing small binary does not fail loudly; it quietly spends an agent's retry budget.
-2. **The health check passes on this machine**: the scaffold boots (`bb serve` answers), every gate is green on the untouched scaffold and fails when it should, and the whole loop has run end to end on one trivial task, recorded and torn down. With `--record` (`bb self-check --record`), it writes a record naming the KIT commit and the template commit it certified.
+2. **The health check passes on this machine**: the scaffold boots (`bb serve` answers), every gate is green on the untouched scaffold and fails when it should, and the whole loop has run end to end on one trivial task, recorded and torn down. With `--record` (`bb health --record`, in the KIT's own clone - never a workspace's, which does not write records), it writes a record naming the KIT commit and the template commit it certified.
 
 `bb self-check` is both, in that order. Then scoping begins (§03).
 
