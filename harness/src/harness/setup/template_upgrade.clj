@@ -377,6 +377,12 @@
         id (:run/id (:config state))
         app (:workspace/app ws)]
     (when-not (fs/exists? wt)
+      ;; THE BRANCH GONE TOO IS A RUN ABANDONED BY HAND, and the way out is said: a resume that
+      ;; threw git's words at every call blocked the command until someone found the run directory
+      (when-not (branch-exists? app env id)
+        (refuse (str "the run " id " is open but its branch is gone: remove " run-dir " to abandon the run, then"
+                     " `bb template-upgrade` again")
+                {:run id :run-dir run-dir :branch-gone true}))
       (say (str "the worktree " wt " is gone; checked out again from " id))
       (fs/create-dirs (fs/parent wt))
       (git! app env "worktree" "add" "-q" wt id))
@@ -436,8 +442,15 @@
         opts (-> opts (update :gates #(or % [])) (assoc :env env :ws ws))]
     (if (fs/exists? state-file)
       ;; A RUN NOT MERGED IS RESUMED, whatever template's tip says: it holds this release already
-      (do (say (str "run " id " exists - resuming it"))
-          (resume! ws (driver/context run-dir) opts run-dir))
+      (let [ctx (driver/context run-dir)
+            open-to (get-in @(:state ctx) [:template :to])
+            want (if local-root {:local-root local-root} {:tag (:git/tag pin) :sha7 (subs (:git/sha pin) 0 7)})]
+        (say (str "run " id " exists - resuming it"))
+        ;; AN OPEN RUN IS FINISHED FIRST, and a pin moved since is said: the newer release waits
+        (when (not= (select-keys open-to [:tag :sha7 :local-root]) want)
+          (say (str "the run is open for " (or (:tag open-to) (:local-root open-to) "an earlier release")
+                    "; the pin is now " (or (:git/tag pin) local-root) " - merge or abandon this run, then `bb template-upgrade` again for the newer one")))
+        (resume! ws ctx opts run-dir))
       ;; NOTHING TO DO IS A QUESTION ABOUT THE BASE, not about template's tip: is the tip merged into
       ;; the branch? A tip ahead of the base with no run - a run that failed between the template
       ;; commit and its state, a run directory deleted to start over - is the release still to take,
@@ -532,9 +545,10 @@
             has-branch? (branch-exists? app nil branch)
             tip (when has-branch? (generated-from (:out (git app nil "log" "-1" "--format=%s" branch))))]
         (say (str "template branch: " (if has-branch? (str "exists, at " (pr-str tip)) "would be made at the first commit")))
-        (say (let [id (fresh-id (fs/path (:workspace/work ws) "runs") (run-id pin local-root))]
-               (str "run: work/runs/" id (when (fs/exists? (fs/path (:workspace/work ws) "runs" id "state.edn")) " (exists: resumed)")
-                    ", worktree work/worktrees/" id "/app")))
+        (say (let [runs (fs/path (:workspace/work ws) "runs")
+                   open (open-run-id runs)
+                   id (or open (fresh-id runs (run-id pin local-root)))]
+               (str "run: work/runs/" id (when open " (open: resumed)") ", worktree work/worktrees/" id "/app")))
         (say (str "gates: " (str/join " · " (map (comp name first) (project-gates ws)))))
         (println "template-upgrade --dry-run: nothing was written."))
       (try

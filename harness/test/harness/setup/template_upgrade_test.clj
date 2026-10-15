@@ -370,3 +370,22 @@
         (is (str/includes? (git-out app "show" "upgrade-0.6.5:AGENTS.md") "FILLED."))
         (is (= (git-out app "rev-parse" "upgrade-0.6.5") (:head (last (filter #(= :gates (:event/kind %)) (:events (state ws "upgrade-0.6.5"))))))
             "the gates ran on the tip with the mirror")))))
+
+(deftest an-abandoned-run-is-refused-with-the-way-out-and-a-moved-pin-is-said
+  (let [ws (workspace!)
+        app (:workspace/app ws)
+        work (:workspace/work ws)
+        release (assoc generated-files "resources/new.txt" "new\n")]
+    (is (= :awaiting-merge (:outcome (run-upgrade! ws release [[:fmt "true"]]))))
+    (testing "the pin moved again while the run is open: the run is resumed, and the newer pin said to wait"
+      (let [newer (assoc new-pin :git/tag "kit-v9.10" :git/sha "fedcba9876543210fedcba9876543210fedcba98")
+            out (with-out-str (tu/upgrade! ws {:pin newer :env git-env :gates [[:fmt "true"]]
+                                               :generate (fn [_] (throw (ex-info "no generation while a run is open" {})))}))]
+        (is (str/includes? out "run template-upgrade-kit-v9.9 exists - resuming it"))
+        (is (str/includes? out "the run is open for kit-v9.9; the pin is now kit-v9.10"))))
+    (testing "the branch deleted by hand, the run directory left: refused with the way out, not git's words"
+      (git-out app "worktree" "remove" "--force" (str (fs/path work "worktrees" id "app")))
+      (git-out app "branch" "-D" id)
+      (let [e (try (run-upgrade! ws release [[:fmt "true"]]) nil (catch clojure.lang.ExceptionInfo e e))]
+        (is (:branch-gone (ex-data e)))
+        (is (str/includes? (ex-message e) (str "remove " (fs/path work "runs" id) " to abandon the run")))))))

@@ -76,6 +76,12 @@ refused by the upgrade's own edits. Smaller: the build's commits name their path
 of the person's is not swept up; `loop.edn` gets the same check; a clone with no reachable tag
 names the release by its commit; blank lines count for nothing in the hunk rule. Each has a test.
 
+The re-review's residue, the same day: a run whose branch was deleted by hand but whose
+directory was left blocked `bb template-upgrade` with git's words at every call - it is refused
+once, with the way out, the run directory to remove; a run open for an earlier release is
+finished first when the pin has moved since, and the command now says so and that the newer
+release waits; and `--dry-run` names the run the real call would resume, not a fresh one.
+
 ### `bb upgrade --after-pull`: the workspace brought up by the new KIT's own code (plan 6.5, item 14c)
 
 A KIT upgrade was a README's list of hand steps, each run when someone remembered: round 0 of
