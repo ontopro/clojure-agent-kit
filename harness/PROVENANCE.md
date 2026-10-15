@@ -213,7 +213,9 @@ divergences from upstream, each a fix, not a feature:
   the nil of a miss, a 200 with an empty body cached for a year. The development port is
   `PORT` if set, else 8000, else - 8000 taken by something else - a free one, with
   `bb serve --port N` to ask for one and the address bound printed; `bb serve` refuses an
-  argument it does not take.
+  argument it does not take. And the server init reads the bound port off a Jetty server only:
+  a project's test may stub `run-jetty` with anything (the first KIT project's did), and the
+  template must not break such a test.
 
 ## Third-party provenance
 

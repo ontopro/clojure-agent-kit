@@ -112,6 +112,17 @@ commit past one, while the workspace's version stays the nearest release tag. An
 folder printed as `<dir>/.` after a `.` given as the folder; it is normalized once where it is
 found.
 
+Then the conflict resolved for the template's side - the project's no-cache wrapper was the
+template's fix a release early - and `bb template-upgrade` again: the mirror re-rendered on the
+branch, format and lint green, and the project's own tests red. One of them stubs `run-jetty`
+with a plain object to see the server init call the system context first, and the template's
+new init read the bound port off whatever `run-jetty` returned. A template a project cannot
+unit-test with a stubbed server is the template's fault: the fork's candidate gains a commit -
+the port read off a Jetty server only, the port asked for printed otherwise, with the test - and
+the pin moves to it, `f9089ad`, as the plan foresaw a round would make it; item 15's health check
+against the candidate runs again. The round ends there: a fixed template is a new tree, so the
+next round starts fresh.
+
 ### The pin moves to `kit-v1.3`, and a record from a local clone is refused (plan 6.5, item 15)
 
 `template-pins.edn` names the fork's candidate - `kit-v1.3`, commit `1c1838a`, the tag not yet
