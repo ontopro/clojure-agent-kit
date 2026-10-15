@@ -198,7 +198,8 @@ bb example    # the whole loop shape in one run — no model calls, no network
 The root `bb.edn` is KIT's own task list - setup (`self-check`, `init`), the gates and the KIT's
 development checks - most of them handed to `harness/`, where the harness and the rest of its tasks
 live. A project runs its KIT commands from its workspace folder, through the front door `bb init`
-writes there (`<xyx>/bb.edn`); `bb front-door-sync` writes it again after a `git pull`.
+writes there (`<xyx>/bb.edn`); `bb gates` there runs the workspace's own checks, and `bb front-door-sync`
+writes it again after a `git pull`.
 
 `bb example` is the 60-second tour: it assembles a task packet, shows the Tester's context
 being stripped of the implementation, dispatches to a scripted runner, repairs the output,

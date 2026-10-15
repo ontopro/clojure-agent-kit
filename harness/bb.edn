@@ -157,6 +157,11 @@
                 :requires ([harness.money.report :as report])
                 :task (apply report/check-main *command-line-args*)}
 
+  ;; A workspace's own gates - its front door offers this as `bb gates`; the KIT's are `gates` below.
+  workspace-gates {:doc "bb gates at a workspace's front door: the workspace's checks, cheap first, the first red stopping it - rules-check, skills-sync --check, front-door-sync --check, plan-check, stage-report --check, report-check; plan-check's list is information while a plan is being written (bb next's plan step). [--workspace <dir>]"
+                   :requires ([harness.setup.ws-gates :as ws-gates])
+                   :task (apply ws-gates/-main *command-line-args*)}
+
   ;; The gate on a filled plan, before the first dispatch: what `start` runs once per workspace before its
   ;; first dispatch. Cheap and mechanical; `plan-review` is the reading, and not a gate.
   plan-check {:doc "bb plan-check [<plan-dir>] [--workspace <dir>]: what a filled plan still carries - marks, the template's instructions, a requirement citing no observation (S-n.m) and not marked (inferred), the overlay's placeholders - and whether its given parts are intact (the KIT's rules, layers.edn, the gate keys). Exit 1 with the list; then, failing nothing, the inferred requirements for the stage's approval and the observations nothing cites for the stage's end. The workspace's plan by default"

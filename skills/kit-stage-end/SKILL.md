@@ -121,6 +121,6 @@ records are beside the stage plan with no failing row; every reproduced finding 
 fixed with its test passing, or decided in the design or in §15, and every hypothesis is a line of §15; the walk's record has no line
 without a resolution; the lessons section is closed with its date, cost and runs; the decision
 log has no provisional entry this stage gated; a pre-release stage's gates record says
-`:security/signed`; the gates record says `:stage/closed`; the tag
+`:security/signed`; the gates record says `:stage/closed`; `bb gates`, run from the workspace folder, is green; the tag
 is on the merged tip; and the next stage is named in the stage map with a kind and a proposed
 cap.

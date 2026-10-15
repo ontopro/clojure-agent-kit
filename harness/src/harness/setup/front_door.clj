@@ -17,6 +17,9 @@
   (`origin/main`) has a `/` and no such folder, and is handed on as typed; so is
   an absolute path.
 
+  A TASK KEEPS ITS NAME at the front door, but for one: the workspace's gates, `workspace-gates`
+  here, are `bb gates` there (`door-names`) - `gates` here is the KIT's own.
+
   Every harness task is in exactly one of two lists - the front door's, or the
   KIT's own development's - and a test holds the two to the harness's `bb.edn`,
   so a new command cannot miss the front door unnoticed.
@@ -42,11 +45,21 @@
     "example" "dev" "init" "health"})
 
 (def tasks
-  "The harness tasks the front door offers, by name."
+  "The harness tasks the front door offers, by their name here (`door-name` is the one there)."
   ["next" "brief" "doctor" "plan-check" "plan-review" "blueprint-review" "spec-from-blueprint" "sigs"
    "run-loop" "stage-report" "profile" "models" "balance" "bake-off" "rules-sync" "rules-check"
    "rules-prompt" "skills-sync" "boundary" "report" "report-check" "reprice"
-   "security-review" "security-route" "front-door-sync"])
+   "security-review" "security-route" "front-door-sync" "workspace-gates"])
+
+(def door-names
+  "A harness task the front door offers under another name: the workspace's gates are `bb gates`
+  there, the name the KIT's own gates have here."
+  {"workspace-gates" "gates"})
+
+(defn door-name
+  "The name the front door offers the harness task `t` under."
+  [t]
+  (get door-names t t))
 
 (defn harness-tasks
   "The harness `bb.edn`'s tasks, `{name doc}`, from its text."
@@ -89,8 +102,8 @@
        "{:tasks\n {:requires ([babashka.fs :as fs]\n             [clojure.edn :as edn]\n             [clojure.string :as str])\n"
        "  :init " init-form "\n"
        (str/join (for [t tasks]
-                   (str "\n  " t " {:doc " (pr-str (or (get docs t) (str "bb " t " in the KIT's harness/")))
-                        "\n" (apply str (repeat (+ 4 (count t)) " "))
+                   (str "\n  " (door-name t) " {:doc " (pr-str (or (get docs t) (str "bb " t " in the KIT's harness/")))
+                        "\n" (apply str (repeat (+ 4 (count (door-name t))) " "))
                         ":task (kit " (pr-str t) " *command-line-args*)}")))
        "}}\n"))
 
@@ -116,7 +129,7 @@
         have (when (fs/exists? path) (slurp (str path)))
         generated? (or (nil? have) (str/starts-with? have generated-mark))
         r {:path (str path) :existed? (some? have) :generated? generated? :changed? (not= want have)
-           :missing (vec (remove (or (some-> have offered) #{}) tasks))}]
+           :missing (vec (remove (or (some-> have offered) #{}) (map door-name tasks)))}]
     (when (and (:changed? r) generated? (not check?))
       (spit (str path) want))
     r))

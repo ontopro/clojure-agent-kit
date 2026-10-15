@@ -56,6 +56,20 @@ step by hand, named there.
 
 ## 2026-10-14
 
+### A workspace has its own `bb gates` (plan 6.5, item 4)
+
+A workspace had six checks - the rule mirror, the skills' renderings, the front door, the plan,
+the stage reports, the run reports - and no command that ran them: each was typed by hand when
+someone remembered, and the KIT's own `bb gates` checks the KIT. `bb workspace-gates` runs the
+six, cheap first, the first red stopping it, and the front door offers it as `bb gates` - the one
+task offered under another name, since `gates` in the harness is the KIT's (`door-names`). The
+plan check is the one that needs a judgement: it reads every plan document, stage plans among
+them, and a plan being written carries its marks on purpose. So while `bb next`'s facts say a
+plan is being written - before stage 0's approval, or a stage pulled and not yet approved - its
+list is printed as information and the gates go on; past that, a mark left is red. The stage's
+end now asks for it green. A workspace made before this gains it at `bb front-door-sync`, and
+`bb doctor` already says when a front door lacks a task.
+
 ### `bb next` reads the blueprint's human prep before a packet (plan 6.5, item 4)
 
 The proof build signed its stage-0 blueprint with three rows of §0, *Dispatch preconditions*,
