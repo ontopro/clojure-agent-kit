@@ -11,7 +11,7 @@ those runs, not a design done on paper.
 **KIT** is the short form of *the Clojure Agent Kit*, and is how these documents refer to it.
 It is a name, not an acronym. The application template it brings with it is
 [`ontopro/clojure-stack-lite`](https://github.com/ontopro/clojure-stack-lite), always named with
-the tag KIT pins, as in `ontopro/clojure-stack-lite` at tag `kit-v1.2`: those tags version the
+the tag KIT pins, as in `ontopro/clojure-stack-lite` at tag `kit-v1.3`: those tags version the
 template, not KIT.
 
 > **Clone it and build beside it.** KIT is what a project adopts: its clone sits in the

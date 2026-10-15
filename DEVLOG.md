@@ -56,6 +56,22 @@ step by hand, named there.
 
 ## 2026-10-14
 
+### The pin moves to `kit-v1.3`, and a record from a local clone is refused (plan 6.5, item 15)
+
+`template-pins.edn` names the fork's candidate - `kit-v1.3`, commit `1c1838a`, the tag not yet
+pushed - and every document and fix text that named `kit-v1.2` names it; `PROVENANCE.md` gains
+the template's section: the fork, what each `kit-vN` tag changed, and that the fork stays an
+ordinary Clojure Stack Lite application. The build docs' static-files row says what the release
+does: `no-cache` outside production, a year under `:prod`, a missing asset a 404 in every
+profile. The health check's serve step asks for a missing asset and expects the 404, since that
+is what the release fixed and what a pin whose template regressed would show first. And a health
+run from a local clone - `KIT_TEMPLATE_LOCAL`, how a candidate is tried before its tag is pushed -
+said so on the terminal only, while its record named the pin's tag and commit as if fetched: the
+record now carries the local root, the README's row says "from a LOCAL CLONE, not the pin", and
+`bb tag-check` counts such a record stale with the words, so `--run` records it again - a tag's
+records come from the pushed pin, never with the variable set. The health check itself against
+the candidate runs after the port work below, so that it exercises it.
+
 ### `bb upgrade`: the check and the move, then the hand-over (plan 6.5, item 14d)
 
 The other half of the one command. Phase 1 is the clone's code as it is, and it touches nothing

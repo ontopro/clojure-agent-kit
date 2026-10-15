@@ -93,15 +93,19 @@
   [records]
   (let [by (into {} (map (juxt :platform identity) records))
         missing (remove by (sort platforms))
-        stale (filter #(or (:dirty? %) (seq (:changed %))) (keep by (sort platforms)))]
+        stale (filter #(or (:dirty? %) (:local-root %) (seq (:changed %))) (keep by (sort platforms)))]
     (check :health (and (empty? missing) (empty? stale))
            (cond (seq missing) (str "no record for " (str/join ", " missing))
-                 (seq stale) (str/join "; " (for [{:keys [platform sha dirty? changed]} stale]
+                 (seq stale) (str/join "; " (for [{:keys [platform sha dirty? local-root changed]} stale]
                                               (str platform " (on " (subs sha 0 7) ") is stale: "
-                                                   (if dirty? "recorded on a dirty tree"
-                                                       (str (str/join ", " (take 3 changed))
-                                                            (when (> (count changed) 3) (str " and " (- (count changed) 3) " more"))
-                                                            " changed since")))))
+                                                   (cond dirty? "recorded on a dirty tree"
+                                                         ;; A TAG'S RECORD COMES FROM THE PUSHED PIN: a run from a local
+                                                         ;; clone certified a working tree, not the commit the pin names
+                                                         local-root (str "recorded from a LOCAL CLONE of the template (" local-root
+                                                                         "), not the pin - `bb health --record` again with KIT_TEMPLATE_LOCAL unset")
+                                                         :else (str (str/join ", " (take 3 changed))
+                                                                    (when (> (count changed) 3) (str " and " (- (count changed) 3) " more"))
+                                                                    " changed since")))))
                  :else (str "both platforms recorded on code HEAD still has ("
                             (str/join ", " (map #(str (:platform %) " " (subs (:sha %) 0 7)) (keep by (sort platforms)))) ")")))))
 
@@ -109,7 +113,7 @@
   "The platforms whose health record is missing or stale."
   [records]
   (let [by (into {} (map (juxt :platform identity) records))]
-    (set (filter #(let [r (by %)] (or (nil? r) (:dirty? r) (seq (:changed r)))) platforms))))
+    (set (filter #(let [r (by %)] (or (nil? r) (:dirty? r) (:local-root r) (seq (:changed r)))) platforms))))
 
 (defn gates-check [rec head-tree]
   (check :gates (and rec (zero? (:exit rec)) (= (:tree rec) (:tree-after rec) head-tree))
@@ -167,6 +171,8 @@
     {:platform (get-in r [:platform :key])
      :sha sha
      :dirty? (get-in r [:kit :dirty?])
+     ;; a run with KIT_TEMPLATE_LOCAL set: the record names the pin it stood for, not what ran
+     :local-root (:template/local-root r)
      :changed (some-> (apply git root "diff" "--name-only" sha "HEAD" "--"
                              (concat health-paths [(str ":(exclude)" records-dir)]))
                       str/split-lines

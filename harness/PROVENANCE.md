@@ -188,6 +188,33 @@ diverged, and each divergence has a reason:
   `grep -rnE '\b[Rr]un [0-9]\b'`, for the numbered manual runs, finds one line of code
   in `report.clj` — `(:run/attempts run 1)` — and no comment.
 
+## The application template
+
+`bb init` generates the application from `ontopro/clojure-stack-lite`, the KIT's fork of
+[abogoyavlensky/clojure-stack-lite](https://github.com/abogoyavlensky/clojure-stack-lite) (MIT,
+the licence unchanged), at the tag `resources/template-pins.edn` pins - `kit-v1.3` as of
+2026-10-15. The fork's `kit` branch is the KIT's line of it; `git diff master..kit` there is
+everything the KIT changed, and each `kit-vN` tag's line in the fork's README says what it adds.
+**The fork stays an ordinary Clojure Stack Lite application**: a KIT-facing page or rule is the
+KIT's to write (`bb init`'s second commit writes the first page), never the fork's. Its
+divergences from upstream, each a fix, not a feature:
+
+- **`kit-v1`** is the KIT's first line of the template (`git diff master..kit-v1` in the fork is
+  its content); **`kit-v1.1`** completes its security defaults - the security headers and a
+  `Referrer-Policy` on every response, an error page that names nothing of the error, a
+  `SameSite=Lax` session cookie; **`kit-v1.2`** moves the dependencies past their published HIGH
+  advisories, Jetty and Jackson pinned at the top level of `deps.edn` over what brings them, and
+  pins every GitHub Action to a commit.
+- **`kit-v1.3`**: `bb check` reads and changes nothing - upstream's ran `cljfmt fix` and
+  `clojure -M:outdated --upgrade --force`, so a task named *check* reformatted the code and
+  upgraded every dependency; it is `fmt-check`, `lint`, `test` now, and `fmt`, `outdated` and
+  `outdated-check` stay as tasks to run on purpose. `/assets/` is `no-cache` outside production
+  and a missing asset is a 404 in every profile - upstream's cached handler put its header on
+  the nil of a miss, a 200 with an empty body cached for a year. The development port is
+  `PORT` if set, else 8000, else - 8000 taken by something else - a free one, with
+  `bb serve --port N` to ask for one and the address bound printed; `bb serve` refuses an
+  argument it does not take.
+
 ## Third-party provenance
 
 Rules marked `:from :awesome-copilot` in `resources/agent-rules.edn` are adapted from

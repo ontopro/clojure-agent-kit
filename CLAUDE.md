@@ -105,7 +105,7 @@ benefit. It is also a product artifact, and also not addressed to you.
   - **rule source**, never "corpus".
   - **KIT** for this repository - short for *the Clojure Agent Kit*, a name and not an acronym.
   - The template is named in full, with the tag that applies: `ontopro/clojure-stack-lite` at tag
-    `kit-v1.2`. Its `kit-vN` tags version THE TEMPLATE, not the KIT.
+    `kit-v1.3`. Its `kit-vN` tags version THE TEMPLATE, not the KIT.
   - A workspace's clone of the KIT is `KIT/`.
   - Older prose that says "the kit" is not swept: `DEVLOG.md` is history, `NOTES.md` is
     summarised before it reaches `main`, and the adopter-facing documents change when they are

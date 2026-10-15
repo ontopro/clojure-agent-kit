@@ -328,3 +328,11 @@
     (is (= 1 exit))
     (is (str/includes? out "self-check does not record"))
     (is (not (str/includes? out "doctor")) "nothing ran: the refusal is the first thing the task does")))
+
+(deftest a-run-from-a-local-clone-says-so-in-the-record-and-the-row
+  (let [rec (health/record kit-dir checks pin [] "/src/clojure-stack-lite")]
+    (is (= "/src/clojure-stack-lite" (:template/local-root rec)))
+    (is (= (select-keys pin [:template :git/tag :git/sha]) (:template rec)) "the pin it stood for, still named")
+    (is (nil? (:template/local-root (health/record kit-dir checks pin []))) "no key when the pin was used")
+    (is (str/includes? (health/render {"x" (assoc rec :platform {:key "x" :label "X"} :kit {:short "abc1234" :dirty? false})})
+                       "`kit-v1` (`a2c0eaa`) from a LOCAL CLONE, not the pin"))))

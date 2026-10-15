@@ -58,7 +58,7 @@ this shape; §9's diagram is what this project makes of it.
 
 ## 4. Security, as the template gives it
 
-As of the pin `kit-v1.2`. Each line names the generated application's file - under its
+As of the pin `kit-v1.3`. Each line names the generated application's file - under its
 namespace folder in `src/`, or under `resources/` - and the function or key that does it; each was
 read in the template's source and tried with curl against an application generated from it.
 What the template does not do is the list after the table: §8 is where this project decides which
@@ -72,7 +72,7 @@ of it matters, and §15 where each threat is answered.
 | Headers | On every response the application makes, a page not found, a static file and an error page included: `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Strict-Transport-Security` (a year, subdomains), `X-XSS-Protection: 0`, `Referrer-Policy: strict-origin-when-cross-origin` | `server.clj` `ring-handler` (the handler-wide `:middleware`), `wrap-referrer-policy` |
 | Errors | A handler that throws, a response that fails its coercion and a request body that fails to decode answer the error page (500, 400) and nothing of the error; the log has the exception with the request's method and path | `server.clj` `exception-middleware`, first of the route middleware |
 | SQL | Queries are HoneySQL data, formatted with every value a parameter and every identifier quoted; a raw SQL string or `[:raw …]` is outside that, and so is a map where a value belongs (below). Migrations are Ragtime's SQL files | `db.clj` `exec!`, `exec-one!`; `resources/migrations/` |
-| Static files | Served from `resources/public/` under `/assets/`, with no directory listing and no path out of the folder; cached for a year under `:prod` | `server.clj` `ring-handler` (`create-resource-handler-cached`); `config.edn` `:cache-assets?` |
+| Static files | Served from `resources/public/` under `/assets/`, with no directory listing and no path out of the folder; `no-cache` outside production, cached for a year under `:prod` (whose build hashes every address), and a missing asset a 404 in every profile - never an empty 200 cached for a year | `server.clj` `asset-handler` (the header set only on a file that is there); `config.edn` `:cache-assets?` |
 | HTML | Hiccup 2 escapes every string it renders; `hiccup2.core/raw` is the way past it | `handlers.clj`, through `reitit-extras.core/render-html` |
 | Dependencies | No published advisory for any library on the runtime classpath on the day the pin was made; Jetty and Jackson are pinned over the versions Ring and jsonista bring, which lagged their fixes | `deps.edn`, the block after `ragtime` |
 

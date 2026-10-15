@@ -69,3 +69,11 @@
     (is (str/includes? (:detail (tc/landed-check "0.6.2" sha-a (ls sha-a sha-b))) "origin's `main` is bbbbbbb"))
     (is (str/includes? (:detail (tc/landed-check "0.6.2" sha-a (str sha-a "\trefs/heads/main\n"))) "is absent"))
     (is (not (:ok? (tc/landed-check "0.6.2" nil (ls sha-a sha-a)))))))
+
+(deftest a-record-from-a-local-clone-of-the-template-is-refused
+  (let [fresh (fn [p] {:platform p :sha sha-a :dirty? false :changed []})
+        local (assoc (fresh "macos-arm64") :local-root "/src/clojure-stack-lite")]
+    (is (not (:ok? (tc/health-check [local (fresh "linux-arm64")]))))
+    (is (str/includes? (:detail (tc/health-check [local (fresh "linux-arm64")]))
+                       "macos-arm64 (on aaaaaaa) is stale: recorded from a LOCAL CLONE of the template (/src/clojure-stack-lite), not the pin"))
+    (is (= #{"macos-arm64"} (tc/stale-platforms [local (fresh "linux-arm64")])) "and --run records it again")))

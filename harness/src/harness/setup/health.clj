@@ -433,7 +433,7 @@
     (result :serve subject false 0
             (str "port " serve-port " is in use; stop what holds it and run again"))
     (let [url (str "http://localhost:" serve-port "/")
-          [[status body] ms]
+          [[status body missing-asset] ms]
           (timed
            (fn []
              (let [pr (p/process {:dir dir :out :string :err :string} "bb" "serve")
@@ -442,8 +442,11 @@
                  (loop []
                    (let [s (get-status url)]
                      (cond
+                       ;; AND A MISSING ASSET ASKED FOR: the template's cached handler once answered
+                       ;; 200 with an empty body, cached for a year, where a 404 belonged
                        (= 200 s) [200 (try (:body (http/get url {:throw false :timeout 2000}))
-                                           (catch Exception _ nil))]
+                                           (catch Exception _ nil))
+                                  (get-status (str url "assets/no-such-file-" (System/currentTimeMillis) ".css"))]
                        (> (System/currentTimeMillis) deadline) [:timeout]
                        (not (.isAlive (:proc pr))) [:exited (:exit @pr)]
                        :else (do (Thread/sleep 1000) (recur)))))
@@ -455,14 +458,16 @@
                          (> n 20) false
                          :else (do (Thread/sleep 500) (recur (inc n)))))
           missing (remove #(str/includes? (str body) %) kit-page-marks)]
-      (result :serve subject (and (= 200 status) (empty? missing) freed?) ms
+      (result :serve subject (and (= 200 status) (empty? missing) (= 404 missing-asset) freed?) ms
               (cond
                 (not= 200 status) (str "no 200 from " url " within " (quot serve-timeout-ms 1000) "s ("
                                        (pr-str status) ")")
                 (seq missing) (str "GET " url " -> 200, but not the KIT's first page: no "
                                    (str/join ", " (map pr-str missing)) " - bb init writes it over the template's home-page")
+                (not= 404 missing-asset) (str "GET " url " -> 200, but a missing asset under /assets/ answered "
+                                              (pr-str missing-asset) ", not 404 - the template's asset handler (kit-v1.3 answers 404 in every profile)")
                 (not freed?) (str "served 200, but port " serve-port " was still held after the stop")
-                :else (str "GET " url " -> 200, the KIT's first page, then stopped; port free"))))))
+                :else (str "GET " url " -> 200, the KIT's first page, a missing asset 404, then stopped; port free"))))))
 
 ;; ---------------------------------------------------------------------------
 ;; browser
@@ -669,18 +674,22 @@
   (OS and architecture, nothing else of the host), WHICH KIT commit with WHICH
   template commit, the tool versions the doctor saw, and every check with its
   outcome and time - never its detail, which carries scratch paths."
-  [kit checks pin doctor-results]
+  [kit checks pin doctor-results & [local-root]]
   (let [{:keys [key label]} (platform)]
-    {:health/as-of (str (java.time.LocalDate/now))
-     :platform {:key key :label label}
-     :kit (kit-commit kit)
-     :template (select-keys pin [:template :git/tag :git/sha])
-     :tools (into (sorted-map)
-                  (keep (fn [{:keys [tool req version]}] (when (= :required req) [tool version])))
-                  doctor-results)
-     ;; a skipped check says so in the record, so a row never reads it as passed
-     :checks (mapv #(select-keys % [:subject :check :ok? :ms :skipped?]) checks)
-     :ok? (every? :ok? checks)}))
+    (cond-> {:health/as-of (str (java.time.LocalDate/now))
+             :platform {:key key :label label}
+             :kit (kit-commit kit)
+             :template (select-keys pin [:template :git/tag :git/sha])
+             :tools (into (sorted-map)
+                          (keep (fn [{:keys [tool req version]}] (when (= :required req) [tool version])))
+                          doctor-results)
+             ;; a skipped check says so in the record, so a row never reads it as passed
+             :checks (mapv #(select-keys % [:subject :check :ok? :ms :skipped?]) checks)
+             :ok? (every? :ok? checks)}
+      ;; A RUN FROM A LOCAL CLONE SAYS SO IN THE RECORD, not only on the terminal: the pin above is
+      ;; what the clone stood for, not what was generated, and `bb tag-check` refuses such a record -
+      ;; a tag's records come from the pushed pin, never with KIT_TEMPLATE_LOCAL set
+      local-root (assoc :template/local-root local-root))))
 
 (defn write-record!
   "`health/records/<platform>.edn` - one per platform, the latest run - and
@@ -714,11 +723,12 @@
     "No health record yet: `bb health --record` writes one, and `bb health-sync` renders it here."
     (str "| Platform | Run on | KIT commit | Template | Checks | Time |\n|---|---|---|---|---|---|\n"
          (str/join "\n"
-                   (for [[_ {:keys [health/as-of platform kit template checks]}] records
+                   (for [[_ {:keys [health/as-of platform kit template checks] local-root :template/local-root}] records
                          :let [skipped (count (filter :skipped? checks))
                                ok (- (count (filter :ok? checks)) skipped)]]
                      (str "| " (:label platform) " | " as-of " | `" (:short kit) "`" (when (:dirty? kit) " (uncommitted changes)")
                           " | `" (:git/tag template) "` (`" (subs (:git/sha template) 0 7) "`)"
+                          (when local-root " from a LOCAL CLONE, not the pin")
                           " | " ok " of " (count checks) " ok" (when (pos? skipped) (str ", " skipped " skipped")) ": "
                           (str/join ", " (map #(str (name (:subject %)) " " (name (:check %))
                                                     (cond (:skipped? %) " SKIPPED" (not (:ok? %)) " FAILED"))
@@ -904,7 +914,8 @@
               (and (flags "--record") (flags "--selfcheck-only"))
               (say "  --record needs the full run (both subjects); nothing written")
               (flags "--record")
-              (let [rec (record kit all (template/pin (template/load-pins)) doctor-results)
+              (let [rec (record kit all (template/pin (template/load-pins)) doctor-results
+                                (some-> (System/getenv "KIT_TEMPLATE_LOCAL") not-empty fs/absolutize fs/normalize str))
                     path (write-record! rec)]
                 (say "  recorded: " path " and " known-good-path
                      (when (get-in rec [:kit :dirty?]) " - NOTE: the KIT's tree has uncommitted changes, and the record says so")
