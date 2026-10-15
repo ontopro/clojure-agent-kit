@@ -14,7 +14,8 @@
   declared under the application's name, which the boundary gate enforces - and
   the KIT's first page in place of the template's (`home-page`). Nothing else: the
   fork carries what an application needs on its own, and what exists because of
-  the harness stays out of the application.
+  the harness stays out of the application. And one branch, `template`, left at the
+  first commit: the old side of every template upgrade (`harness.setup.template-upgrade`).
 
   THE FIRST PAGE IS THE KIT'S, AND THE FORK STAYS NEUTRAL. The template's own page
   said \"Welcome to Clojure Stack Lite\" and pointed at a file it does not generate;
@@ -150,10 +151,31 @@
                            (str/join "\n" (take-last 15 (str/split-lines (str out)))))
                       {:app/error :command :argv argv :dir (str dir) :exit exit})))))
 
-(defn- label [{:keys [template git/tag git/sha]} local-root]
+(defn generation-label
+  "What a commit of the generated tree says it came from: the template and its tag and
+  commit, or a local clone, said to be NOT the pinned commit. `bb template-upgrade` reads
+  this back off the `template` branch's tip to learn which pin the application is at."
+  [{:keys [template git/tag git/sha]} local-root]
   (if local-root
     (str template " from the local clone " local-root " - NOT the pinned commit")
     (str template " " tag " (" (subs sha 0 7) ")")))
+
+(def untouched-subject
+  "How the commit of a generated tree, untouched, begins - `bb init`'s first commit and every
+  commit on the application's `template` branch: `generation-label` follows."
+  "The application as generated, untouched: ")
+
+(defn generate!
+  "Generate the application `app-name` from `p` into `target-dir` - deps-new, as
+  `template/create-command` says - running the argv beside the target with `run`. Throws when
+  generation fails or exits 0 having made nothing."
+  [p {:keys [app-name target-dir local-root run] :or {run run-process}}]
+  (run-or-throw run (fs/parent target-dir) nil
+                (template/create-command p {:app-name app-name :target-dir target-dir :local-root local-root}))
+  (when-not (fs/directory? target-dir)
+    (throw (ex-info (str "generation exited 0 and left no " target-dir)
+                    {:app/error :nothing-generated :dir (str target-dir)})))
+  (str target-dir))
 
 (defn app-fn
   "The function `init/create!` calls with the application's folder.
@@ -167,15 +189,14 @@
   [p {:keys [app-name build-folder local-root kit-version git-env run] :or {run run-process}}]
   (fn [app-dir]
     (let [git (fn [& args] (run-or-throw run app-dir git-env (into ["git"] args)))
-          from (label p local-root)]
-      (run-or-throw run (fs/parent app-dir) nil
-                    (template/create-command p {:app-name app-name :target-dir app-dir :local-root local-root}))
-      (when-not (fs/directory? app-dir)
-        (throw (ex-info (str "generation exited 0 and left no " app-dir)
-                        {:app/error :nothing-generated :dir (str app-dir)})))
+          from (generation-label p local-root)]
+      (generate! p {:app-name app-name :target-dir app-dir :local-root local-root :run run})
       (git "init" "-q" "-b" "main")
       (git "add" "-A")
-      (git "commit" "-q" "-m" (str "The application as generated, untouched: " from))
+      (git "commit" "-q" "-m" (str untouched-subject from))
+      ;; THE TEMPLATE BRANCH, AT THE UNTOUCHED TREE: `bb template-upgrade`'s old side, from now
+      ;; on, so a release of the template is git's own three-way merge with the right base
+      (git "branch" "template")
       (doseq [f ["AGENTS.md" "CLAUDE.md" boundary/file-name]]
         (when (fs/exists? (fs/path app-dir f))
           (throw (ex-info (str "the template generated its own " f "; the KIT will not overwrite it")

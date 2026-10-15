@@ -562,6 +562,9 @@
         ;; MONEY BEFORE AND AFTER. The first project built on this kit was stopped by a
         ;; credit limit twice, mid-run, with nothing having said how much was left.
           (let [ctx (driver/context run-dir)
+                _ (when (driver/template-upgrade? @(:state ctx))
+                    (throw (ex-info "this is a template upgrade's run: `bb template-upgrade` drives it, and `bb run-loop merge` ends it"
+                                    {:run-loop/error :template-upgrade})))
                 prof (or (:profile @(:state ctx)) (profile/read-profile (:profile (:config ctx))))
                 steps #(:steps @(:state (driver/context run-dir)))]
             (println (balance/line prof (steps)))

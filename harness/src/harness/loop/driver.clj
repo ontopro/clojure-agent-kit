@@ -1739,10 +1739,79 @@
        :message msg
        :decision decision})))
 
+(defn template-upgrade?
+  "Is `state` a template upgrade's run (`harness.setup.template-upgrade`), driven by
+  `bb template-upgrade` and merged, recorded and torn down by this namespace's commands?
+  Its branch carries its commits already - the template's merge, the Architect's resolution -
+  so there is no gate commit to make, no roles' files to copy and no task record to validate."
+  [state]
+  (= :template-upgrade (:run/kind state)))
+
+(defn- upgrade-commit!
+  "A template upgrade's `:merge-commit`: the worktree's tip as it stands - committed, with no
+  merge unresolved and nothing uncommitted - against the base it branched from."
+  [ctx gate decision]
+  (let [state @(:state ctx)
+        root (:worktree/git-root gate)
+        porcelain (:out (git-in root "status" "--porcelain"))
+        merging? (zero? (:exit (git-in root "rev-parse" "-q" "--verify" "MERGE_HEAD")))]
+    (when (or merging? (not (str/blank? porcelain)))
+      (throw (ex-info (str "the upgrade's worktree " root (if merging? " has a merge unresolved" " has uncommitted changes")
+                           " - resolve and commit there, then `bb template-upgrade` again, before the merge")
+                      {:run-loop/error :not-committed :worktree root})))
+    (let [commit (:out (git-in root "rev-parse" "HEAD"))]
+      {:branch (:worktree/branch gate)
+       :commit commit
+       :files (vec (remove str/blank? (str/split-lines (:out (git-in root "diff" "--name-only" (get-in state [:base :commit]) commit)))))
+       :message (:out (git-in root "log" "-1" "--format=%s" commit))
+       :decision decision})))
+
+(defn- upgrade-record!
+  "A template upgrade's `run.edn`: the state as it stands, with the merge in it - no task
+  record, since no task ran; `events.log` and the state are still held to each other."
+  [ctx]
+  (let [state @(:state ctx)
+        logged (mapv :event/kind (log/read-log (log-file ctx)))]
+    (when-not (= (mapv :event/kind (:events state)) logged)
+      (throw (ex-info (str "state.edn and events.log disagree — " (count (:events state)) " events in the state, "
+                           (count logged) " in the log. The log is append-only; read it before trusting the state.")
+                      {:run-loop/error :log-drift :state-events (count (:events state)) :logged-events (count logged)})))
+    (let [out {:run/kind :template-upgrade
+               :run/id (:run/id (:config state))
+               :run/status (run-status state)
+               :run/started-at (java.util.Date. (:started-ms state))
+               :template (:template state)
+               :base (:base state)
+               :run/steps (:steps state)
+               :run/events (:events state)}]
+      (spit (run-file ctx "run.edn") (pr-str out))
+      (println "wrote run.edn —" (name (:run/status out)) "— the template upgrade's record"))))
+
+(defn- upgrade-teardown!
+  "A template upgrade's teardown: its one worktree removed, and its branch once the run is
+  recorded - the merge commit holds what it held. `state.edn` stays: it is the run's record
+  beside `run.edn`, and nothing dispatched that a reset would make room for."
+  [ctx]
+  (let [state @(:state ctx)
+        repo-root (:repo/root (:config state))
+        gate (get (sessions ctx) :gate)
+        recorded? (fs/exists? (run-file ctx "run.edn"))]
+    (when gate
+      (println :gate (:torn-down? (prov/teardown! gate repo-root))))
+    (if recorded?
+      (println "  branch" (:worktree/branch gate) (if (delete-branch! repo-root (:worktree/branch gate)) "deleted" "absent"))
+      (println "  branch" (:worktree/branch gate) "kept: the run is not recorded"))))
+
 (defn merge!
   "Merge the run: one commit of the gate worktree on its branch, that branch
   merged `--no-ff` into whatever the base checkout has checked out, then
   `record!` and `teardown!`.
+
+  A TEMPLATE UPGRADE'S RUN TAKES THE SAME DOOR. Its state says `:awaiting-merge` once the
+  template's merge is committed on its branch and the project's gates are green there, and
+  the commit is the branch's tip as it stands (`upgrade-commit!`); the refusals, the `--no-ff`
+  merge, the decision on the event and the record are the same, so the application has one
+  way in and a person's reason on every merge.
 
   BEHIND A DECISION FILE, LIKE EVERY OTHER JUDGEMENT HERE. `{:decision \"...\"}`
   is written before the command runs and goes on the `:merge-commit` event,
@@ -1768,7 +1837,9 @@
       (throw (ex-info "the gate worktree is gone — there is nothing to commit and merge"
                       {:run-loop/error :no-gate-worktree})))
     (let [committed (or (last (filter #(= :merge-commit (:event/kind %)) (:events state)))
-                        (let [c (commit-gate! ctx gate decision)]
+                        (let [c (if (template-upgrade? state)
+                                  (upgrade-commit! ctx gate decision)
+                                  (commit-gate! ctx gate decision))]
                           (event! ctx (assoc c :event/kind :merge-commit))
                           c))
           into-branch (:out (git-in repo-root "rev-parse" "--abbrev-ref" "HEAD"))
@@ -1787,8 +1858,9 @@
                    :merge-commit (:out (git-in repo-root "rev-parse" "HEAD"))
                    :decision decision})
       (println (str "  merged. " decision))
-      (record! ctx)
-      (teardown! ctx))))
+      (if (template-upgrade? state)
+        (do (upgrade-record! ctx) (upgrade-teardown! ctx))
+        (do (record! ctx) (teardown! ctx))))))
 
 ;; ---------------------------------------------------------------------------
 
@@ -1833,6 +1905,12 @@
                                                    "the next `start` reviews the edited spec. `amend` records an amendment "
                                                    "against a started run.")
                                               {:run-loop/error :not-started}))))]
+      ;; A TEMPLATE UPGRADE'S RUN IS DRIVEN BY `bb template-upgrade`: no spec, no roles, no
+      ;; dispatch. Of the loop's commands it takes the three that end a run.
+      (when (and @(:state ctx) (template-upgrade? @(:state ctx)) (not (#{"merge" "record" "teardown"} cmd)))
+        (throw (ex-info (str "this is a template upgrade's run, which `bb template-upgrade` drives: of the loop's commands "
+                             "it takes merge, record and teardown")
+                        {:run-loop/error :template-upgrade :cmd cmd})))
       (case cmd
         "spec-review" (spec-review/spec-review! ctx)
         "start" (start! ctx)
@@ -1847,10 +1925,12 @@
         "amend" (do (need-state) (apply amend! ctx args))
         "mutation" (do (need-state) (apply mutation! ctx args))
         "continue" (do (need-state) (apply continue! ctx args))
-        "record" (do (need-state) (record! ctx))
+        "record" (do (need-state) (if (template-upgrade? @(:state ctx)) (upgrade-record! ctx) (record! ctx)))
         "merge" (do (need-state) (apply merge! ctx args))
-        "teardown" (do (need-state) (teardown! ctx {:keep-branches? (boolean (some #{"--keep-branches"} args))
-                                                    :discard? (boolean (some #{"--discard"} args))}))
+        "teardown" (do (need-state) (if (template-upgrade? @(:state ctx))
+                                      (upgrade-teardown! ctx)
+                                      (teardown! ctx {:keep-branches? (boolean (some #{"--keep-branches"} args))
+                                                      :discard? (boolean (some #{"--discard"} args))})))
         (do (println usage) (System/exit 2))))
     (catch clojure.lang.ExceptionInfo e
       (println "run-loop:" (ex-message e))

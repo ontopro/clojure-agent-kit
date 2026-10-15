@@ -109,6 +109,13 @@
                :requires ([harness.setup.skills :as skills])
                :task (apply skills/-main *command-line-args*)}
 
+  ;; A template release taken by the application: the tree the new pin generates, committed onto
+  ;; the application's `template` branch (rooted at bb init's untouched first commit), merged by git
+  ;; three-way into a branch off main in a worktree under work/; the gates; the merge a person's.
+  template-upgrade {:doc "bb template-upgrade [--workspace <dir>] [--dry-run]: the application brought to the template the KIT pins (KIT_TEMPLATE_LOCAL: a local clone) - the new tree committed onto the application's `template` branch and merged into a branch off main in a worktree under work/; a conflict is the Architect's, resolved and committed there, then this again; the project's gates; the run stops :awaiting-merge for `bb run-loop merge <run-dir> <decision.edn>`"
+                    :requires ([harness.setup.template-upgrade :as template-upgrade])
+                    :task (apply template-upgrade/-main *command-line-args*)}
+
   ;; The harness's own inventory, rendered into its README from src/harness/ between markers and
   ;; drift-gated like the health block; the hand-written table beneath it is held to the source
   ;; by name.

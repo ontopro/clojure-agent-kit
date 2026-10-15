@@ -56,6 +56,36 @@ step by hand, named there.
 
 ## 2026-10-14
 
+### `bb template-upgrade`: a template release taken through a `template` branch (plan 6.5, item 13)
+
+A moved template pin was a report and a compare link, and nothing applied it: the template's
+files are written under a placeholder name and the application's carry the project's, so a raw
+diff between two tags does not apply, and the first project built on the KIT could only read the
+diff and write it as work. Now both trees are generated with the project's name and git does the
+merge. The old side is a branch, because it has to be: `bb init`'s first commit is the generated
+tree untouched, and a three-way merge against it is right for the first upgrade only - after it,
+the tree the previous release generated is held by no commit on `main` by itself. So the
+application has a `template` branch rooted at that first commit, which `bb init` makes from now
+on and an older application gets from its first commit (refused with the words when that commit
+is not the untouched tree). Each upgrade generates the new tree at the pin - `KIT_TEMPLATE_LOCAL`
+for a candidate - commits it onto `template` as the whole tree with the tag in the subject, and
+merges `template` into a branch off `main` in a worktree under `work/`: git's own merge with the
+right base every time, and a later release needs nothing more. Which pin is old is what
+`template`'s tip holds; no key in `workspace.edn` says it, and a tip that is the pin already is
+"nothing to upgrade to".
+
+A merge that stops on a conflict cannot be committed, so its states are written down as the
+loop's: the run has `work/runs/template-upgrade-<tag>/` with `state.edn` and `events.log`, a
+conflict names the files and stops for the Architect, who resolves and commits in the worktree
+and runs the command again; it picks up where it stopped, runs the project's gates on the branch
+(the build's `loop.edn` gates, `{{kit}}` resolved), and stops `:awaiting-merge` - or red, for the
+Architect, with a further commit gating again. `bb run-loop merge` takes that run through the
+same door as a task's: the same refusals and decision, the branch's tip as it stands in place of
+a gate commit, the `--no-ff` merge, a record, the worktree and the branch gone, `template` kept.
+The loop's other commands refuse it by name. Tested over real git with generation stood in for:
+the clean path through to the merge, the conflict path through resolution and a red gate, the
+refusal, and an older application given the branch.
+
 ### A new workspace's application opens on the KIT's first page (plan 6.5, item 12a)
 
 The proof build served its new application and saw "Welcome to Clojure Stack Lite": the
