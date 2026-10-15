@@ -30,7 +30,6 @@
    [babashka.process :as p]
    [clojure.pprint :as pp]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [harness.contract.shapes :as shapes]
    [harness.models.profile :as profile]
    [harness.rules :as rules]
@@ -250,9 +249,9 @@
 (defn- loop-edn
   "`loop.edn` defaults. `extra` is what only the application's generator knows -
   its gate commands, its nREPL command; without one the harness's own defaults apply.
-  `{{kit}}` in any string becomes the KIT's absolute path: a gate the KIT ships
-  runs in a worktree under `work/`, from where no relative path to the KIT holds."
-  [extra kit-dir]
+  `{{kit}}` is written as it stands: the driver makes it the workspace's KIT when a run
+  starts, so the file names no path and the workspace can be copied or moved."
+  [extra]
   (str ";; DEFAULTS for this project's runs. NOT read from here: copy into each run directory\n"
        ";; (../work/runs/<id>/loop.edn) and set :run/id. The harness finds the application through\n"
        ";; ../workspace.edn, so :repo/root is not needed. :profile is relative to THIS folder, the build,\n"
@@ -265,11 +264,12 @@
        ";; file: put the edited layers.edn in the run directory's arch/ and add\n"
        ";;   :architecture {:from \"arch\" :files [\"layers.edn\"]}\n"
        ";; to that run's loop.edn - assembly copies it into the gate worktree beside the roles' files.\n"
+       ";; {{kit}} is this workspace's clone of the KIT (workspace.edn's :workspace/kit), resolved when a run\n"
+       ";; starts: a gate runs in a worktree under work/, where no relative path to the KIT holds.\n"
        (with-out-str
-         (pp/pprint (walk/postwalk #(if (string? %) (str/replace % "{{kit}}" (str kit-dir)) %)
-                                   (merge {:run/id "<one per run>"
-                                           :profile "profile.edn"}
-                                          extra))))))
+         (pp/pprint (merge {:run/id "<one per run>"
+                            :profile "profile.edn"}
+                           extra)))))
 
 (def brief-row
   "The row of `source.md` §1 that names the brief, as the template ships it."
@@ -413,7 +413,7 @@
             {:path (str build "/profile.edn") :what (str "this project's profile: the KIT's example for seat " seat ", to edit")
              :content (profile-edn ws kit-dir seat)}
             {:path (str build "/loop.edn") :what "this project's defaults for a run"
-             :content (loop-edn defaults (fs/normalize (fs/absolutize kit-dir)))}
+             :content (loop-edn defaults)}
             ;; THE RECORDS' HOME AND THEIR DOCUMENT, so the build holds what four documents
             ;; said it held. `record` made the folder on its first copy and nobody made the
             ;; document: the fifth project wrote RUNS.md by hand before `bb report-check`

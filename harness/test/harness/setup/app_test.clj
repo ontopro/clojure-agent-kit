@@ -5,10 +5,12 @@
    [clojure.edn :as edn]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [harness.loop.driver :as driver]
    [harness.rules :as rules]
    [harness.setup.app :as app]
    [harness.setup.init :as init]
-   [harness.setup.template :as template]))
+   [harness.setup.template :as template]
+   [harness.setup.workspace :as workspace]))
 
 (def git-env
   {"GIT_AUTHOR_NAME" "harness-test" "GIT_AUTHOR_EMAIL" "harness@test"
@@ -117,11 +119,16 @@
                                                          :run (generator (atom []) {"deps.edn" "{}"})})})]
     (is (true? (:app/created? made)))
     (is (= "2" (git-out (str (fs/path ws "xyx-app")) "rev-list" "--count" "HEAD")))
-    (testing "the shipped pin tells a run its four gates and its REPL; the KIT's gate by absolute path"
+    (testing "the shipped pin tells a run its four gates and its REPL; the KIT's gate by the workspace's KIT"
       (let [cfg (edn/read-string (slurp (str (fs/path ws "xyx-build" "loop.edn"))))]
         (is (= [:fmt :lint :test :deps] (mapv first (:gates cfg))))
-        (is (= (str "bb --config " kit-dir "/harness/bb.edn boundary") (second (last (:gates cfg))))
-            "{{kit}} became this clone's path: a worktree under work/ has no relative path to it")
+        (is (= "bb --config {{kit}}/harness/bb.edn boundary" (second (last (:gates cfg))))
+            "{{kit}} as it stands, so the workspace can be copied or moved")
+        (is (= (str "bb --config " kit-dir "/harness/bb.edn boundary")
+               (second (last (:gates (driver/resolve-config (str (fs/path ws "work" "runs")) "/repo"
+                                                            (assoc cfg :run/id "r")
+                                                            (workspace/find-workspace (str (fs/path ws "work" "runs"))))))))
+            "and a run started in the workspace resolves it to the workspace's KIT: a worktree under work/ has no relative path to it")
         (is (= ["clojure" "-Srepro" "-M:test:nrepl"] (:nrepl/cmd cfg)))))
     (testing "the application's mirror is rendered from the plan's rules overlay, and follows it"
       (let [mirror (str (fs/path ws "xyx-app" "AGENTS.md"))

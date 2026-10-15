@@ -4,6 +4,7 @@
   (:require
    [babashka.fs :as fs]
    [babashka.process :as p]
+   [clojure.edn :as edn]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [harness.setup.front-door :as front-door]
@@ -97,9 +98,12 @@
   (let [ws (str (fs/real-path (fs/create-temp-dir)))
         head (str/trim (:out (p/shell {:dir kit-dir :out :string} "git" "rev-parse" "HEAD")))
         ;; a pin bump is gated BEFORE it is committed: this clone's pin then differs from HEAD's,
-        ;; and a workspace made at HEAD rightly sees the pin moved
-        bump? (pos? (:exit (p/shell {:dir kit-dir :continue true :out :string :err :string}
-                                    "git" "diff" "--quiet" "HEAD" "--" "harness/resources/template-pins.edn")))
+        ;; and a workspace made at HEAD rightly sees the pin moved. The PIN, not the file: a comment
+        ;; edited in template-pins.edn moves nothing
+        bump? (some? (upgrade/pin-moved
+                      (edn/read-string (:out (p/shell {:dir kit-dir :out :string}
+                                                      "git" "show" "HEAD:harness/resources/template-pins.edn")))
+                      (edn/read-string (slurp (str (fs/path kit-dir "harness" "resources" "template-pins.edn"))))))
         pin-line? #(str/includes? % "pin moved")]
     (fs/create-dirs (fs/path ws "xyx-build"))
     (fs/copy (fs/path kit-dir "harness" "resources" "profiles" "claude.edn") (fs/path ws "xyx-build" "profile.edn"))

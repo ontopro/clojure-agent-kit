@@ -56,6 +56,22 @@ step by hand, named there.
 
 ## 2026-10-14
 
+### A workspace can be copied or moved: `{{kit}}` is resolved when a run starts (plan 6.5, item 10)
+
+`bb init` wrote the KIT clone's absolute path into the build's `loop.edn`: the boundary gate is
+the KIT's own, run in a worktree under `work/`, where no relative path to the KIT holds, so the
+pin's `{{kit}}` was replaced at init. A copy of the workspace then ran the ORIGINAL's KIT at that
+gate, and a workspace moved or restored elsewhere pointed at nothing; an upgrade tried on a copy
+did not see it, because it ran no gate. `init` now writes `{{kit}}` as it stands, and
+`driver/resolve-config` makes it the KIT of the workspace the run is in (`workspace.edn`'s
+`:workspace/kit`, absolute once found) - or, outside a workspace, the clone the harness runs from.
+A `loop.edn` written with the literal path is read as before; the upgrade rewrites it. A test reads
+every file `init` writes, rendered or copied, for the workspace's own folder, and finds none: in
+the default layout the KIT is named relatively. A KIT kept outside the workspace is still named
+absolutely in `workspace.edn`, the one path that has to be. On the way, the upgrade test that decides whether a pin
+bump is being gated read any uncommitted edit to `template-pins.edn` as one; it compares the pins
+now, so a comment edited there is not a bump.
+
 ### `bb report` takes a path (plan 6.5, item 9)
 
 `bb report` read its record from stdin and nothing else. Given a run directory, the way a person

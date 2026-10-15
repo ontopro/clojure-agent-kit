@@ -115,9 +115,9 @@
     (is (= ["xyx-app/AGENTS.md"] (:workspace/rule-mirrors (edn/read-string (content "workspace.edn")))))
     (is (= {:run/id "<one per run>" :profile "profile.edn"
             :nrepl/cmd ["clojure" "-Srepro" "-M:test:nrepl"]
-            :gates [[:deps "bb --config /tools/clojure-agent-kit/harness/bb.edn boundary"]]}
+            :gates [[:deps "bb --config {{kit}}/harness/bb.edn boundary"]]}
            (edn/read-string (content "xyx-build/loop.edn")))
-        "{{kit}} is the KIT's absolute path, wherever the KIT is")
+        "{{kit}} as it stands: the driver resolves it when a run starts, so the file names no path")
     (doseq [k shapes/loop-file-keys]
       (is (str/includes? (content "xyx-build/loop.edn") (str ";;   " k " - ")) (str "the header describes " k)))
     (is (str/includes? (content "xyx-build/loop.edn") ":architecture {:from \"arch\" :files [\"layers.edn\"]}")
@@ -387,3 +387,16 @@
         (is (str/includes? (why {:name "xyx" :app "My Site"}) "a folder name cannot be used"))
         (is (str/includes? (why {:name "xyx" :build "../build"}) "a folder name cannot be used"))
         (is (str/includes? (why {:name "xyx" :app "same" :build "same"}) "the same folder"))))))
+
+(deftest init-writes-no-absolute-path-into-the-workspace
+  ;; A workspace copied or moved ran the original's KIT at the boundary gate: `bb init` had
+  ;; written the clone's absolute path into loop.edn. Every file it writes is read here - the
+  ;; ones it renders and the ones it copies - for the workspace's own folder.
+  (let [lay (init/layout (request {:loop/defaults {:gates [[:deps "bb --config {{kit}}/harness/bb.edn boundary"]]}}))
+        ws-dir (:workspace/dir lay)]
+    (is (= kit-dir (str (fs/path ws-dir (:workspace/kit (:workspace lay))))) "the default layout: the KIT inside the workspace")
+    (is (= "clojure-agent-kit" (:workspace/kit (:workspace lay))) "named relatively")
+    (doseq [{:keys [path content copy-from]} (:entries lay)
+            :let [text (or content (when copy-from (slurp copy-from)))]
+            :when text]
+      (is (not (str/includes? text ws-dir)) (str path " names " ws-dir)))))

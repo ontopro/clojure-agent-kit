@@ -170,6 +170,12 @@
   resolves against the working directory, where the shipped examples are. An
   absolute `:profile` is taken as given either way.
 
+  `{{kit}}` in any string becomes the KIT's clone, `:kit/root`. A gate the KIT ships runs in
+  a worktree under `work/`, where no relative path to the KIT holds, so `bb init` had written the
+  clone's absolute path into the build's `loop.edn` - and a copy of the workspace ran the
+  ORIGINAL's KIT at that gate, a moved one a KIT that was not there. The marker is resolved here,
+  from the workspace the run is in; a `loop.edn` that carries the literal path is read as before.
+
   Throws rather than guessing when `:run/id` or `:profile` is missing: a run
   record with an invented id, or a dispatch to a profile nobody chose, is the
   kind of plausible default this repository keeps finding in its own history."
@@ -179,6 +185,8 @@
       (throw (ex-info (str "loop.edn needs " k)
                       {:run-loop/error :missing-config :key k :run-dir run-dir}))))
   (let [in-run (fn [path] (str (fs/absolutize (fs/path run-dir path))))
+        kit-root (or (:workspace/kit ws) (git-toplevel "."))
+        cfg (walk/postwalk #(if (and (string? %) kit-root) (str/replace % "{{kit}}" (str kit-root)) %) cfg)
         profile (str (if-let [plan (:workspace/build ws)]
                        (fs/normalize (fs/path plan (:profile cfg)))
                        (fs/absolutize (:profile cfg))))]
@@ -203,7 +211,7 @@
                     ;; commits it names - kept from `start`, like everything else here
                     :records/dir (:workspace/records ws)
                     :plan/root (:workspace/build ws)
-                    :kit/root (or (:workspace/kit ws) (git-toplevel "."))})
+                    :kit/root kit-root})
       (:worktrees/dir cfg) (update :worktrees/dir in-run)
       (:architecture cfg) (update-in [:architecture :from] in-run))))
 

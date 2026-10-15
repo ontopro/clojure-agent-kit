@@ -22,6 +22,21 @@
    [harness.money.report :as report]
    [harness.setup.workspace :as workspace]))
 
+(deftest kit-in-loop-edn-is-the-workspaces-kit-when-a-run-starts
+  (let [run-dir (str (fs/create-temp-dir))
+        ws {:workspace/dir "/ws" :workspace/kit "/ws/KIT" :workspace/build "/ws/xyx-build" :workspace/work "/ws/work"}
+        gates [[:fmt "bb fmt-check"] [:deps "bb --config {{kit}}/harness/bb.edn boundary"]]]
+    (is (= [[:fmt "bb fmt-check"] [:deps "bb --config /ws/KIT/harness/bb.edn boundary"]]
+           (:gates (loop/resolve-config run-dir "/repo" {:run/id "r" :profile "p" :gates gates} ws)))
+        "the workspace the run is in names the KIT, so a copied or moved workspace runs its own")
+    (is (= [[:deps "bb --config /old/place/KIT/harness/bb.edn boundary"]]
+           (:gates (loop/resolve-config run-dir "/repo" {:run/id "r" :profile "p"
+                                                         :gates [[:deps "bb --config /old/place/KIT/harness/bb.edn boundary"]]} ws)))
+        "a loop.edn written with the literal path is read as before")
+    (is (= (str "bb --config " (:kit/root (loop/resolve-config run-dir "/repo" {:run/id "r" :profile "p"})) "/harness/bb.edn boundary")
+           (second (second (:gates (loop/resolve-config run-dir "/repo" {:run/id "r" :profile "p" :gates gates})))))
+        "outside a workspace, the clone the harness runs from")))
+
 (deftest config-fills-defaults-and-refuses-to-guess
   (let [run-dir (str (fs/create-temp-dir))
         cfg (loop/resolve-config run-dir "/repo" {:run/id "d10" :profile "resources/profiles/claude.edn"
