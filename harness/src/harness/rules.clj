@@ -423,6 +423,13 @@
                   (read-list "../rule-mirrors.edn")
                   (:workspace/rule-mirrors ws))))))
 
+(defn mirror-label
+  "`path` as `bb rules-sync` prints it: from a workspace (`in-workspace?`, the mirrors listed and
+  not given), one of the KIT's own - listed relative to its `harness/` - says so. A bare
+  `AGENTS.md` beside the application's absolute path read as the workspace's own file."
+  [path in-workspace?]
+  (if (and in-workspace? (not (fs/absolute? path))) (str path " (the KIT's own)") path))
+
 (defn -main
   "bb rules-sync [--check] [--workspace <dir>] [path...]   (default: `mirror-paths`)
 
@@ -436,10 +443,12 @@
   (let [ws (workspace/current-or-exit args)
         {:keys [args]} (workspace/split-args args)
         check? (boolean (some #{"--check"} args))
-        paths (or (seq (remove #(str/starts-with? % "--") args)) (mirror-paths "." ws))]
+        given (seq (remove #(str/starts-with? % "--") args))
+        paths (or given (mirror-paths "." ws))
+        shown #(mirror-label % (and ws (not given)))]
     (doseq [path paths]
       (when-not (.exists (io/file path))
-        (println (str "agent-rules: " path " not found — the rule mirror is the "
+        (println (str "agent-rules: " (shown path) " not found — the rule mirror is the "
                       "file agents actually read; create it with the "
                       begin-marker " / " end-marker " markers."))
         (System/exit 1))
@@ -448,17 +457,17 @@
             ;; trace: whoever deleted the marker needs to be told which one.
             (try (sync! path :check? check?)
                  (catch clojure.lang.ExceptionInfo e
-                   (println (str "agent-rules: " (ex-message e) " in " path
+                   (println (str "agent-rules: " (ex-message e) " in " (shown path)
                                  " — the block is delimited by\n  " begin-marker
                                  "\n  " end-marker))
                    (System/exit 1)))]
         (cond
           (and check? changed?)
-          (do (println (str "agent-rules drift: " path " does not match resources/"
+          (do (println (str "agent-rules drift: " (shown path) " does not match resources/"
                             resource-name " (with the workspace's overlay, for a project's mirror)"
                             " — run `bb rules-sync`"))
               (System/exit 1))
 
-          check? (println (str "agent-rules in sync: " path))
-          changed? (println (str "agent-rules synced: " path))
-          :else (println (str "agent-rules already current: " path)))))))
+          check? (println (str "agent-rules in sync: " (shown path)))
+          changed? (println (str "agent-rules synced: " (shown path)))
+          :else (println (str "agent-rules already current: " (shown path))))))))

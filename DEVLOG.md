@@ -56,6 +56,14 @@ step by hand, named there.
 
 ## 2026-10-14
 
+### From a workspace, `rules-sync` says which mirrors are the KIT's own (plan 6.5, item 11)
+
+Round 0's `bb rules-sync`, run from the workspace, printed "agent-rules already current:
+AGENTS.md" and "health/selfcheck/AGENTS.md" above the application's absolute path - the KIT's own
+mirrors, listed relative to its `harness/`, read there as the workspace's own file. From a
+workspace they now say "(the KIT's own)", in every line `rules-sync` and `rules-check` print about
+them; in the KIT itself, or for a mirror named on the command line, the path stands as before.
+
 ### The doctor's missing-skills line names no date (plan 6.5, item 11)
 
 Round 0 - a copy of the proof build's workspace taken from 0.6.4 to this branch by the hand steps -

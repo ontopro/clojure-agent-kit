@@ -308,3 +308,8 @@
   (is (= "Content comes from an EDN file." (rules/data-conventions [{:id :data-conventions :text "Content comes from an EDN file."}])))
   (is (nil? (rules/data-conventions [{:id :data-conventions :text "<Say once, for every role, what this data is.>"}])))
   (is (nil? (rules/data-conventions []))))
+
+(deftest from-a-workspace-the-kits-own-mirrors-say-so
+  (is (= "AGENTS.md (the KIT's own)" (rules/mirror-label "AGENTS.md" true)))
+  (is (= "/ws/xyx-app/AGENTS.md" (rules/mirror-label "/ws/xyx-app/AGENTS.md" true)) "the application's, absolute, as it is")
+  (is (= "AGENTS.md" (rules/mirror-label "AGENTS.md" false)) "in the KIT itself, or a mirror named on the command line"))
