@@ -160,6 +160,12 @@ checked against that result, instead of once per release. And the by-commit deci
 anything else, so a `workspace.edn` with no recorded commit reached it with nil and the refusal's
 own words threw: phase 1 now refuses that first, in phase 2's words.
 
+Seen setting up the sandbox rounds: a clone past its release on a throwaway tag reads as that
+release, the one the workspace already records, and phase 2 would have named its branch and its
+folder `upgrade-0.6.4` after a release the workspace had. The release an upgrade is named by is
+the clone's version when it is newer than the recorded one, else the commit; the version the
+record carries stays the nearest release tag, which is the truth about the clone.
+
 ### The upgrade's run is the one `bb template-upgrade` resumes, and the notices follow it (plan 6.5, item 14c, after review)
 
 A review of the entry below against the plan's text and the sandbox baseline's filled build

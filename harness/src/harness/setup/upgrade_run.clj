@@ -410,13 +410,17 @@
             (throw (ex-info (str "the workspace is at this KIT's commit already (" (subs head 0 7) "): nothing to bring up") {:upgrade/error :current :nothing true})))
         _ (when-not (zero? (:exit (git kit "merge-base" "--is-ancestor" from head)))
             (throw (ex-info (str "the workspace's recorded KIT commit " (subs from 0 7) " is not in this clone's history: another KIT, or a commit not fetched") {:upgrade/error :unknown-commit})))
-        id (upgrade-id from head version)
+        ;; THE RELEASE THIS UPGRADE IS NAMED BY: the clone's version when it is newer than the one the
+        ;; workspace records; else - a clone past its release on a throwaway tag or a candidate's commit, the
+        ;; version the same - the commit, so the branch and the record are not named after a release
+        ;; the workspace already had
+        release (if (and version (not= version (:workspace/kit-version raw))) version (subs head 0 7))
+        id (upgrade-id from head release)
         dir (fs/path (:workspace/work ws) "upgrades" id)
         before (fs/path dir "before")
         done-file (fs/path dir "done.edn")
         at (str (or now (java.time.LocalDate/now)))
         _ (fs/create-dirs before)
-        release (or version (subs head 0 7))
         facts {:id id :from from :to head :head head :version version :release release :at at}]
     (println (str "bb upgrade --after-pull: " (:workspace/dir ws) " from " (subs from 0 7) " to " (subs head 0 7)
                   (when version (str " (" version ")")) " - " dir))
