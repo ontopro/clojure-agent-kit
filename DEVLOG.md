@@ -50,7 +50,15 @@ the template fork's tags and version the template, not the KIT.
 `bb tag-check <tag>` at the root is this list's mechanism: a line per check and no tag unless
 every one holds. `bb tag-check <tag> --run` does steps 2 and 4 where they are stale, stopping for
 the commit between them; `--landed` checks origin after step 5. bear-claw's secrets scan stays a
-step by hand, named there.
+step by hand, named there, and so does Docker Scout's scan of the fresh-machine image (a Docker
+login): `docker scout cves local://clojure-agent-kit-toolchain:<as-of> --only-severity critical,high`.
+
+**The toolchain's pins move at a plan's start, not before its tag.** `bb toolchain-newer` lists
+each pin beside its newest release, and `bb kit-status` and `bb tag-check` print its newer lines.
+When a plan's branch is cut the person reads it and decides what moves; a move is the plan's first
+item, with its health runs, so the plan's whole length runs on it. Before a tag only an advisory
+moves a pin: a HIGH or CRITICAL that Scout finds against a pinned tool. The doctor's "newer than
+tested" stays information for an adopter, never a block.
 
 ---
 
@@ -78,6 +86,33 @@ the project's and the upgrade leaves it as it is: compare it with
 `KIT/harness/resources/profiles/claude.edn` to take the new roles.
 
 ## 2026-10-16
+
+### The toolchain held current (plan 6.7, item 1, register rows 131 and 133)
+
+The fresh-machine image was as old as its first build: `docker build` with no `--pull`, and no
+build argument that changed with the known-good set's date, so while the tools' versions stood
+every layer came from the cache and a new health record only added a tag. `docker-image!` now
+builds with `--pull` and passes the set's `:as-of` as `KIT_AS_OF`, which the Dockerfile uses just
+before the layer that installs the operating system's packages. Three builds proved it: the date
+as known-good has it, the same date again with every layer cached, and a later date that rebuilt
+from that layer on while the base and the git build stayed cached.
+
+`bb toolchain-newer` (root, the KIT's own development) prints each pin beside its newest release:
+the known-good set's tools, the three versions only the Dockerfile pins, the template's tag and
+deps-new's. Releases come from `git ls-remote --tags`, with no API and no token, every repository
+asked at once; a tag of a pre-release's shape is never newest, and a repository that does not
+answer is said as unknown. Information, exit 0. `bb kit-status` and `bb tag-check` print its
+newer lines, and `tag-check` names Docker Scout's scan of the image as a step by hand beside
+bear-claw's, with its command. The plan named two more sources: the image's `apt list
+--upgradable`, and an advisory scan over the Clojure CLI's jar. Neither was built. Scout already
+reports the image's fixable packages and its libraries' advisories, and the jar was a first guess
+that the fresh scan disproved.
+
+The rule is in this file's tag checklist and the `kit-session` skill. A pin moves at a plan's start,
+when its branch is cut; the person reads the list and decides, and a move is the plan's first item
+with its health runs. Before a tag, only an advisory moves a pin. The first reading found `bb`
+1.13.226 released and `clj-kondo` already at its newest, so the `jackson-core` HIGHs inside both
+binaries are row 133, on watch until their releases carry the fix.
 
 ### A template namespace removed with its file passes the plan check (plan 6.6, register row 132)
 

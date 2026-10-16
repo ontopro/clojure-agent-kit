@@ -56,6 +56,13 @@ ARG TARGETARCH
 ENV DEBIAN_FRONTEND=noninteractive \
     PATH=/opt/git/bin:/root/.local/bin:/root/.babashka/bbin/bin:${PATH}
 
+# THE SET'S DATE, known-good's `:as-of`, used before the first layer that installs packages: a
+# new health record rebuilds the operating-system layer and every layer after it, where the
+# cache had kept them as old as the image's first build (register row 131). The tasks build
+# with `--pull` too, so the base is the newest published under its tag.
+ARG KIT_AS_OF=2026-10-16
+RUN echo "${KIT_AS_OF}" > /etc/kit-toolchain-as-of
+
 # What the tools and the health check lean on: a shell, curl and unzip for the downloads,
 # rlwrap for the Clojure CLI's `clj`, the libraries git links, and Firefox ESR with its
 # fonts from Mozilla's apt repository (ESR, the one the KIT's browser pack is tried on).

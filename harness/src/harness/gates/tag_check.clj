@@ -10,7 +10,10 @@
   on origin; the pinned template's tag on the fork, at the pinned commit; a
   secrets scan of the commits since the last tag; the gates record green for
   HEAD's tree; a docker-gates record green for HEAD. bear-claw's secrets scan
-  is named, never run: the script is the person's, outside the clone.
+  is named, never run: the script is the person's, outside the clone; so is
+  Docker Scout's scan of the fresh-machine image, which needs a Docker login
+  (register row 131). The toolchain's newer releases (`bb toolchain-newer`)
+  are printed as information and never fail it.
 
   `--run` first does what is stale or missing, in the checklist's order,
   stopping at the first red: the health records (`bb health --record`,
@@ -25,7 +28,8 @@
    [clojure.edn :as edn]
    [clojure.pprint :as pprint]
    [clojure.string :as str]
-   [harness.gates.record :as record]))
+   [harness.gates.record :as record]
+   [harness.gates.toolchain-newer :as toolchain-newer]))
 
 ;; ---------------------------------------------------------------- git and files
 
@@ -175,6 +179,11 @@
   (let [read #(try (dissoc (edn/read-string (str %)) :as-of) (catch Exception _ ::unreadable))]
     (not= (read then) (read now))))
 
+(defn- known-good-as-of
+  "The known-good set's date in the clone at `root`: the fresh-machine image's tag."
+  [root]
+  (:as-of (edn/read-string (slurp (str (fs/path root known-good-path))))))
+
 (defn read-records [root]
   (for [f (sort (map str (fs/glob (fs/path root records-dir) "*.edn")))
         :let [r (edn/read-string (slurp f))
@@ -307,6 +316,11 @@
           (let [cs (checks root tag)]
             (print-checks cs)
             (println "  by hand: bear-claw's secrets scan (`bear-claw.bb -s secrets`), the second rule set - not run here")
+            (println (str "  by hand: Docker Scout on the fresh-machine image (a Docker login) - `docker scout cves "
+                          "local://clojure-agent-kit-toolchain:" (known-good-as-of root) " --only-severity critical,high`; "
+                          "a HIGH or CRITICAL against a pinned tool moves the pin before the tag"))
+            (doseq [l (toolchain-newer/newer-lines (toolchain-newer/check root))]
+              (println (str "  information: " l " (`bb toolchain-newer`; a move is the person's, at a branch's cut)")))
             (if (every? :ok? cs)
               (println (str "\nevery check holds: `" tag "` may be cut on HEAD, by the person"))
               (do (println (str "\n" (count (remove :ok? cs)) " check(s) fail: no tag")) (System/exit 1))))))))

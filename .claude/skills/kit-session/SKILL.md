@@ -17,6 +17,9 @@ commands that check each step. Nothing here is shipped: `bb init` copies `skills
    `**Next:**` line says what is next, since the order differs from the numbering - and the last
    entry of its Sessions log.
 3. `bb hooks-install` once per clone if `git config core.hooksPath` is not `.githooks`.
+4. At a plan's first session, its branch just cut: `bb toolchain-newer`, read with the person. They
+   decide what moves; a move is the plan's first item, with its health runs (`bb health --record`,
+   `bb docker-health`, `bb health-sync`). Nothing moves later except for an advisory (below).
 
 ## An item
 
@@ -42,6 +45,7 @@ commands that check each step. Nothing here is shipped: `bb init` copies `skills
      left on purpose, said so.
    - **The Sessions log behind** - write the item's entry.
    - **A `.local/` folder or entry its README does not name** - name it.
+   - **The toolchain's newer releases** - information; they wait for the next plan's start.
 2. The plan: tick the item in `## Task Status` with its commit and move the `**Next:**` line;
    an entry in the Sessions log saying what was built, how it was proved, what is next.
 3. Run `bb kit-status` again: the log line should now say ok.
@@ -60,7 +64,10 @@ The checklist at the head of `DEVLOG.md`, with `bb tag-check` as its mechanism. 
 4. `bb tag-check <tag> --run` again - the gates and `bb docker-gates` on that commit - then
    `bb tag-check <tag>`: every line `ok`, or no tag.
 5. The person's bear-claw secrets scan, by hand: a second rule set the KIT's scan does not
-   carry. `tag-check` names it and never runs it.
+   carry. And Docker Scout on the fresh-machine image, by hand (a Docker login), the command as
+   `tag-check` prints it. `tag-check` names both and runs neither. A HIGH or CRITICAL against a
+   pinned tool moves that pin before the tag - the one move a tag waits for; the rest of
+   `tag-check`'s toolchain lines are information for the next plan's start.
 6. To the person, as commands for them to run: the merge to `main`, the annotated tag on the
    commit `tag-check` passed (its message lists what the plan ADDED), the push of `main` and the
    tag. Never run them yourself.

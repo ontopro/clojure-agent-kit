@@ -2,20 +2,22 @@
   "`bb kit-status`: what an item's end should look at, printed and never
   refused - an item's end is a judgement, not a gate.
 
-  Five reports, each `ok` or a list: the health records stale (item 6, the
+  Six reports, each `ok` or a list: the health records stale (item 6, the
   check `bb tag-check` makes); the tests that failed and later passed on
   the same tree since the last version tag (flaky, from the gates' kept run
   records); the register's rows opened since the last tag that are still open
   or on watch; the plan's Sessions log older than the last commit (the plan
   named by the branch: `plan-v6.2` -> `.local/plans/kit-plan-v6.2.md`); and a
   `.local/` folder without its `README.md`, or an entry in one that its README
-  never names. Exit 0 always. The KIT's own development only."
+  never names; and the toolchain's pins with a newer release
+  (`harness.gates.toolchain-newer`). Exit 0 always. The KIT's own development only."
   (:require
    [babashka.fs :as fs]
    [babashka.process :as p]
    [clojure.string :as str]
    [harness.gates.record :as record]
-   [harness.gates.tag-check :as tag-check]))
+   [harness.gates.tag-check :as tag-check]
+   [harness.gates.toolchain-newer :as toolchain-newer]))
 
 (defn- git [root & args]
   (let [{:keys [exit out]} (apply p/shell {:dir (str root) :out :string :err :string :continue true} "git" args)]
@@ -118,4 +120,6 @@
                           (for [e (unnamed-entries (slurp (str readme))
                                                    (sort (map #(str (fs/file-name %)) (fs/list-dir d))))]
                             (str rel "/" e " is not named in " rel "/README.md")))))
-                    (local-dirs root)))))
+                    (local-dirs root)))
+    (report "The toolchain's newer releases (`bb toolchain-newer`; a move is the person's, at a branch's cut):"
+            (toolchain-newer/newer-lines (toolchain-newer/check root)))))

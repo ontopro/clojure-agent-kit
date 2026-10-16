@@ -27,13 +27,14 @@
 ;; Both log to .local/gates/, both mount the repository READ-ONLY and clone inside, so what is
 ;; checked is what is committed and nothing the container writes reaches this tree.
 ;;
-;; And four for the KIT's own development, never shipped to a workspace:
+;; And five for the KIT's own development, never shipped to a workspace:
 ;;
 ;;   bb hooks-install   once per clone: git's hooks are read from .githooks/, committed here
 ;;   bb commit-check    what .githooks/pre-commit runs: refuses a commit unless the last
 ;;                      `bb gates` (.local/gates/last.edn, written green or red) was green on
 ;;                      exactly the tree being committed. `git commit --no-verify` skips it
 ;;   bb kit-status      what an item's end should look at; prints, never refuses
+;;   bb toolchain-newer each pin of the toolchain beside its newest release; prints, never refuses
 ;;   bb tag-check <tag> whether the pre-tag checklist (DEVLOG.md's head) holds for a tag on HEAD;
 ;;                      never tags. --run does what is stale, --landed checks origin after the push
 {:paths ["harness/src"]
@@ -45,7 +46,9 @@
               (apply shell {:dir "harness"} "bb" args))
 
             ;; The fresh-machine container. `docker-image!` builds the toolchain image, tagged by
-            ;; known-good's date, each ARG from that file; `in-container!` clones HEAD from the
+            ;; known-good's date, each ARG from that file and the date one too (KIT_AS_OF), with the
+            ;; base pulled - so a new health record rebuilds the operating-system layer, which the
+            ;; cache had kept as old as the first build (register row 131); `in-container!` clones HEAD from the
             ;; read-only mount and runs one script, everything to a log under .local/gates/ and
             ;; to the terminal, and the script's exit is the task's.
             (def known-good-file "harness/resources/known-good.edn")
@@ -56,12 +59,13 @@
             (defn docker-image! []
               (let [{:keys [as-of tools]} (edn/read-string (slurp known-good-file))
                     tag (str "clojure-agent-kit-toolchain:" as-of)
-                    args (mapcat (fn [[tool arg]]
-                                   (when-let [v (get tools tool)]
-                                     ["--build-arg" (str arg "=" v)]))
-                                 build-args)]
+                    args (concat ["--build-arg" (str "KIT_AS_OF=" as-of)]
+                                 (mapcat (fn [[tool arg]]
+                                           (when-let [v (get tools tool)]
+                                             ["--build-arg" (str arg "=" v)]))
+                                         build-args))]
                 (println "image" tag "- the toolchain of" known-good-file)
-                (apply shell "docker" "build" "-t" tag (concat args ["."]))
+                (apply shell "docker" "build" "--pull" "-t" tag (concat args ["."]))
                 tag))
             (defn sh-quote [s]
               (str "'" (str/replace s "'" "'\\''") "'"))
@@ -135,7 +139,11 @@
              :requires ([harness.gates.tag-check :as tag-check])
              :task (apply tag-check/-main *command-line-args*)}
 
-  kit-status {:doc "What an item's end should look at, printed, never refused: flaky tests since the last tag, health records stale against the code they ran, register rows opened since it still open or on watch, the plan's Sessions log older than HEAD, a .local/ folder without its README.md or an entry it never names"
+  toolchain-newer {:doc "Each pin of the toolchain (known-good, the Dockerfile's own, the template's) beside its newest release, by git ls-remote; information, exit 0. A move is the person's (kit-session skill)"
+                   :requires ([harness.gates.toolchain-newer :as toolchain-newer])
+                   :task (toolchain-newer/-main)}
+
+  kit-status {:doc "What an item's end should look at, printed, never refused: flaky tests since the last tag, health records stale against the code they ran, register rows opened since it still open or on watch, the plan's Sessions log older than HEAD, a .local/ folder without its README.md or an entry it never names, the toolchain's newer releases"
               :requires ([harness.gates.kit-status :as kit-status])
               :task (kit-status/-main)}
 
