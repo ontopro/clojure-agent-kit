@@ -56,6 +56,21 @@ step by hand, named there.
 
 ## 2026-10-16
 
+### An OpenRouter cost is the reply's own, the generation records gone missing (plan 6.5, item 17, register row 129)
+
+Plan 6.5's security bake-off of `gemini-4-argon` against Astra finished with every cost "not
+reported", and `bb reprice` found nothing to fill them with. OpenRouter's generation endpoint, the
+one place the KIT read an OpenRouter completion's cost from, answered 404 "not found" for every id:
+for the bake-off's readings half an hour old, and for a fresh call asked after 5, 15 and 30
+seconds. Every OpenRouter role's cost in a run record, a reading and a bake-off was going to be
+blank - and each completion waited the fetch's whole retry budget, about 20 seconds, for it. The
+reply carries the cost itself (`usage.cost`) and names the provider. `parse :openai` keeps the
+cost; the record takes the generation record's word when one arrives and the reply's otherwise,
+marked reported; a reply that carried its cost is not waited on. A real call through `converse!`
+now records its cost and provider with no wait. What the generation record alone gave - native
+token counts, the generation time, the service tier - is absent while it stays missing.
+Bake-off-3's own readings keep no cost; the plan has their estimate from usage and list prices.
+
 ### Every shipped Anthropic role goes direct to Anthropic's API (plan 6.5, item 17a, register row 128)
 
 The person's decision: Anthropic models on Anthropic's own API. Since 2026-09-25 the `claude`

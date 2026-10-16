@@ -145,8 +145,10 @@
     ;; What you requested is in the profile; what answered belongs here.
      (merge
       {:model (or (:model generation) (get-in parsed [:raw :model]))
-       :provider (:provider_name generation)
-       :cost (:total_cost generation)
+       ;; the generation record's word first; else the reply's own - OpenRouter's names the
+       ;; provider and carries the cost (row 129: its generation records went missing)
+       :provider (or (:provider_name generation) (get-in parsed [:raw :provider]))
+       :cost (or (:total_cost generation) (:cost parsed))
        :tokens (or (when-let [n (:native_tokens_prompt generation)]
                      (+ n (or (:native_tokens_completion generation) 0)))
                    (when (or in out) (+ (or in 0) (or out 0))))

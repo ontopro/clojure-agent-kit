@@ -114,10 +114,15 @@
   [role parsed ms-completion key opts]
   {:parsed parsed
    :ms-completion ms-completion
-   :record (future
-             (let [t (System/currentTimeMillis)
-                   gen (provenance/fetch! (:endpoint role) (:id parsed) key opts)]
-               {:gen gen :ms (- (System/currentTimeMillis) t)}))})
+   ;; NOT FETCHED WHEN THE REPLY CARRIED ITS COST: the record was fetched for the cost, and
+   ;; since 2026-10 OpenRouter's answers 404 for every id - a wait of the whole retry
+   ;; budget per completion for nothing (row 129)
+   :record (if (some? (:cost parsed))
+             (delay {:gen nil :ms 0})
+             (future
+               (let [t (System/currentTimeMillis)
+                     gen (provenance/fetch! (:endpoint role) (:id parsed) key opts)]
+                 {:gen gen :ms (- (System/currentTimeMillis) t)})))})
 
 (defn- settle
   "`result` with its :steps, once every pending generation record is in.

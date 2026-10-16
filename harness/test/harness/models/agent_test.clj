@@ -336,6 +336,19 @@
           "in completion order, not in the order the records arrived"))
     (is (pos? (:ms-provenance-wait r)) "the end still waits for the records, once")))
 
+(deftest a-reply-that-carries-its-cost-is-not-waited-on
+  ;; row 129: OpenRouter's generation records answer 404 since 2026-10, and every completion
+  ;; waited the whole retry budget for one; its reply carries the cost, so none is fetched
+  (let [dir (workspace)
+        priced (fn [r] (assoc r :usage {:prompt_tokens 3 :completion_tokens 4 :cost 0.002} :provider "Q"))
+        r (with-openrouter [(priced (tool-reply "read_file" {:path "src/in.clj"})) (priced (text-reply "done"))]
+            1000
+            #(agent/converse! (role %) "R" "go" {:dir dir} {:interval-ms 100}))]
+    (is (= 2 (count (:steps r))))
+    (is (every? #(= 0.002 (:cost %)) (:steps r)) "the reply's cost")
+    (is (every? #(= "Q" (:provider %)) (:steps r)) "the reply's provider")
+    (is (every? #(zero? (:ms/provenance %)) (:steps r)) "no generation record waited on")))
+
 (deftest a-conversation-that-fails-still-reports-what-it-paid-for
   ;; The early return on an API error is an exit too. Without settling there,
   ;; a completion already paid for would lose its cost, and its fetch would

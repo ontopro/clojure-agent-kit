@@ -220,6 +220,13 @@
            (usage {:prompt_tokens 1000 :completion_tokens 5 :prompt_tokens_details {:cached_tokens 800}}))
         "a read with no write reported")))
 
+(deftest the-openai-shape-keeps-the-cost-the-reply-carries
+  ;; row 129: OpenRouter's usage carries the completion's cost, and its generation records
+  ;; answer 404 since 2026-10 - the reply's own figure is the cost's one source there
+  (is (= 1.7475E-4 (:cost (adapter/parse :openai (assoc openai-tools :usage {:prompt_tokens 10 :completion_tokens 5 :cost 1.7475E-4})))))
+  (is (nil? (:cost (adapter/parse :openai (assoc openai-tools :usage {:prompt_tokens 10 :completion_tokens 5}))))
+      "absent stays nil, not zero"))
+
 (deftest a-402-is-a-credit-error-and-keeps-one-clean-line-of-the-text
   ;; The first project built on the KIT had a code reviewer refused with 402 and the
   ;; provider's message - a dashboard URL with the key's id in it - reached the

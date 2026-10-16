@@ -138,6 +138,10 @@
                 (or (some-> rd pos?) (some-> wr pos?))
                 (-> (update :in #(- (or % 0) (or rd 0) (or wr 0)))
                     (assoc :cache-read (or rd 0) :cache-write (or wr 0)))))
+     ;; THE COST, WHEN THE REPLY CARRIES IT. OpenRouter puts what a completion cost in its
+     ;; `usage` (`cost`, dollars), and since 2026-10 its generation records answer 404 for
+     ;; every id, so this is the cost's one source on that endpoint (row 129). Nil elsewhere.
+     :cost (:cost usage)
      :id (:id body)
      :raw body}))
 

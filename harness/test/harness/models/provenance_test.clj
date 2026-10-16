@@ -96,6 +96,17 @@
     (is (= 165 (:tokens p)) "native counts, which are what the host actually billed")
     (is (= "gen-abc" (:generation-id p)))))
 
+(deftest without-a-generation-record-the-replys-own-cost-and-provider-are-taken
+  ;; row 129: OpenRouter's generation records answer 404 since 2026-10; its reply names the
+  ;; provider and carries the cost, reported by the endpoint as the record's was
+  (let [reply (assoc parsed :cost 0.00017 :raw {:model "google/gemini-3.8-flash" :provider "Google"})
+        p (prov/of reply nil {:endpoint "https://openrouter.ai/api/v1"})]
+    (is (= 0.00017 (:cost p)))
+    (is (= :reported (:cost-source p)))
+    (is (= "Google" (:provider p))))
+  (is (= 0.00021 (:cost (prov/of (assoc parsed :cost 0.00017) (:data record))))
+      "a generation record, when there is one, is still the word"))
+
 (deftest a-generation-record-also-says-how-it-was-served
   ;; Reasoning tokens and generation time say whether a slow turn was the model
   ;; thinking. The tier is the only field that tells OpenAI's flex endpoint from
