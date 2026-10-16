@@ -84,12 +84,23 @@
     (is (false? (get-in params [:provider :allow_fallbacks]))
         (str nm "/" (name role) " allows fallback"))))
 
-(deftest every-shipped-anthropic-role-goes-direct-and-only-the-coder-caches
+(deftest the-claude-example-codes-with-argon-and-tests-with-sonnet
+  ;; The person's decision of 2026-10-16 on a measurement (DEVLOG, register row
+  ;; 130): packets re-run by the loop alone, Argon coding with Sonnet testing
+  ;; passed each first time. The verifiers stay off the Coder's family.
+  (let [{:keys [coder tester reviewer security-reviewer]} (:roles (get (profile/examples) "claude"))]
+    (is (= ["google/gemini-4-argon" :google] ((juxt :model :family) coder)))
+    (is (= ["google-vertex"] (get-in coder [:params :provider :only])))
+    (is (= ["claude-sonnet-5-5" :anthropic 40] ((juxt :model :family :max-rounds) tester)))
+    (is (not-any? #{:google} (map :family [tester reviewer security-reviewer])))))
+
+(deftest every-shipped-anthropic-role-goes-direct-and-only-a-tool-loop-caches
   ;; The person's decision of 2026-10-16 (register row 128), reversing row 68:
   ;; an Anthropic role goes to Anthropic's own API, so its cost is computed -
   ;; it carries :pricing, dated. The :anthropic shape asks for the cache on
   ;; every request, so a role that reads its prompt once says no (row 25 (c));
-  ;; the Coder's tool loop is the one the cache is for.
+  ;; a tool loop - the Coder's or the Tester's, whichever is Anthropic - is what the
+  ;; cache is for.
   (doseq [[pnm p] (profile/examples)
           [role r] (:roles p)
           :when (= :anthropic (:family r))
@@ -99,7 +110,7 @@
     (is (= "ANTHROPIC_API_KEY" (:key-env r)) nm)
     (is (nil? (get-in r [:params :provider])) (str nm ": the endpoint does no routing"))
     (is (get-in r [:pricing :per-mtok :cache-read]) (str nm ": a direct cost is computed, so it is priced"))
-    (if (= :coder role)
+    (if (#{:coder :tester} role)
       (is (not (contains? (:params r) :cache_control)) (str nm ": the adapter's cache, asked for"))
       (is (and (contains? (:params r) :cache_control) (nil? (get-in r [:params :cache_control])))
           (str nm ": one completion, read once - no cache write")))))
@@ -147,8 +158,8 @@
 
 (deftest the-orchestrator-may-share-the-coders-family
   ;; Triage is not a verifier: it writes no code and judges no diff, so §05
-  ;; does not reach it. `base` already has it on the Coder's family, which is
-  ;; the shipped claude.edn's arrangement, accepted by decision on 2026-09-16.
+  ;; does not reach it. `base` has it on the Coder's family, which was the
+  ;; shipped claude.edn's arrangement from 2026-09-16 to 2026-10-16, accepted by decision.
   (is (= :anthropic (get-in base [:roles :orchestrator :family]) (get-in base [:roles :coder :family])))
   (is (= [] (errors base)))
   (is (= [] (errors (assoc-in base [:roles :orchestrator :family] :google)))

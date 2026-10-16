@@ -2,8 +2,10 @@
 ;; matching your seat (`--seat <name>`, default claude) to <name>-build/profile.edn; edit it there.
 ;;
 ;; SEAT :claude. Its sibling is agy-ide.edn, and the pair is instructive: they
-;; are near mirror images. Here Anthropic writes and Google and OpenAI verify;
-;; there Google writes and Anthropic verifies. In both, an Anthropic role goes
+;; were near mirror images: here Anthropic wrote and Google and OpenAI verified;
+;; there Google writes and Anthropic verifies. Since 2026-10-16 Google writes
+;; here too, on a measurement (the Coder's comment), and Anthropic and OpenAI
+;; verify. In both, an Anthropic role goes
 ;; direct to Anthropic's API on the :anthropic shape, and every other role over
 ;; OpenRouter on the :openai shape - so each file shows both tool-call shapes.
 ;;
@@ -30,7 +32,9 @@
 ;;   the code too keeps one story; what must then differ is the VERIFIERS. It
 ;;   is not checked, because OpenCode 2 and Pi are bring-your-own-model clients
 ;;   with no inherent family — the relation is not expressible for half the
-;;   seats this kit supports.
+;;   seats this kit supports. THIS FILE SETS IT ASIDE since 2026-10-16: a
+;;   measurement put another family's Coder ahead (the Coder's comment), and a
+;;   convention gives way to a measurement.
 ;;
 ;;   VERIFIER ≠ CODER FAMILY. Method §05 and decision log P0-3, and this one IS
 ;;   checked. The Tester and the code reviewer both verify the Coder, so neither may
@@ -80,28 +84,60 @@
 {:seat :claude
 
  :roles
- {;; CODER — Claude Sonnet 5.5 at medium effort, direct to Anthropic's API.
-  ;; A dated selection of 2026-10-02, the person's
-  ;; decision on the first real project after its first task: with Fable 5.1
-  ;; at low (the selection until then, dated 2026-09-14) the Coder was most of
-  ;; a run's cost, and Sonnet lists at a fraction of the price (`bb models`).
-  ;; On every task after - packets of ten to twenty targets, the contract
-  ;; lesson of method §06 written - Sonnet was right in its first round. Read
-  ;; that with its condition: a cheap Coder is right first time on a contract
-  ;; of that size; the fifty-target packet before it defeated the dearer model
-  ;; too. The route is dated 2026-10-16 (header).
+ {;; CODER — Gemini 4 Argon at medium effort, over OpenRouter pinned to Google
+  ;; Vertex. A dated selection of 2026-10-16 (plan 6.5, P-18), the person's
+  ;; decision on a measurement: packets of the first KIT project's first stage,
+  ;; the hardest it had, each re-run from its own base and spec by the loop
+  ;; alone. Argon coding with Sonnet testing passed every one first time, for
+  ;; less money and time than this file's pair until then - Sonnet coding,
+  ;; Flash testing - which passed them too, but retried on the hardest, mostly
+  ;; on the Tester's own mistakes. Flash in this seat failed every packet, at
+  ;; medium and at high effort: it worked in the REPL until its rounds ran out
+  ;; and never wrote a file. One run per packet - a measurement to repeat when
+  ;; a model in either seat changes. Sonnet 5.5 coded from 2026-10-02 until then.
+  ;;
+  ;; NOT THE SEAT'S FAMILY - the header's convention set aside on that
+  ;; measurement. The verifiers still differ from it: the Tester is Anthropic,
+  ;; the code reviewer and the security reviewer OpenAI.
+  ;;
+  ;; THE PROVIDER PIN IS THE POINT. Without :allow_fallbacks false the provider
+  ;; you logged yesterday is not the one you get today, and a different provider
+  ;; can mean a different chat template. One slug drew two different hosts
+  ;; across three attempts of a single run, and "the model failed" was never a
+  ;; safe reading after that.
+  ;;
+  ;; CACHING: Vertex caches a repeated prompt by itself (the measured runs'
+  ;; records show the reads); on this shape nothing is asked for. No :pricing:
+  ;; OpenRouter's reply carries the cost (row 129).
+  :coder {:family :google
+          :model "google/gemini-4-argon"
+          :shape :openai
+          :endpoint "https://openrouter.ai/api/v1"
+          :key-env "OPENROUTER_API_KEY"
+          :params {:reasoning_effort "medium"
+                   :provider {:only ["google-vertex"] :allow_fallbacks false}}}
+
+  ;; TESTER — Claude Sonnet 5.5 at medium effort, direct to Anthropic's API. A
+  ;; dated selection of 2026-10-16 with the Coder's (above); gemini-3.8-flash
+  ;; from 2026-09-16 until then. On the packets measured Sonnet tested in a few
+  ;; rounds where Flash took many times as many; on the first KIT project's
+  ;; first stage the Tester's own test was most often the first red gate.
+  ;;
+  ;; CHOOSE THE TESTER BY ITS TESTS, NOT ITS PRICE. The Tester writes MORE than
+  ;; the Coder, from the contract alone, under more lint conventions, and its
+  ;; mistakes are the ones nothing after it checks; the cheapest model in the
+  ;; hardest seat is how this kit lost a whole run.
   ;;
   ;; THE MODEL NAME IS THE API'S, `claude-sonnet-5-5` - not OpenRouter's slug,
   ;; `anthropic/claude-sonnet-5.5` with a dot. No :provider pin: the endpoint
   ;; does no routing, so there is nothing to pin.
   ;;
-  ;; CACHING ON THIS ROLE, AND ON NO OTHER. On the :anthropic shape the adapter
-  ;; asks for automatic prompt caching itself; a role that reads its prompt
-  ;; once says `:cache_control nil` (the orchestrator and the Blueprint
-  ;; reviewer below). The Coder's tool loop re-sends the whole conversation
-  ;; every completion, so it is the role the cache is for: most of its prompt
-  ;; tokens are cache reads, and a record's token lines show the share
-  ;; (`bb report`).
+  ;; CACHING ON THIS ROLE. On the :anthropic shape the adapter asks for
+  ;; automatic prompt caching itself; a role that reads its prompt once says
+  ;; `:cache_control nil` (the orchestrator and the Blueprint reviewer below).
+  ;; The Tester's tool loop re-sends the whole conversation every completion,
+  ;; so it is a role the cache is for: most of its prompt tokens are cache
+  ;; reads, and a record's token lines show the share (`bb report`).
   ;;
   ;; :max_tokens IN :params, LIFTED OUT by the adapter to the request's top
   ;; level. Thinking counts against it, and the adapter's default of 4096
@@ -112,44 +148,20 @@
   ;; 1-hour cache writes, cache reads. Input and output as `bb models` listed
   ;; them on 2026-10-16; the cache rates by Anthropic's multipliers (1.25x and
   ;; 2x the input for writes, 0.1x for reads).
-  :coder {:family :anthropic
-          :model "claude-sonnet-5-5"
-          :shape :anthropic
-          :endpoint "https://api.anthropic.com"
-          :key-env "ANTHROPIC_API_KEY"
-          :params {:output_config {:effort "medium"}
-                   :max_tokens 16000}
-          :pricing {:per-mtok {:in 2 :out 10
-                               :cache-write-5m 2.5 :cache-write-1h 4
-                               :cache-read 0.2}
-                    :source "https://platform.claude.com/docs/en/about-claude/pricing"
-                    :as-of "2026-10-16"}}
-
-  ;; TESTER — gemini-3.8-flash at medium effort, over OpenRouter. Dated
-  ;; selection 2026-09-16, when the Tester and code reviewer swapped families so the
-  ;; best measured code reviewer could take that seat without sharing it.
-  ;;
-  ;; CHOOSE THE TESTER BY ITS TESTS, NOT ITS PRICE. The Tester writes MORE than
-  ;; the Coder, from the contract alone, under more lint conventions; the
-  ;; cheapest model in the hardest seat is how this kit lost a whole run. Medium
-  ;; rather than low for the same reason: the cheaper tier's tests stopped
-  ;; pinning the validate-once seam, which is a cent a dispatch for a Tester
-  ;; that has stopped testing a rule.
-  ;;
-  ;; THE PROVIDER PIN IS THE POINT. Without :allow_fallbacks false the provider
-  ;; you logged yesterday is not the one you get today, and a different provider
-  ;; can mean a different chat template. One slug drew two different hosts
-  ;; across three attempts of a single run, and "the model failed" was never a
-  ;; safe reading after that.
-  :tester {:family :google
+  :tester {:family :anthropic
            ;; the rounds limit: the header says where 40 comes from
            :max-rounds 40
-           :model "google/gemini-3.8-flash"
-           :shape :openai
-           :endpoint "https://openrouter.ai/api/v1"
-           :key-env "OPENROUTER_API_KEY"
-           :params {:reasoning_effort "medium"
-                    :provider {:only ["google-vertex"] :allow_fallbacks false}}}
+           :model "claude-sonnet-5-5"
+           :shape :anthropic
+           :endpoint "https://api.anthropic.com"
+           :key-env "ANTHROPIC_API_KEY"
+           :params {:output_config {:effort "medium"}
+                    :max_tokens 16000}
+           :pricing {:per-mtok {:in 2 :out 10
+                                :cache-write-5m 2.5 :cache-write-1h 4
+                                :cache-read 0.2}
+                     :source "https://platform.claude.com/docs/en/about-claude/pricing"
+                     :as-of "2026-10-16"}}
 
   ;; CODE REVIEWER — gpt-6.1-sol at high effort, over OpenRouter's standard endpoint.
   ;; Dated selection 2026-10-07; gpt-5.6-sol from 2026-09-16 until then.
@@ -274,7 +286,7 @@
   ;; HIGH, CHOSEN: the reads that measured it ran at high; the model's default
   ;; is medium and the two have not been compared here. `:cache_control nil`:
   ;; one completion, read once, so a cache write is a premium for nothing.
-  ;; :pricing as the Coder's, at Opus's list prices.
+  ;; :pricing as the Tester's, at Opus's list prices.
   :blueprint-reviewer {:family :anthropic
                        :model "claude-opus-5-5"
                        :shape :anthropic
@@ -299,7 +311,9 @@
   ;; not a candidate after.
   ;;
   ;; ONE SECURITY REVIEWER FOR NOW, the person's decision: a second from another family may be
-  ;; tried later for diversity. It is a verifier - it reads what the Coder wrote to disagree
+  ;; tried later for diversity. Tried 2026-10-16: Gemini 4 Argon found every planted fault, in
+  ;; half the time and a fraction of the cost, but read the careful branch in a minute and missed
+  ;; the real flaw Astra found there - and it is now the Coder's family, which rules it out here. It is a verifier - it reads what the Coder wrote to disagree
   ;; with it - so `bb profile` holds it to another family than the Coder's.
   ;;
   ;; WHAT IT COSTS: $0.46 to $1.50 a reading of the fixture, three to eight minutes of review;
@@ -314,7 +328,7 @@
                                :provider {:only ["openai"] :allow_fallbacks false}}}
 
   ;; ORCHESTRATOR — Claude Opus 5.5 at medium effort, direct to Anthropic's
-  ;; API, as the Coder is (the header has the route's date and what it gives up).
+  ;; API, as the Tester is (the header has the route's date and what it gives up).
   ;; Dated selection 2026-10-02 (below); Fable 5.1 at low from 2026-09-16 until
   ;; then. TRIAGE ONLY: one
   ;; completion with no tools, on a red gate or a note, answering who owns it —
@@ -322,16 +336,17 @@
   ;; retried role. Dispatch itself is software (harness.loop.orchestrate); this
   ;; is the one judgement inside the loop that a mechanical proposal cannot make.
   ;;
-  ;; IT SHARES THE CODER'S FAMILY, AND THAT IS ACCEPTED. §05's rule is for
+  ;; IT SHARED THE CODER'S FAMILY until 2026-10-16, and since then shares the
+  ;; Tester's; both are accepted, for one reason. §05's rule is for
   ;; verifiers: the Tester and the code reviewer exist to disagree with the Coder.
   ;; Triage neither writes code nor judges a diff; it reads a failure against
   ;; the contract and both roles' files. The decision (2026-09-16) is that
   ;; the family that reads a Clojure contract best should route, and the
   ;; safety is that an `architect` or `human` route stops the loop for a
   ;; person — a wrong route costs one paid attempt, not a merge. What is
-  ;; watched: a triage that sides with the Coder's reading of the contract
-  ;; over the Tester's where the Tester was right. `NOTES.md`'s register has
-  ;; the row.
+  ;; watched: a triage that sides with one role's reading of the contract over
+  ;; the other's where the other was right - the Tester's now, its family's.
+  ;; `NOTES.md`'s register has the row.
   ;;
   ;; `:cache_control nil`, ON PURPOSE. A cache write costs a premium over
   ;; the input rate, and triage is one completion with no tools: the prompt
@@ -346,7 +361,7 @@
   ;; same split on the contested one, and on the one disagreement the better
   ;; route under the rule that an ambiguous contract is the Architect's. The
   ;; saving is small: triage's cost is its prompt, and effort changes only what
-  ;; the model writes, which here is one JSON block. :max_tokens as the Coder's.
+  ;; the model writes, which here is one JSON block. :max_tokens as the Tester's.
   ;;
   ;; OPUS 5.5 AT MEDIUM, NOT THE CODER'S MODEL — a dated selection of 2026-10-02,
   ;; the person's decision on the first real project for its second stage.
@@ -358,7 +373,8 @@
   ;; set aside for that - is the one form of kinship this role should not have;
   ;; the family rule (§05) is for verifiers and says nothing here, so this is
   ;; convention, like the Coder's family following the seat. Opus writes no
-  ;; code in this profile. The Blueprint reviewer is Opus too, reading the
+  ;; code in this profile, and since 2026-10-16 neither the Coder's model nor
+  ;; the Tester's is Opus. The Blueprint reviewer is Opus too, reading the
   ;; Architect's prose: a kinship of family and not of model. The project
   ;; watched each route against what the fix turned out to be; `NOTES.md`
   ;; row 2 is where the KIT keeps that watch.

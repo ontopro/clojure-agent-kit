@@ -56,6 +56,28 @@ step by hand, named there.
 
 ## 2026-10-16
 
+### The `claude` example codes with Gemini 4 Argon and tests with Sonnet 5.5 (plan 6.5, item 17d, register row 130)
+
+The first KIT project's Tester was most often the first red gate of a packet, and another model had
+proposed swapping the Coder and the Tester. Measured now, on that project's first stage in the
+sandbox: its hardest packets, each re-run from its own base and spec by the loop alone, every
+stop answered by one mechanical rule, against a control - the shipped profile - on the same KIT.
+Flash coding failed every packet, at medium effort and at high: it worked in the REPL until its
+rounds ran out and never wrote a file. Gemini 4 Argon coding with Sonnet 5.5 testing passed every
+packet first time, for less money and less time than the shipped pair, which passed them too but
+retried on the hardest, mostly on its Tester's own mistakes; Sonnet tested in a fraction of
+Flash's rounds. The person's decision: the shipped `claude.edn` codes with Argon (medium, over
+OpenRouter pinned to Vertex) and tests with Sonnet (medium, on Anthropic's API, its cache asked
+for). The Coder's family no longer follows the seat, a convention set aside on a measurement; the
+verifiers still differ from it. Triage (Opus) now shares the Tester's family instead of the
+Coder's, and row 2's watch turns round with it.
+
+The security reviewer stays GPT-6 Astra. Gemini 4 Argon, tried against it on the KIT's
+planted-fault fixture the same day, found every planted fault in half the time for a fraction of
+the cost, but read the careful branch in a minute and missed the real flaw Astra found there; and
+it is now the Coder's family. One run per packet, one bake-off: both are measurements to repeat
+when a model in either seat changes.
+
 ### An OpenRouter cost is the reply's own, the generation records gone missing (plan 6.5, item 17, register row 129)
 
 Plan 6.5's security bake-off of `gemini-4-argon` against Astra finished with every cost "not
