@@ -77,9 +77,8 @@
   was misread, and it had the Coder on Anthropic under a Google seat, so the
   misreading landed on a mistake. Two profiles cannot both be yours.
 
-  They are near mirror images: under :claude, Anthropic writes and Google
-  reviews; under :agy-ide, Google writes and Anthropic reviews. Between them
-  both `:shape` adapters are exercised."
+  Since 2026-10-16 they differ only in the seat and the orchestrator: the
+  measured roles under either client. Each exercises both `:shape` adapters."
   "resources/profiles")
 
 (def verifiers

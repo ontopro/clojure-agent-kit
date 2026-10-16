@@ -329,24 +329,25 @@ parameters:
                     :key-env "OPENROUTER_API_KEY"
                     :params {:reasoning_effort "medium"
                              :provider {:only ["google-vertex"] :allow_fallbacks false}}}
-         :tester   {:family :openai :model "openai/gpt-5.6-sol" :shape :openai
-                    :endpoint "https://openrouter.ai/api/v1"
-                    :key-env "OPENROUTER_API_KEY"
-                    :params {:reasoning_effort "medium"
-                             :provider {:only ["openai"] :allow_fallbacks false}}}
-         :reviewer {:family :anthropic :model "claude-opus-5-5" :shape :anthropic
+         :tester   {:family :anthropic :model "claude-sonnet-5-5" :shape :anthropic
                     :endpoint "https://api.anthropic.com"
                     :key-env "ANTHROPIC_API_KEY"
-                    :params {:output_config {:effort "high"} :max_tokens 32000}
-                    ;; optional: list prices for an endpoint that reports no cost,
+                    :max-rounds 40
+                    :params {:output_config {:effort "medium"} :max_tokens 16000}
+                    ;; list prices for an endpoint that reports no cost,
                     ;; USD per million tokens, with where and when they were read
-                    :pricing {:per-mtok {:in 4 :out 20 :cache-write-5m 5
-                                         :cache-write-1h 8 :cache-read 0.4}
+                    :pricing {:per-mtok {:in 2 :out 10 :cache-write-5m 2.5
+                                         :cache-write-1h 4 :cache-read 0.2}
                               :source "https://platform.claude.com/docs/en/about-claude/pricing"
-                              :as-of "2026-10-05"}}}}
+                              :as-of "2026-10-16"}}
+         :reviewer {:family :openai :model "openai/gpt-6.1-sol" :shape :openai
+                    :endpoint "https://openrouter.ai/api/v1"
+                    :key-env "OPENROUTER_API_KEY"
+                    :params {:reasoning_effort "high"
+                             :provider {:only ["openai"] :allow_fallbacks false}}}}}
 ```
 
-The seat is a Google client, so Gemini writes the code and Anthropic verifies
+The seat is a Google client and Gemini writes the code; Anthropic and OpenAI verify
 it. Getting that backwards — `claude-sonnet-5` as the Coder under `:seat
 :agy-ide` — is what the first committed version of this file did.
 
@@ -359,7 +360,7 @@ different keys.
 consumer too: `harness.models.runner/api-runner` dispatches each role to the model its
 profile names. Every dispatched run has gone through it.
 
-**Two worked examples ship, one per seat**, and they are near mirror images. Where each seat
+**Two worked examples ship, one per seat**, and since 2026-10-16 they differ only in the seat and the orchestrator. Where each seat
 stands, as the doctor says beside each of the five (all five stay, decided 2026-09-24):
 `claude` is the seat every build on the KIT has run from and the one the health check's profile
 names; `agy-ide` has its example, checked by `bb profile`, and no build yet; `opencode`,
@@ -368,13 +369,13 @@ Proved one seat at a time, portability being the design:
 
 | | seat `claude` | seat `agy-ide` |
 |---|---|---|
-| coder | `google` · `gemini-4-argon` (effort medium, from 2026-10-16; `claude-sonnet-5-5` from 2026-10-02 before) · OpenRouter pinned `google-vertex` · `:openai` | `google` · `gemini-4-argon` (from 2026-10-16; `gemini-3.8-flash` before) · OpenRouter · `:openai` |
-| tester | `anthropic` · `claude-sonnet-5-5` (effort medium, from 2026-10-16; `gemini-3.8-flash` before; cache asked for) · direct · `:anthropic` | `openai` · `gpt-5.6-sol` · OpenRouter · `:openai` |
-| reviewer | `openai` · `gpt-6.1-sol` (effort high, from 2026-10-07; `gpt-5.6-sol` before) · OpenRouter · `:openai` | `anthropic` · `claude-opus-5-5` (effort high) · direct · `:anthropic` |
-| spec-reviewer | `openai` · `gpt-6.1-sol` (effort high, from 2026-10-07) · OpenRouter · `:openai` | `anthropic` · `claude-opus-5-5` (effort high) · direct · `:anthropic` |
-| plan-reviewer | the spec reviewer's selection, block for block (its own role since 2026-10-06; the profile's comment says why) | the spec reviewer's selection, block for block |
+| coder | `google` · `gemini-4-argon` (effort medium, from 2026-10-16; `claude-sonnet-5-5` from 2026-10-02 before) · OpenRouter pinned `google-vertex` · `:openai` | the same (from 2026-10-16; `gemini-3.8-flash` before) |
+| tester | `anthropic` · `claude-sonnet-5-5` (effort medium, from 2026-10-16; `gemini-3.8-flash` before; cache asked for) · direct · `:anthropic` | the same (from 2026-10-16; `gpt-5.6-sol` before) |
+| reviewer | `openai` · `gpt-6.1-sol` (effort high, from 2026-10-07; `gpt-5.6-sol` before) · OpenRouter · `:openai` | the same (from 2026-10-16; `claude-opus-5-5` direct before) |
+| spec-reviewer | `openai` · `gpt-6.1-sol` (effort high, from 2026-10-07) · OpenRouter · `:openai` | the same (from 2026-10-16; `claude-opus-5-5` direct before) |
+| plan-reviewer | the spec reviewer's selection, block for block (its own role since 2026-10-06; the profile's comment says why) | the same |
 | security-reviewer | `openai` · `gpt-6-astra` (effort high, from 2026-10-08) · OpenRouter pinned `openai` · `:openai` | the same |
-| orchestrator | `anthropic` · `claude-opus-5-5` (effort medium, from 2026-10-02; Fable 5.1 before) · direct (from 2026-10-16), no cache · `:anthropic` | `google` · `gemini-3.8-flash` (effort high) · OpenRouter · `:openai` |
+| orchestrator | `anthropic` · `claude-opus-5-5` (effort medium, from 2026-10-02; Fable 5.1 before) · direct (from 2026-10-16), no cache · `:anthropic` | `google` · `gemini-4-argon` (effort medium, from 2026-10-16; `gemini-3.8-flash` before) · OpenRouter pinned `google-vertex` · `:openai` |
 
 *(The `claude` seat's Tester and code reviewer swapped on 2026-09-16, after bake-offs measured
 both seats' candidates. Those bake-offs' records are not in this repository; what the selections rest on is in
@@ -386,12 +387,10 @@ comment says which. The `claude` seat's two Anthropic roles go through OpenRoute
 that: one key and one balance, the cost reported rather than computed, one credit stop, the
 generation record; the profile's header says why.)*
 
-Anthropic writes, and two other families verify. Between them both `:shape`
-adapters have a worked example, which is why there are two rather than one -
-the `:anthropic` shape's is `agy-ide`'s code reviewer and spec reviewer, direct to Anthropic
-with `:pricing`, now that every role of the `claude` example is on the `:openai` shape -
-and a single committed profile reads as *your* configuration, which is exactly
-how the first version was misread.
+Each example uses both `:shape` adapters - its Anthropic roles direct to Anthropic with
+`:pricing`, the rest over OpenRouter. There are two rather than one because a single
+committed profile reads as *your* configuration, which is exactly how the first version
+was misread.
 
 **The whole role table for the `claude` seat**, in the shape method §05 asks for — the
 family as the binding contract, the model as a dated selection underneath it. Eight rows

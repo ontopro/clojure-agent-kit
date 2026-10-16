@@ -435,8 +435,8 @@ of a project is written into it - which is why the list below is short.
   Coder is Google's Argon, on a measurement), and every other role through OpenRouter; its
   header says what each route means for the money: a computed cost and a credit stop of its own
   direct, a reported cost and `bb balance` on OpenRouter - and `agy-ide`, written and
-  checked by `bb profile` but never yet in the seat of a build, its Anthropic roles direct the same
-  way; `bb init --seat` refuses the other
+  checked by `bb profile` but never yet in the seat of a build, its roles the `claude` example's
+  but for the orchestrator (Argon); `bb init --seat` refuses the other
   three by name until an example exists. Portability across seats is the design, proved one seat
   at a time - `portability.md` has the mechanics per seat.
 - **Run records live in the build repository.** The driver's `record` writes `run.edn` in the run directory

@@ -56,6 +56,16 @@ step by hand, named there.
 
 ## 2026-10-16
 
+### `agy-ide.edn` takes `claude.edn`'s roles, with Argon for triage (plan 6.5, item 17)
+
+The person's decision: the two shipped profiles had drifted apart role by role - `agy-ide`'s Tester
+a model behind `claude`'s line, its reviewers Anthropic where `claude`'s are OpenAI - and only
+`claude`'s roles have been measured. `agy-ide.edn` now has `claude.edn`'s roles, block for block,
+but for the orchestrator: Gemini 4 Argon, medium, over OpenRouter pinned to Vertex, the seat's
+family (triage is not a verifier). The two examples now differ in the seat and in triage only, and
+each exercises both shapes. `portability.md`'s table and example, the harness README and the
+profile namespace's docstring say so.
+
 ### `agy-ide`'s Coder is Gemini 4 Argon too (plan 6.5, item 17)
 
 The measurement that moved the `claude` example's Coder found Gemini 3.8 Flash unable to code in
