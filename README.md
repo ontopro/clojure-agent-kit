@@ -23,7 +23,7 @@ template, not KIT.
 > resolved - and nothing of the project is written into it. The first upgrade from `0.6.4` is by
 > hand, since `0.6.4` has no `bb upgrade`: `git -C KIT fetch --tags && git -C KIT checkout <tag>`,
 > then `bb --config KIT/harness/bb.edn upgrade --after-pull` from the workspace folder.
-> KIT carries a version tag at each plan's boundary - `0.6.4` is the current one, and
+> KIT carries a version tag at each plan's boundary - `0.6.5` is the current one, and
 > the DEVLOG's heading for it says in a line what the plan added and anything a workspace made
 > before it needs; `bb init`
 > records the version beside the commit. There is no library to require; there is one commit

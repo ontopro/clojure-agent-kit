@@ -54,6 +54,21 @@ step by hand, named there.
 
 ---
 
+## 0.6.5 — plan 6.5's boundary: the upgrade, and the profile measured
+
+Plan 6.5 added `bb upgrade` - each newer release's requirements checked against the machine, the
+clone moved, the workspace brought up by the new version's own code - with `bb template-upgrade`
+taking a template release through a `template` branch, and the toolchain as data
+(`resources/toolchain.edn`); `bb next` and `bb plan-check` reading the plan, and a workspace's own
+`bb gates`; a sign-off recorded with who signed; the `kit-` prefix on every skill; the retry cap
+spent per role; guidance sent a defined term's definition; the KIT's checks on a port they pick; the
+template at `kit-v1.3`; Anthropic's models on Anthropic's own API; and a `claude` profile that codes
+with Gemini 4 Argon and tests with Sonnet 5.5. A workspace made at `0.6.4` upgrades by hand the first
+time: `git -C KIT fetch --tags && git -C KIT checkout 0.6.5`, then
+`bb --config KIT/harness/bb.edn upgrade --after-pull` from the workspace folder. Its `profile.edn` is
+the project's and the upgrade leaves it as it is: compare it with
+`KIT/harness/resources/profiles/claude.edn` to take the new roles.
+
 ## 2026-10-16
 
 ### `agy-ide.edn` takes `claude.edn`'s roles, with Argon for triage (plan 6.5, item 17)
