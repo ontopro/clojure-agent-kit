@@ -75,11 +75,12 @@
                     :provider {:only ["openai"] :allow_fallbacks false}}}
 
   ;; CODE REVIEWER — Claude Opus 5.5 at high effort, direct to Anthropic, which is
-  ;; the :anthropic tool-call shape: this role and the spec reviewer are the
-  ;; KIT's only worked example of that shape, and they stay direct for that
-  ;; reason. No :provider pin: that endpoint does no routing, so there is
+  ;; the :anthropic tool-call shape, as every Anthropic role in both shipped
+  ;; profiles is since 2026-10-16. No :provider pin: that endpoint does no routing, so there is
   ;; nothing to pin. No fallback model answers a refusal, and the cost is
-  ;; computed from :pricing because the endpoint reports none.
+  ;; computed from :pricing because the endpoint reports none. `:cache_control
+  ;; nil` here and on the other two readers: one completion, read once, and on
+  ;; this shape the adapter asks for the cache unless the role says no (row 25 (c)).
   ;;
   ;; A DATED SELECTION OF 2026-10-05, BY ANALOGY, NOT MEASURED HERE. It was
   ;; Fable 5.1 (low, then high, then medium from 2026-09-18 by the person's
@@ -107,7 +108,8 @@
              :endpoint "https://api.anthropic.com"
              :key-env "ANTHROPIC_API_KEY"
              :params {:output_config {:effort "high"}
-                      :max_tokens 32000}
+                      :max_tokens 32000
+                      :cache_control nil}
              ;; USD per million tokens: base input, output, 5-minute and 1-hour
              ;; cache writes, cache reads. Input and output as `bb models` listed
              ;; them on 2026-10-05; the cache rates by Anthropic's multipliers
@@ -132,7 +134,8 @@
                   :endpoint "https://api.anthropic.com"
                   :key-env "ANTHROPIC_API_KEY"
                   :params {:output_config {:effort "high"}
-                           :max_tokens 16000}
+                           :max_tokens 16000
+                           :cache_control nil}
                   :pricing {:per-mtok {:in 4 :out 20
                                        :cache-write-5m 5 :cache-write-1h 8
                                        :cache-read 0.4}
@@ -158,30 +161,36 @@
                   :endpoint "https://api.anthropic.com"
                   :key-env "ANTHROPIC_API_KEY"
                   :params {:output_config {:effort "high"}
-                           :max_tokens 16000}
+                           :max_tokens 16000
+                           :cache_control nil}
                   :pricing {:per-mtok {:in 4 :out 20
                                        :cache-write-5m 5 :cache-write-1h 8
                                        :cache-read 0.4}
                             :source "https://platform.claude.com/docs/en/about-claude/pricing"
                             :as-of "2026-10-05"}}
 
-  ;; BLUEPRINT REVIEWER — Claude Opus 5.5 at high effort, over OpenRouter
-  ;; pinned to Anthropic's own serving: the same block as claude.edn's, for the
+  ;; BLUEPRINT REVIEWER — Claude Opus 5.5 at high effort, direct to Anthropic's
+  ;; API since 2026-10-16: the same block as claude.edn's, for the
   ;; same measured reason (its comment has it). Here it is NOT the seat's
   ;; family — the seat is Google — so no exception is needed: this is the
   ;; arrangement §05 would ask for anyway. One call per Blueprint, before
-  ;; sign-off, by `bb blueprint-review`; no tools, no cache, no :pricing.
+  ;; sign-off, by `bb blueprint-review`; no tools, `:cache_control nil`.
   ;;
   ;; NOT MEASURED IN THIS SEAT. No run has used it; what was measured is the
   ;; model reading Blueprints written by the other seat's family.
   :blueprint-reviewer {:family :anthropic
-                       :model "anthropic/claude-opus-5.5"
-                       :shape :openai
-                       :endpoint "https://openrouter.ai/api/v1"
-                       :key-env "OPENROUTER_API_KEY"
-                       :params {:reasoning_effort "high"
+                       :model "claude-opus-5-5"
+                       :shape :anthropic
+                       :endpoint "https://api.anthropic.com"
+                       :key-env "ANTHROPIC_API_KEY"
+                       :params {:output_config {:effort "high"}
                                 :max_tokens 16000
-                                :provider {:only ["anthropic"] :allow_fallbacks false}}}
+                                :cache_control nil}
+                       :pricing {:per-mtok {:in 4 :out 20
+                                            :cache-write-5m 5 :cache-write-1h 8
+                                            :cache-read 0.4}
+                                 :source "https://platform.claude.com/docs/en/about-claude/pricing"
+                                 :as-of "2026-10-16"}}
 
   ;; SECURITY REVIEWER — gpt-6-astra at high effort, over OpenRouter pinned to OpenAI. Dated
   ;; selection 2026-10-08, by two bake-offs on the KIT's planted-fault fixture (`bb security-bake-off`):

@@ -2,21 +2,20 @@
 ;; matching your seat (`--seat <name>`, default claude) to <name>-build/profile.edn; edit it there.
 ;;
 ;; SEAT :claude. Its sibling is agy-ide.edn, and the pair is instructive: they
-;; are near mirror images. Here Anthropic writes and Google and OpenAI verify,
-;; every role over OpenRouter on the :openai shape; there Google writes and
-;; Anthropic verifies, its code reviewer, spec reviewer and plan reviewer direct to Anthropic on
-;; the :anthropic shape. The pair still covers both tool-call shapes, which is
-;; why there are two rather than one — and since this file's Anthropic roles
-;; go through OpenRouter (below, and why), the :anthropic shape's worked
-;; example is agy-ide.edn's reviewers, not anything here.
+;; are near mirror images. Here Anthropic writes and Google and OpenAI verify;
+;; there Google writes and Anthropic verifies. In both, an Anthropic role goes
+;; direct to Anthropic's API on the :anthropic shape, and every other role over
+;; OpenRouter on the :openai shape - so each file shows both tool-call shapes.
 ;;
 ;; Model names are dated selections (decision log P0-3: "Specific models are
 ;; dated selections"). The SHAPE is the part meant to outlive them. The
 ;; selections below were made by bake-offs during the KIT's development; their
 ;; records are not in this repository, so what each rests on is said here in
 ;; words and not in figures. `bb bake-off` is how to make your own.
-;; The ROUTE of the Anthropic roles is a dated decision too: 2026-09-18, from a
-;; paid probe (`NOTES.md` row 25), shipped here since 2026-09-25 (row 68).
+;; The ROUTE of the Anthropic roles is a dated decision too: direct since
+;; 2026-10-16, the person's decision (`NOTES.md` row 128); over OpenRouter pinned
+;; to `anthropic` from 2026-09-25 until then (row 68), from a paid probe of
+;; 2026-09-18 (row 25).
 ;;
 ;; Three things this file is careful about:
 ;;
@@ -41,33 +40,31 @@
 ;;   NO KEYS, EVER. :key-env NAMES an environment variable. This file is
 ;;   committed; a field that could hold a secret would eventually be handed one.
 ;;
-;; WHY EVERY ROLE IS ON OPENROUTER, the Anthropic ones included. Four things
-;; the money tooling can only do on that side:
+;; THE ANTHROPIC ROLES GO DIRECT, and four things the money tooling did on
+;; OpenRouter's side are given up for them - known, and taken:
 ;;
-;;   ONE KEY AND ONE BALANCE. `bb balance`, and the two lines `run-loop run`
+;;   TWO KEYS, ONE BALANCE. `bb balance`, and the two lines `run-loop run`
 ;;   prints around the loop, read OpenRouter's key limit and account credit
 ;;   from its API. Anthropic's API has no balance endpoint: a direct role's
-;;   money is only ever SPEND, summed from the records after the fact.
+;;   money is only ever SPEND, summed from the records after the fact, and
+;;   the balance line prints it as Anthropic spend.
 ;;
-;;   THE COST IS REPORTED, NOT COMPUTED. OpenRouter's generation record
-;;   carries what each completion cost, and the report prints it as the
-;;   endpoint's word. Direct, the cost is usage × the profile's :pricing,
-;;   marked ~ and only as fresh as the date the table was read. So NO
-;;   :pricing on either Anthropic role here: `bb reprice` fills any step the
-;;   record left unpriced from the generation records, and a price table
-;;   would rot for nothing.
+;;   THE COST IS COMPUTED, NOT REPORTED. A direct completion carries no cost:
+;;   the record's is usage × the role's :pricing, marked ~ and only as fresh
+;;   as its :as-of. The arithmetic was checked on a paid probe, 2026-10-16 - a
+;;   cache write and a cache read among its four requests. When Anthropic's
+;;   list prices move, the :pricing here moves with them.
 ;;
-;;   THE CREDIT STOP. A 402 stops the loop by name (:credit, owner human)
-;;   with the endpoint and the key variable, not as one more failed dispatch.
-;;   With every role on one key, one 402 stops everything — which is what a
-;;   person wants — so check the balance against the plan's per-run floor
-;;   (§13) before each run; the first adopter was stopped once on EACH
-;;   provider's credit, mid-run, with nothing having warned.
+;;   TWO CREDIT STOPS. A 402 stops the loop by name (:credit, owner human)
+;;   with the endpoint and the key variable, not as one more failed dispatch -
+;;   on either key now, so check both before a run against the plan's per-run
+;;   floor (§13); the first adopter was stopped once on EACH provider's
+;;   credit, mid-run, with nothing having warned.
 ;;
-;;   THE GENERATION RECORD. A completion names no provider; OpenRouter's
-;;   record says who served it, at which service tier, with native token
-;;   counts and the host's own generation time — the provenance a direct
-;;   endpoint cannot give. Its price is a fixed ~9 s wait at the end of every
+;;   NO GENERATION RECORD for a direct role. OpenRouter's says who served a
+;;   completion, at which service tier, with native token counts; direct, the
+;;   endpoint is the provider ("Anthropic API") and the tokens are the
+;;   response's own. It also spares the fixed ~9 s wait at the end of every
 ;;   dispatch for the last completion's record (row 25).
 ;;
 ;; THE ROUNDS A DISPATCH MAY TAKE are this project's to set, per role, as
@@ -83,8 +80,8 @@
 {:seat :claude
 
  :roles
- {;; CODER — Claude Sonnet 5.5 at medium effort, over OpenRouter pinned to
-  ;; Anthropic's own serving. A dated selection of 2026-10-02, the person's
+ {;; CODER — Claude Sonnet 5.5 at medium effort, direct to Anthropic's API.
+  ;; A dated selection of 2026-10-02, the person's
   ;; decision on the first real project after its first task: with Fable 5.1
   ;; at low (the selection until then, dated 2026-09-14) the Coder was most of
   ;; a run's cost, and Sonnet lists at a fraction of the price (`bb models`).
@@ -92,41 +89,41 @@
   ;; lesson of method §06 written - Sonnet was right in its first round. Read
   ;; that with its condition: a cheap Coder is right first time on a contract
   ;; of that size; the fifty-target packet before it defeated the dearer model
-  ;; too. The route is dated 2026-09-18 (header).
+  ;; too. The route is dated 2026-10-16 (header).
   ;;
-  ;; THE MODEL NAME IS OPENROUTER'S SLUG, `anthropic/claude-sonnet-5.5` with a
-  ;; dot — not the API's `claude-sonnet-5-5`. The generation record resolves it
-  ;; to the model that answered, and the report shows that one.
+  ;; THE MODEL NAME IS THE API'S, `claude-sonnet-5-5` - not OpenRouter's slug,
+  ;; `anthropic/claude-sonnet-5.5` with a dot. No :provider pin: the endpoint
+  ;; does no routing, so there is nothing to pin.
   ;;
-  ;; PINNED TO "anthropic", NOT "google-vertex". Both serve this model. Pinned
-  ;; to Vertex the prompt cache missed intermittently, each miss re-writing
-  ;; the whole prompt at the cache-write premium; pinned
-  ;; to Anthropic it never did, and cost no more than the direct route. With
-  ;; :allow_fallbacks false the provider you logged yesterday is the one you
-  ;; get today, and every report names the one that answered.
+  ;; CACHING ON THIS ROLE, AND ON NO OTHER. On the :anthropic shape the adapter
+  ;; asks for automatic prompt caching itself; a role that reads its prompt
+  ;; once says `:cache_control nil` (the orchestrator and the Blueprint
+  ;; reviewer below). The Coder's tool loop re-sends the whole conversation
+  ;; every completion, so it is the role the cache is for: most of its prompt
+  ;; tokens are cache reads, and a record's token lines show the share
+  ;; (`bb report`).
   ;;
-  ;; CACHING IS ASKED FOR, HERE AND ON NO OTHER ROLE. On the :openai shape the
-  ;; adapter merges :params into the request as they are and sends no
-  ;; cache_control of its own — an Anthropic model behind this endpoint caches
-  ;; only if the profile says so, and a profile that forgets turns caching
-  ;; OFF silently, and the run costs more for it. The Coder's tool loop
-  ;; re-sends the whole conversation every completion, so it is the role
-  ;; the cache is for: most of its prompt tokens are cache reads, and a
-  ;; record's token lines show the share (`bb report`).
+  ;; :max_tokens IN :params, LIFTED OUT by the adapter to the request's top
+  ;; level. Thinking counts against it, and the adapter's default of 4096
+  ;; would cut a turn off mid-thought — 16000, the non-streaming ceiling the
+  ;; API guidance gives.
   ;;
-  ;; :max_tokens SITS IN :params on this shape (the adapter merges them; on
-  ;; the :anthropic shape it is lifted out). Thinking counts against it, and
-  ;; the adapter's default of 4096 would cut a turn off mid-thought — 16000,
-  ;; the non-streaming ceiling the API guidance gives.
+  ;; :pricing - USD per million tokens: base input, output, 5-minute and
+  ;; 1-hour cache writes, cache reads. Input and output as `bb models` listed
+  ;; them on 2026-10-16; the cache rates by Anthropic's multipliers (1.25x and
+  ;; 2x the input for writes, 0.1x for reads).
   :coder {:family :anthropic
-          :model "anthropic/claude-sonnet-5.5"
-          :shape :openai
-          :endpoint "https://openrouter.ai/api/v1"
-          :key-env "OPENROUTER_API_KEY"
-          :params {:reasoning_effort "medium"
-                   :max_tokens 16000
-                   :provider {:only ["anthropic"] :allow_fallbacks false}
-                   :cache_control {:type "ephemeral"}}}
+          :model "claude-sonnet-5-5"
+          :shape :anthropic
+          :endpoint "https://api.anthropic.com"
+          :key-env "ANTHROPIC_API_KEY"
+          :params {:output_config {:effort "medium"}
+                   :max_tokens 16000}
+          :pricing {:per-mtok {:in 2 :out 10
+                               :cache-write-5m 2.5 :cache-write-1h 4
+                               :cache-read 0.2}
+                    :source "https://platform.claude.com/docs/en/about-claude/pricing"
+                    :as-of "2026-10-16"}}
 
   ;; TESTER — gemini-3.8-flash at medium effort, over OpenRouter. Dated
   ;; selection 2026-09-16, when the Tester and code reviewer swapped families so the
@@ -251,8 +248,8 @@
                   :params {:reasoning_effort "high"
                            :provider {:only ["openai"] :allow_fallbacks false}}}
 
-  ;; BLUEPRINT REVIEWER — Claude Opus 5.5 at high effort, over OpenRouter
-  ;; pinned to Anthropic's own serving. Dated selection 2026-09-25. ONE CALL
+  ;; BLUEPRINT REVIEWER — Claude Opus 5.5 at high effort, direct to Anthropic's
+  ;; API (the route since 2026-10-16). Dated selection 2026-09-25. ONE CALL
   ;; PER BLUEPRINT, BEFORE SIGN-OFF, no tools: `bb blueprint-review` sends the
   ;; stage document and the Blueprint with the method's two questions — is it
   ;; over-engineered (§07, the blueprint), and do its shapes and targets follow §06's
@@ -275,16 +272,22 @@
   ;; defect this reader read past that another family caught.
   ;;
   ;; HIGH, CHOSEN: the reads that measured it ran at high; the model's default
-  ;; is medium and the two have not been compared here. No :cache_control: one
-  ;; completion, read once. No :pricing: the endpoint reports the cost.
+  ;; is medium and the two have not been compared here. `:cache_control nil`:
+  ;; one completion, read once, so a cache write is a premium for nothing.
+  ;; :pricing as the Coder's, at Opus's list prices.
   :blueprint-reviewer {:family :anthropic
-                       :model "anthropic/claude-opus-5.5"
-                       :shape :openai
-                       :endpoint "https://openrouter.ai/api/v1"
-                       :key-env "OPENROUTER_API_KEY"
-                       :params {:reasoning_effort "high"
+                       :model "claude-opus-5-5"
+                       :shape :anthropic
+                       :endpoint "https://api.anthropic.com"
+                       :key-env "ANTHROPIC_API_KEY"
+                       :params {:output_config {:effort "high"}
                                 :max_tokens 16000
-                                :provider {:only ["anthropic"] :allow_fallbacks false}}}
+                                :cache_control nil}
+                       :pricing {:per-mtok {:in 4 :out 20
+                                            :cache-write-5m 5 :cache-write-1h 8
+                                            :cache-read 0.4}
+                                 :source "https://platform.claude.com/docs/en/about-claude/pricing"
+                                 :as-of "2026-10-16"}}
 
   ;; SECURITY REVIEWER — gpt-6-astra at high effort, over OpenRouter pinned to OpenAI. Dated
   ;; selection 2026-10-08, by two bake-offs on the KIT's planted-fault fixture (`bb security-bake-off`):
@@ -310,10 +313,10 @@
                       :params {:reasoning_effort "high"
                                :provider {:only ["openai"] :allow_fallbacks false}}}
 
-  ;; ORCHESTRATOR — Claude Opus 5.5 at medium effort, over OpenRouter pinned to
-  ;; Anthropic's own serving, as the Coder is and for the header's reasons.
+  ;; ORCHESTRATOR — Claude Opus 5.5 at medium effort, direct to Anthropic's
+  ;; API, as the Coder is (the header has the route's date and what it gives up).
   ;; Dated selection 2026-10-02 (below); Fable 5.1 at low from 2026-09-16 until
-  ;; then; the route 2026-09-18. TRIAGE ONLY: one
+  ;; then. TRIAGE ONLY: one
   ;; completion with no tools, on a red gate or a note, answering who owns it —
   ;; coder, tester, architect or human — with a reason and guidance for the
   ;; retried role. Dispatch itself is software (harness.loop.orchestrate); this
@@ -330,13 +333,12 @@
   ;; over the Tester's where the Tester was right. `NOTES.md`'s register has
   ;; the row.
   ;;
-  ;; NO :cache_control HERE, ON PURPOSE. A cache write costs a premium over
+  ;; `:cache_control nil`, ON PURPOSE. A cache write costs a premium over
   ;; the input rate, and triage is one completion with no tools: the prompt
   ;; is read once and never again, so asking for the cache buys nothing and
   ;; pays the premium: cached triage cost more than uncached on the prompts
-  ;; replayed. The same block as the Coder's otherwise, one pin for both
-  ;; roles; Vertex would do here (caching is irrelevant to it, and the routes
-  ;; it gave were the same) if latency ever matters.
+  ;; replayed. On this shape the adapter asks for the cache unless the role
+  ;; says no, and this is the role saying no (row 25 (c)).
   ;;
   ;; LOW WAS MEASURED, ON FABLE — high until 2026-09-18, "because this is judgement work".
   ;; The judgement did not differ: the first adopter's triage prompts, re-asked
@@ -361,10 +363,15 @@
   ;; watched each route against what the fix turned out to be; `NOTES.md`
   ;; row 2 is where the KIT keeps that watch.
   :orchestrator {:family :anthropic
-                 :model "anthropic/claude-opus-5.5"
-                 :shape :openai
-                 :endpoint "https://openrouter.ai/api/v1"
-                 :key-env "OPENROUTER_API_KEY"
-                 :params {:reasoning_effort "medium"
+                 :model "claude-opus-5-5"
+                 :shape :anthropic
+                 :endpoint "https://api.anthropic.com"
+                 :key-env "ANTHROPIC_API_KEY"
+                 :params {:output_config {:effort "medium"}
                           :max_tokens 16000
-                          :provider {:only ["anthropic"] :allow_fallbacks false}}}}}
+                          :cache_control nil}
+                 :pricing {:per-mtok {:in 4 :out 20
+                                      :cache-write-5m 5 :cache-write-1h 8
+                                      :cache-read 0.4}
+                           :source "https://platform.claude.com/docs/en/about-claude/pricing"
+                           :as-of "2026-10-16"}}}}

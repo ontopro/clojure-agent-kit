@@ -368,13 +368,13 @@ Proved one seat at a time, portability being the design:
 
 | | seat `claude` | seat `agy-ide` |
 |---|---|---|
-| coder | `anthropic` · `anthropic/claude-sonnet-5.5` (effort medium, from 2026-10-02; cache asked for) · OpenRouter pinned `anthropic` · `:openai` | `google` · `gemini-3.8-flash` · OpenRouter · `:openai` |
+| coder | `anthropic` · `claude-sonnet-5-5` (effort medium, from 2026-10-02; cache asked for) · direct (from 2026-10-16; OpenRouter pinned `anthropic` before) · `:anthropic` | `google` · `gemini-3.8-flash` · OpenRouter · `:openai` |
 | tester | `google` · `gemini-3.8-flash` (effort medium) · OpenRouter · `:openai` | `openai` · `gpt-5.6-sol` · OpenRouter · `:openai` |
 | reviewer | `openai` · `gpt-6.1-sol` (effort high, from 2026-10-07; `gpt-5.6-sol` before) · OpenRouter · `:openai` | `anthropic` · `claude-opus-5-5` (effort high) · direct · `:anthropic` |
 | spec-reviewer | `openai` · `gpt-6.1-sol` (effort high, from 2026-10-07) · OpenRouter · `:openai` | `anthropic` · `claude-opus-5-5` (effort high) · direct · `:anthropic` |
 | plan-reviewer | the spec reviewer's selection, block for block (its own role since 2026-10-06; the profile's comment says why) | the spec reviewer's selection, block for block |
 | security-reviewer | `openai` · `gpt-6-astra` (effort high, from 2026-10-08) · OpenRouter pinned `openai` · `:openai` | the same |
-| orchestrator | `anthropic` · `anthropic/claude-opus-5.5` (effort medium, from 2026-10-02; Fable 5.1 before) · OpenRouter pinned `anthropic` · `:openai` | `google` · `gemini-3.8-flash` (effort high) · OpenRouter · `:openai` |
+| orchestrator | `anthropic` · `claude-opus-5-5` (effort medium, from 2026-10-02; Fable 5.1 before) · direct (from 2026-10-16), no cache · `:anthropic` | `google` · `gemini-3.8-flash` (effort high) · OpenRouter · `:openai` |
 
 *(The `claude` seat's Tester and code reviewer swapped on 2026-09-16, after bake-offs measured
 both seats' candidates. Those bake-offs' records are not in this repository; what the selections rest on is in
@@ -400,14 +400,14 @@ works, and no packet reaches them:
 
 | Role | Constraint | Family | Model (as the shipped `claude.edn` has it, 2026-10-12) | Dispatched? | Notes |
 |---|---|---|---|---|---|
-| **Coder** | — (family A) | Anthropic | `anthropic/claude-sonnet-5.5` over OpenRouter pinned to `anthropic`, effort medium (from 2026-10-02), the cache asked for | yes, every task | The seat's family, by convention: one story between the human and the code. |
+| **Coder** | — (family A) | Anthropic | `claude-sonnet-5-5` direct to Anthropic (from 2026-10-16; over OpenRouter pinned to `anthropic` before), effort medium (from 2026-10-02), the cache asked for | yes, every task | The seat's family, by convention: one story between the human and the code. |
 | **Tester** | **≠ A** | Google | `gemini-3.8-flash`, effort medium | yes, every task | Chosen by its tests, not its price; the cheapest model in the hardest seat lost a run. |
 | **Code reviewer** | **≠ A** | OpenAI | `gpt-6.1-sol`, effort high | yes, on green | Third family; only Coder-divergence is required, a third adds blind-spot diversity. |
 | **Spec reviewer** | **≠ A** | OpenAI | `gpt-6.1-sol`, effort high | yes, once per spec, before `start` | Reads the Architect's contract cold — every place a target can be read two ways, every input no target mentions — and the Architect is the seat, family A. Added 2026-09-18; same model as the code reviewer because that is the configuration measured. |
 | **Plan reviewer** | **≠ A** | OpenAI | `gpt-6.1-sol`, effort high | yes, in every stage's plan step (`bb plan-review`) | The spec reviewer's selection by default; its own role since 2026-10-06, so a project can set it apart. |
 | **Security reviewer** | **≠ A** | OpenAI | `gpt-6-astra`, effort high | yes, at every stage's end (`bb security-review`) | Reads the merged application with tools, in a sandbox with no network; a finding counts only when a test of its own fails. Added 2026-10-08. |
-| **Blueprint reviewer** | none — family A, accepted by decision | Anthropic | `anthropic/claude-opus-5.5` over OpenRouter pinned to `anthropic`, effort high | yes, once per Blueprint, before sign-off | Reads the stage document and the Blueprint whole against §07, the blueprint, and §06's rules (`bb blueprint-review`). The rule's reasoning reaches it as it reaches the spec reviewer; the exception is from a measurement — on one build this family, reading Blueprints cold, alone found each round's load-bearing defect — written in the profile's comment and watched in `NOTES.md`. Added 2026-09-25. |
-| **Orchestrator** | none | software; Anthropic for triage | `anthropic/claude-opus-5.5` over OpenRouter pinned to `anthropic`, effort medium (from 2026-10-02; Fable 5.1 before) — triage calls only | yes, on a red gate, a note or a rejected review | Dispatch is `harness.loop.orchestrate`; the model enters at triage and shares the Coder's family by decision — it verifies nothing, so §05 does not reach it. Watched in `NOTES.md`. |
+| **Blueprint reviewer** | none — family A, accepted by decision | Anthropic | `claude-opus-5-5` direct to Anthropic (from 2026-10-16; over OpenRouter pinned to `anthropic` before), effort high, no cache | yes, once per Blueprint, before sign-off | Reads the stage document and the Blueprint whole against §07, the blueprint, and §06's rules (`bb blueprint-review`). The rule's reasoning reaches it as it reaches the spec reviewer; the exception is from a measurement — on one build this family, reading Blueprints cold, alone found each round's load-bearing defect — written in the profile's comment and watched in `NOTES.md`. Added 2026-09-25. |
+| **Orchestrator** | none | software; Anthropic for triage | `claude-opus-5-5` direct to Anthropic (from 2026-10-16), no cache, effort medium (from 2026-10-02; Fable 5.1 before) — triage calls only | yes, on a red gate, a note or a rejected review | Dispatch is `harness.loop.orchestrate`; the model enters at triage and shares the Coder's family by decision — it verifies nothing, so §05 does not reach it. Watched in `NOTES.md`. |
 | **Architect** | none | Anthropic — the seat | the session's model, chosen per session | no — seat-side | Writes the spec and amends it at a stop; does not verify Coder output. |
 | **DevOps** | none | Anthropic — the seat | the session's model, chosen per session | no — seat-side | Config, docs, release prep; the interactive-programmer role in `harness/agents/`. |
 

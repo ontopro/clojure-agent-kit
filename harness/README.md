@@ -429,13 +429,13 @@ of a project is written into it - which is why the list below is short.
   `bb balance` with no profile argument reads it. `resources/profiles/` is the shipped examples'
   folder, held by the KIT's own tests to exactly those files - nothing of a project goes in the clone.
   The doctor lists five seats and the KIT ships examples for two: `claude`, the seat every build on
-  the KIT has run from and the one the health check's profile names - its example routes every role
-  through OpenRouter, the Anthropic ones pinned to the `anthropic` provider with the cache asked for
-  on the Coder alone, the route every build has run on (since 2026-09-25 in the file, not only in
-  the builds; its comments say why: one key and one balance, the cost reported, the credit stop,
-  the generation record) - and `agy-ide`, written and
-  checked by `bb profile` but never yet in the seat of a build, its code reviewer, spec reviewer and plan reviewer
-  direct to Anthropic, which is where the `:anthropic` shape's worked example now is; `bb init --seat` refuses the other
+  the KIT has run from and the one the health check's profile names - its example sends the
+  Anthropic roles direct to Anthropic's API (since 2026-10-16; over OpenRouter pinned to `anthropic`
+  before) with the cache asked for on the Coder alone, and every other role through OpenRouter; its
+  comments say what the direct route gives up: one balance, a reported cost, one credit stop, the
+  generation record - and `agy-ide`, written and
+  checked by `bb profile` but never yet in the seat of a build, its Anthropic roles direct the same
+  way; `bb init --seat` refuses the other
   three by name until an example exists. Portability across seats is the design, proved one seat
   at a time - `portability.md` has the mechanics per seat.
 - **Run records live in the build repository.** The driver's `record` writes `run.edn` in the run directory

@@ -56,6 +56,30 @@ step by hand, named there.
 
 ## 2026-10-16
 
+### Every shipped Anthropic role goes direct to Anthropic's API (plan 6.5, item 17a, register row 128)
+
+The person's decision: Anthropic models on Anthropic's own API. Since 2026-09-25 the `claude`
+example had sent its Anthropic roles through OpenRouter pinned to `anthropic` (row 68), for four
+things the money tooling does on that side - one balance, a reported cost, one credit stop, the
+generation record. They are given up knowingly, and `claude.edn`'s header now says so in their
+place.
+
+A paid probe came first, through the harness's own adapter and `list-price`: Sonnet 5.5 with a
+small prompt, Sonnet 5.5 with the rule block (a cache write of 9,423 tokens), again (the same
+9,423 read), and Opus 5.5 at effort medium - all answered, and each computed cost recomputed by
+hand from usage and the list prices `bb models` gives (Sonnet $2/$10, Opus $4/$20 per million;
+cache writes 1.25 times input, reads 0.1 times). The Console's figures arrive up to half an hour
+late, so the person took the computed costs rather than wait.
+
+The change: `claude.edn`'s Coder (`claude-sonnet-5-5`, medium), Blueprint reviewer and
+orchestrator (`claude-opus-5-5`, high and medium) and `agy-ide.edn`'s Blueprint reviewer on the
+`:anthropic` shape, `ANTHROPIC_API_KEY`, effort as `:output_config`, `:pricing` dated 2026-10-16.
+The Coder keeps the cache the adapter asks for; the roles that read a prompt once - triage, the
+Blueprint review, and `agy-ide`'s three direct reviewers, which had been paying the write premium
+- say `:cache_control nil` (the entry below). `profile_test` holds every Anthropic role in both
+examples to the direct route, priced, and to the cache rule. The harness README, the method and
+tooling template and `portability.md` say the new route.
+
 ### A direct Anthropic request can leave the cache out (plan 6.5, item 17a, register row 25 (c))
 
 The `:anthropic` shape asks for automatic prompt caching on every request, which is right for a

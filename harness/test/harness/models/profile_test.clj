@@ -84,26 +84,25 @@
     (is (false? (get-in params [:provider :allow_fallbacks]))
         (str nm "/" (name role) " allows fallback"))))
 
-(deftest the-claude-examples-anthropic-roles-go-through-openrouter
-  ;; The route every build re-applied by hand while the example shipped the
-  ;; direct one (register row 68): one key and one balance, the cost the
-  ;; endpoint's word, the credit stop and the generation record all live on
-  ;; that side of the money tooling. Caching is asked for on the Coder alone -
-  ;; the :openai shape sends none unless the profile says so, and a triage
-  ;; call with no tools would pay the cache-write premium on a prompt nobody
-  ;; reads again.
-  (let [{:keys [coder orchestrator]} (:roles (get (profile/examples) "claude"))]
-    (doseq [[nm r] {"coder" coder "orchestrator" orchestrator}]
-      (is (= :anthropic (:family r)) nm)
-      (is (= :openai (:shape r)) (str nm " reaches OpenRouter on the shape it serves"))
-      (is (str/includes? (:endpoint r) "openrouter") nm)
-      (is (= "OPENROUTER_API_KEY" (:key-env r)) (str nm " is on the key the balance reads"))
-      (is (= ["anthropic"] (get-in r [:params :provider :only]))
-          (str nm " is pinned to Anthropic's own serving, where the cache never missed"))
-      (is (nil? (:pricing r))
-          (str nm ": the cost is reported, so no list price to compute a second figure from")))
-    (is (= {:type "ephemeral"} (get-in coder [:params :cache_control])) "the Coder asks for the cache")
-    (is (nil? (get-in orchestrator [:params :cache_control])) "triage does not")))
+(deftest every-shipped-anthropic-role-goes-direct-and-only-the-coder-caches
+  ;; The person's decision of 2026-10-16 (register row 128), reversing row 68:
+  ;; an Anthropic role goes to Anthropic's own API, so its cost is computed -
+  ;; it carries :pricing, dated. The :anthropic shape asks for the cache on
+  ;; every request, so a role that reads its prompt once says no (row 25 (c));
+  ;; the Coder's tool loop is the one the cache is for.
+  (doseq [[pnm p] (profile/examples)
+          [role r] (:roles p)
+          :when (= :anthropic (:family r))
+          :let [nm (str pnm "/" (name role))]]
+    (is (= :anthropic (:shape r)) nm)
+    (is (= "https://api.anthropic.com" (:endpoint r)) nm)
+    (is (= "ANTHROPIC_API_KEY" (:key-env r)) nm)
+    (is (nil? (get-in r [:params :provider])) (str nm ": the endpoint does no routing"))
+    (is (get-in r [:pricing :per-mtok :cache-read]) (str nm ": a direct cost is computed, so it is priced"))
+    (if (= :coder role)
+      (is (not (contains? (:params r) :cache_control)) (str nm ": the adapter's cache, asked for"))
+      (is (and (contains? (:params r) :cache_control) (nil? (get-in r [:params :cache_control])))
+          (str nm ": one completion, read once - no cache write")))))
 
 (deftest every-shipped-example-names-a-seat-the-doctor-can-probe
   ;; Only the SEAT part of the environment tier is a fact about the file.
@@ -206,9 +205,8 @@
   (let [r (get-in (get (profile/examples) "claude") [:roles :blueprint-reviewer])]
     (is (= :anthropic (:family r)))
     (is (str/includes? (:model r) "opus"))
-    (is (= "high" (get-in r [:params :reasoning_effort])))
-    (is (nil? (get-in r [:params :cache_control])) "one completion, read once")
-    (is (nil? (:pricing r)) "the endpoint reports the cost")))
+    (is (= "high" (get-in r [:params :output_config :effort])))
+    (is (nil? (get-in r [:params :cache_control])) "one completion, read once")))
 
 ;; ---------------------------------------------------------------------------
 ;; environment
