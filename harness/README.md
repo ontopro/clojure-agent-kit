@@ -433,8 +433,8 @@ of a project is written into it - which is why the list below is short.
   Anthropic roles direct to Anthropic's API (since 2026-10-16; over OpenRouter pinned to `anthropic`
   before) with the cache asked for on the tool-loop role among them, the Tester since 2026-10-16 (its
   Coder is Google's Argon, on a measurement), and every other role through OpenRouter; its
-  comments say what the direct route gives up: one balance, a reported cost, one credit stop, the
-  generation record - and `agy-ide`, written and
+  header says what each route means for the money: a computed cost and a credit stop of its own
+  direct, a reported cost and `bb balance` on OpenRouter - and `agy-ide`, written and
   checked by `bb profile` but never yet in the seat of a build, its Anthropic roles direct the same
   way; `bb init --seat` refuses the other
   three by name until an example exists. Portability across seats is the design, proved one seat

@@ -1,55 +1,25 @@
-;; A WORKED EXAMPLE shipped with the seed — not a configuration. Copy the one
-;; matching your seat (`--seat <name>`, default claude) to <name>-build/profile.edn; edit it there.
+;; The `agy-ide` seat's profile: the model each dispatched role uses and how it is reached. A
+;; worked example - `bb init --seat agy-ide` copies it to <name>-build/profile.edn; edit it
+;; there, and `bb profile` checks it. No build has run this seat yet.
 ;;
-;; SEAT :agy-ide — the Antigravity IDE's CLI. Its sibling is claude.edn, and the
-;; pair is instructive: they are near mirror images. Here Google writes and
-;; Anthropic reviews; there Anthropic writes and Google reviews. Between them
-;; both tool-call adapters are exercised, which is why there are two rather
-;; than one.
-;;
-;; Model names are dated selections (decision log P0-3: "Specific models are
-;; dated selections"). The SHAPE is the part meant to outlive them. The Tester
-;; below was chosen by a bake-off during the KIT's development, whose records
-;; are not in this repository; no run has ever used this seat, so nothing else
-;; here is measured and the comments say so where it matters.
-;;
-;; Three things this file is careful about:
-;;
-;;   ONE SEAT. The interactive client is where the human sits. The dispatched
-;;   roles are reached over HTTP by the harness and are not anyone's editor —
-;;   so there is exactly one :seat, and it is a scalar so it cannot grow a
-;;   second. :seat names a tool `bb doctor` knows how to probe.
-;;
-;;   THE CODER'S FAMILY FOLLOWS THE SEAT, by convention and not by rule. The
-;;   seat here is a Google client, so the Coder is Gemini and Anthropic moves to
-;;   the verifying side — the exact reverse of claude.edn. It is not checked,
-;;   because OpenCode 2 and Pi are bring-your-own-model clients with no inherent
-;;   family: the relation is not expressible for half the seats this kit
-;;   supports.
-;;
-;;   VERIFIER ≠ CODER FAMILY. Method §05 and decision log P0-3, and this one IS
-;;   checked. The Tester and the code reviewer both verify the Coder, so neither may
-;;   share its family, nor each other's. `bb profile` is the only place that
-;;   rule has ever been anything but prose.
-;;
-;;   NO KEYS, EVER. :key-env NAMES an environment variable. This file is
-;;   committed; a field that could hold a secret would eventually be handed one.
+;; - :key-env NAMES an environment variable; never put a key in this file.
+;; - The verifiers - the Tester, the code reviewer, the spec and plan reviewers, the security
+;;   reviewer - may not share the Coder's family, and the Tester and the code reviewer not each
+;;   other's. `bb profile` checks it.
+;; - :shape :anthropic is Anthropic's API, direct: the adapter asks for prompt caching on every
+;;   request unless :params says `:cache_control nil` (say it on a role that reads its prompt
+;;   once); the cost is computed from :pricing and marked ~; the API has no balance, and its key is
+;;   a credit stop of its own. :max_tokens goes in :params - thinking counts against it.
+;; - :shape :openai is OpenRouter: the reply carries the cost, and `bb balance` reads the credit.
+;;   :provider pins the host; without :allow_fallbacks false it can change between calls.
+;; - :max-rounds caps a role's completions in one dispatch (the harness's default is 24).
+;; - Models are dated selections, said in the DEVLOG. `bb profile` says when a newer model is
+;;   listed; `bb bake-off` compares candidates on your own cases.
 
 {:seat :agy-ide
 
  :roles
- {;; CODER — gemini-3.8-flash at medium effort, over OpenRouter.
-  ;;
-  ;; PINNED REQUEST-SIDE: without :allow_fallbacks false, the provider you
-  ;; logged yesterday is not the one you get today, and a different provider can
-  ;; mean a different chat template.
-  ;;
-  ;; MEDIUM, NOT HIGH, AND THAT IS MEASURED. The original sketch put
-  ;; :reasoning_effort "high" on every OpenRouter role, unexamined. On
-  ;; gemini-3.8-flash as code reviewer it produced minutes of thinking and an
-  ;; EMPTY final message; the identical dispatch at medium answered quickly,
-  ;; for less, with real findings. High reasoning on a flash tier spends
-  ;; the budget thinking and has nothing left to say with.
+ {;; CODER - writes the implementation in its own worktree and nREPL.
   :coder {:family :google
           :model "google/gemini-3.8-flash"
           :shape :openai
@@ -58,14 +28,7 @@
           :params {:reasoning_effort "medium"
                    :provider {:only ["google-vertex"] :allow_fallbacks false}}}
 
-  ;; TESTER — gpt-5.6-sol at medium effort. Dated selection 2026-09-14.
-  ;;
-  ;; CHOOSE THE TESTER BY ITS TESTS, NOT ITS PRICE — see claude.edn. The same
-  ;; Tester as that profile: the result does not depend on the seat, and openai
-  ;; is neither Coder's family. The standard endpoint rather than flex, because
-  ;; flex was rate-limited upstream on most requests when this was switched;
-  ;; claude.edn has the reasoning, and why the "openai" pin is observed rather
-  ;; than guaranteed to mean standard.
+  ;; TESTER - writes the tests from the contract alone. Choose it by its tests, not its price.
   :tester {:family :openai
            :model "openai/gpt-5.6-sol"
            :shape :openai
@@ -74,34 +37,8 @@
            :params {:reasoning_effort "medium"
                     :provider {:only ["openai"] :allow_fallbacks false}}}
 
-  ;; CODE REVIEWER — Claude Opus 5.5 at high effort, direct to Anthropic, which is
-  ;; the :anthropic tool-call shape, as every Anthropic role in both shipped
-  ;; profiles is since 2026-10-16. No :provider pin: that endpoint does no routing, so there is
-  ;; nothing to pin. No fallback model answers a refusal, and the cost is
-  ;; computed from :pricing because the endpoint reports none. `:cache_control
-  ;; nil` here and on the other two readers: one completion, read once, and on
-  ;; this shape the adapter asks for the cache unless the role says no (row 25 (c)).
-  ;;
-  ;; A DATED SELECTION OF 2026-10-05, BY ANALOGY, NOT MEASURED HERE. It was
-  ;; Fable 5.1 (low, then high, then medium from 2026-09-18 by the person's
-  ;; judgement). Two things moved it: Opus lists at well under half of Fable's
-  ;; price (`bb models`), and the first real project found that review, not
-  ;; code, is where a task's money goes - so the reader's price is the seat's
-  ;; biggest lever; and Opus is the Blueprint reviewer in both shipped
-  ;; profiles, where on that project it read a stage's Blueprint whole and
-  ;; drew findings the Architect acted on. A code reviewer reads a diff against a
-  ;; contract, the same kind of work. High, as claude.edn's reviewers run.
-  ;; What is not measured is this seat as a whole: no run has used it, and no
-  ;; Anthropic model has been dispatched as a code reviewer at all - the bake-off
-  ;; that would test one could not, because every case's code was written by
-  ;; an Anthropic Coder and §05 wants the verifier clear of the author's
-  ;; family. The first agy-ide run tests it; `bb bake-off` is how to choose
-  ;; from a measurement instead.
-  ;;
-  ;; :max_tokens 32,000, because thinking counts against that cap on this
-  ;; shape. A code reviewer's findings are short, so the risk is not a long answer
-  ;; but a budget spent thinking with nothing left to say it with — which this
-  ;; kit has seen once, on a flash tier at high as code reviewer (see claude.edn).
+  ;; CODE REVIEWER - reads the diff against the contract once the gates are green. :max_tokens
+  ;; 32000: a short verdict after a long think.
   :reviewer {:family :anthropic
              :model "claude-opus-5-5"
              :shape :anthropic
@@ -110,24 +47,13 @@
              :params {:output_config {:effort "high"}
                       :max_tokens 32000
                       :cache_control nil}
-             ;; USD per million tokens: base input, output, 5-minute and 1-hour
-             ;; cache writes, cache reads. Input and output as `bb models` listed
-             ;; them on 2026-10-05; the cache rates by Anthropic's multipliers
-             ;; (1.25x and 2x the input for writes, 0.1x for reads).
              :pricing {:per-mtok {:in 4 :out 20
                                   :cache-write-5m 5 :cache-write-1h 8
                                   :cache-read 0.4}
                        :source "https://platform.claude.com/docs/en/about-claude/pricing"
                        :as-of "2026-10-05"}}
 
-  ;; PLAN REVIEWER — the spec reviewer's selection, block for block, as in
-  ;; claude.edn and for the reason its comment gives: the plan review and the
-  ;; spec review are the same kind of reading - cold, adversarial, one call -
-  ;; and differ in the checklist sent, not in the reader. Its own role from
-  ;; 2026-10-06 so that a project can set it apart; not the seat's family
-  ;; (Google here), and `bb profile` checks that as it does the spec reviewer's.
-  ;; One call per stage, in its plan step, by `bb plan-review`. NOT MEASURED
-  ;; IN THIS SEAT, as nothing here is.
+  ;; PLAN REVIEWER - reads the plan, or a stage plan, cold: one call per stage (`bb plan-review`).
   :plan-reviewer {:family :anthropic
                   :model "claude-opus-5-5"
                   :shape :anthropic
@@ -142,19 +68,7 @@
                             :source "https://platform.claude.com/docs/en/about-claude/pricing"
                             :as-of "2026-10-05"}}
 
-  ;; SPEC REVIEWER — the code reviewer's family, for the code reviewer's reason: not the
-  ;; seat's family (Google here), and the seat is where the Architect writes
-  ;; the spec this role reads cold before `start`. The code reviewer's model too,
-  ;; Opus 5.5 at high, the same dated selection of 2026-10-05 by analogy; it
-  ;; was Fable 5.1 at low (2026-09-18).
-  ;;
-  ;; WHAT WAS MEASURED WAS FABLE'S EFFORT, NOT THIS. Fable reviewed the same
-  ;; specs at both efforts on the claude seat: high cost nearly twice low per
-  ;; call and hit its budget cap after twenty calls; low found the same four
-  ;; gaps. That measurement is Fable's and does not carry to another model;
-  ;; claude.edn's spec reviewer runs at high, and so does this one until the
-  ;; first agy-ide run says otherwise. What is not measured is this seat as a
-  ;; whole.
+  ;; SPEC REVIEWER - reads each packet's spec cold before its first dispatch.
   :spec-reviewer {:family :anthropic
                   :model "claude-opus-5-5"
                   :shape :anthropic
@@ -169,15 +83,8 @@
                             :source "https://platform.claude.com/docs/en/about-claude/pricing"
                             :as-of "2026-10-05"}}
 
-  ;; BLUEPRINT REVIEWER — Claude Opus 5.5 at high effort, direct to Anthropic's
-  ;; API since 2026-10-16: the same block as claude.edn's, for the
-  ;; same measured reason (its comment has it). Here it is NOT the seat's
-  ;; family — the seat is Google — so no exception is needed: this is the
-  ;; arrangement §05 would ask for anyway. One call per Blueprint, before
-  ;; sign-off, by `bb blueprint-review`; no tools, `:cache_control nil`.
-  ;;
-  ;; NOT MEASURED IN THIS SEAT. No run has used it; what was measured is the
-  ;; model reading Blueprints written by the other seat's family.
+  ;; BLUEPRINT REVIEWER - reads a stage's Blueprint whole before sign-off: one call
+  ;; (`bb blueprint-review`).
   :blueprint-reviewer {:family :anthropic
                        :model "claude-opus-5-5"
                        :shape :anthropic
@@ -192,22 +99,8 @@
                                  :source "https://platform.claude.com/docs/en/about-claude/pricing"
                                  :as-of "2026-10-16"}}
 
-  ;; SECURITY REVIEWER — gpt-6-astra at high effort, over OpenRouter pinned to OpenAI. Dated
-  ;; selection 2026-10-08, by two bake-offs on the KIT's planted-fault fixture (`bb security-bake-off`):
-  ;; once per stage, at its end, it reads the merged application with five tools in a sandbox with
-  ;; no network, and a finding counts only when a test of its own fails. It found six and five of
-  ;; six planted faults, and on the careful branch its only failing tests were two real flaws
-  ;; nobody had planted; the other candidate found three in every run and never answered inside
-  ;; its round limit. Fable 5.1 declined the review (its safeguard, three runs) and was
-  ;; not a candidate after.
-  ;;
-  ;; ONE SECURITY REVIEWER FOR NOW, the person's decision: a second from another family may be
-  ;; tried later for diversity. It is a verifier - it reads what the Coder wrote to disagree
-  ;; with it - so `bb profile` holds it to another family than the Coder's.
-  ;;
-  ;; WHAT IT COSTS: $0.46 to $1.50 a reading of the fixture, three to eight minutes of review;
-  ;; a real stage is larger. Its reproduced findings go to triage (`bb security-route`), its hypotheses to the
-  ;; person for the threat model.
+  ;; SECURITY REVIEWER - once per stage, reads the merged application with its tools in a sandbox
+  ;; with no network; a finding counts only when a test of its own fails (`bb security-review`).
   :security-reviewer {:family :openai
                       :model "openai/gpt-6-astra"
                       :shape :openai
@@ -216,28 +109,8 @@
                       :params {:reasoning_effort "high"
                                :provider {:only ["openai"] :allow_fallbacks false}}}
 
-  ;; ORCHESTRATOR — gemini-3.8-flash at high effort, over OpenRouter. TRIAGE
-  ;; ONLY: one completion with no tools, on a red gate or a note, routing to
-  ;; coder | tester | architect | human with a reason and guidance. The
-  ;; seat's family, as in claude.edn, and for the same reason: triage is not
-  ;; a verifier, so §05 does not constrain it, and the family that sits with
-  ;; the human reads the contract the human wrote.
-  ;;
-  ;; NOT MEASURED. No run has used this seat. High rather than the medium
-  ;; this file measures elsewhere, because a triage call is one completion
-  ;; over a few thousand tokens with no tool loop — the empty-final-message
-  ;; failure this file records for high on a flash tier came from a
-  ;; 24-iteration code reviewer dispatch, which this is not. If the first agy-ide
-  ;; run shows an empty verdict, the fallback routes mechanically and the
-  ;; record says so; drop to medium then.
-  ;;
-  ;; IT IS THE CODER'S MODEL, and claude.edn moved away from that on
-  ;; 2026-10-02: triage judges the Coder's code against the Tester's test, and
-  ;; the Coder's own model in that seat is the one kinship the role should
-  ;; not have (the family is convention; the model is the bias). Left as it is
-  ;; here, said plainly, because no run has used this seat and a model chosen
-  ;; for it unmeasured would be a guess dressed as a selection. The first
-  ;; agy-ide run decides it, the way the first real project decided the other.
+  ;; ORCHESTRATOR - triage only: one call on a red gate, a note or a rejection, routing it to the
+  ;; Coder, the Tester, the Architect or a person. Not a verifier, so any family.
   :orchestrator {:family :google
                  :model "google/gemini-3.8-flash"
                  :shape :openai

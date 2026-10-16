@@ -56,6 +56,16 @@ step by hand, named there.
 
 ## 2026-10-16
 
+### The shipped profiles say what configures them, and no more (plan 6.5, item 17)
+
+`claude.edn` and `agy-ide.edn` had grown to 640 lines between them, most of it the history of
+each selection - which bake-off, which build, which model before. A project copies one of them
+into its build and edits it; what it needs there is how the file works. Each now has a short
+header - the key variable, the verifiers' rule `bb profile` checks, what each shape means for
+caching, cost and credit, the rounds limit, where the selections are dated - and one line per role
+saying what the role does. 235 lines; the data is unchanged (read back equal to the commit
+before). The history stays where history is kept: this log and `NOTES.md`'s register.
+
 ### The `claude` example codes with Gemini 4 Argon and tests with Sonnet 5.5 (plan 6.5, item 17d, register row 130)
 
 The first KIT project's Tester was most often the first red gate of a packet, and another model had
