@@ -133,6 +133,16 @@ fork's `bb test` runs the template's config tests, not the generated project's g
 change to a generated test file is proved only by generating - the KIT's health check does it,
 and from now on it runs before the pin moves, not after.
 
+Round 3, the first-time path end to end: phase 2, the conflict resolved for the template, the
+template upgrade resumed with the mirror re-rendered and all four of the project's gates green,
+`bb run-loop merge` with its decision, the branch gone and `template` kept; then the workspace's
+`bb gates` green with the nine published records held, `bb next` at stage 1's plan with the
+leftovers beside it, `bb plan-check` clean. The Architect's two leftovers by hand: the saved hunk
+is the retry-cap row's new label over the project's filled row, a one-line edit in the build; the
+new `CLAUDE.md` taken whole. One more thing the doctor then showed: "the application's branch is
+merged" stays for ever once said. It is said only while something else of the upgrade is still
+left; an upgrade wholly resolved goes quiet.
+
 ### The pin moves to `kit-v1.3`, and a record from a local clone is refused (plan 6.5, item 15)
 
 `template-pins.edn` names the fork's candidate - `kit-v1.3`, commit `1c1838a`, the tag not yet

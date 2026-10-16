@@ -191,7 +191,8 @@
   [{:keys [version app conflicts new]}]
   (let [v (or version "the release")]
     (cond-> []
-      (and app (= :merged (:state app)))
+      ;; said only while something else is still left: an upgrade wholly resolved goes quiet
+      (and app (= :merged (:state app)) (or (seq conflicts) (seq new)))
       (conj (str "upgraded to " v ": the application's branch " (:branch app) " is merged"))
 
       (and app (= :gone (:state app)))
