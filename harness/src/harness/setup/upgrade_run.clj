@@ -689,7 +689,7 @@
             ;; stranded there; refused here, before anything moves
             _ (when-not (zero? (:exit (git kit "merge-base" "--is-ancestor" "HEAD" tag)))
                 (throw (ex-info (str tag " does not descend from this clone's commit " (subs head 0 7) ": a tag on another line, not an upgrade path;"
-                                     " nothing changed (`git -C " kit-rel " log --oneline " (subs head 0 7) ".." tag "` is empty, `git -C " kit-rel " log --oneline " tag ".." (subs head 0 7) "` is not)")
+                                     " nothing changed (`git -C " kit-rel " log --oneline " tag ".." (subs head 0 7) "` lists what this clone has that the tag lacks)")
                                 {:upgrade/error :diverged-target :tag tag :head head})))
             _ (when (and (nil? to) (> (count newer) 1))
                 (println (str "  taking the latest, " tag "; name another with `bb upgrade --to <tag>` if you do not want the latest")))

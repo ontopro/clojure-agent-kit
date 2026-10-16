@@ -538,5 +538,7 @@
                  nil (catch clojure.lang.ExceptionInfo e e))]
       (is (= :diverged-target (:upgrade/error (ex-data e))) (pr-str (ex-data e)))
       (is (str/includes? (ex-message e) "does not descend from this clone's commit"))
+      (is (str/includes? (ex-message e) (str "log --oneline 0.6.5.." (subs head 0 7) "` lists")) "the one git log that is never empty")
+      (is (not (str/includes? (ex-message e) "is empty")) "a side line has commits of its own: nothing here is empty")
       (is (= head (git-out clone "rev-parse" "HEAD")) "nothing moved")
       (is (not= before head)))))

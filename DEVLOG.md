@@ -175,6 +175,11 @@ base the run's `state.edn` records; HEAD is the measure only when the run direct
 reverse case holds too: a branch resolved past its base and taken by a fast-forward, tip equal to
 HEAD, is merged.
 
+The same review read the refusal's words: of the two `git log` commands it named, "`<head>..<tag>`
+is empty" holds only for a tag that is an ancestor of the clone, which a tag on a side line is
+not - its own commits are exactly what that log lists. The refusal names the one log that is
+never empty, what the clone has that the tag lacks, and the test holds it to those words.
+
 ### The pin moves to `kit-v1.3`, and a record from a local clone is refused (plan 6.5, item 15)
 
 `template-pins.edn` names the fork's candidate - `kit-v1.3`, commit `1c1838a`, the tag not yet
