@@ -152,6 +152,20 @@ phase 1 now refuses it by name before anything moves, with the two `git log` com
 why. And a pin "moved" from `kit-v1.3` to `kit-v1.3` read as nothing: the message names the
 commits beside the tags.
 
+Round 4 again, on the throwaways re-cut by hand: a copy of round 3's upgraded workspace,
+`bb upgrade` once - the tags fetched (after the sandbox's own force-moved tags were deleted
+locally; a fetch that git refuses now fails with git's words, not an empty line, since `--quiet`
+hid them), two releases newer than the clone's, both met, the latest taken, `KIT/` moved to
+`0.6.7`, phase 2 in a new process: the renamed key migrated first, the front door and skills
+current, `CLAUDE.md` rewritten under its marker from round 3, and the build documents refused
+by name on an uncommitted edit, nothing written. The edit committed, `bb upgrade` again: the
+clone already past the recorded commit, straight to phase 2's first step not done, the
+documents applied (the throwaway's one line a conflict, saved - it and the test's own notes
+both appended to the same file's end), the application needing nothing (the pin as it was, the
+mirror current, the branch dropped), the commit moved, the doctor clean but for the saved hunk.
+The workspace's `bb gates` green, `bb next` at stage 1's plan. Two versions in one jump, a stop
+and a resume, the re-run after the move: the three things the plan asked the sandbox to prove.
+
 ### The pin moves to `kit-v1.3`, and a record from a local clone is refused (plan 6.5, item 15)
 
 `template-pins.edn` names the fork's candidate - `kit-v1.3`, commit `1c1838a`, the tag not yet

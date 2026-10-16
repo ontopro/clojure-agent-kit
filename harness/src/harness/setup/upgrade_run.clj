@@ -648,7 +648,8 @@
                                 {:upgrade/error :dirty-records :files records})))
             ;; THE TAGS FETCHED, which moves nothing
             _ (println (str "bb upgrade: fetching tags from " origin))
-            _ (git! kit "fetch" "--tags" "--quiet")
+            ;; not --quiet: a fetch that fails must fail with git's words (a tag the remote moved, a host gone)
+            _ (git! kit "fetch" "--tags")
             all-tags (str/split-lines (:out (git kit "tag")))
             newer (newer-releases all-tags here)
             {:keys [tag error nothing]} (choose-target newer here all-tags to)
