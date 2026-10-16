@@ -40,7 +40,8 @@
   (let [{:keys [body]} (adapter/request anthropic-role "RULES" msgs nil)]
     (is (= {:type "ephemeral"} (:cache_control body))))
   (let [{:keys [body]} (adapter/request (assoc anthropic-role :params {:cache_control nil}) "RULES" msgs nil)]
-    (is (nil? (:cache_control body)) "a profile that says no gets no"))
+    (is (nil? (:cache_control body)) "a profile that says no gets no")
+    (is (not (contains? body :cache_control)) "left out, not sent as null"))
   (is (nil? (:cache_control (:body (adapter/request openai-role "RULES" msgs nil))))
       "not an OpenAI-shape parameter"))
 

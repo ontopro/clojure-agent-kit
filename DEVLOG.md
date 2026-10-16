@@ -54,6 +54,20 @@ step by hand, named there.
 
 ---
 
+## 2026-10-16
+
+### A direct Anthropic request can leave the cache out (plan 6.5, item 17a, register row 25 (c))
+
+The `:anthropic` shape asks for automatic prompt caching on every request, which is right for a
+tool loop - the Coder re-sends its conversation each completion - and wrong for a role that reads
+its prompt once: triage and the Blueprint review would pay the cache-write premium, 1.25 times
+the input rate, on a prompt nobody reads again. The shipped `claude` profile kept those roles on
+OpenRouter, where caching is asked for or not; `agy-ide`'s three reviewers are direct and paid it;
+item 17a moves `claude`'s to Anthropic's own API. `:cache_control nil` in a role's `:params` was already accepted, and sent
+the field as a JSON `null`; a paid probe showed the API takes the null and writes nothing (9,411
+input tokens uncached). The adapter now leaves the field out instead of relying on that, and the
+test says so.
+
 ## 2026-10-14
 
 ### `tag-check` no longer stales the records it just wrote (plan 6.5, item 15, register row 127)

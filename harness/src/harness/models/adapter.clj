@@ -91,6 +91,9 @@
                          ;; prices it. A profile :params entry overrides it.
                          :cache_control {:type "ephemeral"}}
                         (dissoc params :max_tokens))
+           ;; `:cache_control nil` in :params is the opt-out, for a role that reads its prompt
+           ;; once (triage, a review): the field left out, not sent as null (row 25 (c))
+           (and (contains? params :cache_control) (nil? (:cache_control params))) (dissoc :cache_control)
            (seq tools) (assoc :tools tools))})
 
 ;; ---------------------------------------------------------------------------
