@@ -180,6 +180,13 @@ is empty" holds only for a tag that is an ancestor of the clone, which a tag on 
 not - its own commits are exactly what that log lists. The refusal names the one log that is
 never empty, what the clone has that the tag lacks, and the test holds it to those words.
 
+One thing the rounds did not hit, the review noted: the plan's stop was "the network cut after
+the skills", and round 4 stopped on an uncommitted note instead, so the one step that needs the
+network, the generation, was never seen to fail and resume. A test does it now: the generation
+throws, the app step records the words and nothing is written to `workspace.edn`, the six steps
+before it stand done; the next run picks up at the app step, generates, and ends awaiting its
+merge in the same folder.
+
 ### The pin moves to `kit-v1.3`, and a record from a local clone is refused (plan 6.5, item 15)
 
 `template-pins.edn` names the fork's candidate - `kit-v1.3`, commit `1c1838a`, the tag not yet

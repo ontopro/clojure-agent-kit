@@ -95,29 +95,30 @@
 (defn- workspace!
   "A workspace made by `bb init` from the fake KIT at 0.6.4, the project then at work: the
   overview filled (the instruction deleted, the row filled), loop.edn with a literal KIT path."
-  [kit]
-  (let [ws-dir (str (fs/path (fs/parent kit) "xyx"))
-        lay (init/layout {:name "xyx" :kit-dir kit :dir ws-dir
-                          :build-docs (init/build-docs-files kit)
-                          :skills (skills/sources kit)
-                          :harness-tasks (front-door/harness-tasks (slurp (str (fs/path kit "harness" "bb.edn"))))
-                          :rule-mirrors ["xyx-app/AGENTS.md"]
-                          :kit-commit (init/kit-commit kit)
-                          :kit-version (init/kit-version kit)
-                          :loop/defaults (:loop/defaults pin)})]
-    (init/create! lay {:git-env git-env
-                       :app-fn (app/app-fn pin {:app-name "xyx" :git-env git-env :kit-version "0.6.4" :run (generator generated-files)})})
-    (let [ws (workspace/find-workspace ws-dir)
-          build (:workspace/build ws)
-          overview (fs/path build "docs" "00-overview.md")
-          loop-edn (fs/path build "loop.edn")]
-      (spit (str overview) (-> (slurp (str overview))
-                               (str/replace "> Instruction one: delete this line once the section is filled.\n\n" "")
-                               (str/replace "| Retry cap | <n> |" "| Retry cap | 3 |")))
-      (spit (str loop-edn) (str/replace (slurp (str loop-edn)) "--config {{kit}}/harness/bb.edn" "--config /old/place/KIT/harness/bb.edn"))
-      (git-out build "add" "-A")
-      (git-out build "commit" "-q" "-m" "the project's plan step")
-      ws)))
+  ([kit] (workspace! kit pin))
+  ([kit p]
+   (let [ws-dir (str (fs/path (fs/parent kit) "xyx"))
+         lay (init/layout {:name "xyx" :kit-dir kit :dir ws-dir
+                           :build-docs (init/build-docs-files kit)
+                           :skills (skills/sources kit)
+                           :harness-tasks (front-door/harness-tasks (slurp (str (fs/path kit "harness" "bb.edn"))))
+                           :rule-mirrors ["xyx-app/AGENTS.md"]
+                           :kit-commit (init/kit-commit kit)
+                           :kit-version (init/kit-version kit)
+                           :loop/defaults (:loop/defaults pin)})]
+     (init/create! lay {:git-env git-env
+                        :app-fn (app/app-fn p {:app-name "xyx" :git-env git-env :kit-version "0.6.4" :run (generator generated-files)})})
+     (let [ws (workspace/find-workspace ws-dir)
+           build (:workspace/build ws)
+           overview (fs/path build "docs" "00-overview.md")
+           loop-edn (fs/path build "loop.edn")]
+       (spit (str overview) (-> (slurp (str overview))
+                                (str/replace "> Instruction one: delete this line once the section is filled.\n\n" "")
+                                (str/replace "| Retry cap | <n> |" "| Retry cap | 3 |")))
+       (spit (str loop-edn) (str/replace (slurp (str loop-edn)) "--config {{kit}}/harness/bb.edn" "--config /old/place/KIT/harness/bb.edn"))
+       (git-out build "add" "-A")
+       (git-out build "commit" "-q" "-m" "the project's plan step")
+       ws))))
 
 (defn- raw [ws] (edn/read-string (slurp (str (fs/path (:workspace/dir ws) "workspace.edn")))))
 
@@ -542,3 +543,31 @@
       (is (not (str/includes? (ex-message e) "is empty")) "a side line has commits of its own: nothing here is empty")
       (is (= head (git-out clone "rev-parse" "HEAD")) "nothing moved")
       (is (not= before head)))))
+
+(deftest a-generation-that-fails-stops-the-app-step-and-phase-two-resumes-there
+  ;; the plan's own rule for the sandbox - "the network cut after the skills" - which round 4
+  ;; did not hit (it stopped on an uncommitted note instead): the one step that needs the
+  ;; network fails, the steps before it stand, nothing is recorded, and the next run resumes there
+  (let [kit (fake-kit!)
+        ;; the application generated from an older pin, so the app step must generate
+        ws (workspace! kit (assoc pin :git/sha (str "0000000" (subs (:git/sha pin) 7))))
+        build (:workspace/build ws)
+        _ (spit (str (fs/path build "rules.edn")) (pr-str [{:id :layer-boundaries :text "Respect the boundaries of layer {{layer}}. FILLED."}]))
+        _ (git-out build "commit" "-q" "-am" "the rules filled")
+        _ (release! kit)
+        cut (fn [_] (throw (ex-info "the network is cut: github.com unreachable" {})))
+        r1 (binding [*out* (java.io.StringWriter.)] (ur/after-pull! ws kit {:gates [[:fmt "true"]] :generate cut}))]
+    (is (not (:ok? r1)))
+    (is (= :app (:stopped r1)))
+    (is (str/includes? (get-in r1 [:records :app :detail]) "the network is cut"))
+    (is (every? #(= :done (get-in r1 [:records % :status])) [:workspace-keys :front-door :skills :orientation :build-docs :loop-edn]) "the steps before it are done")
+    (is (nil? (:workspace/upgraded-to (raw ws))) "nothing recorded: the commit stays where it was")
+    (testing "the network back: the run picks up at the app step, generates, and finishes"
+      (let [generate (fn [target] (doseq [[path content] (assoc generated-files "src/xyx/core.clj" "(ns xyx.core)\n\n(def from-the-new-template true)\n")]
+                                    (fs/create-dirs (fs/parent (fs/path target path)))
+                                    (spit (str (fs/path target path)) content)))
+            r2 (binding [*out* (java.io.StringWriter.)] (ur/after-pull! ws kit {:gates [[:fmt "true"]] :generate generate}))]
+        (is (:ok? r2) (pr-str (:records r2)))
+        (is (= (:dir r1) (:dir r2)) "the same folder")
+        (is (= :awaiting-merge (get-in r2 [:records :app :app :state])))
+        (is (= :awaiting-merge (get-in (upgrade/open-after-upgrade ws (raw ws)) [:app :state])))))))
