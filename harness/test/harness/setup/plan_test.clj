@@ -9,6 +9,8 @@
    [clojure.edn :as edn]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [harness.gates.boundary :as boundary]
+   [harness.gates.run :as gates]
    [harness.loop.driver :as driver]
    [harness.rules :as rules]
    [harness.setup.app :as app]
@@ -148,6 +150,38 @@
   (is (= ["layers.edn: the template's xyx.core is no longer declared"]
          (plan/layer-problems (dissoc app-layers 'xyx.core) pinned)))
   (is (= 1 (count (plan/layer-problems {:boundary/fixtures []} pinned))) "no entries at all is one sentence"))
+
+(deftest a-template-namespace-removed-with-its-file-passes
+  ;; A project removes a template namespace by decision - the entry and the file both gone. The
+  ;; boundary gate refuses an entry without its file, so the plan check must not ask for it back.
+  (let [defined (set (keys (dissoc (boundary/layers app-layers) 'xyx.db)))]
+    (is (= [] (plan/layer-problems (dissoc app-layers 'xyx.db) pinned defined))
+        "entry and file gone: removed")
+    (is (= ["layers.edn: the template's xyx.db is no longer declared, and its file is still under src/"]
+           (plan/layer-problems (dissoc app-layers 'xyx.db) pinned (conj defined 'xyx.db)))
+        "the entry gone while its file stays: still a loosening")
+    (is (= ["layers.edn: xyx.views may now require xyx.db, which the template's layering does not allow"]
+           (plan/layer-problems (assoc app-layers 'xyx.views #{'xyx.db}) pinned (set (keys (boundary/layers app-layers)))))
+        "the other rule holds with src/ read")))
+
+(deftest the-plan-check-reads-the-applications-src-for-a-removed-namespace
+  (let [ws-dir (fs/create-temp-dir)
+        app (fs/path ws-dir "xyx-app")
+        build (fs/path ws-dir "xyx-build")
+        removed (dissoc app-layers 'xyx.db)]
+    (doseq [nm (keys (boundary/layers removed))
+            :let [f (fs/path app "src" (str (str/replace (str/replace (str nm) "." "/") "-" "_") ".clj"))]]
+      (fs/create-dirs (fs/parent f))
+      (spit (str f) (str "(ns " nm ")\n")))
+    (spit (str (fs/path app "layers.edn")) (pr-str removed))
+    (fs/create-dirs build)
+    (spit (str (fs/path build "loop.edn")) (pr-str {:gates gates/default-gate-seq}))
+    (is (= [] (plan/given-problems {:workspace/app (str app) :workspace/build (str build)} (template/pin (template/load-pins))))
+        "xyx.db gone with its file: nothing to say")
+    (spit (str (fs/path app "src" "xyx" "db.clj")) "(ns xyx.db)\n")
+    (is (= ["layers.edn: the template's xyx.db is no longer declared, and its file is still under src/"]
+           (plan/given-problems {:workspace/app (str app) :workspace/build (str build)} (template/pin (template/load-pins))))
+        "its file back: the entry is asked for")))
 
 (deftest the-gate-keys-run-in-the-kits-order-and-a-projects-gate-comes-after
   (let [kit [[:fmt "a"] [:lint "b"] [:test "c"] [:deps "d"]]]

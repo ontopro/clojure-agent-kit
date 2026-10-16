@@ -383,7 +383,8 @@ of a project is written into it - which is why the list below is short.
 - **The plan is read before the first dispatch, by two commands.** `bb plan-check` is the gate: no mark and
   none of the template's instructions left in `<name>-build/docs/`, the overlay's placeholders
   filled, the given parts intact - the KIT's rules unedited in the overlay, the application's
-  `layers.edn` not loosened against the pin's layers, the gate keys in `loop.edn` in the KIT's
+  `layers.edn` not loosened against the pin's layers (a template namespace removed with its file is
+  not a loosening: nothing can require it), the gate keys in `loop.edn` in the KIT's
   order. Exit 1 with the list, one sentence each; `start` runs it once per workspace before its
   first dispatch and knows once by a hash of what it read (`work/plan-check.edn`). `bb plan-review`
   is `method.md` §03's review pass, run in every stage's plan step: in stage 0 the plan's seven

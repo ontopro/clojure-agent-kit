@@ -71,6 +71,21 @@ the project's and the upgrade leaves it as it is: compare it with
 
 ## 2026-10-16
 
+### A template namespace removed with its file passes the plan check (plan 6.6, register row 132)
+
+The first KIT project's second stage removed the template's unused database by a recorded decision:
+the namespaces' files deleted and their `layers.edn` entries with them. The boundary gate was green
+- it refuses an entry with no file, as dead config - and `bb plan-check` refused the opposite: "the
+template's ... is no longer declared". `start` re-runs the plan check whenever `layers.edn` changes,
+so the stage's first packet stopped before anything was dispatched. Two checks a project could not
+both satisfy, and the only way past was to switch the plan check off.
+
+`layer-problems` takes the namespaces the application's `src/` defines (`boundary/defined`, the
+boundary gate's own reading): a template namespace with neither an entry nor a file is removed and
+passes, since nothing can require what is not there. An entry gone while its file stays is still a
+loosening, said so ("its file is still under src/"). Checked on that project's workspace, read only:
+both sentences gone, nothing else said.
+
 ### The no-absolute-path test holds wherever the clone is (plan 6.5, item 17e)
 
 `bb docker-gates` on the tag's commit went red where `bb gates` here was green: five failures, all

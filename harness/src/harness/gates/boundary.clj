@@ -54,15 +54,25 @@
   [ruleset]
   (into {} (filter (comp symbol? key)) ruleset))
 
+(defn- ns-forms
+  "Every namespace defined under `src-dir`, as `[name ns-form]`, sorted by file."
+  [src-dir]
+  (for [f (sort (fs/glob src-dir "**/*.clj"))
+        :let [form (edn/read-string (slurp (str f)))]
+        :when (and (seq? form) (= 'ns (first form)))]
+    [(second form) form]))
+
+(defn defined
+  "The namespaces a file under `src-dir` defines, as a set of symbols."
+  [src-dir]
+  (set (map first (ns-forms src-dir))))
+
 (defn violations
   "Every boundary violation under `src-dir`, given `ruleset` - a vector of
   `{:ns _ :kind _ :detail _}`, sorted by file."
   [src-dir ruleset]
   (let [fixtures (set (:boundary/fixtures ruleset))
-        found (for [f (sort (fs/glob src-dir "**/*.clj"))
-                    :let [form (edn/read-string (slurp (str f)))]
-                    :when (and (seq? form) (= 'ns (first form)))]
-                [(second form) form])
+        found (ns-forms src-dir)
         present (set (map first found))]
     (vec
      (concat

@@ -288,24 +288,32 @@
   a pinned namespace whose entry is gone, or one that may now require a
   template namespace the pin did not let it. A layer the project ADDS, and a
   pinned namespace requiring one, are the project's - the chosen part - and
-  pass. The root namespace is read off the entries, not asked for."
-  [layers pinned]
-  (let [entries (boundary/layers layers)
-        root (->> (keys entries) (map ns-root) frequencies (sort-by val >) ffirst)
-        full #(symbol (str root "." %))
-        template-nss (into #{} (map full) (keys pinned))]
-    (if (nil? root)
-      ["layers.edn: no namespace entries, so the template's layers are gone"]
-      (vec (for [[tail allowed] (sort-by (comp str key) pinned)
-                 :let [nm (full tail)
-                       now (get entries nm)
-                       may (into (sorted-set) (map full) allowed)]
-                 problem (if (nil? now)
-                           [(str "layers.edn: the template's " nm " is no longer declared")]
-                           (for [req (sort (filter template-nss now)) :when (not (may req))]
-                             (str "layers.edn: " nm " may now require " req
-                                  ", which the template's layering does not allow")))]
-             problem)))))
+  pass. So does a template namespace REMOVED - its entry gone and no file in
+  `defined` (the namespaces under the application's `src/`, when known)
+  defining it: nothing can require what is not there, and the boundary gate
+  refuses an entry without its file. The root namespace is read off the
+  entries, not asked for."
+  ([layers pinned] (layer-problems layers pinned nil))
+  ([layers pinned defined]
+   (let [entries (boundary/layers layers)
+         root (->> (keys entries) (map ns-root) frequencies (sort-by val >) ffirst)
+         full #(symbol (str root "." %))
+         template-nss (into #{} (map full) (keys pinned))
+         removed? #(and defined (not (contains? defined %)))]
+     (if (nil? root)
+       ["layers.edn: no namespace entries, so the template's layers are gone"]
+       (vec (for [[tail allowed] (sort-by (comp str key) pinned)
+                  :let [nm (full tail)
+                        now (get entries nm)
+                        may (into (sorted-set) (map full) allowed)]
+                  :when (not (and (nil? now) (removed? nm)))
+                  problem (if (nil? now)
+                            [(str "layers.edn: the template's " nm " is no longer declared"
+                                  (when defined ", and its file is still under src/"))]
+                            (for [req (sort (filter template-nss now)) :when (not (may req))]
+                              (str "layers.edn: " nm " may now require " req
+                                   ", which the template's layering does not allow")))]
+              problem))))))
 
 (defn gate-order-problems
   "Where `gate-seq` (a `:gates` vector of `[key command]`) departs from the
@@ -337,7 +345,8 @@
         loop-edn (fs/path (:workspace/build ws) "loop.edn")]
     (vec (concat
           (if (fs/exists? layers)
-            (layer-problems (read-edn-file layers) (:layers pin))
+            (layer-problems (read-edn-file layers) (:layers pin)
+                            (boundary/defined (fs/path (:workspace/app ws) "src")))
             [(str "layers.edn: not at " layers " - gate 4 has no ruleset")])
           (if (fs/exists? loop-edn)
             (some-> (read-edn-file loop-edn) :gates gate-order-problems)
