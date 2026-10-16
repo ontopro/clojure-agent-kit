@@ -54,6 +54,14 @@ step by hand, named there.
 
 ---
 
+## 0.6.6 — plan 6.6's boundary: a template namespace a project removes
+
+Plan 6.6 added one fix: `bb plan-check` passes a template namespace removed with its file - its
+`layers.edn` entry and its file under `src/` both gone - which it had refused while the boundary gate
+refused keeping the entry, so `start` stopped a stage's first packet. A workspace at `0.6.5` takes it
+with `bb upgrade` from the workspace folder; one made at `0.6.4` upgrades by hand the first time, as
+`0.6.5`'s line says, checking out `0.6.6`.
+
 ## 0.6.5 — plan 6.5's boundary: the upgrade, and the profile measured
 
 Plan 6.5 added `bb upgrade` - each newer release's requirements checked against the machine, the
