@@ -576,7 +576,7 @@
       (conj (str "newly required: " (str/join ", " (map name (sort (set/difference (required new-specs) (required old-specs)))))))
 
       moved
-      (conj (str "the application template's pin moves: " (:git/tag (:from moved)) " -> " (:git/tag (:to moved))
+      (conj (str "the application template's pin moves: " (:git/tag (:from moved)) " (" (subs (:git/sha (:from moved)) 0 7) ") -> " (:git/tag (:to moved)) " (" (subs (:git/sha (:to moved)) 0 7) ")"
                  " (bb upgrade's phase 2 brings the application up on a branch)")))))
 
 (defn hand-over-command
@@ -683,6 +683,13 @@
                                        (if takeable (str ". The newest release this machine can take: " (:tag takeable) " (`bb upgrade --to " (:tag takeable) "`)")
                                            ". No newer release can be taken here as it is"))
                                   {:upgrade/error :requirements :tag tag :missing (:missing target)}))))
+            ;; THE TARGET DESCENDS FROM THE CLONE, or it is not an upgrade path: a tag cut on another line - a
+            ;; hotfix branch, a re-cut throwaway - would move KIT/ to a commit phase 2 then refuses, with the clone
+            ;; stranded there; refused here, before anything moves
+            _ (when-not (zero? (:exit (git kit "merge-base" "--is-ancestor" "HEAD" tag)))
+                (throw (ex-info (str tag " does not descend from this clone's commit " (subs head 0 7) ": a tag on another line, not an upgrade path;"
+                                     " nothing changed (`git -C " kit-rel " log --oneline " (subs head 0 7) ".." tag "` is empty, `git -C " kit-rel " log --oneline " tag ".." (subs head 0 7) "` is not)")
+                                {:upgrade/error :diverged-target :tag tag :head head})))
             _ (when (and (nil? to) (> (count newer) 1))
                 (println (str "  taking the latest, " tag "; name another with `bb upgrade --to <tag>` if you do not want the latest")))
             ;; THE MOVE, and nothing else in this process

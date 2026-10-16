@@ -481,3 +481,32 @@
       (git-out app "checkout" "-q" "upgrade-x") (git-out app "add" "-A") (git-out app "commit" "-q" "-m" "on the branch")
       (git-out app "checkout" "-q" "main") (git-out app "merge" "-q" "--no-ff" "--no-edit" "upgrade-x")
       (is (= :merged (get-in (upgrade/open-after-upgrade ws (raw ws)) [:app :state]))))))
+
+(deftest a-target-tag-on-another-line-is-refused-before-anything-moves
+  ;; round 4 of the sandbox: a throwaway release re-cut on an older line moved KIT/ to a commit
+  ;; phase 2 then refused, the clone stranded there
+  (let [fake (fake-kit!)
+        clone (clone-at! fake (fs/path (fs/real-path (fs/create-temp-dir)) "KIT") "0.6.4")
+        ws (workspace! clone)
+        before (git-out clone "rev-parse" "HEAD")]
+    ;; the fake's main moves on, and 0.6.5 is cut on a side line off the OLD commit
+    (spit (str (fs/path fake "build-docs" "README.md")) "# The plan's documents\n\nmain moved on\n")
+    (git-out fake "commit" "-q" "-am" "main moves on")
+    (git-out fake "checkout" "-q" "-b" "side" "0.6.4")
+    (spit (str (fs/path fake "build-docs" "README.md")) "# The plan's documents\n\na side line\n")
+    (git-out fake "commit" "-q" "-am" "a side line")
+    (git-out fake "tag" "0.6.5")
+    (git-out fake "checkout" "-q" "main")
+    ;; the clone follows main first, so 0.6.5 is on another line from where it stands
+    (git-out clone "fetch" "-q" "--tags" "origin")
+    (git-out clone "checkout" "-q" "--detach" "origin/main")
+    (spit (str (fs/path (:workspace/dir ws) "workspace.edn")) (pr-str (assoc (raw ws) :workspace/kit-commit (git-out clone "rev-parse" "HEAD"))))
+    (let [head (git-out clone "rev-parse" "HEAD")
+          e (try (binding [*out* (java.io.StringWriter.)]
+                   (ur/phase-one! ws clone {:reachable? (constantly true) :probe (fn [specs] (mapv #(assoc % :status :ok) specs))
+                                            :hand-over! (fn [_ _] 0)}))
+                 nil (catch clojure.lang.ExceptionInfo e e))]
+      (is (= :diverged-target (:upgrade/error (ex-data e))) (pr-str (ex-data e)))
+      (is (str/includes? (ex-message e) "does not descend from this clone's commit"))
+      (is (= head (git-out clone "rev-parse" "HEAD")) "nothing moved")
+      (is (not= before head)))))

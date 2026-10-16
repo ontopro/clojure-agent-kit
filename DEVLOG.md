@@ -143,6 +143,15 @@ new `CLAUDE.md` taken whole. One more thing the doctor then showed: "the applica
 merged" stays for ever once said. It is said only while something else of the upgrade is still
 left; an upgrade wholly resolved goes quiet.
 
+Round 4, the one command, was set up with the two throwaway releases re-cut onto the tip - and
+the re-cut failed quietly, so `0.6.7` still sat on an older line. Phase 1 fetched, found it
+newer, moved `KIT/` to it, and phase 2 refused: the recorded commit was not in that line's
+history, with the clone left stranded where it was moved. A target that does not descend from
+the clone's commit - a tag cut on another line, a hotfix branch's - is not an upgrade path, and
+phase 1 now refuses it by name before anything moves, with the two `git log` commands that show
+why. And a pin "moved" from `kit-v1.3` to `kit-v1.3` read as nothing: the message names the
+commits beside the tags.
+
 ### The pin moves to `kit-v1.3`, and a record from a local clone is refused (plan 6.5, item 15)
 
 `template-pins.edn` names the fork's candidate - `kit-v1.3`, commit `1c1838a`, the tag not yet
