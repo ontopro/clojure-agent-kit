@@ -482,6 +482,36 @@
       (git-out app "checkout" "-q" "main") (git-out app "merge" "-q" "--no-ff" "--no-edit" "upgrade-x")
       (is (= :merged (get-in (upgrade/open-after-upgrade ws (raw ws)) [:app :state]))))))
 
+(deftest a-conflict-stop-stays-a-conflict-after-main-moves-on-and-a-fast-forward-is-merged
+  ;; the item 16 review: with main moved on, a branch still at its base is an ancestor of HEAD and
+  ;; differs from it, and read as merged - the notice gone with it; the run's recorded base decides
+  (let [kit (fake-kit!)
+        ws (workspace! kit)
+        app (:workspace/app ws)
+        dir (:workspace/dir ws)
+        run-dir (fs/path dir "work" "runs" "upgrade-x")
+        base (git-out app "rev-parse" "HEAD")
+        open #(get-in (upgrade/open-after-upgrade ws (raw ws)) [:app :state])]
+    (fs/create-dirs run-dir)
+    (git-out app "branch" "upgrade-x")
+    (spit (str (fs/path run-dir "state.edn"))
+          (pr-str {:base {:branch "main" :commit base}
+                   :events [{:event/kind :stopped :run/status :stopped :stop/kind :merge-conflict}]}))
+    (spit (str (fs/path dir "workspace.edn"))
+          (pr-str (assoc (raw ws) :workspace/upgraded-to {:version "x" :at "d" :app {:branch "upgrade-x" :state :conflict :run-dir (str run-dir)} :conflicts [] :new []})))
+    (is (= :conflict (open)))
+    (testing "main moves on; the branch at its base is still the conflict, and the notice still says so"
+      (git-out app "commit" "-q" "--allow-empty" "-m" "stage 1 goes on")
+      (is (= :conflict (open)))
+      (is (some #(str/includes? % "stopped on a conflict") (upgrade/upgrade-lines (upgrade/open-after-upgrade ws (raw ws))))))
+    (testing "the branch resolved past its base and taken by a fast-forward is merged, tip = HEAD"
+      (spit (str (fs/path app "x.txt")) "x\n")
+      (git-out app "checkout" "-q" "upgrade-x") (git-out app "add" "-A") (git-out app "commit" "-q" "-m" "resolved")
+      (git-out app "merge" "-q" "--no-edit" "main")
+      (git-out app "checkout" "-q" "main") (git-out app "merge" "-q" "--ff-only" "upgrade-x")
+      (is (= (git-out app "rev-parse" "HEAD") (git-out app "rev-parse" "upgrade-x")))
+      (is (= :merged (open))))))
+
 (deftest a-target-tag-on-another-line-is-refused-before-anything-moves
   ;; round 4 of the sandbox: a throwaway release re-cut on an older line moved KIT/ to a commit
   ;; phase 2 then refused, the clone stranded there

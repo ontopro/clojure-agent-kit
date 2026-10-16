@@ -166,6 +166,15 @@ mirror current, the branch dropped), the commit moved, the doctor clean but for 
 The workspace's `bb gates` green, `bb next` at stage 1's plan. Two versions in one jump, a stop
 and a resume, the re-run after the move: the three things the plan asked the sandbox to prove.
 
+The review of the rounds read `merged?` once more and found the round 1 fix half a fix: "the tip
+has moved" was read against HEAD, so a branch still at its base read as not merged only while
+`main` stood still. One commit on `main` - stage 1 going on while the conflict waits, the likely
+order in the real workspace - and the base was an ancestor of HEAD that differed from it: merged,
+and since round 3 the notice gone with it. Reproduced in a test. "Moved" is now read against the
+base the run's `state.edn` records; HEAD is the measure only when the run directory is gone. The
+reverse case holds too: a branch resolved past its base and taken by a fast-forward, tip equal to
+HEAD, is merged.
+
 ### The pin moves to `kit-v1.3`, and a record from a local clone is refused (plan 6.5, item 15)
 
 `template-pins.edn` names the fork's candidate - `kit-v1.3`, commit `1c1838a`, the tag not yet

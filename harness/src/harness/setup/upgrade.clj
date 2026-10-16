@@ -266,9 +266,13 @@
           tip (when branch (git app-dir "rev-parse" "-q" "--verify" (str "refs/heads/" branch "^{commit}")))
           exists? (some? tip)
           ;; MERGED BY ANCESTRY ONLY WHEN THE BRANCH WENT SOMEWHERE: a branch stopped on its first
-          ;; conflict still points at the commit it was cut from, which is an ancestor of HEAD
+          ;; conflict still points at the commit it was cut from, which is an ancestor of HEAD - and
+          ;; stays one after main moves on. "Somewhere" is past the base the run records; only with
+          ;; the run directory gone is it "not HEAD", which holds while main has not moved
+          base (get-in state [:base :commit])
+          went-somewhere? (and exists? (if base (not= tip base) (not= tip (git app-dir "rev-parse" "HEAD"))))
           merged? (and branch (or (= :merged from-state)
-                                  (and exists? (not= tip (git app-dir "rev-parse" "HEAD"))
+                                  (and went-somewhere?
                                        (some? (git app-dir "merge-base" "--is-ancestor" branch "HEAD")))))]
       {:version version :at at
        :app (when branch
