@@ -393,11 +393,14 @@
   ;; A workspace copied or moved ran the original's KIT at the boundary gate: `bb init` had
   ;; written the clone's absolute path into loop.edn. Every file it writes is read here - the
   ;; ones it renders and the ones it copies - for the workspace's own folder.
+  ;; The clone is wherever this runs - `/work/kit` in `bb docker-gates` - so the workspace's path
+  ;; is matched as a whole path: `/work` is also inside `../work/runs` and `/workspace.edn`.
   (let [lay (init/layout (request {:loop/defaults {:gates [[:deps "bb --config {{kit}}/harness/bb.edn boundary"]]}}))
-        ws-dir (:workspace/dir lay)]
+        ws-dir (:workspace/dir lay)
+        names-ws (re-pattern (str "(?<![\\w./-])" (java.util.regex.Pattern/quote ws-dir) "(?![\\w.-])"))]
     (is (= kit-dir (str (fs/path ws-dir (:workspace/kit (:workspace lay))))) "the default layout: the KIT inside the workspace")
-    (is (= "clojure-agent-kit" (:workspace/kit (:workspace lay))) "named relatively")
+    (is (= (str (fs/file-name kit-dir)) (:workspace/kit (:workspace lay))) "named relatively")
     (doseq [{:keys [path content copy-from]} (:entries lay)
             :let [text (or content (when copy-from (slurp copy-from)))]
             :when text]
-      (is (not (str/includes? text ws-dir)) (str path " names " ws-dir)))))
+      (is (not (re-find names-ws text)) (str path " names " ws-dir)))))

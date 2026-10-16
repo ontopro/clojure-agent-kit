@@ -71,6 +71,16 @@ the project's and the upgrade leaves it as it is: compare it with
 
 ## 2026-10-16
 
+### The no-absolute-path test holds wherever the clone is (plan 6.5, item 17e)
+
+`bb docker-gates` on the tag's commit went red where `bb gates` here was green: five failures, all
+in `init-writes-no-absolute-path-into-the-workspace` (item 10), which had not run in the container
+before. It took the KIT from where it runs - `/work/kit` there - and expected the clone's folder to be
+named `clojure-agent-kit`, and it looked for the workspace's path as a bare substring, so `/work`
+was found in `../work/runs/`, `../workspace.edn` and `:repl/worktree`. Nothing `bb init` writes names
+an absolute path; the test now expects the clone's own folder name and matches the workspace's path
+only as a whole path.
+
 ### `agy-ide.edn` takes `claude.edn`'s roles, with Argon for triage (plan 6.5, item 17)
 
 The person's decision: the two shipped profiles had drifted apart role by role - `agy-ide`'s Tester
