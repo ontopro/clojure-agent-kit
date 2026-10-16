@@ -19,9 +19,9 @@
 {:seat :agy-ide
 
  :roles
- {;; CODER - writes the implementation in its own worktree and nREPL.
+ {;; CODER - writes the implementation in its own worktree and nREPL. 2026-10-16.
   :coder {:family :google
-          :model "google/gemini-3.8-flash"
+          :model "google/gemini-4-argon"
           :shape :openai
           :endpoint "https://openrouter.ai/api/v1"
           :key-env "OPENROUTER_API_KEY"

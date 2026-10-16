@@ -56,6 +56,15 @@ step by hand, named there.
 
 ## 2026-10-16
 
+### `agy-ide`'s Coder is Gemini 4 Argon too (plan 6.5, item 17)
+
+The measurement that moved the `claude` example's Coder found Gemini 3.8 Flash unable to code in
+the loop: at medium effort and at high it worked in the REPL until its rounds ran out and never
+wrote a file. `agy-ide.edn` coded with it, on no build. The person's decision: its Coder is Argon,
+at medium over OpenRouter pinned to Vertex, as `claude.edn`'s. The family stays Google, the
+seat's; its Tester (OpenAI) and its Anthropic reviewers are unchanged, and its orchestrator stays
+Flash - triage is one call with no file to write.
+
 ### The shipped profiles say what configures them, and no more (plan 6.5, item 17)
 
 `claude.edn` and `agy-ide.edn` had grown to 640 lines between them, most of it the history of

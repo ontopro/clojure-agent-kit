@@ -324,7 +324,7 @@ parameters:
 ```clojure
 ;; resources/profiles/agy-ide.edn
 {:seat :agy-ide                     ; exactly one — where the human works
- :roles {:coder    {:family :google :model "google/gemini-3.8-flash" :shape :openai
+ :roles {:coder    {:family :google :model "google/gemini-4-argon" :shape :openai
                     :endpoint "https://openrouter.ai/api/v1"
                     :key-env "OPENROUTER_API_KEY"
                     :params {:reasoning_effort "medium"
@@ -368,7 +368,7 @@ Proved one seat at a time, portability being the design:
 
 | | seat `claude` | seat `agy-ide` |
 |---|---|---|
-| coder | `google` · `gemini-4-argon` (effort medium, from 2026-10-16; `claude-sonnet-5-5` from 2026-10-02 before) · OpenRouter pinned `google-vertex` · `:openai` | `google` · `gemini-3.8-flash` · OpenRouter · `:openai` |
+| coder | `google` · `gemini-4-argon` (effort medium, from 2026-10-16; `claude-sonnet-5-5` from 2026-10-02 before) · OpenRouter pinned `google-vertex` · `:openai` | `google` · `gemini-4-argon` (from 2026-10-16; `gemini-3.8-flash` before) · OpenRouter · `:openai` |
 | tester | `anthropic` · `claude-sonnet-5-5` (effort medium, from 2026-10-16; `gemini-3.8-flash` before; cache asked for) · direct · `:anthropic` | `openai` · `gpt-5.6-sol` · OpenRouter · `:openai` |
 | reviewer | `openai` · `gpt-6.1-sol` (effort high, from 2026-10-07; `gpt-5.6-sol` before) · OpenRouter · `:openai` | `anthropic` · `claude-opus-5-5` (effort high) · direct · `:anthropic` |
 | spec-reviewer | `openai` · `gpt-6.1-sol` (effort high, from 2026-10-07) · OpenRouter · `:openai` | `anthropic` · `claude-opus-5-5` (effort high) · direct · `:anthropic` |
