@@ -59,7 +59,12 @@
                      (keep (fn [{:step/keys [name cost]}] (when-let [r (role-of name)] [r cost])))
                      (reduce (fn [m [r c]] (update m r (fnil + 0) c)) {}))
         stops (filter #(= :stopped (:event/kind %)) events)
-        reviews (filter #(= :spec-review (:event/kind %)) events)]
+        ;; A RUN'S READINGS, not its events: a record holds one `:spec-review` event, every
+        ;; reading under `:reviews` and the last one's cost as the event's `:cost`, as
+        ;; `report/spec-review-lines` reads it. An event without `:reviews` is one reading - a
+        ;; record written before the history.
+        reviews (mapcat #(or (seq (:reviews %)) [%])
+                        (filter #(= :spec-review (:event/kind %)) events))]
     {:run/id (:run/id record)
      :task/id (:task/id record)
      :status status

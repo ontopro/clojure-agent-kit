@@ -87,6 +87,17 @@ the project's and the upgrade leaves it as it is: compare it with
 
 ## 2026-10-16
 
+### The stage report counts every spec reading (plan 6.7, item 2, register row 135)
+
+The first KIT project's stage 1 report said one spec review per run, and the stage's total was
+short by about half the readings' money. A run's record holds one `:spec-review` event, with every
+reading under `:reviews` and the last one's cost as the event's own `:cost`. The run report reads
+`:reviews`; `stage-report`'s `run-summary` counted the events and summed `:cost`. Its fixture still
+had one event per reading, the shape before the readings' history, so its test passed against a
+record no run writes. `run-summary` now counts and sums the readings, an event without `:reviews`
+being one reading, and the fixture is in the records' shape. A block rendered before this keeps the
+old figures until `bb stage-report` renders it again.
+
 ### The rules overlay refuses a key a rule does not have (plan 6.7, item 2, register row 134)
 
 In the first KIT project's stage 1, two quote pairs inside the overlay's `:data-conventions` text

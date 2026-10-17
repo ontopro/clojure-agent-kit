@@ -24,7 +24,9 @@
   {:run/id "t2" :task/id "t2" :run/status :escalated
    :run/steps [(step :coder :dispatch 1.0) (step :triage :dispatch 0.125) (step :coder-r1 :dispatch 1.25)
                (step :triage-r1 :dispatch 0.125) (step :coder-r2 :dispatch 1.5) (step :reviewer :dispatch 0.5)]
-   :run/events [{:event/kind :spec-review :cost 0.25} {:event/kind :spec-review :cost 0.25}
+   ;; a record's shape: ONE event, every reading under :reviews, the last reading's cost as :cost
+   :run/events [{:event/kind :spec-review :findings 0 :cost 0.25
+                 :reviews [{:count 2 :cost 0.25} {:count 0 :cost 0.25}]}
                 {:event/kind :triage :role :coder :attempt 2} {:event/kind :triage :role :coder :attempt 3}
                 {:event/kind :dispatch :role :reviewer :verdict {:verdict :reject :reasons ["x"]}}
                 {:event/kind :stopped :stop/kind :spec-reviewed :route nil :run/status :dispatched}
@@ -47,7 +49,8 @@
     (is (= 1 (:rejections s)))
     (is (= {:architect 1 :person 1} (:stops s)) "the spec review's stop is the Architect's, the cap's a person's")
     (is (= {:spec-reviewed 1 :capped 1} (:stop-kinds s)))
-    (is (= 0.5 (:spec-review-cost s)) "two readings")))
+    (is (= 2 (:spec-reviews s)) "every reading under :reviews, not the one event")
+    (is (= 0.5 (:spec-review-cost s)) "two readings, not the last one's cost")))
 
 (def facts
   {:id 1 :packets ["t1" "t2" "t3"] :records [merged-run escalated-run]
