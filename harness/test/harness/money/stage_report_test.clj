@@ -134,6 +134,13 @@
         (is (str/includes? (sr/published text2) "3 runs, 2 merged"))
         (is (str/includes? (sr/drift "stage-1-x.md" text s2) "does not match its records"))
         (is (nil? (sr/drift "stage-1-x.md" text2 s2)))))
+    (testing "re-rendered in a plan with other fenced blocks before its report: the report is replaced"
+      (let [with-fences (str/replace-first text "- t1\n" "- t1\n\n```clojure\n{:route \"/\"}\n```\n\n```\nnot a report\n```\n")
+            s2 (sr/stage-summary (update facts :records conj (assoc merged-run :run/id "t3" :task/id "t3")))
+            text2 (sr/splice with-fences (sr/render s2))]
+        (is (str/includes? (sr/published text2) "3 runs, 2 merged"))
+        (is (str/includes? text2 "```clojure\n{:route \"/\"}\n```") "the other blocks as they were")
+        (is (str/includes? text2 "```\nnot a report\n```"))))
     (testing "a plan with no exit-criteria heading takes the block at its end"
       (is (str/ends-with? (sr/splice "# Stage 1\n\nnothing\n" block) (str "```\n" block "\n```\n"))))))
 

@@ -222,11 +222,13 @@
   [text block]
   (let [fence (str "```\n" block "\n```")]
     (if (published text)
-      (str/replace-first text fenced
-                         (fn [[whole label body]]
-                           (if (and (str/blank? label) (re-find #"^Stage \S+ report ·" body))
-                             fence
-                             whole)))
+      ;; EVERY FENCE ASKED, not the first: a stage plan carries other fenced blocks before its report,
+      ;; and replacing only the first left the report as it was while saying it was written
+      (str/replace text fenced
+                   (fn [[whole label body]]
+                     (if (and (str/blank? label) (re-find #"^Stage \S+ report ·" body))
+                       fence
+                       whole)))
       (let [lines (str/split-lines text)
             start (first (keep-indexed (fn [i l] (when (re-find #"^## \d+\. Exit criteria" l) i)) lines))
             end (when start (first (keep-indexed (fn [i l] (when (and (> i start) (str/starts-with? l "## ")) i)) lines)))]

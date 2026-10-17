@@ -87,6 +87,16 @@ the project's and the upgrade leaves it as it is: compare it with
 
 ## 2026-10-16
 
+### A stage report re-renders wherever it sits in its plan (plan 6.7, item 4, register row 136)
+
+Item 4's run on a copy of the first project's workspace re-rendered its two stage reports after the
+upgrade, as row 135 asks. Stage 0's changed; stage 1's command said it had written the block and
+left the plan as it was, and `stage-report --check` stayed red. `splice` replaced only the first
+fenced block of a plan, and only if that block was the report; stage 1's plan has fenced blocks
+before its report. A first render, into a plan with no block, appends and had always worked, so
+the fault showed only at a re-render. `splice` now asks every fenced block and replaces the report
+wherever it is; the test puts two blocks before it and fails on the old code.
+
 ### The upgrade moves a workspace's stage documents into their folders (plan 6.7, item 4)
 
 `bb upgrade` phase 2 has a step before the build documents are patched, `stage-folders`
