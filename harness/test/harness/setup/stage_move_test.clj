@@ -27,6 +27,13 @@
       (is (= "`../stage-0/stage-0-security-review/`" (r "`stage-0-security-review/`")))
       (is (= "`stage-1-plan.md`, `stage-1-gates.edn`" (r "`stage-1-plan.md`, `stage-1-gates.edn`")))
       (is (= "`stage-0-spike-template.md`" (r "`stage-0-spike-template.md`"))))
+    (testing "a path that led nowhere from the old place is a quotation, left as written"
+      (let [old #{"../00-overview.md" "../../runs/s0.edn"}
+            r* #(sm/rewrite-moved % 1 old)]
+        (is (= "`../../00-overview.md` §4a" (r* "`../00-overview.md` §4a")))
+        (is (= "`../../../runs/s0.edn`." (r* "`../../runs/s0.edn`.")) "its trailing full stop is not the path's")
+        (is (= "links like `../i-am-a-patient/my-surgery.md#4-axillary` in the content"
+               (r* "links like `../i-am-a-patient/my-surgery.md#4-axillary` in the content")))))
     (testing "a fenced block is left alone: a packet's paths are the application's, for the Coder"
       (let [fenced "```clojure\n{:files/target \"../src/x.clj\" :see \"stage-0-plan.md\"}\n```\n"]
         (is (= fenced (r fenced)))
@@ -69,7 +76,7 @@
     (git b "add" "-A")
     (git b "commit" "-q" "-m" "the build, flat")
     (put "docs/stages/stage-0-security-review/r-tests/test.clj" "(ns t)\n")
-    (put "docs/stages/stage-1-notes.md" "an untracked note `../05-lessons.md`\n")
+    (put "docs/stages/stage-1-notes.md" "an untracked note `../00-overview.md`\n")
     (str b)))
 
 (deftest the-move-on-a-build-made-before-the-folders

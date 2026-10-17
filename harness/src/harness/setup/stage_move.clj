@@ -58,20 +58,28 @@
 (defn- template? [nm] (str/includes? nm "-template."))
 
 (defn rewrite-moved
-  "The text of a stage document that moved from `docs/stages/` into its folder, stage `own`."
-  [text own]
-  (outside-fences
-   text
-   (fn [l]
-     (-> l
-         ;; one folder deeper: one more `../` where each run of them begins
-         (str/replace #"(?<![\w./])\.\./" "../../")
-         ;; a reading at its old place - reached by `../` (now three) or written from the build's root
-         (str/replace #"(?<![\w./-])(?:\.\./\.\./\.\./)?reviews/stage-(\d+)/"
-                      (fn [[_ k]] (if (= own (parse-long k)) "reviews/" (str "../stage-" k "/reviews/"))))
-         ;; another stage's file, named bare when the two were neighbours
-         (str/replace #"(?<![\w./-])(stage-(\d+)-[\w.-]*?(?:\.md|\.edn|security-review))(?![\w-])"
-                      (fn [[m nm k]] (if (or (= own (parse-long k)) (template? nm)) m (str "../stage-" k "/" nm))))))))
+  "The text of a stage document that moved from `docs/stages/` into its folder, stage `own`.
+  `resolves?` says whether a relative path (its anchor dropped) named something from the
+  document's old place: one that did not is a quotation - a link copied from the application's
+  content, say - and is left as written. Every path resolves when it is not given."
+  ([text own] (rewrite-moved text own (constantly true)))
+  ([text own resolves?]
+   (outside-fences
+    text
+    (fn [l]
+      (-> l
+          ;; one folder deeper: one more `../` where each run of them begins, for a path that led somewhere
+          (str/replace #"(?<![\w./])((?:\.\./)+)([\w.#/-]*)"
+                       (fn [[m ups rest]]
+                         (if (resolves? (str ups (str/replace (first (str/split rest #"#")) #"[.,;:]+$" "")))
+                           (str "../" m)
+                           m)))
+          ;; a reading at its old place - reached by `../` (now three) or written from the build's root
+          (str/replace #"(?<![\w./-])(?:\.\./\.\./\.\./)?reviews/stage-(\d+)/"
+                       (fn [[_ k]] (if (= own (parse-long k)) "reviews/" (str "../stage-" k "/reviews/"))))
+          ;; another stage's file, named bare when the two were neighbours
+          (str/replace #"(?<![\w./-])(stage-(\d+)-[\w.-]*?(?:\.md|\.edn|security-review))(?![\w-])"
+                       (fn [[m nm k]] (if (or (= own (parse-long k)) (template? nm)) m (str "../stage-" k "/" nm)))))))))
 
 (defn rewrite-doc
   "The text of one of the build's other documents, under `docs/` and outside the stage folders."
@@ -149,21 +157,26 @@
                             {:upgrade/error :exists :path to}))))
         ;; TRACKED BY GIT, MOVED BY GIT, so the history follows; an untracked entry is moved on disk
         ;; and stays untracked - the move is not where a person's choice to leave it out is undone
-        (let [tracked-moves (vec (filter (fn [[from]] (tracked? build from)) moves))]
+        ;; THE NEW TEXTS READ BEFORE ANYTHING MOVES, so a path is asked whether it led somewhere
+        ;; from the old place, in the old layout
+        (let [tracked-moves (vec (filter (fn [[from]] (tracked? build from)) moves))
+              old-dir (stages/stages-dir build)
+              resolves? #(fs/exists? (fs/normalize (fs/path old-dir %)))
+              texts (vec (for [[rel from f] (concat (for [[from to] moves
+                                                          :when (str/ends-with? to ".md")
+                                                          :let [id (stages/folder-id (fs/file-name (fs/parent (fs/path build to))))]]
+                                                      [to from #(rewrite-moved % id resolves?)])
+                                                    (for [d docs] [d d rewrite-doc]))
+                               :let [before (slurp (str (fs/path build from)))
+                                     after (f before)]
+                               :when (not= before after)]
+                           [rel after]))]
           (doseq [[from to] moves]
             (if (some #{[from to]} tracked-moves)
               (git! build "mv" from to)
               (fs/move (fs/path build from) (fs/path build to))))
-          (let [moved-md (for [[_ to] moves
-                               :when (str/ends-with? to ".md")
-                               :let [id (stages/folder-id (fs/file-name (fs/parent (fs/path build to))))]]
-                           [to #(rewrite-moved % id)])
-                rewritten (vec (for [[rel f] (concat moved-md (map (fn [d] [d rewrite-doc]) docs))
-                                     :let [file (fs/path build rel)
-                                           before (slurp (str file))
-                                           after (f before)]
-                                     :when (not= before after)]
-                                 (do (spit (str file) after) rel)))
+          (let [rewritten (vec (for [[rel after] texts]
+                                 (do (spit (str (fs/path build rel)) after) rel)))
                 ;; ONLY THESE PATHS, and only what git knows: a commit without a pathspec would sweep up
                 ;; whatever the person had staged; the old paths carry the renames' other side
                 touched (distinct (concat (mapcat identity tracked-moves) (filter #(tracked? build %) rewritten)))]

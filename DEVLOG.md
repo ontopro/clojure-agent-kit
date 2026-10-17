@@ -110,7 +110,10 @@ apart. Each is rewritten: `stages/stage-0/stage-0-plan.md`, `stages/stage-N/revi
 `../stage-0/stage-0-blueprint.md`; a moved document's own readings become its `reviews/`. The
 templates are not touched here - the build documents step brings their change - and nor is a
 security review's folder, whose files quote the application. An uncommitted edit to a tracked file
-the step would touch stops it by name before anything moves. The tests run the move on a git
+the step would touch stops it by name before anything moves. A relative path is deepened only when it led somewhere from the old place: the first run, on a copy of
+the first project's workspace, deepened a link its stage plan quoted from the site's content, which
+named nothing from the plan's folder and is a quotation; the new texts are now read before anything
+moves, against the old layout. The tests run the move on a git
 repository in the old layout: the renames git detects, the paths, the fence untouched, the untracked
 files still untracked, and the second run moving nothing.
 
