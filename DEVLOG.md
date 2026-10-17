@@ -62,6 +62,20 @@ tested" stays information for an adopter, never a block.
 
 ---
 
+## 2026-10-17
+
+### A stage's total counts its security review (plan 6.8, item 1, register row 137)
+
+`bb stage-report` summed a stage's runs and its readings - the project plan review, the stage plan
+review, the blueprint review, the spec reviews - and said the total against the stage's cap. The
+security review at the stage's end was left out, though its record carries its cost: the first KIT
+project's figures were short by it at both stages, and its Architect added it back by hand in the
+plan's prose. The readings now have a fifth row, "security review", summed over every record in the
+stage folder's `stage-N-security-review/` (one per review; the `-tests` folder beside them is not
+read), so the total counts it and the readings line names it. A stage plan rendered before this
+shows the old total until `bb stage-report` renders it again; the workspace gates hold it to the
+new sum until then.
+
 ## 0.6.7 — plan 6.7's boundary: a folder per stage, and where the project stands
 
 Plan 6.7 added a folder per stage - `docs/stages/stage-N/` holds a stage's documents and its

@@ -95,8 +95,8 @@
   the status each has (`:no-record` for one without); the run summaries
   (`:runs`); the totals - runs, merged, money, money by role, rounds, retry
   cost, rejections, stops by owner and by kind; the readings (`:readings`:
-  `[[label cost n] …]` for the plan review, the blueprint review and the spec
-  reviews) and their money; the cap and its date from the gates record, or
+  `[[label cost n] …]` for the plan review, the blueprint review, the security
+  review and the spec reviews) and their money; the cap and its date from the gates record, or
   nil; the threat model's signature from it (`:security`) and the plan's kind,
   which together say whether a pre-release stage is signed; the security
   pack's counts and date from the record its run at the stage's end wrote
@@ -274,6 +274,15 @@
     (let [rs (or (seq (:reviews m)) [m])]
       [label (reduce + 0 (keep :cost rs)) (count rs)])))
 
+(defn- folder-reading
+  "`[label cost n]` over the record files directly in `dir`, each one reading -
+  a stage's security review writes one per review, its `-tests` folder beside
+  them; nil when there is none."
+  [label dir]
+  (let [ms (when (fs/directory? dir) (keep read-edn (sort (fs/glob dir "*.edn"))))]
+    (when (seq ms)
+      [label (reduce + 0 (keep :cost ms)) (count ms)])))
+
 (defn- records-for
   "The run records under `records-dir` whose task is one of `packets`, in the
   packets' order; several records for one task all count."
@@ -307,7 +316,8 @@
          ;; is stage 0's money as much as stage 0's own stage plan review: both, said apart
          :readings (vec (remove nil? [(when (= 0 id) (reading "project plan review" (stages/project-plan-review build)))
                                       (reading "stage plan review" (fs/path reviews "plan-review.edn"))
-                                      (reading "blueprint review" (fs/path reviews "blueprint-review.edn"))]))
+                                      (reading "blueprint review" (fs/path reviews "blueprint-review.edn"))
+                                      (folder-reading "security review" (doc "-security-review"))]))
          :gates (read-edn (doc "-gates.edn"))
          :checks (read-edn (doc "-security.edn"))
          :scans {:deps (read-edn (doc "-security-deps.edn"))
