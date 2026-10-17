@@ -62,6 +62,22 @@ tested" stays information for an adopter, never a block.
 
 ---
 
+## 0.6.8 — plan 6.8's boundary: orienting the person
+
+Plan 6.8 added what a person needs to find their place in a long build: `bb next --where --edn`,
+where the project stands as one map read from the build's files; the fuller account from it,
+`bb next --where --full`, and the roadmap page, `bb roadmap-page`, the road drawn with every stage
+by its state, its spend against its cap and its open decisions and risks; `bb last-look`, from
+which "since you last looked" counts; `kit-where-am-i` offering the account and the page, at a
+stage's end, a stage's pull and a cold open. With them, a run is counted in its own stage - a run
+record names its stage, an older one is placed by date - where a task id a later stage reused had
+made `bb next` read unrun packets as merged; a stage's total counts its security review; the
+block's read more names where a phase, a step and the project plan are defined; the gates
+template's comments carry no mark; and the vocabulary rule's other half, a name says what the
+thing is. A workspace at `0.6.7` takes it with `bb upgrade` from the workspace folder, then
+re-renders each stage report with `bb stage-report <stage-plan.md>`, since every total now counts
+the security review and only the stage's own runs.
+
 ## 2026-10-17
 
 ### A run belongs to its stage, not to every stage with its task id (plan 6.8, item 2c, register row 140)

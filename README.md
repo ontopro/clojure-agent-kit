@@ -23,7 +23,7 @@ template, not KIT.
 > resolved - and nothing of the project is written into it. The first upgrade from `0.6.4` is by
 > hand, since `0.6.4` has no `bb upgrade`: `git -C KIT fetch --tags && git -C KIT checkout <tag>`,
 > then `bb --config KIT/harness/bb.edn upgrade --after-pull` from the workspace folder.
-> KIT carries a version tag at each plan's boundary - `0.6.7` is the current one, and
+> KIT carries a version tag at each plan's boundary - `0.6.8` is the current one, and
 > the DEVLOG's heading for it says in a line what the plan added and anything a workspace made
 > before it needs; `bb init`
 > records the version beside the commit. There is no library to require; there is one commit
@@ -128,8 +128,8 @@ disagree. The date is the claim; nothing here says it still holds today.
 
 | Platform | Run on | KIT commit | Template | Checks | Time |
 |---|---|---|---|---|---|
-| Linux Ubuntu 24.04.5 LTS arm64 | 2026-10-17 | `7a403e3` | `kit-v1.3` (`f12268d`) | 9 of 9 ok: selfcheck gates, selfcheck red, selfcheck loop, app gates, app red, app loop, app serve, app browser, app security | 84s |
-| macOS 27.0.1 arm64 | 2026-10-17 | `7a403e3` | `kit-v1.3` (`f12268d`) | 9 of 9 ok: selfcheck gates, selfcheck red, selfcheck loop, app gates, app red, app loop, app serve, app browser, app security | 81s |
+| Linux Ubuntu 24.04.5 LTS arm64 | 2026-10-17 | `9485d8f` | `kit-v1.3` (`f12268d`) | 9 of 9 ok: selfcheck gates, selfcheck red, selfcheck loop, app gates, app red, app loop, app serve, app browser, app security | 93s |
+| macOS 27.0.1 arm64 | 2026-10-17 | `9485d8f` | `kit-v1.3` (`f12268d`) | 9 of 9 ok: selfcheck gates, selfcheck red, selfcheck loop, app gates, app red, app loop, app serve, app browser, app security | 86s |
 
 One record per platform actually run, the latest run on it; a platform not in the table has none. `bb health --record` on such a machine writes one - commit it, and `bb health-sync`.
 

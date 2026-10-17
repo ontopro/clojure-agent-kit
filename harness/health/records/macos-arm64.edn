@@ -2,8 +2,8 @@
 {:health/as-of "2026-10-17",
  :platform {:key "macos-arm64", :label "macOS 27.0.1 arm64"},
  :kit
- {:sha "7a403e305cde7f068dd0629b25d3b4b5ec6451ab",
-  :short "7a403e3",
+ {:sha "9485d8fd8e805552ee0743a1cb6b7660f89b7184",
+  :short "9485d8f",
   :dirty? false},
  :template
  {:template io.github.ontopro/clojure-stack-lite,
@@ -19,13 +19,13 @@
   :git "2.56.0",
   :java "21.0.12.1"},
  :checks
- [{:subject :selfcheck, :check :gates, :ok? true, :ms 3136}
-  {:subject :selfcheck, :check :red, :ok? true, :ms 4959}
-  {:subject :selfcheck, :check :loop, :ok? true, :ms 9117}
-  {:subject :app, :check :gates, :ok? true, :ms 7958}
-  {:subject :app, :check :red, :ok? true, :ms 14155}
-  {:subject :app, :check :loop, :ok? true, :ms 13806}
-  {:subject :app, :check :serve, :ok? true, :ms 7503}
-  {:subject :app, :check :browser, :ok? true, :ms 9831}
-  {:subject :app, :check :security, :ok? true, :ms 10732}],
+ [{:subject :selfcheck, :check :gates, :ok? true, :ms 3149}
+  {:subject :selfcheck, :check :red, :ok? true, :ms 5100}
+  {:subject :selfcheck, :check :loop, :ok? true, :ms 9647}
+  {:subject :app, :check :gates, :ok? true, :ms 7752}
+  {:subject :app, :check :red, :ok? true, :ms 14460}
+  {:subject :app, :check :loop, :ok? true, :ms 13967}
+  {:subject :app, :check :serve, :ok? true, :ms 7531}
+  {:subject :app, :check :browser, :ok? true, :ms 11662}
+  {:subject :app, :check :security, :ok? true, :ms 12795}],
  :ok? true}
