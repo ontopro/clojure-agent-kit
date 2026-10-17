@@ -84,6 +84,12 @@ so a test prints the map and reads it back equal. A stage map cell is prose arou
 are read out of it, and an owner runs to the sentence's end, past a title's full stop. `bb next`
 stays read-only in every form; a KIT kept outside its workspace is now said by its absolute path.
 
+Fable's review of it, four fixes: `--since` is parsed as a date of the calendar, and one that is
+not (`2026-13-99`, whose shape passed) is refused with exit 1, as is `--since` without `--edn`,
+which the block had dropped without a word; money is rounded to the cent once, in the map, so the
+views cannot round it three ways; and the runs' money since a date says it is the runs' alone, a
+reading carrying no date to count it by.
+
 ### The gates template's comments carry no mark (plan 6.8, item 2b, register row 139)
 
 The gates record's template says, in a comment, what each gate holds once passed; the stage plan's

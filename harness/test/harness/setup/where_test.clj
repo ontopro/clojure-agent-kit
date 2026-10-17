@@ -17,6 +17,23 @@
   (is (= {} (where/cap "")))
   (is (= {:cap nil :cap-note "not read: twelve dollars"} (where/cap "twelve dollars")) "said, not guessed"))
 
+(deftest the-command-line-refuses-a-since-it-cannot-count-from
+  (is (= {:edn? true :since "2026-10-13" :args ["--where" "--workspace" "w"]}
+         (where/parse-args ["--where" "--edn" "--since" "2026-10-13" "--workspace" "w"])))
+  (is (= {:edn? false :since nil :args ["--where"]} (where/parse-args ["--where"])) "the block's own form, untouched")
+  (is (= {:error "--since needs a date after it, YYYY-MM-DD; got 2026-13-99"}
+         (where/parse-args ["--where" "--edn" "--since" "2026-13-99"]))
+      "a date's shape is not a date: the thirteenth month")
+  (is (= {:error "--since needs a date after it, YYYY-MM-DD"} (where/parse-args ["--where" "--edn" "--since"])))
+  (is (= {:error "--since needs --edn: the block does not count since a date"}
+         (where/parse-args ["--where" "--since" "2026-10-13"]))
+      "said, not dropped"))
+
+(deftest money-is-rounded-to-the-cent-once
+  (is (= 6.95 (where/cents 6.953277549999999)))
+  (is (= 5.82 (where/cents 5.818458400000001)))
+  (is (nil? (where/cents nil))))
+
 (deftest a-stages-days-count-both-ends
   (is (= 1 (where/days "2026-10-13" "2026-10-13")) "approved and closed on one day")
   (is (= 4 (where/days "2026-10-13" "2026-10-16")))

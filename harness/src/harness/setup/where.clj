@@ -56,6 +56,11 @@
                         (java.time.LocalDate/parse from) (java.time.LocalDate/parse to))))
        (catch Exception _ nil)))
 
+(defn cents
+  "`x` dollars rounded to the cent, once, here - so every view of the map says the same figure."
+  [x]
+  (when x (/ (Math/round (* 100.0 (double x))) 100.0)))
+
 (defn- gate-date [g] (when (map? g) (some-> (:date g) str)))
 
 (defn ids-in
@@ -160,9 +165,9 @@
            (select-keys c [:cap :cap-note])
            (if summary
              {:runs (:run-count summary) :merged (:merged summary) :rounds (:rounds summary)
-              :money (:money summary) :run-minutes minutes}
+              :money (cents (:money summary)) :run-minutes minutes}
              (cond-> {:runs 0 :merged 0 :rounds 0 :run-minutes 0
-                      :money (when (seq readings) (reduce + 0 (map second readings)))}
+                      :money (when (seq readings) (cents (reduce + 0 (map second readings))))}
                (seq readings) (assoc :money-note "readings only, no blueprint yet"))))))
 
 (defn phase-rows
@@ -207,7 +212,9 @@
 (defn since-row
   "What changed from the date `from`: the stages closed, approved and signed on or after it, the
   decisions settled with a date on or after it and those settled with none, and the runs started
-  on or after it - `runs` as `[{:date :status :cost}]`."
+  on or after it - `runs` as `[{:date :status :cost}]`. `:run-money` is the runs' alone: a
+  reading carries no date to count it by, so it is less than the stages' `:money` for the same days,
+  and a view says \"runs only\" beside it."
   [from why stage-rows {:keys [dated undated]} run-rows]
   (let [on-or-after #(and % from (>= (compare % from) 0))
         ids-where (fn [k] (vec (keep #(when (on-or-after (k %)) (:id %)) stage-rows)))
@@ -216,7 +223,7 @@
      :stages-closed (ids-where :closed) :approved (ids-where :approved) :signed (ids-where :signed)
      :decisions-settled (vec (filter #(on-or-after (:on %)) dated)) :settled-undated undated
      :runs (count rs) :merged (count (filter #(= :merged (:status %)) rs))
-     :run-money (reduce + 0 (keep :cost rs))}))
+     :run-money (cents (reduce + 0 (keep :cost rs)))}))
 
 (defn since-from
   "The date \"since you last looked\" counts from, and why: the `--since` date; else the last look
@@ -232,7 +239,7 @@
 (defn- money [stage-rows]
   (let [approved (filter :approved stage-rows)
         proposed (remove :approved stage-rows)]
-    {:spent (reduce + 0 (keep :money stage-rows))
+    {:spent (cents (reduce + 0 (keep :money stage-rows)))
      :caps-approved (reduce + 0 (keep :cap approved))
      :caps-proposed (reduce + 0 (keep :cap proposed))
      :by-stage (vec (for [s stage-rows :when (or (:money s) (:cap s))] [(:id s) (:money s) (:cap s)]))}))
@@ -318,25 +325,35 @@
          (when (zero? exit) (str/trim out)))
        (catch Exception _ nil)))
 
+(defn parse-args
+  "`bb next`'s command line: `{:edn? :since :args}` - `:args` what `harness.setup.next` takes - or
+  `{:error sentence}`: a `--since` with no date after it, one that is not a date of the calendar
+  (`2026-13-99`), or one without `--edn` to count for."
+  [args]
+  (let [i (.indexOf ^java.util.List (vec args) "--since")
+        d (when (>= i 0) (get (vec args) (inc i)))
+        date? (fn [s] (try (java.time.LocalDate/parse s) true (catch Exception _ false)))
+        edn? (boolean (some #{"--edn"} args))
+        kept (loop [[a & more] args kept []]
+               (cond (nil? a) kept
+                     (= "--edn" a) (recur more kept)
+                     (= "--since" a) (recur (rest more) kept)
+                     :else (recur more (conj kept a))))]
+    (cond (neg? i) {:edn? edn? :since nil :args kept}
+          (not (and d (date? d))) {:error (str "--since needs a date after it, YYYY-MM-DD" (when d (str "; got " d)))}
+          (not edn?) {:error "--since needs --edn: the block does not count since a date"}
+          :else {:edn? edn? :since d :args kept})))
+
 (defn -main
   "bb next [--where [--edn [--since <YYYY-MM-DD>]]] [--workspace <dir>]
 
   With `--where --edn`, where the project stands as one EDN map (`where-data`); `--since` names
   the date \"since you last looked\" counts from. Every other form is `harness.setup.next`'s.
-  Information, and nothing written: exit 0, but 1 for a `--since` that names no date."
+  Information, and nothing written: exit 0, but 1 for a `--since` `parse-args` refuses."
   [& args]
-  (let [edn? (some #{"--edn"} args)
-        [since bad] (let [[_ d] (drop-while #(not= "--since" %) args)]
-                      (cond (not (some #{"--since"} args)) [nil nil]
-                            (and d (re-matches #"\d{4}-\d{2}-\d{2}" d)) [d nil]
-                            :else [nil (str "--since needs a date after it, YYYY-MM-DD" (when d (str "; got " d)))]))
-        rest-args (loop [[a & more] args kept []]
-                    (cond (nil? a) kept
-                          (#{"--edn"} a) (recur more kept)
-                          (= "--since" a) (recur (rest more) kept)
-                          :else (recur more (conj kept a))))]
+  (let [{:keys [edn? since error] rest-args :args} (parse-args args)]
     (cond
-      bad (do (println bad) (System/exit 1))
+      error (do (println error) (System/exit 1))
       edn? (let [ws (workspace/current-or-exit (remove #{"--where"} rest-args))]
              (binding [*print-namespace-maps* false]
                (pprint/pprint (where-data ws {:at (str (java.time.Instant/now))
