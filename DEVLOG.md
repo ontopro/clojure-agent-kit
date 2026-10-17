@@ -87,6 +87,17 @@ the project's and the upgrade leaves it as it is: compare it with
 
 ## 2026-10-16
 
+### `kit-where-am-i`: where the project stands, at any time (plan 6.7, item 5)
+
+The sixth skill, and like `kit-start` not a step: it runs `bb next --where`, shows the block as
+printed, then asks which line to open - the stage's goal with its exit criteria (found by the
+heading's text, whose number differs by kind), what is done, what is next, what is open, an ID,
+the stage map - and answers from the file that line names, every ID with the file and section
+that define it. It writes nothing. Listed where the skills are: `skills/README.md`, the README,
+`workflow.md`'s head, the harness's task table; the workspace's `CLAUDE.md` names it, and
+`kit-start` hands over to it once a brief is filed. A workspace gets it by the upgrade's skills
+step and its orientation step.
+
 ### A report opens with where we are, and cites an ID where it is defined (plan 6.7, item 5)
 
 The rule is written once, in `method.md` §04: a report of the Architect's session to the person -

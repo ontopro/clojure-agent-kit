@@ -71,7 +71,8 @@ Type next, or ask a question about the workspace.
 
 Nothing. After part 4, the list with all four DONE, then the one next step: no brief filed (§1's
 first row still says `<the brief>`) - "Type `/kit-scoping` to begin step 1, the brief", and hand over to
-`kit-scoping`; a brief filed - the project is under way, and `bb next` names the next step.
+`kit-scoping`; a brief filed - the project is under way, and `bb next` names the next step; `/kit-where-am-i` says
+where it stands first.
 
 ## Done when
 

@@ -6,6 +6,7 @@ about what to build to a release, which command runs when, and who stops for who
 is either a KIT command, run from the workspace folder, a document in the build repository, or a person's
 decision; the diamonds are the human gates. Every stage has the same four steps - scope, plan,
 implement, deploy locally - and the reviews belong to those steps, not to a place in the sequence.
+At any time, `bb next --where`, or the `kit-where-am-i` skill, says where in it the project stands.
 
 ```mermaid
 flowchart TD
