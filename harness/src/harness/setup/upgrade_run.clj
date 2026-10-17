@@ -18,6 +18,10 @@
                      beside it as `CLAUDE.md.new` (marked, so taking it whole re-adopts the
                      file); the off-loop role file copied again when it is still the old
                      commit's copy, else the same `.new`
+    stage-folders    a build made before the folder per stage brought into it: each stage's flat
+                     documents in `docs/stages/` and its `reviews/stage-N/` moved into
+                     `docs/stages/stage-N/` by `git mv`, the paths that named them rewritten,
+                     committed in the build (`harness.setup.stage-move`); nothing to move, said
     build-docs       the diff from the recorded KIT commit to HEAD over `build-docs/`, applied to
                      the build's `docs/` HUNK BY HUNK: a hunk that applies is applied; one that
                      does not is dropped as \"instruction already removed\" only when every line
@@ -51,6 +55,7 @@
    [harness.setup.front-door :as front-door]
    [harness.setup.init :as init]
    [harness.setup.skills :as skills]
+   [harness.setup.stage-move :as stage-move]
    [harness.setup.template :as template]
    [harness.setup.template-upgrade :as tu]
    [harness.setup.upgrade :as upgrade]
@@ -58,7 +63,7 @@
 
 (def steps
   "The steps, in order; each is a keyword `done.edn` records."
-  [:workspace-keys :front-door :skills :orientation :build-docs :loop-edn :app :workspace-edn :doctor])
+  [:workspace-keys :front-door :skills :orientation :stage-folders :build-docs :loop-edn :app :workspace-edn :doctor])
 
 (def role-file ".claude/agents/interactive-programmer.md")
 (def role-source "harness/agents/interactive-programmer.md")
@@ -273,6 +278,11 @@
                     (str/includes? role-r ".new") (conj (str role-file ".new")))]
     {:status :done :detail (str claude-r "; " role-r) :new new-files}))
 
+(defn- step-stage-folders! [{:keys [ws head version]}]
+  (let [{:keys [detail]} (stage-move/move! (:workspace/build ws)
+                                           (str "KIT " (or version (subs head 0 7)) ": a folder per stage - the stage documents and their readings moved into docs/stages/stage-N/"))]
+    {:status :done :detail detail}))
+
 (defn- step-build-docs! [{:keys [ws kit dir from head version]}]
   (let [build (:workspace/build ws)
         diff (:out (git kit "diff" from head "--" "build-docs/"))
@@ -396,7 +406,7 @@
 
 (def step-fns
   {:workspace-keys step-workspace-keys! :front-door step-front-door! :skills step-skills!
-   :orientation step-orientation! :build-docs step-build-docs! :loop-edn step-loop-edn!
+   :orientation step-orientation! :stage-folders step-stage-folders! :build-docs step-build-docs! :loop-edn step-loop-edn!
    :app step-app! :workspace-edn step-workspace-edn! :doctor step-doctor!})
 
 (defn after-pull!
@@ -467,6 +477,10 @@
         (say "front-door: " (if (:changed? (front-door/sync! kit (:workspace/dir ws) :check? true)) "would be written" "current"))
         (say "skills: " (let [rs (skills/sync! kit (:workspace/dir ws) :check? true)] (str (count (filter :changed? rs)) " to write, " (count (skills/stale kit (:workspace/dir ws))) " stale to remove")))
         (say "orientation: CLAUDE.md is " (let [f (fs/path (:workspace/dir ws) "CLAUDE.md")] (if (fs/exists? f) (name (init/marker-state (slurp (str f)))) "missing")))
+        (say "stage-folders: " (let [{:keys [moves ids]} (stage-move/plan (:workspace/build ws))]
+                                 (if (seq moves)
+                                   (str (count moves) " entries to move into " (str/join ", " (map #(str "docs/stages/stage-" % "/") ids)))
+                                   "nothing flat to move")))
         (say "build-docs: " (count files) " file" (when (not= 1 (count files)) "s") " changed: " (str/join ", " (map #(subs (:path %) (count "build-docs/")) files)))
         (say "loop-edn: " (if (second (rewrite-kit-path (slurp (str (fs/path (:workspace/build ws) "loop.edn"))))) "a literal KIT path to rewrite" "nothing to rewrite"))
         (say "app: " (if moved (str "the template pin moved " (:git/tag (:from moved)) " -> " (:git/tag (:to moved)) ": template-upgrade, the mirror on its branch") "the pin as it was: a branch for the mirror if it changed"))

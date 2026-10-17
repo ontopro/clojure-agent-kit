@@ -87,6 +87,33 @@ the project's and the upgrade leaves it as it is: compare it with
 
 ## 2026-10-16
 
+### The upgrade moves a workspace's stage documents into their folders (plan 6.7, item 4)
+
+`bb upgrade` phase 2 has a step before the build documents are patched, `stage-folders`
+(`harness.setup.stage-move`): every flat `stage-N-` entry of the build's `docs/stages/` that is not
+a template, and every `reviews/stage-N/`, moved into `docs/stages/stage-N/`. It moves every such
+entry rather than a known list, since a project puts more there than the KIT writes - the first
+project's browser checks left `stage-N-interactions.edn` beside its plans. A tracked entry moves by
+`git mv`, so its history follows; an untracked one moves on disk and stays untracked. One commit in
+the build, by pathspec, the release named. With nothing flat it says so, which is also how a re-run
+and a workspace made with the folders pass it.
+
+The paths go with the files, in the same commit, so the history reads as a rename with a small edit.
+Fable's review of the design set the rule for the moved documents: one more `../` where each run of
+them begins - not `../` doubled, which is wrong for a path three folders up (`../../../extracted/…`
+becomes four, to the same place) - and never inside a fenced block, where a blueprint's packet
+carries the application's paths for the Coder. A survey of the first project's build found two more
+kinds the move had to carry: its other documents cite stage plans as `stages/stage-0-plan.md`, the
+decision log most of all, and readings as `reviews/stage-N/…`, and a stage document names
+another stage's files bare (`stage-0-blueprint.md`), which were neighbours and are now a folder
+apart. Each is rewritten: `stages/stage-0/stage-0-plan.md`, `stages/stage-N/reviews/…`,
+`../stage-0/stage-0-blueprint.md`; a moved document's own readings become its `reviews/`. The
+templates are not touched here - the build documents step brings their change - and nor is a
+security review's folder, whose files quote the application. An uncommitted edit to a tracked file
+the step would touch stops it by name before anything moves. The tests run the move on a git
+repository in the old layout: the renames git detects, the paths, the fence untouched, the untracked
+files still untracked, and the second run moving nothing.
+
 ### A folder per stage (plan 6.7, item 4)
 
 A build's `docs/stages/` held every stage's documents flat, beside the six templates: by the first
