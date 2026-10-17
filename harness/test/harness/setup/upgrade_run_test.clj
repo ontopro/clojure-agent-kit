@@ -400,6 +400,18 @@
   (git-out dir "checkout" "-q" "--detach" tag)
   (str dir))
 
+(deftest the-dry-run-asks-origin-and-is-bounded-when-its-host-does-not-answer
+  (let [fake (fake-kit!)
+        clone (clone-at! fake (fs/path (fs/real-path (fs/create-temp-dir)) "KIT") "0.6.4")]
+    (release! fake)
+    (testing "a release pushed after the clone's fetch is seen on origin; a local path is asked with no probe"
+      (is (= ["0.6.5"] (ur/origin-newer clone "0.6.4" {:reachable? (fn [h] (throw (ex-info (str "probed " h) {})))}))))
+    (testing "an origin with a host that does not answer is not asked at all: nil, the offline line"
+      (git-out clone "remote" "set-url" "origin" "https://kit-origin.invalid/KIT.git")
+      (let [asked (atom [])]
+        (is (nil? (ur/origin-newer clone "0.6.4" {:reachable? (fn [h] (swap! asked conj h) false)})))
+        (is (= ["kit-origin.invalid"] @asked))))))
+
 (deftest phase-one-refuses-by-name-then-fetches-checks-moves-and-hands-over
   (let [fake (fake-kit!)
         clone (clone-at! fake (fs/path (fs/real-path (fs/create-temp-dir)) "KIT") "0.6.4")

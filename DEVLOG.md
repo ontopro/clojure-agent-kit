@@ -98,6 +98,12 @@ origin: 0.6.7". Offline, it says origin was not reached, gives the clone's own l
 the three cases; `origin-tags` was run against the KIT's origin and against a remote that does not
 exist.
 
+Fable's review of it: `git ls-remote` has no timeout of its own, and on a network that resolves and
+then drops packets the dry run would wait out git's connect timeout before its offline line. So
+`origin-newer` asks origin's host first, in the five seconds phase 1 already allows it, and
+does not ask origin at all when the host does not answer; a local path has no host and is asked
+directly. A test holds both, with a fake KIT as origin and a host that does not answer.
+
 ### The stage report counts every spec reading (plan 6.7, item 2, register row 135)
 
 The first KIT project's stage 1 report said one spec review per run, and the stage's total was

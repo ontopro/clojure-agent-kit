@@ -619,6 +619,16 @@
   (try (some? (http/head (str "https://" host "/") {:timeout 5000 :throw false}))
        (catch Exception _ false)))
 
+(defn origin-newer
+  "The releases newer than `here` that origin has, for the dry run; nil when origin was not
+  reached. ITS HOST ASKED FIRST, in five seconds as phase 1 asks it: a network that resolves and
+  then drops packets would hold `git ls-remote` for git's own connect timeout before the offline
+  line. A local path has no host and is asked directly. Opts, for tests: `:reachable?`."
+  [kit here {:keys [reachable?] :or {reachable? reachable?*}}]
+  (let [host (remote-host (:out (git kit "remote" "get-url" "origin")))]
+    (when (or (nil? host) (reachable? host))
+      (some-> (origin-tags kit) (newer-releases here)))))
+
 (defn- show-at [kit tag path]
   (let [{:keys [exit out]} (git kit "show" (str tag ":" path))]
     (when (zero? exit) out)))
@@ -758,7 +768,7 @@
         (let [here (clone-version (str/split-lines (:out (git kit "tag" "--merged" "HEAD"))))]
           (println (dry-run-summary {:here here :to to
                                      :local (newer-releases (str/split-lines (:out (git kit "tag"))) here)
-                                     :remote (some-> (origin-tags kit) (newer-releases here))})))
+                                     :remote (origin-newer kit here {})})))
         :else (let [{:keys [outcome exit result]} (phase-one! ws kit {:to to})]
                 (System/exit (case outcome :moved (or exit 1) :after-pull (if (:ok? result) 0 1) 1))))
       (catch clojure.lang.ExceptionInfo e
