@@ -62,6 +62,19 @@ tested" stays information for an adopter, never a block.
 
 ---
 
+## 0.6.7 — plan 6.7's boundary: a folder per stage, and where the project stands
+
+Plan 6.7 added a folder per stage - `docs/stages/stage-N/` holds a stage's documents and its
+readings - with the upgrade moving a workspace's into theirs; `bb next --where` and the
+`kit-where-am-i` skill, saying where the project stands, with every ID cited where it is defined;
+the vocabulary rule; `bb toolchain-newer`, the toolchain held current; a rules overlay refusing a
+key a rule does not have; every spec reading counted in a stage report; and the upgrade's dry run
+asking origin. A workspace at `0.6.6` takes it with `bb upgrade` from the workspace folder, then
+re-renders each stage report with `bb stage-report <stage-plan.md>`, and adds or decides against
+each build-docs hunk the upgrade saved under `work/upgrades/<id>/conflicts/`, most of them a
+template's new `**IDs.**` sentence; the one-word defined terms `bb plan-check` lists are the
+project's to rename or keep.
+
 ## 0.6.6 — plan 6.6's boundary: a template namespace a project removes
 
 Plan 6.6 added one fix: `bb plan-check` passes a template namespace removed with its file - its
