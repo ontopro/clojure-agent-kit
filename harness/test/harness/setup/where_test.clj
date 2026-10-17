@@ -173,8 +173,10 @@
            (:since d)))
     (is (= {:spent 1.25 :caps-approved 35 :caps-proposed 0 :by-stage [[0 1.0 20] [1 0.25 15]]} (:money d)))
     (testing "the last look, recorded, is where since counts from"
-      (fs/create-dirs (fs/path ws "work" "where"))
-      (spit (str (fs/path ws "work" "where" "last-look.edn")) (pr-str {:at "2026-10-14T09:00:00Z" :by "Ada"}))
+      (is (= (str (fs/path ws "work" "where" "last-look.edn"))
+             (where/last-look! (workspace/find-workspace ws) "2026-10-14T09:00:00Z" "Ada")))
+      (is (= {:at "2026-10-14T09:00:00Z" :by "Ada"} (edn/read-string (slurp (str (fs/path ws "work" "where" "last-look.edn")))))
+          "its comment lines read past")
       (let [s (:since (where/where-data (workspace/find-workspace ws) opts))]
         (is (= ["2026-10-14" "your last look, by Ada" [1] 0] ((juxt :from :why :approved :runs) s)))))
     (is (= [8 "the Architect's session"] ((juxt :step :owner) (:next d))) "the next step is next-action's: stage 1's blueprint")))

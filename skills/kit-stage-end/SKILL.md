@@ -55,7 +55,9 @@ gates record, the run records under `<xyx>-build/runs/` for the stage, `docs/00-
 
 Before anything else, run `bb next --where` from the workspace folder and show its block as printed;
 the report to the person opens with it, and every ID the report cites carries the file and section
-that define it (`method.md`, `A report to the person opens with where we are`).
+that define it (`method.md`, `A report to the person opens with where we are`). Then offer the
+fuller account, `/kit-where-am-i`, and give it only on the person's yes (`method.md`, `The fuller account
+is offered, not given unasked`).
 
 Then the exit criteria of the stage plan - the section whose heading starts `Exit criteria` - one at a time, each with its evidence: the command
 and its result, the browser pack's screenshots (run `bb --config <kit>/tools/browser/bb.edn

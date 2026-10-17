@@ -81,7 +81,7 @@
       (#{:closed :running} state) (str (if money (str (usd money) capped) "no money read") " · " runs " run" (when (not= 1 runs) "s"))
       (= :planned state) (str "planned" (when cap (str " · cap " (dollars cap) (when cap-note (str " " cap-note))))
                               (when money-note (str " · " (usd money))))
-      (= :next state) (str "next" (when cap (str " · cap " (dollars cap) (when cap-note (str " " cap-note)))))
+      (= :next state) (if cap (str "cap " (dollars cap) (when cap-note (str " " cap-note))) "next")
       :else "not started")))
 
 (defn- badge [x y id fill stroke ink href]
@@ -118,7 +118,7 @@
       ["<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
        (str "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 " width " " height
             "\" width=\"" width "\" height=\"" height "\" font-family=\"Helvetica, Arial, sans-serif\" font-size=\"12\">")
-       (str "  <title>" (esc build) " roadmap: five phases, " n " stage" (when (not= 1 n) "s") "</title>")
+       (str "  <title>" (esc (str/replace (str build) #"-build$" "")) " - the roadmap: five phases, " n " stage" (when (not= 1 n) "s") "</title>")
        "  <desc>Phases A to E as lanes; each stage a box in the lane of its phase; the money bar under each; open decisions and risks as badges on the stage that owns them.</desc>"
        "  <g id=\"lanes\">"]
       (for [[i _] (map-indexed vector phases)]
@@ -167,8 +167,8 @@
            (first
             (reduce (fn [[out bx] [_ bid kind]]
                       (let [[w svg] (if (= :d kind)
-                                      (badge bx (- y 8) bid "#dbe6ff" "#2b5fd9" "#1d3f99" (href (str build "/docs/04-decision-log.md")))
-                                      (badge bx (- y 8) bid "#ffe0e0" "#c0392b" "#8e2a1f" (href (str build "/docs/00-overview.md"))))]
+                                      (badge bx (- y 14) bid "#dbe6ff" "#2b5fd9" "#1d3f99" (href (str build "/docs/04-decision-log.md")))
+                                      (badge bx (- y 14) bid "#ffe0e0" "#c0392b" "#8e2a1f" (href (str build "/docs/00-overview.md"))))]
                         [(conj out (str "    " svg)) (+ bx w 4)]))
                     [[] x0] items))))
        drawn)

@@ -143,6 +143,10 @@
         :requires ([harness.setup.where :as where])
         :task (apply where/-main *command-line-args*)}
 
+  last-look {:doc "bb last-look [--by <name>] [--workspace <dir>]: record that the person has looked at where the project stands, now, in work/where/last-look.edn - bb next --where --full and the roadmap page then count since you last looked from it; the kit-where-am-i skill runs it on the person's word (harness.setup.where)"
+             :requires ([harness.setup.where :as where])
+             :task (apply where/last-look-main *command-line-args*)}
+
   roadmap-page {:doc "bb roadmap-page [--workspace <dir>]: the project's roadmap, drawn, into the workspace's work/where/ - roadmap.svg (five phase lanes, a box per stage by state, the money bar, open decisions and risks as badges) and roadmap.html, which carries it with what waits on the person, money and time, what changed since, what is open, what is next; from bb next --where --edn's map, never committed (harness.setup.roadmap-page)"
                 :requires ([harness.setup.roadmap-page :as roadmap-page])
                 :task (apply roadmap-page/-main *command-line-args*)}

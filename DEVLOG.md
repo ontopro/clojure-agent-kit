@@ -64,6 +64,18 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-17
 
+### The fuller account offered, and the person's last look (plan 6.8, item 5)
+
+`kit-where-am-i` shows the block, then offers the fuller account and prints `bb next --where
+--full` as it comes on a yes; among the lines to read into it adds the roadmap page, which it
+draws with `bb roadmap-page`. When the person says they know where the project stands, it runs
+`bb last-look --by <name>`, which records the moment in `work/where/last-look.edn`; "since you last
+looked" then counts from it. The skill types no record and writes nothing by hand. `method.md`
+gains the rule: the fuller account is offered, not given unasked, at a stage's end, a stage's
+pull and a session opened cold - `kit-stage-end` and `kit-stage-plan` offer it after the block,
+and `kit-start` hands a project under way to `/kit-where-am-i` first. The reports still open with
+the short block.
+
 ### The roadmap page: `bb roadmap-page` (plan 6.8, item 6)
 
 The project's roadmap, drawn: five lanes, a phase each, the current one tinted and marked "you
@@ -78,6 +90,9 @@ browser, and `roadmap.html`, which carries the same SVG inline and fetches nothi
 from a file. Every link is relative from its folder to the workspace. Drawn on a copy of the first
 KIT project's workspace, it renders in the SVG pack with no error, and every link opens a file.
 The fuller account's read-more lines name it.
+Fable's review of it, three touches to the drawing: the next stage's caption says its cap, the box
+and the legend already saying next; the badges sit above a box, clear of its title; and the
+drawing's title names the project, as the page does.
 
 ### The fuller account: `bb next --where --full` (plan 6.8, item 5)
 

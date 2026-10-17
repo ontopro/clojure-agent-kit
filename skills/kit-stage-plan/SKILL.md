@@ -50,7 +50,9 @@ index, and `docs/source.md`'s observations.
 
 Before anything else, run `bb next --where` from the workspace folder and show its block as printed;
 the report to the person opens with it, and every ID the report cites carries the file and section
-that define it (`method.md`, `A report to the person opens with where we are`).
+that define it (`method.md`, `A report to the person opens with where we are`). Then offer the
+fuller account, `/kit-where-am-i`, and give it only on the person's yes (`method.md`, `The fuller account
+is offered, not given unasked`).
 
 Then, out loud: which lessons of the last stage this plan answers, and how (a rule in the
 overlay, a line in this plan, a decision) - the plan review will ask for the one it does not.

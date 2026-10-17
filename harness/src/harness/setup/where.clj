@@ -466,6 +466,39 @@
           (not (or edn? full?)) {:error "--since needs --edn or --full: the block does not count since a date"}
           :else {:edn? edn? :full? full? :since d :args kept})))
 
+(defn last-look!
+  "Record the person's look at where the project stands - `{:at at :by by}`, `:by` left out when
+  nil - in `<work>/where/last-look.edn`, which `since-from` reads: \"since you last looked\" then
+  counts from it. Returns the file's path."
+  [ws at by]
+  (let [f (fs/path (:workspace/work ws) "where" "last-look.edn")]
+    (fs/create-dirs (fs/parent f))
+    (spit (str f) (str ";; The person's last look at where the project stands, written by `bb last-look`; `bb next\n"
+                       ";; --where --full` and the roadmap page count \"since you last looked\" from it. Not committed.\n"
+                       (pr-str (cond-> {:at at} (not (str/blank? by)) (assoc :by by))) "\n"))
+    (str f)))
+
+(defn last-look-main
+  "bb last-look [--by <name>] [--workspace <dir>]
+
+  Records that the person has looked at where the project stands, now - the `kit-where-am-i` skill
+  runs it on their word. The one file it writes is `work/where/last-look.edn`."
+  [& args]
+  (let [i (.indexOf ^java.util.List (vec args) "--by")
+        by (when (>= i 0) (get (vec args) (inc i)))
+        rest-args (if (>= i 0) (concat (take i args) (drop (+ i 2) args)) args)]
+    (when (and (>= i 0) (str/blank? by))
+      (println "--by needs a name after it")
+      (System/exit 1))
+    (let [ws (workspace/current-or-exit rest-args)]
+      (when-not ws
+        (println "last-look: no workspace here - run it from the workspace folder")
+        (System/exit 1))
+      (let [at (str (java.time.Instant/now))
+            f (last-look! ws at by)]
+        (println (str "recorded " (fs/relativize (fs/absolutize (:workspace/dir ws)) (fs/absolutize f)) ": " at
+                      (when by (str ", by " by)) " - since you last looked now counts from " (subs at 0 10)))))))
+
 (defn -main
   "bb next [--where [--edn | --full] [--since <YYYY-MM-DD>]] [--workspace <dir>]
 

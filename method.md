@@ -549,6 +549,17 @@ At a stage's end, three things are written before the next stage is pulled: the 
 
 When the Architect's session reports to the person - a stage plan for approval, a blueprint for sign-off, a stage's end - the report opens with the block `bb next --where` prints, pasted as printed and never restated: the phase and the stage, the stage's goal, what is done, what is next, the decisions still PROVISIONAL or OPEN, and the risks OPEN. Then the report. **Every ID it cites carries the file and section that define it** - `FR-8 (01-requirements.md §6b)`, `S-3.2 (source.md §2)` - never a file that only cites it: an ID is defined once and cited in many places, and a person given the ID alone has to search for it. The block's `read more` lines say where each kind is defined, and each template says the same where it defines one, in a sentence that begins **IDs.** The person can run `bb next --where` at any time.
 
+### The fuller account is offered, not given unasked
+
+A long build loses its reader between visits, so at the three points a person most needs the whole
+road - a stage's end, a stage's pull, and a session opened cold - the Architect's session offers the
+fuller account after the block: `/kit-where-am-i`, which prints `bb next --where --full` - every stage
+with its state, cap, spend and days, what waits on the person, what changed since their last look,
+what is open one line each - and draws the roadmap page (`bb roadmap-page`) when asked. Offered, not
+given: the report itself still opens with the short block, so it does not grow. The account and the
+page are renderings of one map, `bb next --where --edn`, read from the build's files; neither is
+written by a model.
+
 ### For a reader who knows Scrum or Kanban
 
 The method is Kanban's shape with two of Scrum's ceremonies attached to the gate. **Stage is the word**: not sprint, which brings a timebox the method rejects; not iteration, which is already taken by the loop's rounds and a task's retries.

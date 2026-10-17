@@ -1,13 +1,15 @@
 ---
 name: kit-where-am-i
-description: Any time, read-only - where the project stands. The phase and the stage with their files, the stage's goal, what is done and what is next, the decisions still open and the risks, and where each kind of ID is defined; then a guided reading into whichever the person picks. Use when the person asks "where are we", "where am I", "what is next", "what is open", "what does FR-8 mean", or opens a session cold.
+description: Any time - where the project stands. The block first; then, offered, the fuller account - the whole road, what each stage has cost and taken, what waits on the person, what changed since they last looked, what is open - and the roadmap page, the road drawn; then a guided reading into whichever line the person picks. Use when the person asks "where are we", "where am I", "what is next", "what is open", "what does FR-8 mean", or opens a session cold.
 ---
 
 # kit-where-am-i - where the project stands, then the details
 
 `bb next --where` is the source: it reads the build's files and prints one block, and this skill
-shows that block as printed, restating nothing, then reads further into the one line the person
-picks. Not a step of the workflow; it writes nothing.
+shows that block as printed, restating nothing. The fuller account is the same source at length,
+`bb next --where --full`, rendered by code so its figures are the files'; the roadmap page draws it.
+Not a step of the workflow. It writes only what the person's look leaves: the page, when they ask
+for it, and the date of their look, when they say they know where they stand.
 
 ## When it runs
 
@@ -21,6 +23,7 @@ back after a break, a report that cited something they cannot place.
 | `workflow.md` | `The steps, and what each produces` |
 | `method.md` | `01 — The phase map` |
 | `method.md` | `A report to the person opens with where we are` |
+| `method.md` | `The fuller account is offered, not given unasked` |
 | `build-docs/00-overview.md` | `4. Stage map` |
 
 The paths are KIT's, under the folder `workspace.edn`'s `:workspace/kit` names. Then the
@@ -34,7 +37,10 @@ Nothing. Outside a workspace the block says setup is next, as `bb next` does; sh
 ## Asks
 
 1. Run `bb next --where` from the workspace folder and show its block exactly as printed.
-2. Then one question - which line to open:
+2. Offer the fuller account: "The fuller account - the whole road, what it has cost, what waits on
+   you, what changed since you last looked - or a line of the block to read into?" On yes, run
+   `bb next --where --full` and show it exactly as printed; restate nothing, add no figure.
+3. Then one question - which line to open:
    - **the stage's goal**: its plan's §1 read, and its exit-criteria section - the heading that
      starts `Exit criteria`, whose number differs by the stage's kind - each criterion with
      whether it is met yet, as the plan says;
@@ -49,15 +55,21 @@ Nothing. Outside a workspace the block says setup is next, as `bb next` does; sh
    - **a phase, a step or the project plan**: the heading the `read more` lines name - the phase
      map in the KIT's `method.md`, the step's row in its `workflow.md`, the overview's section that
      lists the plan's documents;
-   - **the stage map**: every row, with its kind and status.
-3. Answer from the file named, pointing at the heading, every ID cited with the file and section
+   - **the stage map**: every row, with its kind and status;
+   - **the roadmap page**: run `bb roadmap-page`, say the path it printed, and offer to open it
+     (`open work/where/roadmap.html`).
+4. Answer from the file named, pointing at the heading, every ID cited with the file and section
    that define it; then offer the next level down, or another line.
 
 ## Writes
 
-Nothing.
+Through the KIT's commands only, never by hand: `work/where/roadmap.svg` and `roadmap.html` when
+the person picks the roadmap page (`bb roadmap-page`); `work/where/last-look.edn` when the person
+says they know where the project stands (`bb last-look --by <their name>`, the name their sign-offs
+carry) - say that it was recorded, and that "since you last looked" counts from it. Nothing is
+committed.
 
 ## Done when
 
-The person says they know where the project stands, or names the step to run - the block's `next:`
-line.
+The person says they know where the project stands - the look recorded by `bb last-look` - or
+names the step to run, the block's `next:` line.
