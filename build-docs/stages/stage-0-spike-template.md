@@ -3,8 +3,9 @@
 **Status:** PLANNED — for the person's approval, with its cap (§7); once approved, APPROVED by the signer's name, never a role, and the date
 **Kind:** spike
 **Version:** 0.1 · **Last updated:** <YYYY-MM-DD>
-**Companion to:** `../00-overview.md` §4a · `../02-architecture.md` · `../04-decision-log.md`
-**Proves:** the loop with this project's models (`../03-method-and-tooling.md`), by its first packet
+**Paths:** from `docs/stages/stage-N/`, the folder this document lives in.
+**Companion to:** `../../00-overview.md` §4a · `../../02-architecture.md` · `../../04-decision-log.md`
+**Proves:** the loop with this project's models (`../../03-method-and-tooling.md`), by its first packet
 
 > The **stage 0 plan**. Stage 0 is a spike over the foundational choices (`method.md` §04):
 > it proves the architecture's provisional decisions, the stack and the loop against pass
@@ -24,7 +25,7 @@
 
 ## 2. The risks it proves, and the decisions it gates
 
-> From the risk register (`../00-overview.md` §4a) and the decision log: every PROVISIONAL
+> From the risk register (`../../00-overview.md` §4a) and the decision log: every PROVISIONAL
 > entry stage 0 gates, with the pass criterion written **before** the spike runs and the
 > fallback that executes if it fails. A risk with no criterion is a poke around, not a spike.
 
@@ -37,7 +38,7 @@
 
 > `bb doctor`, `bb health` and `bb init` were done at setup (`method.md` §02); here the profile
 > and the rules overlay are filled, the gate sequence read, and the readiness record
-> (`../03-method-and-tooling.md` §18) closed against a live run. **Stage 0's first packet is
+> (`../../03-method-and-tooling.md` §18) closed against a live run. **Stage 0's first packet is
 > that run** - a small packet with a real question - and it proves the loop with this
 > project's models.
 
@@ -80,7 +81,7 @@ the stop: <what stops it early>. Recorded in `stage-0-gates.edn` beside this pla
 - **The loop proved with this project's models**, the readiness record closed against the live run (§3)
 - **Working software at its end, deployed locally** (§4), however small, served or evaluated by the project's own command
 - **What is kept, said** (§6); the rest owed to nobody
-- **The stage's end written:** stage 0's section of `../05-lessons.md`; the scope lists and the
+- **The stage's end written:** stage 0's section of `../../05-lessons.md`; the scope lists and the
   stage map revised; stage 1's plan pulled next, from this one's §8
 
 **Gate behaviour:** a criterion that fails executes its fallback behind the protocol and is

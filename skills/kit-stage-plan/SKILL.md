@@ -37,7 +37,7 @@ index, and `docs/source.md`'s observations.
 
 ## Refuses when
 
-- The previous stage's gates record (`docs/stages/stage-<N-1>-gates.edn`) has `:stage/closed`
+- The previous stage's gates record (`docs/stages/stage-<N-1>/stage-<N-1>-gates.edn`) has `:stage/closed`
   nil: its exit criteria are unchecked. Say so and stop; the `kit-stage-end` skill closes a stage.
   Stage 0 has no previous stage; it needs `stage-0-gates.edn` with `:stage/approved` set.
 - A stage plan for this stage already exists and is approved: a change to an approved plan is
@@ -62,14 +62,14 @@ accounts - says so, and the architecture's §8 decision and §15's lines are ame
 the routes the security pack tries (`docs/security-routes.edn`) gain the stage's forms and the
 routes that need a login.
 The exit criteria are things a person can check, "deployed locally" among them from stage 1
-on, and the cap is proposed to the person. Then run `bb plan-review
-<xyx>-build/docs/stages/stage-N-plan.md` and read the findings cold with the person, resolving each in
+on, and the cap is proposed to the person. Then run the stage plan review, `bb plan-review
+<xyx>-build/docs/stages/stage-N/stage-N-plan.md`, and read the findings cold with the person, resolving each in
 the overview's findings table and the stage plan; then `bb plan-check`.
 
 ## Writes
 
-`docs/stages/stage-N-plan.md` from the template for its kind, every mark replaced and every
-instruction deleted; `docs/stages/stage-N-gates.edn` copied from the gates template; the
+`docs/stages/stage-N/stage-N-plan.md` from the template for its kind, every mark replaced and every
+instruction deleted, in the stage's folder; `docs/stages/stage-N/stage-N-gates.edn` copied from the gates template; the
 overview's stage map with this stage's cap; the review's findings resolved. Then say the next
 step: the person's approval with the cap written into the gates record, and `bb next`. An
 approval names who gave it - the cap line, the status line and the gates record's `:by` - by

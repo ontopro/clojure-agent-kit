@@ -34,11 +34,6 @@
          (br/stage-document-name "# Stage 1 Blueprint\n\n**Input:** `stage-1-vertical-slice.md` · **Method:** `../03.md`\n")))
   (is (nil? (br/stage-document-name "# a Blueprint with no Input line"))))
 
-(deftest the-reviews-folder-is-the-stage
-  (is (= "stage-1" (br/stage-key "/p/docs/stages/stage-1-blueprint.md")))
-  (is (= "stage-2-search" (br/stage-key "/p/docs/stages/stage-2-search-blueprint.md")))
-  (is (= "odd-name" (br/stage-key "/p/docs/stages/odd-name.md"))))
-
 (deftest the-input-is-the-stage-document-the-requirements-the-blueprint-then-the-checklist
   (let [text (br/review-input "stage-1-x.md" "the stage" "FR-8 This page is being prepared." "stage-1-blueprint.md" "the blueprint" "- the rules")]
     (is (< (str/index-of text "=== stage-1-x.md ===\nthe stage")
@@ -76,12 +71,12 @@
          (finally @(srv/server-stop! stop)))))
 
 (defn- scratch-plan
-  "A plan with one stage document and its Blueprint under docs/stages/, and a
+  "A plan with one stage document and its Blueprint under docs/stages/stage-1/, and a
   profile whose :blueprint-reviewer is the stub. Returns the plan and the
   Blueprint's path."
   [endpoint]
   (let [plan (str (fs/create-temp-dir {:prefix "blueprint-review-"}))
-        stages (fs/path plan "docs" "stages")]
+        stages (fs/path plan "docs" "stages" "stage-1")]
     (fs/create-dirs stages)
     (spit (str (fs/path stages "stage-1-slice.md")) "# Stage 1 — Slice\n\nthe stage's goal and its task list\n")
     (spit (str (fs/path plan "docs" "01-requirements.md")) "# Requirements\n\nFR-8 the words a person reads\n")
@@ -101,7 +96,7 @@
                             (fn [endpoint]
                               (let [[plan bp] (scratch-plan endpoint)]
                                 [(with-out-str (br/review! bp (str (fs/path plan "profile.edn")) method-path)) plan])))
-        written (edn/read-string (slurp (str (fs/path plan "reviews" "stage-1" "blueprint-review.edn"))))]
+        written (edn/read-string (slurp (str (fs/path plan "docs" "stages" "stage-1" "reviews" "blueprint-review.edn"))))]
     (is (= 2 (:count written)))
     (is (= "a cache no task needs" (-> written :findings first :finding)))
     (is (= ["stage-1-slice.md" "01-requirements.md" "stage-1-blueprint.md"] (:documents written)))
@@ -123,9 +118,9 @@
         (fn [endpoint]
           (spit (str (fs/path plan "profile.edn"))
                 (pr-str {:seat :claude :roles {:blueprint-reviewer {:family :stub :model "m" :shape :openai :endpoint endpoint}}}))
-          (with-out-str (br/review! (str (fs/path plan "docs" "stages" "stage-1-blueprint.md"))
+          (with-out-str (br/review! (str (fs/path plan "docs" "stages" "stage-1" "stage-1-blueprint.md"))
                                     (str (fs/path plan "profile.edn")) method-path))))
-      (let [again (edn/read-string (slurp (str (fs/path plan "reviews" "stage-1" "blueprint-review.edn"))))]
+      (let [again (edn/read-string (slurp (str (fs/path plan "docs" "stages" "stage-1" "reviews" "blueprint-review.edn"))))]
         (is (= 0 (:count again)))
         (is (= [2 0] (mapv :count (:reviews again))))))))
 
@@ -133,7 +128,7 @@
   (let [[[written] seen] (with-stub answer
                            (fn [endpoint]
                              (let [[plan bp] (scratch-plan endpoint)]
-                               (fs/delete (fs/path plan "docs" "stages" "stage-1-slice.md"))
+                               (fs/delete (fs/path plan "docs" "stages" "stage-1" "stage-1-slice.md"))
                                [(with-out-str (br/review! bp (str (fs/path plan "profile.edn")) method-path))])))]
     (is (str/includes? written "blueprint review: 2 findings"))
     (is (str/includes? (json/generate-string (first seen)) "=== stage-1-slice.md (not found) ==="))))
@@ -144,7 +139,7 @@
                          (let [[plan bp] (scratch-plan endpoint)]
                            [(with-out-str (br/review! bp (str (fs/path plan "profile.edn")) method-path)) plan])))]
     (is (str/includes? r "no findings block"))
-    (is (not (fs/exists? (fs/path plan "reviews" "stage-1" "blueprint-review.edn"))))))
+    (is (not (fs/exists? (fs/path plan "docs" "stages" "stage-1" "reviews" "blueprint-review.edn"))))))
 
 (deftest a-blueprint-outside-docs-stages-and-a-profile-without-the-role-are-refused-by-name
   (let [[plan bp] (scratch-plan "http://127.0.0.1:1")
@@ -153,7 +148,7 @@
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"lives at <plan>/docs/stages/"
                           (br/review! elsewhere (str (fs/path plan "profile.edn")) method-path)))
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"does not exist"
-                          (br/plan-dir-of (str (fs/path plan "docs" "stages" "no-such-blueprint.md")))))
+                          (br/plan-dir-of (str (fs/path plan "docs" "stages" "stage-1" "no-such-blueprint.md")))))
     (spit (str (fs/path plan "no-role.edn")) (pr-str {:seat :claude :roles {:coder {:family :anthropic}}}))
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no :blueprint-reviewer role"
                           (br/review! bp (str (fs/path plan "no-role.edn")) method-path)))))

@@ -62,7 +62,7 @@ reaches it, the auth model, where it is deployed, the CSP), each a decision, ask
 §4 says the template does not do, and the threat model (§15) written from them - three lines for
 a public site that holds nothing private, more where it holds more; the method document's chosen
 part; and the rules overlay's three placeholders.
-Then run `bb plan-review` and read the findings cold with the person, resolving each in the
+Then run `bb plan-review` - the project plan review, once, over the whole set - and read the findings cold with the person, resolving each in the
 overview's findings table; then `bb plan-check` until it passes, and read it its two lists -
 the inferred requirements, for the approval, and the uncited observations, for later.
 
@@ -72,7 +72,7 @@ The seven documents under `<xyx>-build/docs/` as the template lays them out, eve
 replaced or the row deleted, every instruction blockquote deleted once acted on; the rules
 overlay filled; `reviews/plan-review.edn` by the review; the findings table in the overview.
 Then say the next step: the person's approval of stage 0 with its cap, recorded in
-`docs/stages/stage-0-gates.edn` copied from the gates template, and `bb next`. An approval
+`docs/stages/stage-0/stage-0-gates.edn` copied from the gates template into stage 0's folder, and `bb next`. An approval
 names who gave it - the cap line, the status line and the gates record's `:by` - by the name the
 brief gives for who signs off, or asked for; never "the person".
 

@@ -85,16 +85,18 @@
          (plan/governing template-dir))
       "the README explains the marks and carries one; the stage templates and the gates record's are copied per stage")
   (is (not (plan/governing? "stages/stage-N-gates-template.edn")))
-  (is (plan/governing? "stages/stage-1-gates.edn") "a stage's record, once copied, is read like a stage plan")
-  (is (plan/governing? "stages/stage-1-foundation.md") "a stage document written from the template is read")
+  (is (plan/governing? "stages/stage-1/stage-1-gates.edn") "a stage's record, once copied, is read like a stage plan")
+  (is (not (plan/governing? "stages/stage-1/stage-2-gates.edn")) "a stage's record is its own folder's")
+  (is (plan/governing? "stages/stage-1/stage-1-foundation.md") "a stage document written from the template is read")
   (is (not (plan/governing? "stages/stage-N-template.md")))
   (is (plan/governing? "api-notes/a-library.md") "an Architect's note is a plan document")
   (testing "a record a KIT tool writes is never read"
-    (doseq [rel ["stages/stage-0-security-review/model-tracer-20261013.edn"
-                 "stages/stage-0-security-review/security-fixes.md"
-                 "stages/stage-0-security-review/model-tracer-20261013-tests/test/app/review_test.clj"
-                 "stages/stage-0-security.edn" "stages/stage-0-security-deps.edn"
-                 "stages/stage-0-security-secrets.edn" "stages/stage-0-interactions.edn"]]
+    (doseq [rel ["stages/stage-0/stage-0-security-review/model-tracer-20261013.edn"
+                 "stages/stage-0/stage-0-security-review/security-fixes.md"
+                 "stages/stage-0/stage-0-security-review/model-tracer-20261013-tests/test/app/review_test.clj"
+                 "stages/stage-0/stage-0-security.edn" "stages/stage-0/stage-0-security-deps.edn"
+                 "stages/stage-0/stage-0-security-secrets.edn" "stages/stage-0/stage-0-interactions.edn"
+                 "stages/stage-0/reviews/plan-review.edn" "stages/stage-0/reviews/blueprint-review.edn"]]
       (is (not (plan/governing? rel)) rel))))
 
 (deftest a-security-review-quoting-the-applications-brackets-is-not-a-mark-left
@@ -102,7 +104,7 @@
   ;; template's deploy file - ERB tags, `<%= ENV['SERVER_IP'] %>` - and plan-check counted
   ;; them as four marks to fill; `bb next` then sent the closed stage back to the plan.
   (let [docs (fs/create-temp-dir {:prefix "plan-docs-"})
-        review (fs/path docs "stages" "stage-0-security-review")]
+        review (fs/path docs "stages" "stage-0" "stage-0-security-review")]
     (fs/create-dirs review)
     (spit (str (fs/path docs "00-overview.md")) "# Overview\n\nFilled.\n")
     (spit (str (fs/path review "r.edn")) "{:quote \"<%= ENV['SERVER_IP'] %>\"}\n")
@@ -264,10 +266,11 @@
              (:problems (check ws))))
       (spit (doc "source.md") (fill (slurp (doc "source.md")))))
     (testing "a stage document written from the template is read; the template itself is not"
-      (spit (doc "stages/stage-1-foundation.md") "# Stage 1\n\n> The **stage plan**: the project plan's slice for this stage. Written **just-in-time**, when\n")
+      (fs/create-dirs (fs/parent (doc "stages/stage-1/stage-1-foundation.md")))
+      (spit (doc "stages/stage-1/stage-1-foundation.md") "# Stage 1\n\n> The **stage plan**: the project plan's slice for this stage. Written **just-in-time**, when\n")
       (is (= 1 (count (:problems (check ws)))))
       (is (= 8 (:documents (check ws))))
-      (fs/delete (doc "stages/stage-1-foundation.md")))
+      (fs/delete-tree (doc "stages/stage-1")))
     (testing "the overlay: a placeholder put back, then a KIT rule edited"
       (let [overlay (str (fs/path plan "rules.edn"))
             filled (slurp overlay)
@@ -335,14 +338,15 @@
     (is (str/includes? (plan/report r) "\n  uncited: 2 observations of source.md nothing cites - the backlog nobody decided on, revised at the stage's end: S-1.2, S-1.3"))
     (is (not (str/includes? (plan/report r) "inferred:")))
     (testing "a stage plan's requirements: one inferred, one resting on nothing"
-      (spit (doc "stages/stage-1-plan.md")
+      (fs/create-dirs (fs/parent (doc "stages/stage-1/stage-1-plan.md")))
+      (spit (doc "stages/stage-1/stage-1-plan.md")
             "# Stage 1\n\n## 2. Requirements this stage adds\n\n| # | Requirement | Source | Priority |\n|---|---|---|---|\n| FR-4 | walks | (inferred) | must |\n| FR-5 | runs | | must |\n")
       (let [r (check ws)]
-        (is (= ["docs/stages/stage-1-plan.md: FR-5 cites no observation of source.md (S-n.m in its Source column) and is not marked (inferred)"]
+        (is (= ["docs/stages/stage-1/stage-1-plan.md: FR-5 cites no observation of source.md (S-n.m in its Source column) and is not marked (inferred)"]
                (:problems r)))
-        (is (= [["FR-4" "stages/stage-1-plan.md"]] (:inferred r)))
-        (is (str/includes? (plan/report r) "\n  inferred: 1 requirement rests on the Architect's inference, shown at the stage's approval - FR-4 (docs/stages/stage-1-plan.md)")))
-      (fs/delete (doc "stages/stage-1-plan.md")))
+        (is (= [["FR-4" "stages/stage-1/stage-1-plan.md"]] (:inferred r)))
+        (is (str/includes? (plan/report r) "\n  inferred: 1 requirement rests on the Architect's inference, shown at the stage's approval - FR-4 (docs/stages/stage-1/stage-1-plan.md)")))
+      (fs/delete-tree (doc "stages/stage-1")))
     (is (= [] (:problems (check ws))))))
 
 (deftest the-hash-covers-what-the-check-reads-and-nothing-else

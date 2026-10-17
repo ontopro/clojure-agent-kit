@@ -15,12 +15,16 @@ repository's first commit, the way it generates `<name>-app/` from the KIT's app
     03-method-and-tooling.md  ← the method, instantiated for this project
     04-decision-log.md        ← living; the mechanism by which everything else evolves
     05-lessons.md             ← one section per stage, written at its end, read first when the next stage plan is written
-    stages/
-      stage-0-<name>.md       ← the stage 0 plan, the spike's, from stage-0-spike-template.md
-      stage-N-plan.md         ← the stage plan, written just-in-time when the stage is pulled, from stage-N-template.md (pre-release and release from their own templates)
-      stage-N-blueprint.md    ← the stage's blueprint, the Architect's output; signed off by the person
-      stage-N-gates.edn       ← the stage's human gates as a record (a pre-release stage's fourth, its threat model signed), from stage-N-gates-template.edn; `bb next` reads it
-  reviews/                    ← a review's raw material, outside the governing documents
+    stages/                   ← the stage templates, and a folder per stage, made when the stage is pulled
+      stage-0/
+        stage-0-<name>.md     ← the stage 0 plan, the spike's, from stage-0-spike-template.md
+      stage-N/
+        stage-N-plan.md       ← the stage plan, written just-in-time when the stage is pulled, from stage-N-template.md (pre-release and release from their own templates)
+        stage-N-blueprint.md  ← the stage's blueprint, the Architect's output; signed off by the person
+        stage-N-gates.edn     ← the stage's human gates as a record (a pre-release stage's fourth, its threat model signed), from stage-N-gates-template.edn; `bb next` reads it
+        stage-N-security*.edn ← the security pack's records at the stage's end, and stage-N-security-review/ the security review's
+        reviews/              ← the stage plan's and the blueprint's readings
+  reviews/                    ← the project plan review's raw material, outside the governing documents
   rules.edn                   ← this project's rules over the KIT's rule source: its placeholders, filled here
   profile.edn                 ← the models per role and the seat; bb profile checks it
   loop.edn                    ← the defaults a run directory copies
@@ -30,7 +34,7 @@ repository's first commit, the way it generates `<name>-app/` from the KIT's app
 
 Beside `docs/`, `bb init` writes `rules.edn`, `profile.edn`, `loop.edn`, `runs/` (empty until the
 loop's `record` copies the first record there) and `RUNS.md` (its header; the reports come with
-the records); `reviews/` appears with the first `bb plan-review` and `bake-offs/` with the first
+the records); `reviews/` appears with the project plan review and `bake-offs/` with the first
 `bb bake-off new`. All of it is the rest of what a project decides or produces: the build
 repository holds all of it, and the KIT's clone none.
 
@@ -61,7 +65,9 @@ kept as written.
 
 **`reviews/` is the home for a review's raw material**: each reader's output from the plan-review
 pass, the raw reads of a blueprint, any comparison of readers - everything that is about the
-reading rather than the plan. The overview's findings table (`00-overview.md` §5) keeps the
+reading rather than the plan. The project plan review's is the build's `reviews/`; a stage's
+readings - its stage plan's and its blueprint's - are its folder's `reviews/`, beside the stage's
+other documents. The overview's findings table (`00-overview.md` §5) keeps the
 findings and their resolutions and nothing else; a comparison of four readers that tripled one
 project's overview belonged here. `bb plan-review` writes its findings here too.
 
@@ -72,4 +78,4 @@ every instructional blockquote once you've acted on it — a document left half-
 decision, and an angle bracket left standing reaches whoever reads the plan next as literal text.
 `bb plan-check`, run from the workspace folder, holds the plan to both (and to the rules overlay's
 placeholders and the given parts), and `start` runs it once per workspace before its first
-dispatch; this README and the templates under `stages/` are not checked, everything else under `docs/` is.
+dispatch; this README, the templates under `stages/` and the readings under a stage's `reviews/` are not checked, everything else under `docs/` is.

@@ -11,7 +11,7 @@
 
   FIVE FACTS, EVERY ONE A FILE. Is there a workspace; does the plan check
   pass; which stage is pulled and where its human gates stand
-  (`docs/stages/stage-N-gates.edn`, the record the person writes); is its
+  (`docs/stages/stage-N/stage-N-gates.edn`, the record the person writes); is its
   blueprint written, reviewed, signed, and its §0's human prep done; which of
   its packets have a merged record under the build's `runs/`. Before a workspace exists the next action
   is setup (`bb self-check`, `bb init` in KIT's clone); in a workspace whose
@@ -30,6 +30,7 @@
    [clojure.string :as str]
    [harness.contract.blueprint :as blueprint]
    [harness.setup.plan :as plan]
+   [harness.setup.stages :as stages]
    [harness.setup.upgrade :as upgrade]
    [harness.setup.workspace :as workspace]))
 
@@ -50,7 +51,12 @@
 (def person "the person")
 (def architect "the Architect's session")
 
-(defn- gates-file [id] (str "docs/stages/stage-" id "-gates.edn"))
+(defn- gates-file [id] (stages/rel id "-gates.edn"))
+
+(defn- pull
+  "How stage `id` is pulled: its folder, and the gates template copied into it."
+  [id]
+  (str "mkdir -p docs/stages/stage-" id ", copy docs/stages/stage-N-gates-template.edn to " (gates-file id)))
 
 (def ^:private names-no-one
   "What a sign-off's `:by` may not be, in lower case: the gates template's own words, and the
@@ -147,9 +153,9 @@
     (cond
       (nil? gates)
       (action (if spike? 5 7) person
-              (str "copy docs/stages/stage-N-gates-template.edn to " (gates-file id)
+              (str (pull id)
                    (if spike? " and set :stage/approved with the cap" (str " for stage " id)))
-              (str "docs/stages/ has stage " id "'s plan and no gates record for it"))
+              (str "docs/stages/stage-" id "/ has the stage's plan and no gates record"))
 
       unnamed-gate
       (let [by (:by (get gates unnamed-gate))]
@@ -165,7 +171,7 @@
 
       (and (nil? approved) (nil? plan))
       (action 7 architect "/kit-stage-plan"
-              (str "stage " id " is pulled (" (gates-file id) ") and docs/stages/ has no stage-" id " plan"))
+              (str "stage " id " is pulled (" (gates-file id) ") and docs/stages/stage-" id "/ has no plan"))
 
       (nil? approved)
       (action 7 person (str "read docs/stages/" plan ", then set :stage/approved {:date :cap :by <name>} in " (gates-file id))
@@ -173,16 +179,16 @@
 
       (nil? plan)
       (action 6 architect "/kit-stage-plan (stage 0's plan, from the spike template)"
-              (str "stage 0 is approved and docs/stages/ has no stage-0 plan"))
+              "stage 0 is approved and docs/stages/stage-0/ has no plan")
 
       (nil? blueprint)
-      (action 8 architect (str "write docs/stages/stage-" id "-blueprint.md from stages/stage-N-blueprint-template.md"
+      (action 8 architect (str "write " (stages/rel id "-blueprint.md") " from docs/stages/stage-N-blueprint-template.md"
                                ", from docs/stages/" plan)
               (str "stage " id " is approved and has no blueprint"))
 
       (not reviewed?)
       (action 9 architect (str "bb blueprint-review docs/stages/" blueprint)
-              (str "docs/stages/" blueprint " has no reading under reviews/stage-" id "/"))
+              (str "docs/stages/" blueprint " has no reading under docs/stages/stage-" id "/reviews/"))
 
       (nil? signed)
       (action 10 person (str "resolve the review's findings in docs/stages/" plan ", then set :blueprint/signed {:date :by <name>} in " (gates-file id))
@@ -224,8 +230,7 @@
               (str "stage " id " is pre-release and closed without its threat model signed"))
 
       :else
-      (action 7 person (str "pull stage " (inc id) " by kind: copy docs/stages/stage-N-gates-template.edn to "
-                            (gates-file (inc id)) ", then /kit-stage-plan")
+      (action 7 person (str "pull stage " (inc id) " by kind: " (pull (inc id)) ", then /kit-stage-plan")
               (str "stage " id " is closed")))))
 
 (defn plan-step?
@@ -272,7 +277,7 @@
             (str "bb plan-check: " (count plan-problems) " thing" (when (not= 1 (count plan-problems)) "s") " left"))
 
     (nil? stage)
-    (action 5 person "copy docs/stages/stage-N-gates-template.edn to docs/stages/stage-0-gates.edn and set :stage/approved with the cap"
+    (action 5 person (str (pull 0) " and set :stage/approved with the cap")
             "the plan passes its check and docs/stages/ has no stage yet")
 
     :else (let [left (when upgrade (upgrade/upgrade-lines upgrade))]
@@ -308,9 +313,6 @@
 ;; the edge: facts
 ;; ---------------------------------------------------------------------------
 
-(defn- stage-id [file-name]
-  (some-> (re-find #"^stage-(\d+)-" file-name) second parse-long))
-
 (defn- read-edn [path] (try (edn/read-string (slurp (str path))) (catch Exception _ nil)))
 
 (defn stage-kind
@@ -319,22 +321,21 @@
   (some-> (re-find #"(?m)^\*\*Kind:\*\*\s*(.*?)\s*$" text) second))
 
 (defn stage-files
-  "The stages under `docs/stages/`, by id: `{id {:plan name :blueprint name
-  :gates map}}` - a plan file is `stage-N-plan.md` - read as any `stage-N-*.md`
-  that is neither a template nor the blueprint; the gates record is
-  `stage-N-gates.edn`."
+  "The stages under `docs/stages/`, by id - a folder `stage-N/` each
+  (`harness.setup.stages`): `{id {:plan path :blueprint path :gates map}}`,
+  the paths from `docs/stages/` (`stage-1/stage-1-plan.md`). The plan is the
+  folder's `.md` that is not the blueprint; the gates record is
+  `stage-N-gates.edn`. A folder with none of them is a stage with nothing yet."
   [stages-dir]
-  (reduce (fn [m f]
-            (let [nm (fs/file-name f)
-                  id (stage-id nm)]
-              (cond
-                (or (nil? id) (str/includes? nm "-template.")) m
-                (str/ends-with? nm "-gates.edn") (assoc-in m [id :gates] (read-edn f))
-                (str/ends-with? nm "-blueprint.md") (assoc-in m [id :blueprint] nm)
-                (str/ends-with? nm ".md") (assoc-in m [id :plan] nm)
-                :else m)))
-          (sorted-map)
-          (when (fs/directory? stages-dir) (fs/list-dir stages-dir))))
+  (into (sorted-map)
+        (for [[id dir] (stages/folders stages-dir)
+              :let [in-dir #(str (stages/folder-name id) "/" %)
+                    gates (fs/path dir (str (stages/folder-name id) "-gates.edn"))
+                    blueprint (str (stages/folder-name id) "-blueprint.md")]]
+          [id (cond-> {}
+                (fs/exists? gates) (assoc :gates (read-edn gates))
+                (fs/exists? (fs/path dir blueprint)) (assoc :blueprint (in-dir blueprint))
+                (stages/plan-file dir) (assoc :plan (in-dir (stages/plan-file dir))))])))
 
 (defn run-statuses
   "Task id → the latest record's `:run/status` under `records-dir`, latest by
@@ -368,7 +369,7 @@
                 (merge files
                        {:id id
                         :kind (some->> (:plan files) (fs/path build "docs" "stages") str slurp stage-kind)
-                        :reviewed? (fs/exists? (fs/path build "reviews" (str "stage-" id) "blueprint-review.edn"))
+                        :reviewed? (fs/exists? (fs/path (stages/reviews-dir build id) "blueprint-review.edn"))
                         :packets (or packets [])
                         :preconditions (if bp-text (preconditions bp-text) [])
                         :merged (into #{} (filter #(= :merged (statuses %))) packets)

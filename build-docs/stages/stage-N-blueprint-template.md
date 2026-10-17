@@ -2,7 +2,8 @@
 
 **Status:** AWAITING HUMAN GATE — no task dispatches until signed off; once signed, SIGNED OFF by the signer's name, never a role, and the date
 **Author:** Architect (<model>) · **Date:** <YYYY-MM-DD>
-**Input:** `stage-N-plan.md`, the stage plan, approved · **Method:** `../03-method-and-tooling.md`
+**Input:** `stage-N-plan.md`, the stage plan, approved · **Method:** `../../03-method-and-tooling.md`
+**Paths:** from `docs/stages/stage-N/`, the folder this document lives in.
 
 > Produced in a fixed order: **shapes → interfaces → namespaces and dependencies →
 > dependency-ordered task packets.** This document is read twice, by two agents who never

@@ -42,6 +42,7 @@
    [harness.setup.blueprint-review :as blueprint-review]
    [harness.setup.plan :as plan]
    [harness.setup.plan-review :as plan-review]
+   [harness.setup.stages :as stages]
    [harness.setup.workspace :as workspace]))
 
 ;; ---------------------------------------------------------------------------
@@ -59,18 +60,19 @@
     ;; disk, read first with the set as its context - the readings the pass
     ;; makes in a build, in the order it makes them
     :cases (fn [{:keys [plan]}]
-             (let [d (fs/path plan "docs" "stages")]
-               (into [{:id "plan" :path plan}]
-                     (for [f (when (fs/exists? d) (sort (map str (fs/glob d "stage-*.md"))))
-                           :when (not (or (str/ends-with? f "-template.md") (str/ends-with? f "-blueprint.md")))]
-                       {:id (plan-review/stage-key f) :path plan :stage f}))))
+             (into [{:id "plan" :path plan}]
+                   (for [[id dir] (stages/folders (stages/stages-dir plan))
+                         :let [nm (stages/plan-file dir)]
+                         :when nm]
+                     {:id (stages/folder-name id) :path plan :stage (str (fs/path dir nm))})))
     :run (fn [role {:keys [path stage]} {:keys [method]}] (plan-review/read! role path method stage))}
    :blueprint-reviewer
    {:role :blueprint-reviewer
     :cases (fn [{:keys [plan]}]
-             (let [d (fs/path plan "docs" "stages")]
-               (vec (for [f (when (fs/exists? d) (sort (map str (fs/glob d "*-blueprint.md"))))]
-                      {:id (blueprint-review/stage-key f) :path f}))))
+             (vec (for [[id _] (stages/folders (stages/stages-dir plan))
+                        :let [f (stages/document plan id "-blueprint.md")]
+                        :when (fs/exists? f)]
+                    {:id (stages/folder-name id) :path (str f)})))
     :run (fn [role {:keys [path]} {:keys [method]}] (blueprint-review/read! role path method))}
    :spec-reviewer
    {:role :spec-reviewer

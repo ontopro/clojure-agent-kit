@@ -54,7 +54,7 @@
 
 (def facts
   {:id 1 :packets ["t1" "t2" "t3"] :records [merged-run escalated-run]
-   :readings [["plan review" 0.5 1] ["blueprint review" 1.5 2]]
+   :readings [["stage plan review" 0.5 1] ["blueprint review" 1.5 2]]
    :gates {:stage/id "1" :stage/approved {:date "2026-10-02" :cap "$20"}}
    :before {:id 0 :cost 3.25 :runs 2 :rounds 3 :stops 1}})
 
@@ -64,7 +64,7 @@
     (is (= 2 (:run-count s)))
     (is (= 1 (:merged s)))
     (is (= 8.125 (:dispatch-money s)))
-    (is (= [["plan review" 0.5 1] ["blueprint review" 1.5 2] ["spec reviews" 0.75 3]] (:readings s)) "the spec reviews counted from the runs")
+    (is (= [["stage plan review" 0.5 1] ["blueprint review" 1.5 2] ["spec reviews" 0.75 3]] (:readings s)) "the spec reviews counted from the runs")
     (is (= 2.75 (:reading-money s)))
     (is (= 10.875 (:money s)) "dispatch and readings")
     (is (= {:coder 5.75 :tester 0.75 :orchestrator 0.375 :reviewer 1.25} (:by-role s)))
@@ -75,7 +75,7 @@
     (is (= "$20" (:cap s)))
     (let [r (sr/render s)]
       (is (str/starts-with? r "Stage 1 report · 2 runs, 1 merged · $10.88 of cap $20 (approved 2026-10-02) · stage 0: $3.25, 2 runs, 3 rounds, 1 stop\n"))
-      (is (str/includes? r "  Money by role: coder $5.75 · reviewer $1.25 · tester $0.75 · orchestrator $0.38 · readings $2.75 (plan review 1 $0.50, blueprint review 2 $1.50, spec reviews 3 $0.75)\n"))
+      (is (str/includes? r "  Money by role: coder $5.75 · reviewer $1.25 · tester $0.75 · orchestrator $0.38 · readings $2.75 (stage plan review 1 $0.50, blueprint review 2 $1.50, spec reviews 3 $0.75)\n"))
       (is (str/includes? r "  Rounds: 5 over 2 runs (2.5 per run) · retries $3.13 (38% of the dispatch money) · 1 review rejected\n"))
       (is (str/includes? r "  Stops: architect 1 · person 2 — by kind: awaiting-merge 1, capped 1, spec-reviewed 1\n"))
       (is (str/ends-with? r "  Packets: t1 merged · t2 escalated · t3 no-record"))))
@@ -98,8 +98,8 @@
           "a pre-release stage says it has none")
       (is (str/includes? (sr/render (sr/stage-summary (assoc facts :kind "pre-release" :checks checks)))
                          (str "Security checks: 10 ok, 5 warn, 0 fail, 3 skipped (2026-10-08)\n"
-                              "  Dependencies: no record (the kit-stage-end skill runs the security pack's deps with --record docs/stages/stage-N-security-deps.edn)\n"
-                              "  Secrets: no record (the kit-stage-end skill runs the security pack's secrets with --record docs/stages/stage-N-security-secrets.edn)\n"
+                              "  Dependencies: no record (the kit-stage-end skill runs the security pack's deps with --record docs/stages/stage-N/stage-N-security-deps.edn)\n"
+                              "  Secrets: no record (the kit-stage-end skill runs the security pack's secrets with --record docs/stages/stage-N/stage-N-security-secrets.edn)\n"
                               "  Threat model: not signed"))
           "before the signature, which reads it; a pre-release stage says which scan has no record")))
   (testing "the two scans' lines: a stage with their records, or a pre-release stage"
@@ -145,36 +145,43 @@
   (let [ws (str (fs/real-path (fs/create-temp-dir {:prefix "stage-report-"})))
         build (str (fs/path ws "xyx-build"))
         stages (fs/path build "docs" "stages")
+        s0 (fs/path stages "stage-0")
+        s1 (fs/path stages "stage-1")
         records (str (fs/path build "runs"))
-        plan-0 (str (fs/path stages "stage-0-plan.md"))
-        plan-1 (str (fs/path stages "stage-1-plan.md"))]
-    (fs/create-dirs stages)
+        plan-0 (str (fs/path s0 "stage-0-plan.md"))
+        plan-1 (str (fs/path s1 "stage-1-plan.md"))]
+    (fs/create-dirs (fs/path s0 "reviews"))
+    (fs/create-dirs (fs/path s1 "reviews"))
     (fs/create-dirs records)
-    (fs/create-dirs (fs/path build "reviews" "stage-1"))
+    (fs/create-dirs (fs/path build "reviews"))
     (spit (str (fs/path stages "stage-N-template.md")) "# template\n")
     (spit plan-0 "# Stage 0\n")
-    (spit (str (fs/path stages "stage-0-blueprint.md")) "# b\n\n```clojure\n{:task/id \"w0\"}\n```\n")
+    (spit (str (fs/path s0 "stage-0-blueprint.md")) "# b\n\n```clojure\n{:task/id \"w0\"}\n```\n")
     (spit plan-1 plan-text)
-    (spit (str (fs/path stages "stage-1-blueprint.md")) "# b\n\n```clojure\n{:task/id \"t1\"}\n```\n\n```clojure\n{:task/id \"t2\"}\n```\n")
-    (spit (str (fs/path stages "stage-1-gates.edn")) (pr-str {:stage/id "1" :stage/approved {:date "d" :cap "$20"}}))
+    (spit (str (fs/path s1 "stage-1-blueprint.md")) "# b\n\n```clojure\n{:task/id \"t1\"}\n```\n\n```clojure\n{:task/id \"t2\"}\n```\n")
+    (spit (str (fs/path s1 "stage-1-gates.edn")) (pr-str {:stage/id "1" :stage/approved {:date "d" :cap "$20"}}))
     (spit (str (fs/path records "t1.edn")) (pr-str merged-run))
     (spit (str (fs/path records "t2.edn")) (pr-str escalated-run))
     (spit (str (fs/path records "w0.edn")) (pr-str (assoc merged-run :run/id "w0" :task/id "w0")))
-    (spit (str (fs/path build "reviews" "stage-1" "blueprint-review.edn")) (pr-str {:cost 1.0 :reviews [{:cost 1.0} {:cost 0.5}]}))
+    (spit (str (fs/path s1 "reviews" "blueprint-review.edn")) (pr-str {:cost 1.0 :reviews [{:cost 1.0} {:cost 0.5}]}))
     (spit (str (fs/path build "reviews" "plan-review.edn")) (pr-str {:cost 0.75}))
-    (spit (str (fs/path stages "stage-1-security-deps.edn"))
+    (spit (str (fs/path s0 "reviews" "plan-review.edn")) (pr-str {:cost 0.25}))
+    (spit (str (fs/path s1 "stage-1-security-deps.edn"))
           (pr-str {:security/at "2026-10-08T12:30" :scan :deps :counts {:ok 1 :warn 0 :fail 0 :skipped 0} :ok? true :rows []}))
-    (spit (str (fs/path stages "stage-1-security.edn"))
+    (spit (str (fs/path s1 "stage-1-security.edn"))
           (str ";; Written by the KIT's security pack. Do not edit.\n"
                (pr-str {:security/at "2026-10-08T00:05" :counts {:ok 9 :warn 2 :fail 0 :skipped 3} :ok? true :rows []})))
-    (is (= [[0 "stage-0-plan.md"] [1 "stage-1-plan.md"]] (sr/stage-plans stages)))
+    (is (= [[0 plan-0] [1 plan-1]] (sr/stage-plans stages)) "one per stage folder; the template beside them is none")
+    (is (= [["project plan review" 0.75 1] ["stage plan review" 0.25 1] ["spec reviews" 0.25 1]]
+           (:readings (sr/summary-for build records 0)))
+        "stage 0 counts the project plan review and its own stage plan review, said apart")
     (is (nil? (sr/summary-for build records 2)) "no blueprint, nothing to roll up")
     (let [s (sr/summary-for build records 1)]
       (is (= ["t1" "t2"] (mapv :task/id (:runs s))) "the records of the blueprint's packets, in its order; w0 is stage 0's")
       (is (= [["blueprint review" 1.5 2] ["spec reviews" 0.75 3]] (:readings s)) "the history's readings; no plan review for this stage")
       (is (= "$20" (:cap s)))
       (is (= "increment" (:kind s)) "the plan's kind line")
-      (is (= {:id 0 :cost 4.625 :runs 1 :rounds 2 :stops 1} (:before s)) "stage 0: its run, its spec review and the whole-set plan review")
+      (is (= {:id 0 :cost 4.875 :runs 1 :rounds 2 :stops 1} (:before s)) "stage 0: its run, its spec review, the project plan review and its stage plan review")
       (is (= {:counts {:ok 9 :warn 2 :fail 0 :skipped 3} :date "2026-10-08"} (:security-checks s))
           "the security pack's record beside the gates record, its comment line read past")
       (is (= {:deps {:counts {:ok 1 :warn 0 :fail 0 :skipped 0} :date "2026-10-08"}} (:security-scans s))

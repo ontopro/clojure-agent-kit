@@ -3,12 +3,13 @@
 **Status:** PLANNED — for the person's approval, with its cap (§11); once approved, APPROVED by the signer's name, never a role, and the date
 **Kind:** <walking skeleton · increment> (stage 0 is the spike, `stage-0-spike-template.md`; pre-release and release have templates of their own)
 **Version:** 0.1 · **Last updated:** <YYYY-MM-DD>
-**Companion to:** `../02-architecture.md` · `../04-decision-log.md` · `../05-lessons.md`
-**Runs through:** the loop, as `../03-method-and-tooling.md` sets it — this plan is the
+**Paths:** from `docs/stages/stage-N/`, the folder this document lives in.
+**Companion to:** `../../02-architecture.md` · `../../04-decision-log.md` · `../../05-lessons.md`
+**Runs through:** the loop, as `../../03-method-and-tooling.md` sets it — this plan is the
 Architect's blueprint input
 
 > The **stage plan**: the project plan's slice for this stage. Written **just-in-time**, when
-> the stage is pulled — with the previous stage's §12 and `../05-lessons.md` read first, and
+> the stage is pulled — with the previous stage's §12 and `../../05-lessons.md` read first, and
 > nothing beyond this stage decided. Read cold by the plan review (`bb plan-review`) before the
 > blueprint is cut from it; approved by the person with its cap before anything dispatches.
 
@@ -30,7 +31,7 @@ Architect's blueprint input
 > ahead of time. One row per requirement, each with a permanent ID that is never reused, the
 > source observation it rests on (`S-n.m`) or `(inferred)` for the Architect's own, and its
 > priority. The inferred ones are what the person is shown at this stage's approval. At the
-> stage's end, each goes into the index in `../01-requirements.md` §6b.
+> stage's end, each goes into the index in `../../01-requirements.md` §6b.
 
 | # | Requirement | Source | Priority |
 |---|---|---|---|
@@ -39,7 +40,7 @@ Architect's blueprint input
 
 ## 3. Decisions exercised by this stage
 
-| Topic | Decision (see `../04-decision-log.md`) |
+| Topic | Decision (see `../../04-decision-log.md`) |
 |---|---|
 | <Datastore> | **<selection>** *(PROVISIONAL, D-n; gate R-n runs here)* — fallback: <x> |
 | <Macro-architecture> | |
@@ -55,7 +56,7 @@ Architect's blueprint input
 **Shows (breadth):**
 - <what a person sees when they walk it: which pages, which commands, which inputs>
 
-**Does NOT prove, or show yet (deferred, tracked in the stage map — `../00-overview.md` §4):**
+**Does NOT prove, or show yet (deferred, tracked in the stage map — `../../00-overview.md` §4):**
 - **Scale** — <why this input is too small; which stage owns it>
 - **Breadth** — <what it does not yet show, and which stage shows it>
 - <feature deferred, and where it is tracked>
@@ -119,15 +120,15 @@ to the records, so the figures here are never typed by hand.
 - Boundary gate passes; each protocol has one implementation **and a documented fallback**
 - **Deployed locally:** served by the project's own command from a clean checkout; the browser
   checks and the security pack run against it and its two scans over the source
-  (`../03-method-and-tooling.md` §17), the pack's records `stage-N-security.edn`,
+  (`../../03-method-and-tooling.md` §17), the pack's records `stage-N-security.edn`,
   `-security-deps.edn` and `-security-secrets.edn` beside this plan with no failing row; and then **the owner's walk
   through every page the stage made**, with what they asked for done or written down - a
   first project's walk produced ten changes no target could have named
 - **Decision-log updates recorded:** spike outcomes noted against the decisions they gate;
   provisional entries confirmed or reversed
-- **The stage's end written:** this stage's section of `../05-lessons.md`, each lesson ending
+- **The stage's end written:** this stage's section of `../../05-lessons.md`, each lesson ending
   as a rule, a line in the next stage plan, or a decision; the requirements of §2 in the index
-  (`../01-requirements.md` §6b); the scope lists revised against the source; the stage map
+  (`../../01-requirements.md` §6b); the scope lists revised against the source; the stage map
   re-ranked and the next stage named by kind - an increment, a pre-release stage, or the release
 
 **Gate behaviour:** if <spike> fails here, the documented fallback executes behind the

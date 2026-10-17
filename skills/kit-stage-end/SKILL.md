@@ -55,20 +55,20 @@ The exit criteria of the stage plan's §11, one at a time, each with its evidenc
 and its result, the browser pack's screenshots (run `bb --config <kit>/tools/browser/bb.edn
 check` against the local server; the README's three things say what it does and does not
 prove), the security pack's table (run `bb --config <kit>/tools/security/bb.edn check --routes
-docs/security-routes.edn --record docs/stages/stage-N-security.edn` from the application's
+docs/security-routes.edn --record docs/stages/stage-N/stage-N-security.edn` from the application's
 folder, the routes file where the project has one; a pre-release stage runs it against the
 rehearsed host with `--running --base <its url>`, so TLS is tried), and its two scans from the
 same folder - `deps --routes docs/security-routes.edn --record
-docs/stages/stage-N-security-deps.edn` and `secrets --from stage-<N-1> --routes
-docs/security-routes.edn --record docs/stages/stage-N-security-secrets.edn` (`--all` at the first
+docs/stages/stage-N/stage-N-security-deps.edn` and `secrets --from stage-<N-1> --routes
+docs/security-routes.edn --record docs/stages/stage-N/stage-N-security-secrets.edn` (`--all` at the first
 stage's end, which has no tag before it) - no failing row in any of the three and every warn
 read with the person; an advisory accepted or a hit allowed goes in the routes file with its
 reason, never around it, and a secret found is rotated, not only removed. Then the security review, once the person
 agrees to its cost (a real model call: $0.46 to $1.50 a reading of the KIT's small fixture, more for a larger application): from the workspace folder, on a fresh clone of the
 application's merged tip, `bb security-review <clone> --stance tracer --base stage-<N-1> --out
-<xyx>-build/docs/stages/stage-N-security-review` (the application's first commit for `--base` at the first stage's
+<xyx>-build/docs/stages/stage-N/stage-N-security-review` (the application's first commit for `--base` at the first stage's
 end), which reads the profile's `:security-reviewer`; then `bb security-route <the record it wrote> <clone> --out
-<xyx>-build/docs/stages/stage-N-security-review`, which asks triage about each reproduced finding. A review the
+<xyx>-build/docs/stages/stage-N/stage-N-security-review`, which asks triage about each reproduced finding. A review the
 model declined or left without an answer is said as that and is not a clean review. Go through every finding with
 the person: a `coder` route's draft in `security-fixes.md` is completed into this stage's Blueprint as a packet,
 signed and run, and the stage does not close until the security reviewer's test kept beside it passes on the merged
@@ -89,7 +89,7 @@ criteria answered, pass or fallback. Then the scope lists against the source (`b
 prints the observations nothing cites) and the stage map re-ranked by what remains; the next
 stage pulled by kind - an increment, a pre-release stage, or the release - and, at the first
 boundary where "could we ship after this one?" is yes, the MVP named. Finally the cap: what
-the stage cost against what was approved: run `bb stage-report <xyx>-build/docs/stages/stage-N-plan.md`, which renders the
+the stage cost against what was approved: run `bb stage-report <xyx>-build/docs/stages/stage-N/stage-N-plan.md`, which renders the
 stage's figures into §11 from the run records and its security checks and scans from the pack's records,
 and read it with the person; the lessons section's
 cost and runs are its first line.
@@ -108,9 +108,9 @@ person"), written by the person, before its
 `:stage/closed` with the date, written by the person; the tag `stage-N` on the application's
 merged tip. Not this skill's: the run records and `RUNS.md` (`record` writes them per run) and
 the screenshots (the work folder, uncommitted); the security review's folder
-`docs/stages/stage-N-security-review/` - its record, the tests it wrote, `security-routing.edn` and any
+`docs/stages/stage-N/stage-N-security-review/` - its record, the tests it wrote, `security-routing.edn` and any
 `security-fixes.md` - is the commands', committed with the stage; the security pack's records
-`docs/stages/stage-N-security.edn`, `-security-deps.edn` and `-security-secrets.edn` are the
+`docs/stages/stage-N/stage-N-security.edn`, `-security-deps.edn` and `-security-secrets.edn` are the
 pack's, committed with the stage. Then say the next step: `bb next`, and "Type `/kit-stage-plan`
 to plan stage N+1" for the stage pulled, in a fresh session if the person likes.
 

@@ -3,7 +3,8 @@
 **Status:** PLANNED — for the person's approval, with its cap (§6); once approved, APPROVED by the signer's name, never a role, and the date
 **Kind:** release
 **Version:** 0.1 · **Last updated:** <YYYY-MM-DD>
-**Companion to:** the pre-release stage plans before it · `../04-decision-log.md` · `../05-lessons.md`
+**Paths:** from `docs/stages/stage-N/`, the folder this document lives in.
+**Companion to:** the pre-release stage plans before it · `../../04-decision-log.md` · `../../05-lessons.md`
 
 > The **release stage** packages, then deploys on the server or publishes for download, and
 > returns to the next increment (`method.md` §04). It repeats: a later release has a smaller
@@ -38,7 +39,7 @@
 
 ## 5. Decisions exercised by this stage
 
-| Topic | Decision (see `../04-decision-log.md`) |
+| Topic | Decision (see `../../04-decision-log.md`) |
 |---|---|
 | | |
 
@@ -55,7 +56,7 @@
 - The pre-publish gate green at the moment of publishing
 - The rollback named (§2) and rehearsed once
 - **The browser checks and the owner's walk against the released address**, as they ran locally
-- **Decision-log updates recorded**; this stage's section of `../05-lessons.md` written; the scope
+- **Decision-log updates recorded**; this stage's section of `../../05-lessons.md` written; the scope
   lists and the stage map revised; the next increment pulled
 
 ## 7. Residual risks / feeds into the next increment

@@ -96,11 +96,12 @@
   "Is `rel` (a path under `docs/`) a document a check reads? What a plan step
   and a stage plan write: a Markdown file - the seven written in stage 0's plan
   step, the lessons among them, every stage plan written since - and a stage's
-  gates record, `stages/stage-N-gates.edn`. Never the template's own
+  gates record, `stages/stage-N/stage-N-gates.edn`. Never the template's own
   `README.md`, which explains the marks and so carries one; never the stage
   templates (`*-template.md`, `*-template.edn`), copied per stage with their
   marks standing by design; and never a record a KIT tool writes - the
-  security pack's and the interactions' `.edn` beside a stage plan, and a
+  security pack's and the interactions' `.edn` beside a stage plan, the
+  readings under a stage folder's `reviews/`, and a
   stage's `*-security-review/` folder, Markdown included, whose record quotes
   the application's files and so whatever brackets they hold."
   [rel]
@@ -108,7 +109,7 @@
        (not (re-find #"(^|/)[^/]*-security-review/" rel))
        (not (str/ends-with? rel "-template.md"))
        (or (str/ends-with? rel ".md")
-           (boolean (re-matches #"stages/stage-\d+-gates\.edn" rel)))))
+           (boolean (re-matches #"stages/stage-(\d+)/stage-\1-gates\.edn" rel)))))
 
 (defn governing
   "The governing documents under `docs-dir`, relative, sorted."

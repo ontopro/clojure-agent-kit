@@ -87,6 +87,39 @@ the project's and the upgrade leaves it as it is: compare it with
 
 ## 2026-10-16
 
+### A folder per stage (plan 6.7, item 4)
+
+A build's `docs/stages/` held every stage's documents flat, beside the six templates: by the first
+KIT project's first stage the person looked in it and saw stage plans, blueprints, gates records,
+the security pack's records and a security review's folder for two stages, mixed with the
+templates. Each stage is now a folder, `docs/stages/stage-N/`, holding its plan, its blueprint, its
+gates record, the security pack's records, the security review's folder, and `reviews/` - the stage
+plan review's and the blueprint review's readings, which were under the build's
+`reviews/stage-N/`. The templates stay at `docs/stages/`, beside the folders.
+
+`harness.setup.stages` is where that is known: the folders, a stage's documents, its readings, and
+the stage's id read from the folder name, once. Four namespaces had each read the id from a file
+name, in four ways - `bb next`, `bb stage-report`, and the plan and blueprint reviews, whose
+readings went to a folder named by whatever their file names began with. The files keep their
+names (`stage-1-<slug>.md`, `stage-1-gates.edn`, `stage-1-security-review/`), so a grep for a stage
+still finds them, and what keys on a suffix - the plan check's exclusion of a security review's
+folder, the stage report's three security records - reads as before.
+
+The project plan review stays at the build's `reviews/plan-review.edn`: it reads the whole plan once,
+before stage 0 is approved, and is no stage's own. Stage 0 also has its stage plan reviewed, like
+every stage, and `bb stage-report` had counted the project plan review as stage 0's plan review and
+never read stage 0's own. Stage 0's report now counts both, said apart as "project plan review"
+and "stage plan review" (the person's words); later stages count their stage plan review. A
+published stage-0 block re-renders with the new figures.
+
+The templates' paths were written from where a copy lives, one folder below `docs/`; a copy now
+lives two below, so each run of `../` gained one, and each template says so in a line under its
+heading ("**Paths:** from `docs/stages/stage-N/`"). A workspace takes the templates' change through
+the upgrade's build documents step as ordinary hunks. `bb next` prints the folder's `mkdir -p` with
+the gates template's copy when a stage is pulled. The skills, the build documents' tree, the
+method, the workflow and the harness's own documents name the new paths. Moving an existing
+workspace's documents is the upgrade's next step, its own commit.
+
 ### The upgrade's dry run names origin's newer releases (plan 6.7, item 3)
 
 The first KIT project's first `bb upgrade` began with a dry run, right after a release was pushed,

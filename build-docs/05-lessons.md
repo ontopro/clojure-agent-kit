@@ -20,7 +20,7 @@
 
 | # | Lesson | Ends as | Where |
 |---|---|---|---|
-| L-0.1 | <what the roles did, or failed to, and what it cost> | rule · stage plan line · decision | <`rules.edn` :id / `stages/stage-1-plan.md` §n / D-n> |
+| L-0.1 | <what the roles did, or failed to, and what it cost> | rule · stage plan line · decision | <`rules.edn` :id / `stages/stage-1/stage-1-plan.md` §n / D-n> |
 | L-0.2 | <what the person did by hand that a target could not have named> | | |
 
 ## Stage <N>

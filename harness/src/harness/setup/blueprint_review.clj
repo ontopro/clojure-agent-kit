@@ -9,8 +9,8 @@
   the read: the stage document (the Blueprint's input), the Blueprint, and the
   method's two sections, to the profile's `:blueprint-reviewer` role - one
   completion, no tools - the findings printed with the cost and written to
-  `<plan>/reviews/<stage>/blueprint-review.edn`, beside the stage's other raw
-  material. The Architect resolves them in the stage document, then signs off.
+  the stage folder's `reviews/blueprint-review.edn`, beside the stage's other
+  raw material. The Architect resolves them in the stage document, then signs off.
 
   NOT A GATE, and not the spec review: that still reads every packet cut from
   the Blueprint before it dispatches. This reads the whole, once, for what a
@@ -19,8 +19,9 @@
   checklist is read from `method.md` at the call, so the method and the review
   cannot drift apart.
 
-  The pure parts are `checklist`, `stage-document-name`, `stage-key` and
-  `review-input`; `review!` is the command."
+  The pure parts are `checklist`, `stage-document-name` and `review-input`;
+  `review!` is the command. Where the Blueprint lives and where its reading is
+  written are `harness.setup.stages`'."
   (:require
    [babashka.fs :as fs]
    [clojure.edn :as edn]
@@ -30,6 +31,7 @@
    [harness.models.profile :as profile]
    [harness.setup.plan :as plan]
    [harness.setup.plan-review :as plan-review]
+   [harness.setup.stages :as stages]
    [harness.setup.workspace :as workspace]))
 
 (def kinds
@@ -113,16 +115,6 @@
   [blueprint-text]
   (second (re-find #"\*\*Input:\*\*\s*`([^`]+\.md)`" blueprint-text)))
 
-(defn stage-key
-  "The folder under `reviews/` a Blueprint's read is written to: its file name
-  without `-blueprint.md` (`stage-1-blueprint.md` → `stage-1`), or without
-  `.md` when it is not named that way."
-  [blueprint-path]
-  (let [nm (fs/file-name blueprint-path)]
-    (if (str/ends-with? nm "-blueprint.md")
-      (subs nm 0 (- (count nm) (count "-blueprint.md")))
-      (str/replace nm #"\.md$" ""))))
-
 ;; THE REQUIREMENTS, BECAUSE A STAGE PLAN SUMMARISES THEM. A placeholder page's target left out the
 ;; sentence its requirement gives a person to read, and the review could not see it: the stage plan
 ;; said "a placeholder", and the requirement's words were in a document the review was not sent.
@@ -143,19 +135,16 @@
        checklist))
 
 (defn plan-dir-of
-  "The plan a Blueprint belongs to: it lives at `<plan>/docs/stages/<file>`.
+  "The plan a Blueprint belongs to: it lives at `<plan>/docs/stages/stage-N/<file>`.
   Throws by name when it does not."
   [blueprint-path]
   (let [bp (fs/absolutize blueprint-path)
-        stages (fs/parent bp)
-        docs (some-> stages fs/parent)]
-    (when-not (and (fs/exists? bp)
-                   stages (= "stages" (fs/file-name stages))
-                   docs (= "docs" (fs/file-name docs)))
-      (throw (ex-info (str "a Blueprint lives at <plan>/docs/stages/<stage>-blueprint.md; " bp
+        {:keys [build]} (stages/of-document bp)]
+    (when-not (and (fs/exists? bp) build)
+      (throw (ex-info (str "a Blueprint lives at <plan>/docs/stages/stage-N/stage-N-blueprint.md; " bp
                            (if (fs/exists? bp) " is not there" " does not exist"))
                       {:blueprint-review/error :not-a-blueprint-path :path (str bp)})))
-    (str (fs/normalize (fs/parent docs)))))
+    (str (fs/normalize build))))
 
 (defn- existing [out-file]
   (when (fs/exists? out-file) (edn/read-string (slurp (str out-file)))))
@@ -203,7 +192,7 @@
 (defn review!
   "Read the Blueprint at `blueprint-path` and the stage document it names, send
   them with the checklist to the `:blueprint-reviewer` role of `profile-path`,
-  print the list, write `<plan>/reviews/<stage>/blueprint-review.edn` - the
+  print the list, write the stage folder's `reviews/blueprint-review.edn` - the
   findings, their count, the model, the cost, the documents read, and every
   earlier review of this Blueprint under `:reviews`. `method-path` is where
   the checklist is read from. Returns the written map; an answer with no
@@ -215,7 +204,7 @@
             (throw (ex-info (str "the profile " profile-path " has no :blueprint-reviewer role")
                             {:blueprint-review/error :no-blueprint-reviewer :profile (str profile-path)})))
         {:keys [findings documents model cost] :as read} (read! role blueprint-path method-path)
-        out-file (fs/path plan-dir "reviews" (stage-key blueprint-path) "blueprint-review.edn")
+        out-file (fs/path (stages/reviews-dir plan-dir (:id (stages/of-document blueprint-path))) "blueprint-review.edn")
         out (merge {:findings findings
                     :count (count findings)
                     :documents documents
@@ -241,7 +230,7 @@
 (defn -main
   "bb blueprint-review <blueprint.md> [--profile <profile.edn>] [--workspace <dir>]
 
-  The Blueprint's plan is the folder above its `docs/stages/`; the profile is
+  The Blueprint's plan is the folder above its `docs/stages/stage-N/`; the profile is
   that plan's `profile.edn` unless `--profile` names another; the checklist is
   the KIT's `method.md`."
   [& args]
@@ -251,7 +240,7 @@
                                            :else (recur more flags (conj positional a))))
         bp (first positional)]
     (when-not bp
-      (println "blueprint-review: which Blueprint? bb blueprint-review <plan>/docs/stages/<stage>-blueprint.md")
+      (println "blueprint-review: which Blueprint? bb blueprint-review <plan>/docs/stages/stage-N/stage-N-blueprint.md")
       (System/exit 2))
     (try
       (let [plan-dir (plan-dir-of bp)

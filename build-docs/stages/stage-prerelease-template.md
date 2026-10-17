@@ -3,7 +3,8 @@
 **Status:** PLANNED — for the person's approval, with its cap (§7); once approved, APPROVED by the signer's name, never a role, and the date
 **Kind:** pre-release
 **Version:** 0.1 · **Last updated:** <YYYY-MM-DD>
-**Companion to:** `../01-requirements.md` §7 · `../02-architecture.md` §15 · `../04-decision-log.md` · `../05-lessons.md`
+**Paths:** from `docs/stages/stage-N/`, the folder this document lives in.
+**Companion to:** `../../01-requirements.md` §7 · `../../02-architecture.md` §15 · `../../04-decision-log.md` · `../../05-lessons.md`
 
 > A **pre-release stage** holds what release needs and nothing a user-visible stage needed
 > earlier (`method.md` §04): the host and the publish command; backup and restore; metrics,
@@ -40,7 +41,7 @@
 | Logging | <what release needs; a stage's own debugging logs landed in that stage> | | |
 | Auditing | | | |
 | The pre-publish gate | <what must be true of the application before anything is published: every page signed off, the go-live checklist's rows done, …> | | |
-| The threat model | <every line of `../02-architecture.md` §15 answered, and how each is shown> | | |
+| The threat model | <every line of `../../02-architecture.md` §15 answered, and how each is shown> | | |
 
 ## 4. The deploy path, rehearsed
 
@@ -54,7 +55,7 @@
 
 ## 6. Decisions exercised by this stage
 
-| Topic | Decision (see `../04-decision-log.md`) |
+| Topic | Decision (see `../../04-decision-log.md`) |
 |---|---|
 | <The host> | |
 
@@ -66,17 +67,17 @@
 - A restore rehearsed: a backup taken, the data removed, the backup restored, the application
   answering with it
 - The pre-publish gate written as a check a person can run, and run green
-- **The threat model signed:** every line of `../02-architecture.md` §15 answered - by a line
+- **The threat model signed:** every line of `../../02-architecture.md` §15 answered - by a line
   of its §4, a decision, or this stage's work - each with its evidence beside it, and
   `:security/signed` set in `stage-N-gates.edn` by the person; a line that cannot be answered
   this release is a decision that says so, never a line left blank
 - **The security pack green on the deploy:** the KIT's security pack run against the rehearsed
-  host (`--running --base <its url>`, so TLS is tried), with `../security-routes.edn` where the
+  host (`--running --base <its url>`, so TLS is tried), with `../../security-routes.edn` where the
   project has one; `stage-N-security.edn` beside this plan with no failing row, and its
   dependency and secrets scans' records beside it with none either; each warn read and answered
   in §15 or a decision
 - **Deployed locally** still: the browser checks and the owner's walk against the local build
-- **Decision-log updates recorded**; this stage's section of `../05-lessons.md` written; the scope
+- **Decision-log updates recorded**; this stage's section of `../../05-lessons.md` written; the scope
   lists and the stage map revised; the next stage named - another pre-release stage, or the release
 
 ## 8. Residual risks / feeds into the next stage

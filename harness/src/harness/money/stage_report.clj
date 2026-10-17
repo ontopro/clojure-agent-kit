@@ -6,8 +6,9 @@
   rounds table, a ledger, a spend sheet, each re-added after every merge and
   each a number nobody could re-derive. This is the roll-up: over the run
   records of the stage's packets (the blueprint names them, the records name
-  their task) and the stage's readings (the plan review's and the blueprint
-  review's records under `reviews/<stage>/`, the spec reviews inside each run)
+  their task) and the stage's readings (the stage plan review's and the
+  blueprint review's records in the stage folder's `reviews/`, the spec reviews
+  inside each run, and for stage 0 the project plan review too)
   - money by role, rounds, stops by owner, rework - set beside the stage's cap
   (its gates record) and the stage before it, and rendered into the stage
   plan's exit-criteria section as a fenced block that names itself, held to
@@ -25,6 +26,7 @@
    [clojure.string :as str]
    [harness.contract.blueprint :as blueprint]
    [harness.loop.log :as log]
+   [harness.setup.stages :as stages]
    [harness.setup.workspace :as workspace]))
 
 ;; ---------------------------------------------------------------------------
@@ -182,13 +184,13 @@
                (if-let [{:keys [ok warn fail skipped accepted]} (:counts security-checks)]
                  (str ok " ok, " warn " warn, " fail " fail, " skipped " skipped"
                       (when (pos? (or accepted 0)) (str ", " accepted " accepted")) " (" (:date security-checks) ")")
-                 "no record (the kit-stage-end skill runs the security pack with --record docs/stages/stage-N-security.edn)")))
+                 "no record (the kit-stage-end skill runs the security pack with --record docs/stages/stage-N/stage-N-security.edn)")))
         (for [[k label cmd] [[:deps "Dependencies" "deps"] [:secrets "Secrets" "secrets"]]]
           (when (or (get security-scans k) (= "pre-release" kind))
             (str "  " label ": "
                  (if-let [{:keys [ok warn fail skipped]} (:counts (get security-scans k))]
                    (str ok " ok, " warn " warn, " fail " fail, " skipped " skipped (" (:date (get security-scans k)) ")")
-                   (str "no record (the kit-stage-end skill runs the security pack's " cmd " with --record docs/stages/stage-N-security-" cmd ".edn)")))))
+                   (str "no record (the kit-stage-end skill runs the security pack's " cmd " with --record docs/stages/stage-N/stage-N-security-" cmd ".edn)")))))
         (when (or security (= "pre-release" kind))
           (str "  Threat model: "
                (if security
@@ -248,24 +250,19 @@
 
 (defn- read-edn [path] (try (edn/read-string (slurp (str path))) (catch Exception _ nil)))
 
-(defn stage-id [file-name] (some-> (re-find #"^stage-(\d+)-" file-name) second parse-long))
-
 (defn- stage-kind
   "A stage plan's kind, from its `**Kind:**` line, or nil."
   [text]
   (some-> (re-find #"(?m)^\*\*Kind:\*\*\s*(.*?)\s*$" text) second))
 
 (defn stage-plans
-  "The stage plans under `stages-dir`: `[[id file-name] …]` by id, templates,
-  blueprints and gates records left out."
+  "The stage plans under `stages-dir`: `[[id path] …]` by id, one per stage
+  folder that has one (`stages/plan-file`), the path absolute."
   [stages-dir]
-  (->> (when (fs/directory? stages-dir) (fs/list-dir stages-dir))
-       (map fs/file-name)
-       (filter #(and (stage-id %) (str/ends-with? % ".md")
-                     (not (str/includes? % "-template.")) (not (str/ends-with? % "-blueprint.md"))))
-       (map (juxt stage-id identity))
-       (sort-by first)
-       vec))
+  (vec (for [[id dir] (stages/folders stages-dir)
+             :let [nm (stages/plan-file dir)]
+             :when nm]
+         [id (str (fs/path dir nm))])))
 
 (defn- reading
   "`[label cost n]` for a review record: every reading in its `:reviews`
@@ -294,24 +291,25 @@
   records under `records-dir`: nil when the stage has no blueprint (no
   packets, nothing to roll up)."
   [build records-dir id]
-  (let [stages (fs/path build "docs" "stages")
-        bp (fs/path stages (str "stage-" id "-blueprint.md"))]
+  (let [doc #(stages/document build id %)
+        bp (doc "-blueprint.md")]
     (when (fs/exists? bp)
       (let [packets (mapv :task/id (blueprint/packets (slurp (str bp))))
-            reviews (fs/path build "reviews" (str "stage-" id))
-            plan (some (fn [[i nm]] (when (= i id) nm)) (stage-plans stages))]
+            reviews (stages/reviews-dir build id)
+            plan (some (fn [[i p]] (when (= i id) p)) (stage-plans (stages/stages-dir build)))]
         {:id id
-         :kind (some->> plan (fs/path stages) str slurp stage-kind)
+         :kind (some-> plan slurp stage-kind)
          :packets packets
          :records (records-for records-dir packets)
-         :readings (vec (remove nil? [(reading "plan review" (if (= 0 id)
-                                                               (fs/path build "reviews" "plan-review.edn")
-                                                               (fs/path reviews "plan-review.edn")))
+         ;; THE PROJECT PLAN REVIEW is read once a project, before stage 0 is approved, and
+         ;; is stage 0's money as much as stage 0's own stage plan review: both, said apart
+         :readings (vec (remove nil? [(when (= 0 id) (reading "project plan review" (stages/project-plan-review build)))
+                                      (reading "stage plan review" (fs/path reviews "plan-review.edn"))
                                       (reading "blueprint review" (fs/path reviews "blueprint-review.edn"))]))
-         :gates (read-edn (fs/path stages (str "stage-" id "-gates.edn")))
-         :checks (read-edn (fs/path stages (str "stage-" id "-security.edn")))
-         :scans {:deps (read-edn (fs/path stages (str "stage-" id "-security-deps.edn")))
-                 :secrets (read-edn (fs/path stages (str "stage-" id "-security-secrets.edn")))}}))))
+         :gates (read-edn (doc "-gates.edn"))
+         :checks (read-edn (doc "-security.edn"))
+         :scans {:deps (read-edn (doc "-security-deps.edn"))
+                 :secrets (read-edn (doc "-security-secrets.edn"))}}))))
 
 (defn summary-for
   "The stage's summary with the stage before it folded in, or nil when the
@@ -327,10 +325,10 @@
   published block: the sentences, empty when all agree. A stage with no
   record yet publishes nothing and is not asked to."
   [build records-dir]
-  (vec (for [[id nm] (stage-plans (fs/path build "docs" "stages"))
+  (vec (for [[id path] (stage-plans (stages/stages-dir build))
              :let [s (summary-for build records-dir id)]
              :when (and s (pos? (:run-count s)))
-             :let [problem (drift nm (slurp (str (fs/path build "docs" "stages" nm))) s)]
+             :let [problem (drift (str (fs/file-name path)) (slurp path) s)]
              :when problem]
          problem)))
 
@@ -357,23 +355,22 @@
             (println "stage-report: every published stage report matches its records"))))
 
       (nil? plan-arg)
-      (do (println "stage-report: which stage? bb stage-report <build>/docs/stages/stage-N-plan.md, or --check")
+      (do (println "stage-report: which stage? bb stage-report <build>/docs/stages/stage-N/stage-N-plan.md, or --check")
           (System/exit 2))
 
       :else
       (let [path (fs/absolutize plan-arg)
             nm (fs/file-name path)
-            id (stage-id nm)
-            build (some-> path fs/parent fs/parent fs/parent)
-            ws (or (workspace/find-workspace (str build)) ws)
+            {:keys [id build]} (stages/of-document path)
+            ws (or (some-> build str workspace/find-workspace) ws)
             records (:workspace/records ws)]
-        (when-not (and (fs/exists? path) id (= "stages" (fs/file-name (fs/parent path))))
-          (println (str "stage-report: " path " is not a stage plan at <build>/docs/stages/stage-N-plan.md"))
+        (when-not (and (fs/exists? path) id)
+          (println (str "stage-report: " path " is not a stage plan at <build>/docs/stages/stage-N/stage-N-plan.md"))
           (System/exit 2))
         (if-let [s (summary-for (str build) records id)]
           (let [block (render s)]
             (spit (str path) (splice (slurp (str path)) block))
             (println block)
             (println (str "written into " nm "'s exit-criteria section; `bb stage-report --check` holds it to the records")))
-          (do (println (str "stage-report: stage " id " has no blueprint (docs/stages/stage-" id "-blueprint.md), so no packets to roll up"))
+          (do (println (str "stage-report: stage " id " has no blueprint (" (stages/rel id "-blueprint.md") "), so no packets to roll up"))
               (System/exit 1)))))))

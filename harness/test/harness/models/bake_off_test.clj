@@ -114,7 +114,7 @@
   with a three-line spec."
   []
   (let [plan (str (fs/create-temp-dir {:prefix "bake-off-"}))
-        stages (fs/path plan "docs" "stages")
+        stages (fs/path plan "docs" "stages" "stage-1")
         dir (fs/path plan "bake-offs" "readers-1")]
     (fs/create-dirs stages)
     (fs/create-dirs dir)

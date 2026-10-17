@@ -95,7 +95,7 @@ with `security.md` beside it, under `--out`, else `SECURITY_OUT`, else the works
 `work/security/<app>/` when the application is in a KIT workspace (scratch, in no repository),
 else `.local/security/`. `--record <file>` writes the same `security.edn` where a committed
 document can cite it: the `kit-stage-end` skill passes the stage's
-`docs/stages/stage-N-security.edn`, beside its gates record, and `bb stage-report` reads it from
+`docs/stages/stage-N/stage-N-security.edn`, beside its gates record, and `bb stage-report` reads it from
 there.
 
 ## What it does not try

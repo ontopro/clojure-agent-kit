@@ -229,7 +229,7 @@
         (is (= "" (git-out plan "status" "--porcelain")))
         (is (= (slurp (str (fs/path kit-dir "build-docs" "stages" "stage-N-template.md")))
                (slurp (str (fs/path plan "docs" "stages" "stage-N-template.md"))))
-            "the template keeps its tree, so their relative links still resolve")
+            "the template keeps its tree; its paths are written from the stage folder a copy lives in")
         (is (fs/exists? (fs/path plan "docs" "README.md")) "the order of writing travels with the documents")
         (is (str/includes? (slurp (str (fs/path plan "README.md"))) "IS THE BUILD'S SIDE OF THE PROJECT")
             "the build's README says why it is called the build: settings and records beside the plan"))

@@ -45,8 +45,8 @@ Full requirements: `01-requirements.md`.
 | `03-method-and-tooling.md` | The build method: roles, protocols, quality gates, scaffold, harness | Stable once ready; runs under every stage |
 | `04-decision-log.md` | **Every** decision with status: RESOLVED / PROVISIONAL (+ gating spike) / OPEN (+ owning stage) | **Living** |
 | `05-lessons.md` | One section per stage, written at its end: what the roles did, what the person did by hand, what the next stage changes - each lesson ending as a rule, a line in the next stage plan, or a decision | Appended at every stage's end; read first when the next stage plan is written |
-| `stages/stage-N-plan.md` | One **stage plan** per stage: goal and kind, the requirements it adds, the decisions it exercises, what it proves and does not, its seams, its task list, its exit criteria and its cap | Created **just-in-time**, when the stage is pulled; approved by the person with its cap |
-| `stages/stage-N-blueprint.md` | The stage's **blueprint**: shapes, signatures, namespaces, the task packets in dependency order; exactly one per stage | Written from the approved stage plan; signed off by the person |
+| `stages/stage-N/stage-N-plan.md` | One **stage plan** per stage: goal and kind, the requirements it adds, the decisions it exercises, what it proves and does not, its seams, its task list, its exit criteria and its cap | Created **just-in-time**, when the stage is pulled; approved by the person with its cap |
+| `stages/stage-N/stage-N-blueprint.md` | The stage's **blueprint**: shapes, signatures, namespaces, the task packets in dependency order; exactly one per stage | Written from the approved stage plan; signed off by the person |
 
 **The decision log is how the iterative method and the architecture reconcile.** An aspect
 under test lives as a PROVISIONAL entry naming the spike that confirms or reverses it; an
@@ -110,7 +110,7 @@ Stage content beyond the next stage is indicative and will be re-planned.
 > stage 0 over the whole set, before its approval; for every stage after, over the stage plan and
 > the documents it revised, before the blueprint is cut. A different model or person from
 > whoever wrote the plan; `bb plan-review`, run from the workspace, is that pass, and writes its
-> raw output to `../reviews/`. Requirement-level additions land in the stage plan that owns
+> raw output to `../reviews/`, a stage plan's to its stage folder's `reviews/`. Requirement-level additions land in the stage plan that owns
 > them and the index in `01-requirements.md`; decision-level items in `04-decision-log.md`.
 
 | # | Finding | Resolution |

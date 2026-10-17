@@ -13,8 +13,8 @@
   plan step is for: a requirement written for a stage not pulled, a risk with
   no owning stage, a lesson of the last stage this plan does not answer. What
   it gives the Architect is a list, printed with what the call cost and
-  written to `<plan>/reviews/plan-review.edn` - `reviews/<stage>/` for a stage
-  plan - beside every other review's raw material; the findings and their
+  written to `<plan>/reviews/plan-review.edn` - the stage folder's `reviews/`
+  for a stage plan - beside every other review's raw material; the findings and their
   resolutions go in the overview's table by hand, which is where the plan
   keeps them.
 
@@ -25,8 +25,9 @@
   checklist pasted in by hand; here the checklist is read from `method.md` at
   the call, so the method and the review cannot drift apart.
 
-  The pure parts are `review-input`, `checklist`, `stage-key` and
-  `parse-findings`; `review!` is the command."
+  The pure parts are `review-input`, `checklist` and `parse-findings`;
+  `review!` is the command. Where a stage plan lives and where its reading is
+  written are `harness.setup.stages`'."
   (:require
    [babashka.fs :as fs]
    [clojure.edn :as edn]
@@ -35,6 +36,7 @@
    [harness.models.agent :as agent]
    [harness.models.profile :as profile]
    [harness.setup.plan :as plan]
+   [harness.setup.stages :as stages]
    [harness.setup.workspace :as workspace]))
 
 (def documents
@@ -102,16 +104,6 @@
                       {:plan-review/error :no-checklist})))
     (str/trim (subs method-text from (if (seq ends) (apply min ends) (count method-text))))))
 
-(defn stage-key
-  "The folder under `reviews/` a stage plan's read is written to: the
-  `stage-N` its file name starts with (`stage-1-plan.md` → `stage-1`, as
-  the blueprint review keys `stage-1-blueprint.md`), or the name without
-  `.md` when it does not start that way."
-  [stage-plan-path]
-  (let [nm (fs/file-name stage-plan-path)]
-    (or (second (re-find #"^(stage-[^-.]+)" nm))
-        (str/replace nm #"\.md$" ""))))
-
 (defn review-input
   "The text the review reads: the stage plan first when there is one
   (`[name text]`, named as under review), then each document in order, named,
@@ -140,19 +132,16 @@
          [nm (when (fs/exists? f) (slurp (str f)))])))
 
 (defn plan-dir-of
-  "The plan a stage plan belongs to: it lives at `<plan>/docs/stages/<file>`.
+  "The plan a stage plan belongs to: it lives at `<plan>/docs/stages/stage-N/<file>`.
   Throws by name when it does not."
   [stage-plan-path]
   (let [sp (fs/absolutize stage-plan-path)
-        stages (fs/parent sp)
-        docs (some-> stages fs/parent)]
-    (when-not (and (fs/exists? sp)
-                   stages (= "stages" (fs/file-name stages))
-                   docs (= "docs" (fs/file-name docs)))
-      (throw (ex-info (str "a stage plan lives at <build>/docs/stages/stage-N-plan.md; " sp
+        {:keys [build]} (stages/of-document sp)]
+    (when-not (and (fs/exists? sp) build)
+      (throw (ex-info (str "a stage plan lives at <build>/docs/stages/stage-N/stage-N-plan.md; " sp
                            (if (fs/exists? sp) " is not there" " does not exist"))
                       {:plan-review/error :no-stage-plan :path (str sp)})))
-    (str (fs/normalize (fs/parent docs)))))
+    (str (fs/normalize build))))
 
 (defn- existing [out-file]
   (when (fs/exists? out-file) (edn/read-string (slurp (str out-file)))))
@@ -184,7 +173,7 @@
                  (when-not (fs/exists? stage-plan)
                    (throw (ex-info (str "no stage plan at " stage-plan)
                                    {:plan-review/error :no-stage-plan :path (str stage-plan)})))
-                 [(fs/file-name stage-plan) (slurp (str stage-plan))])
+                 [(str (fs/file-name (fs/parent (fs/absolutize stage-plan))) "/" (fs/file-name stage-plan)) (slurp (str stage-plan))])
          input (review-input stage docs (checklist (slurp (str method-path))))
          t0 (System/currentTimeMillis)
          r (agent/converse! role system-prompt input {:dir (str plan-dir)} {:max-iterations 1 :tools #{}})]
@@ -207,7 +196,7 @@
   "Read the documents under `plan-dir` - with `stage-plan` first when one is
   given - send them with the checklist to the `:plan-reviewer` role of
   `profile-path`, print the list, write `<plan>/reviews/plan-review.edn`, or
-  `<plan>/reviews/<stage>/plan-review.edn` for a stage plan - the findings,
+  the stage folder's `reviews/plan-review.edn` for a stage plan - the findings,
   their count, the documents read, the stage plan's name, the model, the
   cost, and every earlier review of the same thing under `:reviews`.
   `method-path` is where the checklist is read from. Returns the written map;
@@ -224,8 +213,8 @@
                              {:plan-review/error :no-plan-reviewer :profile (str profile-path)})))
          {:keys [findings documents stage model cost] :as read} (read! role plan-dir method-path stage-plan)
          out-file (if stage-plan
-                    (fs/path plan-dir "reviews" (stage-key stage-plan) "plan-review.edn")
-                    (fs/path plan-dir "reviews" "plan-review.edn"))
+                    (fs/path (stages/reviews-dir plan-dir (:id (stages/of-document stage-plan))) "plan-review.edn")
+                    (stages/project-plan-review plan-dir))
          out (merge {:findings findings
                      :count (count findings)
                      :documents documents
@@ -253,10 +242,12 @@
 (defn -main
   "bb plan-review [<plan-dir> | <stage-plan.md>] [--profile <profile.edn>] [--workspace <dir>]
 
-  Stage 0's reading is the whole set: the workspace's plan when nothing is
-  given, or the plan folder named. A later stage's reading names its stage
-  plan, `<build>/docs/stages/stage-N-plan.md`, and reads it first with the
-  seven documents after it. The profile is the plan's `profile.edn` (where
+  The project plan review reads the whole set, once, before stage 0 is
+  approved: the workspace's plan when nothing is given, or the plan folder
+  named; written to `reviews/plan-review.edn`. A stage plan review names its
+  stage plan, `<build>/docs/stages/stage-N/stage-N-plan.md`, reads it first
+  with the seven documents after it, and is written to the stage folder's
+  `reviews/plan-review.edn`. The profile is the plan's `profile.edn` (where
   `bb init` put it) unless `--profile` names another."
   [& args]
   (let [{:keys [flags positional]} (loop [[a & more] (:args (workspace/split-args args)) flags {} positional []]
