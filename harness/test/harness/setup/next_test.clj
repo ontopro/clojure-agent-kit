@@ -316,7 +316,7 @@
          (map next/phase ["spike" "walking skeleton" "increment" "pre-release" "release" "something else" nil]))))
 
 (def ^:private where-at-stage-1
-  {:workspace? true :brief? true :plan-problems [] :build "xyx-build"
+  {:workspace? true :brief? true :plan-problems [] :build "xyx-build" :kit "KIT"
    :stage {:id 1 :kind "walking skeleton" :plan "stage-1/stage-1-plan.md" :blueprint "stage-1/stage-1-blueprint.md" :reviewed? true
            :gates {:stage/id "1" :stage/approved {:date "2026-10-14" :by "Ada"} :blueprint/signed {:date "2026-10-15" :by "Ada"}}
            :packets ["t1" "t2" "t3"] :merged #{"t1"} :runs {} :preconditions []}
@@ -342,7 +342,11 @@
     (is (= ["  open:        decisions PROVISIONAL or OPEN: D3, D8 (§2), P0-20 (§4) - xyx-build/docs/04-decision-log.md"
             "               risks OPEN: R4, R5 - xyx-build/docs/00-overview.md §4a"]
            (subvec lines 7 9)))
-    (is (str/starts-with? (nth lines 9) "  read more:   in xyx-build/docs/: FR-n 01-requirements.md §6b"))
+    (is (= ["  read more:   phase KIT/method.md \"01 — The phase map\" · step n KIT/workflow.md \"The steps, and what each produces\""
+            "               the project plan xyx-build/docs/00-overview.md (§3 lists its documents)"]
+           (subvec lines 9 11))
+        "the KIT's words in the workspace's KIT folder, the project plan in the build")
+    (is (str/starts-with? (nth lines 11) "               in xyx-build/docs/: FR-n 01-requirements.md §6b"))
     (testing "every kind of ID is in the read more lines, and no line runs long"
       (doseq [{:keys [id section]} next/id-kinds]
         (is (str/includes? (str/join "\n" (drop 9 lines)) (str id " ")) id)
@@ -402,6 +406,16 @@
     (is (some? lines) (str id ": " file " §" section))
     (is (some #(str/starts-with? % "**IDs.** ") lines) (str id ": " file " §" section " says what it defines"))))
 
+(deftest the-kits-own-words-and-the-project-plan-have-their-homes
+  ;; the KIT's root is the second root the block points into: a heading renamed there fails here
+  (doseq [{:keys [id file heading]} next/kit-terms
+          :let [f (fs/path kit-dir file)]]
+    (is (fs/exists? f) (str id ": " file))
+    (is (some #{(str "## " heading)} (str/split-lines (slurp (str f)))) (str id ": " file " \"" heading "\"")))
+  (let [{:keys [file section heading]} next/project-plan
+        lines (str/split-lines (slurp (str (fs/path build-docs file))))]
+    (is (some #{(str "## " section ". " heading)} lines) "the overview's section that lists the plan's documents")))
+
 (deftest where-reads-the-builds-documents
   (let [ws (str (fs/real-path (fs/create-temp-dir {:prefix "where-"})))
         build (fs/path ws "xyx-build")
@@ -414,6 +428,7 @@
     (spit (str (fs/path docs "stages" "stage-0" "stage-0-gates.edn")) (pr-str {:stage/id "0" :stage/closed {:date "2026-10-13"}}))
     (spit (str (fs/path docs "stages" "stage-1" "stage-1-plan.md")) "# Stage 1\n\n**Kind:** walking skeleton\n")
     (let [wf (next/where-facts (workspace/find-workspace ws))]
+      (is (= (str (fs/relativize ws kit-dir)) (:kit wf)) "the KIT folder, relative to the workspace, as the build is")
       (is (= 1 (get-in wf [:stage :id])))
       (is (= {:stage/closed {:date "2026-10-13"}} (dissoc (get-in wf [:stages 0 :gates]) :stage/id)))
       (is (every? nil? ((juxt :map :decisions :risks) wf)) "no overview, no log: nil, said as such by the block"))

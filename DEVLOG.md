@@ -64,6 +64,17 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-17
 
+### The block says where a phase, a step and the project plan are defined (plan 6.8, item 2, register row 138)
+
+`bb next --where` names a phase ("phase C BUILD") and a step ("step 7") and pointed only at
+where the project's IDs are defined: a person reading it asked where the phases are described,
+where the steps are listed, and where the project plan is. The rule a report keeps for an ID - cite
+it with the file and section that define it - holds for the KIT's own words too. `read more:` now
+opens with the phase map in the KIT's `method.md` and the steps in its `workflow.md`, under the
+workspace's KIT folder as `workspace.edn` names it, and the project plan's start, the overview,
+whose section 3 lists the plan's documents. A second table beside `id-kinds`, `kit-terms`, holds
+the two KIT headings, and a test holds each to its file; `kit-where-am-i` reads into them.
+
 ### A name says what the thing is (the vocabulary rule's other half)
 
 `CLAUDE.md`'s Vocabulary gains the half of the rule that chooses a new name, beside the half that

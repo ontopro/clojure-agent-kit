@@ -46,6 +46,9 @@ Nothing. Outside a workspace the block says setup is next, as `bb next` does; sh
      overview's §4a with the stage it runs in;
    - **an ID**: the file and section the `read more` lines name for its kind, and the row or
      point that defines it - never a file that only cites it;
+   - **a phase, a step or the project plan**: the heading the `read more` lines name - the phase
+     map in the KIT's `method.md`, the step's row in its `workflow.md`, the overview's section that
+     lists the plan's documents;
    - **the stage map**: every row, with its kind and status.
 3. Answer from the file named, pointing at the heading, every ID cited with the file and section
    that define it; then offer the next level down, or another line.

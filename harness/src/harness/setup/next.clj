@@ -363,6 +363,7 @@
           packets (when bp-text (mapv :task/id (blueprint/packets bp-text)))]
       {:workspace? true
        :build (str (fs/relativize (fs/absolutize (:workspace/dir ws)) (fs/absolutize build)))
+       :kit (some->> (:workspace/kit ws) fs/absolutize (fs/relativize (fs/absolutize (:workspace/dir ws))) str)
        :brief? (and (fs/exists? source) (not (str/includes? (slurp (str source)) "<the brief>")))
        :plan-problems (:problems (plan/check build ws))
        :stage (when id
@@ -409,6 +410,17 @@
    {:id "threat n" :file "02-architecture.md" :section "15"}
    {:id "HP-n" :file "stages/stage-N-blueprint-template.md" :section "0" :shown "the stage's blueprint"}
    {:id "t-NN" :file "stages/stage-N-blueprint-template.md" :section "4" :shown "the stage's blueprint"}])
+
+(def kit-terms
+  "The KIT's own words the block uses, each with the file at the KIT's root and the heading that
+  defines it - a phase and a step are the method's and the workflow's, not the project's. A test
+  holds each heading to its file."
+  [{:id "phase" :file "method.md" :heading "01 — The phase map"}
+   {:id "step n" :file "workflow.md" :heading "The steps, and what each produces"}])
+
+(def project-plan
+  "Where the project plan starts: the overview, whose section lists the plan's documents."
+  {:file "00-overview.md" :section "3" :heading "How the plan is organized"})
 
 (defn section-lines
   "The lines of `text`'s section `section` (`\"4a\"`: the heading `## 4a.` or `### 4a.`), up to the
@@ -540,7 +552,7 @@
   "The block `bb next --where` prints, from `where-facts` and its `next-action`: fixed lines, a
   fact that cannot be read said as such. The phase and `next:` before a stage exists; the rest
   once one does. Every `docs/` path is put under the build, as `next-action`'s are."
-  [{:keys [workspace? build stage stages decisions risks] smap :map} {:keys [step name owner run also]}]
+  [{:keys [workspace? build kit stage stages decisions risks] smap :map} {:keys [step name owner run also]}]
   (let [line (fn [label s] (str "  " label (subs "             " (min 13 (count label))) s))
         nxt (line "next:" (str "step " step " - " name "; owner: " owner "; run: " run))
         also* (when also (str/replace also #"\s*\n\s*" "; "))
@@ -585,7 +597,12 @@
               alsos
               (let [[d r] (open-lines decisions risks)] [(line "open:" d) (str indent r)])
               (let [[l & ls] (read-more-lines)]
-                (cons (line "read more:" (str "in docs/: " l)) (map #(str indent %) ls)))))))))
+                (concat [(line "read more:" (str/join " · " (for [{:keys [id file heading]} kit-terms]
+                                                              (str id " " (or kit "KIT") "/" file " \"" heading "\""))))
+                         (str indent "the project plan docs/" (:file project-plan) " (§" (:section project-plan)
+                              " lists its documents)")
+                         (str indent "in docs/: " l)]
+                        (map #(str indent %) ls)))))))))
 
 (defn -main
   "bb next [--where] [--workspace <dir>]
@@ -593,7 +610,8 @@
   The workflow's next step, its owner, and the command or skill to run, from
   the build's files; with `--where`, the block that says where the project
   stands first - the phase, the stage and its goal, what is done, what is
-  open, where each kind of ID is defined. Information: exit 0 always."
+  open, where a phase, a step, the project plan and each kind of ID are defined. Information:
+  exit 0 always."
   [& args]
   (let [ws (workspace/current-or-exit (remove #{"--where"} args))]
     (if (some #{"--where"} args)
