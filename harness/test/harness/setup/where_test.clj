@@ -111,7 +111,10 @@
        "| D2 | Pages | **RESOLVED** 2026-10-14: one file each |\n"
        "| D3 | Fonts | **RESOLVED**: the system's |\n"))
 
-(defn- workspace-on-disk []
+(defn workspace-on-disk
+  "A workspace with stage 0 closed and stage 1 approved, its KIT folder inside: the fixture this
+  namespace and the roadmap page's read."
+  []
   (let [ws (str (fs/real-path (fs/create-temp-dir {:prefix "where-"})))
         build (fs/path ws "xyx-build")
         docs (fs/path build "docs")
@@ -119,6 +122,7 @@
         s1 (fs/path docs "stages" "stage-1")
         runs (fs/path build "runs")]
     (doseq [d [s0 s1 (fs/path s1 "reviews") runs (fs/path ws "KIT")]] (fs/create-dirs d))
+    (doseq [f ["method.md" "workflow.md"]] (spit (str (fs/path ws "KIT" f)) "# KIT\n"))
     (spit (str (fs/path ws "workspace.edn"))
           (pr-str {:workspace/kit "KIT" :workspace/app "xyx-app" :workspace/build "xyx-build" :workspace/work "work"
                    :workspace/records "xyx-build/runs" :workspace/kit-version "0.6.8"}))
@@ -212,6 +216,7 @@
     (is (str/starts-with? (second (after "## Next" 2)) "Step 8 - the blueprint; owner: the Architect's session; run: "))
     (is (= "- phase: KIT/method.md \"01 — The phase map\" · step n: KIT/workflow.md \"The steps, and what each produces\""
            (second (after "## Read more" 2))))
+    (is (= "- the roadmap page, drawn: `bb roadmap-page`, then open work/where/roadmap.html" (last lines)))
     (testing "nothing waiting, and no date to count from: each said"
       (let [s (where/render-full (assoc d :waits-on-the-person [] :since {:from nil :why "no stage closed and no last look recorded"}))]
         (is (str/includes? s "## Waits on you (0)\n\nNothing: no step, gate, prep row, decision or risk is the person's now."))

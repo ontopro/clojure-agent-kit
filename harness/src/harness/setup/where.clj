@@ -280,8 +280,7 @@
   "The fuller account, from `where-data`'s map `d`: Where, The road, Waits on you, Since you last
   looked, Open, Next, Read more - in that order, Markdown a person reads in a terminal or a chat,
   every figure the map's. A fact the map does not have is said as such."
-  [{nxt :next :keys [workspace generated phases stages headline open since money terms] :as d}
-   & [{:keys [page]}]]
+  [{nxt :next :keys [workspace generated phases stages headline open since money terms] :as d}]
   (let [{:keys [build kit]} workspace
         kit (or kit "KIT")
         by-id (into {} (map (juxt :id identity) stages))
@@ -360,7 +359,7 @@
             " (§" (get-in terms [:project-plan :section]) " lists its documents)")
        (str "- the IDs, in " build "/docs/: "
             (str/join " · " (for [{:keys [id file section shown]} (:ids terms)] (str id " " (or shown file) " §" section))))]
-      (when page [(str "- the roadmap page: " page)])))))
+      [(str "- the roadmap page, drawn: `bb roadmap-page`, then open " (or (:work workspace) "work") "/where/roadmap.html")]))))
 
 ;; ---------------------------------------------------------------------------
 ;; the edge: reading the workspace
@@ -439,7 +438,9 @@
          :money (money rows)
          :terms {:kit next/kit-terms :project-plan next/project-plan :ids next/id-kinds}}))))
 
-(defn- build-commit [build]
+(defn build-commit
+  "The build repository's HEAD, short, or nil."
+  [build]
   (try (let [{:keys [exit out]} (p/shell {:dir (str build) :out :string :err :string :continue true}
                                          "git" "rev-parse" "--short" "HEAD")]
          (when (zero? exit) (str/trim out)))

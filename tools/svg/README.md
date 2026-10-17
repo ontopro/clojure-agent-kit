@@ -16,6 +16,10 @@ since what share is right - an icon all one brand colour, a diagram mostly not -
 project's to say. Where it writes: `--out`, else `SVG_OUT`, else the workspace's
 `work/svg/<app>/` when the application is in a KIT workspace, else `.local/svg/`.
 
+**The roadmap page's drawing too.** `bb roadmap-page` writes the project's roadmap as
+`work/where/roadmap.svg` beside the page that carries it, and prints this check's command for it:
+the drawing renders here as any SVG does, with no browser.
+
 **Opt-in, and why.** The first run fetches Batik from Maven Central, about ten megabytes of
 jars, and the check needs a JVM; neither is a dependency of every application, which is why this
 is a pack and not a gate. It cannot render HTML pages and does not replace the browser pack:

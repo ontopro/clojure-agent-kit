@@ -64,6 +64,21 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-17
 
+### The roadmap page: `bb roadmap-page` (plan 6.8, item 6)
+
+The project's roadmap, drawn: five lanes, a phase each, the current one tinted and marked "you
+are here"; each stage a box in the lane of its phase, coloured by where it stands - closed, in
+progress, next and not pulled, ahead - with its spend against its cap as a bar beneath and its
+open decisions and risks as badges on the stage that owns them; a line joining the stages in
+order. Under the drawing the page says what waits on the person, money and time as a table, what
+changed since, what is open one line each, and what is next. Both are renderings of `bb next
+--where --edn`'s map, so the page says what the fuller account says. It is written to
+`work/where/` and never committed: `roadmap.svg` on its own, for the SVG pack to render with no
+browser, and `roadmap.html`, which carries the same SVG inline and fetches nothing, so it opens
+from a file. Every link is relative from its folder to the workspace. Drawn on a copy of the first
+KIT project's workspace, it renders in the SVG pack with no error, and every link opens a file.
+The fuller account's read-more lines name it.
+
 ### The fuller account: `bb next --where --full` (plan 6.8, item 5)
 
 What a person back after a while reads, rendered by code from item 4's map so its figures are the

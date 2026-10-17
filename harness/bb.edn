@@ -143,6 +143,10 @@
         :requires ([harness.setup.where :as where])
         :task (apply where/-main *command-line-args*)}
 
+  roadmap-page {:doc "bb roadmap-page [--workspace <dir>]: the project's roadmap, drawn, into the workspace's work/where/ - roadmap.svg (five phase lanes, a box per stage by state, the money bar, open decisions and risks as badges) and roadmap.html, which carries it with what waits on the person, money and time, what changed since, what is open, what is next; from bb next --where --edn's map, never committed (harness.setup.roadmap-page)"
+                :requires ([harness.setup.roadmap-page :as roadmap-page])
+                :task (apply roadmap-page/-main *command-line-args*)}
+
   rules-prompt {:doc "Render the rules for one audience as a system-prompt block: --audience <name> [--out FILE] [--<key> <value>]..."
                 :requires ([harness.rules :as rules])
                 :task (apply rules/prompt-main *command-line-args*)}
