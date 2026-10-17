@@ -87,6 +87,17 @@ the project's and the upgrade leaves it as it is: compare it with
 
 ## 2026-10-16
 
+### The upgrade's dry run names origin's newer releases (plan 6.7, item 3)
+
+The first KIT project's first `bb upgrade` began with a dry run, right after a release was pushed,
+and it said "newer releases known locally (no fetch): none". That was true and no help: the clone's
+tags are only those its last fetch saw. Fetching in a dry run would write refs into `KIT/`, so the
+dry run asks origin instead, with `git ls-remote --tags`, which writes nothing: "newer releases on
+origin: 0.6.7". Offline, it says origin was not reached, gives the clone's own list, and says that
+`bb upgrade` fetches the tags itself. The sentence is `dry-run-summary`, a pure function, tested for
+the three cases; `origin-tags` was run against the KIT's origin and against a remote that does not
+exist.
+
 ### The stage report counts every spec reading (plan 6.7, item 2, register row 135)
 
 The first KIT project's stage 1 report said one spec review per run, and the stage's total was

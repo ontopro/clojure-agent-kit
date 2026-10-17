@@ -339,6 +339,19 @@
   (testing "the newer releases, oldest first"
     (is (= ["0.6.5" "0.6.6" "0.7.0"] (ur/newer-releases ["0.7.0" "0.6.4" "0.6.6" "0.6.5" "0.6.5-r0"] "0.6.4")))
     (is (= ["0.6.4" "0.6.5"] (ur/newer-releases ["0.6.5" "0.6.4"] nil)) "no release tag reachable: every release is newer"))
+  (testing "the dry run says origin's newer releases, not the clone's last fetch's"
+    (let [first-line #(first (str/split-lines (ur/dry-run-summary %)))]
+      (is (= "bb upgrade --dry-run: this clone is at 0.6.6; newer releases on origin: 0.6.7"
+             (first-line {:here "0.6.6" :local [] :remote ["0.6.7"]}))
+          "a release pushed since the clone's fetch is seen")
+      (is (= "bb upgrade --dry-run: this clone is at 0.6.6; newer releases on origin: none"
+             (first-line {:here "0.6.6" :local [] :remote []})))
+      (is (= (str "bb upgrade --dry-run: this clone is at 0.6.6; origin not reached - newer releases known here: 0.6.7"
+                  " (`bb upgrade` fetches the tags itself)")
+             (first-line {:here "0.6.6" :local ["0.6.7"] :remote nil}))
+          "offline, the clone's own list - said as such")
+      (is (str/ends-with? (ur/dry-run-summary {:here "0.6.6" :local [] :remote [] :to "0.6.7"})
+                          "move KIT/ to 0.6.7 (detached), then run phase 2 in a new process. Nothing was written."))))
   (testing "the target: the latest by default, --to by name, the refusals by name"
     (is (= {:tag "0.6.7"} (ur/choose-target ["0.6.5" "0.6.7"] "0.6.4" ["0.6.4" "0.6.5" "0.6.7"] nil)))
     (is (= {:tag "0.6.5"} (ur/choose-target ["0.6.5" "0.6.7"] "0.6.4" ["0.6.4" "0.6.5" "0.6.7"] "0.6.5")))

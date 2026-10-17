@@ -486,6 +486,30 @@
          (sort-by version-key)
          vec)))
 
+(defn dry-run-summary
+  "What `bb upgrade --dry-run` says, from the clone's version `here`, the newer releases the clone
+  knows (`local`) and those origin has (`remote`, nil when origin was not reached). ORIGIN'S LIST,
+  NOT THE CLONE'S: asked by `git ls-remote`, which writes nothing, because the clone's own tags are
+  only those its last fetch saw - a dry run right after a release said \"none\" (the first KIT
+  project's first `bb upgrade`)."
+  [{:keys [here local remote to]}]
+  (str "bb upgrade --dry-run: this clone is at " (or here "no release tag") "; "
+       (if remote
+         (str "newer releases on origin: " (if (seq remote) (str/join ", " remote) "none"))
+         (str "origin not reached - newer releases known here: " (if (seq local) (str/join ", " local) "none")
+              " (`bb upgrade` fetches the tags itself)"))
+       "\n  it would: check the network, require KIT/ clean, fetch the tags, check each newer release's requirements from its tag,"
+       " move KIT/ to " (or to "the latest") " (detached), then run phase 2 in a new process. Nothing was written."))
+
+(defn- origin-tags
+  "The tag names origin has, by `git ls-remote` (nothing written, no prompt); nil when it does not answer."
+  [kit]
+  (let [{:keys [exit out]} (p/shell {:dir (str kit) :out :string :err :string :continue true
+                                     :extra-env {"GIT_TERMINAL_PROMPT" "0"}}
+                                    "git" "ls-remote" "--tags" "--refs" "origin")]
+    (when (zero? exit)
+      (keep #(second (re-find #"refs/tags/(\S+)$" %)) (str/split-lines out)))))
+
 (defn choose-target
   "Which release the upgrade takes: the latest of `newer`, or `to` when named - as `{:tag t}`, or
   `{:error message}`: nothing newer (nothing changed), `to` the clone's own or older (a
@@ -731,13 +755,10 @@
         (and (flags "--after-pull") (flags "--dry-run")) (dry-run! ws kit)
         (flags "--after-pull") (let [{:keys [ok?]} (after-pull! ws kit {})] (System/exit (if ok? 0 1)))
         (flags "--dry-run")
-        (let [merged (str/split-lines (:out (git kit "tag" "--merged" "HEAD")))
-              here (clone-version merged)
-              newer (newer-releases (str/split-lines (:out (git kit "tag"))) here)]
-          (println (str "bb upgrade --dry-run: this clone is at " (or here "no release tag") "; newer releases known locally (no fetch): "
-                        (if (seq newer) (str/join ", " newer) "none")
-                        "\n  it would: check the network, require KIT/ clean, fetch the tags, check each newer release's requirements from its tag,"
-                        " move KIT/ to " (or to "the latest") " (detached), then run phase 2 in a new process. Nothing was written.")))
+        (let [here (clone-version (str/split-lines (:out (git kit "tag" "--merged" "HEAD"))))]
+          (println (dry-run-summary {:here here :to to
+                                     :local (newer-releases (str/split-lines (:out (git kit "tag"))) here)
+                                     :remote (some-> (origin-tags kit) (newer-releases here))})))
         :else (let [{:keys [outcome exit result]} (phase-one! ws kit {:to to})]
                 (System/exit (case outcome :moved (or exit 1) :after-pull (if (:ok? result) 0 1) 1))))
       (catch clojure.lang.ExceptionInfo e
