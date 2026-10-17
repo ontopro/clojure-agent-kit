@@ -5,7 +5,7 @@
 {:as-of "2026-10-16",
  :platform "macOS 27.0.1 arm64",
  :tools
- {:bb "1.13.225",
+ {:bb "1.13.226",
   :clj-kondo "2026.08.04",
   :clj-nrepl-eval "d341c23",
   :clj-paren-repair "d341c23",

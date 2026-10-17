@@ -3,15 +3,15 @@
  :platform
  {:key "linux-arm64", :label "Linux Ubuntu 24.04.5 LTS arm64"},
  :kit
- {:sha "dc74f7c6070540f3ea730c7c76b61a0f33c05516",
-  :short "dc74f7c",
+ {:sha "2daf0cffb783c921a986b33d37512b8a7e8ff420",
+  :short "2daf0cf",
   :dirty? false},
  :template
  {:template io.github.ontopro/clojure-stack-lite,
   :git/tag "kit-v1.3",
   :git/sha "f12268d32585d98358a0413a300e20ef74e95635"},
  :tools
- {:bb "1.13.225",
+ {:bb "1.13.226",
   :clj-kondo "2026.08.04",
   :clj-nrepl-eval "d341c23",
   :clj-paren-repair "d341c23",
@@ -20,13 +20,13 @@
   :git "2.56.0",
   :java "21.0.12.1"},
  :checks
- [{:subject :selfcheck, :check :gates, :ok? true, :ms 3355}
-  {:subject :selfcheck, :check :red, :ok? true, :ms 4720}
-  {:subject :selfcheck, :check :loop, :ok? true, :ms 8344}
-  {:subject :app, :check :gates, :ok? true, :ms 13521}
-  {:subject :app, :check :red, :ok? true, :ms 12080}
-  {:subject :app, :check :loop, :ok? true, :ms 12070}
-  {:subject :app, :check :serve, :ok? true, :ms 7516}
-  {:subject :app, :check :browser, :ok? true, :ms 10467}
-  {:subject :app, :check :security, :ok? true, :ms 12275}],
+ [{:subject :selfcheck, :check :gates, :ok? true, :ms 3323}
+  {:subject :selfcheck, :check :red, :ok? true, :ms 4628}
+  {:subject :selfcheck, :check :loop, :ok? true, :ms 8851}
+  {:subject :app, :check :gates, :ok? true, :ms 13702}
+  {:subject :app, :check :red, :ok? true, :ms 11926}
+  {:subject :app, :check :loop, :ok? true, :ms 12176}
+  {:subject :app, :check :serve, :ok? true, :ms 7526}
+  {:subject :app, :check :browser, :ok? true, :ms 10367}
+  {:subject :app, :check :security, :ok? true, :ms 12542}],
  :ok? true}

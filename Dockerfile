@@ -41,7 +41,7 @@ RUN curl -fsSL "https://mirrors.edge.kernel.org/pub/software/scm/git/git-${GIT_V
 # The toolchain image: Ubuntu 24.04 (noble) with Temurin 21, from Adoptium's own image.
 FROM eclipse-temurin:${JAVA_IMAGE_TAG}
 
-ARG BB_VERSION=1.13.225
+ARG BB_VERSION=1.13.226
 ARG CLOJURE_VERSION=1.12.6.1673
 ARG CLJ_KONDO_VERSION=2026.08.04
 ARG CLJFMT_VERSION=0.16.6

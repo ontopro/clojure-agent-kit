@@ -114,6 +114,11 @@ with its health runs. Before a tag, only an advisory moves a pin. The first read
 1.13.226 released and `clj-kondo` already at its newest, so the `jackson-core` HIGHs inside both
 binaries are row 133, on watch until their releases carry the fix.
 
+The person moved `bb` to 1.13.226 at this plan's start, so the plan's first health runs took it:
+`bb health --record` on macOS and `bb docker-health`, 9 of 9 on both, the known-good set and the
+Dockerfile's default with them. Scout on the image they built still flags `jackson-core` inside
+both binaries (row 133), and nothing in the operating system's packages at HIGH.
+
 ### A template namespace removed with its file passes the plan check (plan 6.6, register row 132)
 
 The first KIT project's second stage removed the template's unused database by a recorded decision:
