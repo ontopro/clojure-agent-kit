@@ -435,13 +435,16 @@
 
 (defn- status-cell [row] (some (fn [[k v]] (when (str/includes? k "status") v)) row))
 
-(defn provisional-decisions
-  "The decision log's entries still PROVISIONAL - the Status cell begins so - as `{:id :section}`,
-  in the log's order."
+(defn- name-cell [row] (some (fn [[k v]] (when (str/starts-with? k "name") v)) row))
+
+(defn open-decisions
+  "The decision log's entries not settled - the Status cell begins PROVISIONAL or OPEN - as
+  `{:id :section}`, in the log's order."
   [log]
   (vec (for [s ["1" "2" "3" "4" "5"]
              r (table-rows log s)
-             :when (str/starts-with? (str/upper-case (plain (status-cell r))) "PROVISIONAL")]
+             :let [st (str/upper-case (plain (status-cell r)))]
+             :when (or (str/starts-with? st "PROVISIONAL") (str/starts-with? st "OPEN"))]
          {:id (plain (get r "#")) :section s})))
 
 (defn open-risks
@@ -453,13 +456,13 @@
 
 (defn stage-map
   "The overview's §4 stage map: `{id {:kind :name :delivers :status}}` for every row whose Stage
-  cell is a number."
+  cell is a number; the name from the column whose header starts `Name`."
   [overview]
   (into (sorted-map)
         (for [r (table-rows overview "4")
               :let [id (plain (get r "stage"))]
               :when (re-matches #"\d+" id)]
-          [(parse-long id) {:kind (plain (get r "kind")) :name (plain (get r "name (optional)"))
+          [(parse-long id) {:kind (plain (get r "kind")) :name (plain (name-cell r))
                             :delivers (str/trim (get r "delivers" "")) :status (plain (get r "status"))}])))
 
 (def ^:private phases
@@ -474,7 +477,7 @@
 
 (defn where-facts
   "`facts`, and what the block adds, from the build's documents: `:stages` every stage's files
-  (`stage-files`), `:map` the stage map, `:decisions` the PROVISIONAL ones, `:risks` the OPEN
+  (`stage-files`), `:map` the stage map, `:decisions` those PROVISIONAL or OPEN, `:risks` the OPEN
   ones - each nil when its document is not there."
   [ws]
   (let [f (facts ws)]
@@ -487,10 +490,16 @@
         (assoc f
                :stages (stage-files (fs/path docs "stages"))
                :map (some-> overview stage-map)
-               :decisions (some-> log provisional-decisions)
+               :decisions (some-> log open-decisions)
                :risks (some-> overview open-risks))))))
 
-(defn- cut [n s] (if (> (count s) n) (str (subs s 0 n) "…") s))
+(defn- cut
+  "`s` cut to `n` characters at the last space before them, and `…`; `s` as is when it fits."
+  [n s]
+  (if (> (count s) n)
+    (let [t (subs s 0 n) i (str/last-index-of t " ")]
+      (str (if (and i (pos? i)) (subs t 0 i) t) "…"))
+    s))
 
 (defn- more [xs] (when (> (count xs) 6) (str " and " (- (count xs) 6) " more")))
 
@@ -507,8 +516,8 @@
 
 (defn- open-lines [decisions risks]
   [(cond (nil? decisions) "decisions: (no docs/04-decision-log.md)"
-         (empty? decisions) "decisions: none PROVISIONAL"
-         :else (str "decisions PROVISIONAL: "
+         (empty? decisions) "decisions: none PROVISIONAL or OPEN"
+         :else (str "decisions PROVISIONAL or OPEN: "
                     (str/join ", " (for [ds (partition-by :section (take 6 decisions)) :let [s (:section (first ds))]]
                                      (str (str/join ", " (map :id ds)) " (§" s ")")))
                     (more decisions) " - docs/04-decision-log.md"))
@@ -534,7 +543,8 @@
   [{:keys [workspace? build stage stages decisions risks] smap :map} {:keys [step name owner run also]}]
   (let [line (fn [label s] (str "  " label (subs "             " (min 13 (count label))) s))
         nxt (line "next:" (str "step " step " - " name "; owner: " owner "; run: " run))
-        alsos (when also [(line "also:" also)])
+        also* (when also (str/replace also #"\s*\n\s*" "; "))
+        alsos (when also* [(line "also:" (str (cut 160 also*) (when (> (count also*) 160) " (bb next prints it whole)")))])
         out (fn [ls] (in-build build (str/join "\n" ls)))]
     (cond
       (not workspace?)
@@ -544,15 +554,21 @@
       (out (concat [(str "where: " build " - phase B PROVE, before stage 0: the brief, then the plan") nxt] alsos))
 
       :else
-      (let [{:keys [id plan blueprint gates reviewed? packets merged]} stage
+      ;; A CLOSED STAGE IS BEHIND US: the block is about the next one, not pulled yet - the moment
+      ;; a person asks where we are is between a stage's end and the next plan
+      (let [{:keys [gates]} stage
+            closed (:stage/closed gates)
+            {:keys [id plan blueprint reviewed? packets merged]} (if closed {:id (inc (:id stage))} stage)
             row (get smap id)
-            kind (or (:kind stage) (:kind row) (when (zero? id) "spike"))
+            kind (or (when-not closed (:kind stage)) (:kind row) (when (zero? id) "spike"))
             last-id (some-> smap keys last)
             indent (str "  " (subs "             " 0 13))]
         (out (concat
               [(str "where: " build " - phase " (or (phase kind) "(not read: the stage's kind)")
+                    (when closed (str ", stage " (:id stage) " closed" (gate-date closed) "; next"))
                     ", stage " id (when last-id (str " of 0-" last-id))
-                    (when kind (str ": " kind)) (when (seq (:name row)) (str ", \"" (:name row) "\"")))
+                    (when kind (str ": " kind)) (when (seq (:name row)) (str ", \"" (:name row) "\""))
+                    (when closed " - not pulled yet"))
                (line "stage map:" (str "docs/00-overview.md §4"
                                        (cond (nil? smap) " (not there)"
                                              (nil? row) (str " (no row for stage " id ")")

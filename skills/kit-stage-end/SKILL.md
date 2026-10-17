@@ -36,7 +36,8 @@ exit criteria and says what is kept.
 | `tools/security/README.md` | `The routes file` |
 | `tools/security/README.md` | `The two scans` |
 
-And the workspace's own files, never the conversation: this stage's plan (§11 and §12), its
+And the workspace's own files, never the conversation: this stage's plan (its exit criteria and residual risks: §11 and §12 in an
+increment's, §7 and §8 in the spike's and a pre-release stage's, §6 and §7 in the release's), its
 gates record, the run records under `<xyx>-build/runs/` for the stage, `docs/00-overview.md`,
 `docs/01-requirements.md`, `docs/04-decision-log.md`, `docs/05-lessons.md`.
 
@@ -56,7 +57,7 @@ Before anything else, run `bb next --where` from the workspace folder and show i
 the report to the person opens with it, and every ID the report cites carries the file and section
 that define it (`method.md`, `A report to the person opens with where we are`).
 
-Then the exit criteria of the stage plan's §11, one at a time, each with its evidence: the command
+Then the exit criteria of the stage plan - the section whose heading starts `Exit criteria` - one at a time, each with its evidence: the command
 and its result, the browser pack's screenshots (run `bb --config <kit>/tools/browser/bb.edn
 check` against the local server; the README's three things say what it does and does not
 prove), the security pack's table (run `bb --config <kit>/tools/security/bb.edn check --routes
@@ -95,14 +96,14 @@ prints the observations nothing cites) and the stage map re-ranked by what remai
 stage pulled by kind - an increment, a pre-release stage, or the release - and, at the first
 boundary where "could we ship after this one?" is yes, the MVP named. Finally the cap: what
 the stage cost against what was approved: run `bb stage-report <xyx>-build/docs/stages/stage-N/stage-N-plan.md`, which renders the
-stage's figures into §11 from the run records and its security checks and scans from the pack's records,
+stage's figures into the exit-criteria section from the run records and its security checks and scans from the pack's records,
 and read it with the person; the lessons section's
 cost and runs are its first line.
 
 ## Writes
 
-In this order, each to its template's place: the stage plan's §11 with each criterion checked
-and its evidence, and §12 the residual risks; the walk's record, one line per thing said and
+In this order, each to its template's place: the stage plan's exit-criteria section with each
+criterion checked and its evidence, and the residual risks in the section after it; the walk's record, one line per thing said and
 its resolution, under the stage plan; `docs/05-lessons.md`'s section for the stage, closed with
 its date, cost and runs; `docs/04-decision-log.md` with the stage's entries settled and the
 walk's decisions added; `docs/01-requirements.md` with the scope lists revised and the index
@@ -121,7 +122,7 @@ to plan stage N+1" for the stage pulled, in a fresh session if the person likes.
 
 ## Done when
 
-Every exit criterion of §11 has its evidence written beside it; the security pack's three
+Every exit criterion has its evidence written beside it; the security pack's three
 records are beside the stage plan with no failing row; every reproduced finding of the security review is
 fixed with its test passing, or decided in the design or in §15, and every hypothesis is a line of §15; the walk's record has no line
 without a resolution; the lessons section is closed with its date, cost and runs; the decision

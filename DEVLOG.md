@@ -87,6 +87,19 @@ the project's and the upgrade leaves it as it is: compare it with
 
 ## 2026-10-16
 
+### `bb next --where` after a stage's end, and what is open (plan 6.7, item 5, Fable's review)
+
+The block was a stage behind at the moment a person most asks where the project is. Between a
+stage's end and the next plan, it named the closed stage as the current one - its goal, its
+status DONE - while its own `next:` line said to pull the next stage. A closed stage is now behind
+the block: it names the closed stage with its date and then the next one, not pulled yet, with
+that stage's phase, name, status and goal from the stage map. Its decisions count both kinds not
+yet settled: PROVISIONAL and OPEN. The method enters everything not yet decided as OPEN with an
+owner, and a list without those would mislead. A long `also:` line, the paths an upgrade left, is
+cut in the block (`bb next` prints it whole). Lines are cut at a space. The stage's name is read
+from a column whose header starts `Name`. `kit-stage-end` now finds the exit criteria by the
+heading's text, as `kit-where-am-i` does: the section is §11 only in an increment's plan.
+
 ### `kit-where-am-i`: where the project stands, at any time (plan 6.7, item 5)
 
 The sixth skill, and like `kit-start` not a step: it runs `bb next --where`, shows the block as

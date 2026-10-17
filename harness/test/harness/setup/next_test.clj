@@ -294,18 +294,21 @@
       (is (= 6 (count (next/table-rows overview "4"))) "every row of the stage map, the separator not one")
       (is (= [0 1 2] (keys (next/stage-map overview))) "a numbered stage only: not N, … or N+1")
       (is (= {:kind "spike" :name "" :status "PLANNED"} (dissoc (get (next/stage-map overview) 0) :delivers)))
+      (is (= "the door" (:name (get (next/stage-map "## 4. M\n\n| Stage | Kind | Name | Status |\n|---|---|---|---|\n| **1** | x | the door | y |\n") 1)))
+          "a Name column without (optional)")
       (is (= ["R1"] (next/open-risks overview)))
-      (is (= [{:id "D1" :section "2"}] (next/provisional-decisions log)) "D2 is OPEN, not PROVISIONAL"))
+      (is (= [{:id "D1" :section "2"} {:id "D2" :section "2"}] (next/open-decisions log)) "D1 PROVISIONAL, D2 OPEN; the RESOLVED P0 rows and the blank ones are not"))
     (testing "a section ends at the next heading; one the text lacks has no rows"
       (is (= [] (next/table-rows "## 4. A\n\n### sub\n\n| a |\n|---|\n| 1 |\n" "4")))
       (is (= [{"a" "1" "b" ""}] (next/table-rows "### 6b. X\n\n| a | b |\n|---|---|\n| 1 |\n" "6b")) "a short row: its missing cells blank")
       (is (= [] (next/table-rows "## 4a. Risks\n\n| # |\n|---|\n| R9 |\n" "4")) "4 is not 4a")
       (is (nil? (next/section-lines "# none\n" "4"))))
     (testing "a filled log: RESOLVED that was PROVISIONAL is not open; bold or not, the Status cell is read"
-      (is (= [{:id "D3" :section "2"} {:id "P0-9" :section "4"}]
-             (next/provisional-decisions
+      (is (= [{:id "D3" :section "2"} {:id "D4" :section "2"} {:id "P0-9" :section "4"}]
+             (next/open-decisions
               (str "## 2. D\n\n| # | Decision | Status / Resolution |\n|---|---|---|\n"
                    "| D2 | x | **RESOLVED 2026-10-13: y** - was PROVISIONAL |\n| D3 | x | **PROVISIONAL: z** |\n"
+                   "| D4 | x | **OPEN** - owner: stage 4 |\n"
                    "## 4. P0\n\n| # | Decision | Status / Resolution |\n|---|---|---|\n| P0-9 | x | PROVISIONAL - a note |\n")))))))
 
 (deftest a-stages-kind-is-its-phase
@@ -330,13 +333,13 @@
         lines (str/split-lines block)]
     (is (= "where: xyx-build - phase C BUILD, stage 1 of 0-2: walking skeleton, \"the front door\"" (first lines)))
     (is (= ["  stage map:   xyx-build/docs/00-overview.md §4 - status there: IN PROGRESS"
-            (str "  stage goal:  FR-1 to FR-12: " (subs (apply str (repeat 30 "a page, ")) 0 85) "…")
+            (str "  stage goal:  FR-1 to FR-12: " (subs (apply str (repeat 30 "a page, ")) 0 81) "…")
             "               xyx-build/docs/stages/stage-1/stage-1-plan.md §1"
             "  blueprint:   xyx-build/docs/stages/stage-1/stage-1-blueprint.md - reviewed, signed 2026-10-15; 3 packets, 1 merged"
             "  done:        stage 0 closed 2026-10-13; stage 1 approved 2026-10-14, blueprint signed 2026-10-15"]
            (subvec lines 1 6)))
     (is (str/starts-with? (nth lines 6) "  next:        step 11 - a packet; owner: the Architect's session; run: bb spec-from-blueprint xyx-build/docs/"))
-    (is (= ["  open:        decisions PROVISIONAL: D3, D8 (§2), P0-20 (§4) - xyx-build/docs/04-decision-log.md"
+    (is (= ["  open:        decisions PROVISIONAL or OPEN: D3, D8 (§2), P0-20 (§4) - xyx-build/docs/04-decision-log.md"
             "               risks OPEN: R4, R5 - xyx-build/docs/00-overview.md §4a"]
            (subvec lines 7 9)))
     (is (str/starts-with? (nth lines 9) "  read more:   in xyx-build/docs/: FR-n 01-requirements.md §6b"))
@@ -357,7 +360,28 @@
   (testing "more than six: the first six and a count"
     (let [wf (assoc where-at-stage-1 :decisions (mapv #(hash-map :id (str "D" %) :section "2") (range 1 10)))]
       (is (str/includes? (next/render-where wf (next/next-action wf))
-                         "decisions PROVISIONAL: D1, D2, D3, D4, D5, D6 (§2) and 3 more - "))))
+                         "decisions PROVISIONAL or OPEN: D1, D2, D3, D4, D5, D6 (§2) and 3 more - "))))
+  (testing "a closed stage is behind us: the block is the next stage's, not pulled yet"
+    (let [wf (-> where-at-stage-1
+                 (assoc-in [:stage :merged] #{"t1" "t2" "t3"})
+                 (assoc-in [:stage :gates :stage/closed] {:date "2026-10-16"})
+                 (assoc-in [:stages 1 :gates] {:stage/closed {:date "2026-10-16"}}))
+          lines (str/split-lines (next/render-where wf (next/next-action wf)))]
+      (is (= ["where: xyx-build - phase C BUILD, stage 1 closed 2026-10-16; next, stage 2 of 0-2: increment - not pulled yet"
+              "  stage map:   xyx-build/docs/00-overview.md §4 - status there: NOT STARTED"
+              "  stage goal:  more"
+              "               (no plan yet in xyx-build/docs/stages/stage-2/)"
+              "  blueprint:   (none yet)"
+              "  done:        stage 0 closed 2026-10-13; stage 1 closed 2026-10-16"]
+             (subvec lines 0 6)))
+      (is (str/starts-with? (nth lines 6) "  next:        step 7 - the stage plan; owner: the person; run: pull stage 2")))
+    (let [wf (-> where-at-stage-1 (assoc-in [:stage :gates :stage/closed] {:date "d"}) (update :map dissoc 2))]
+      (is (str/includes? (next/render-where wf (next/next-action wf)) "§4 (no row for stage 2)") "past the map's last row: said")))
+  (testing "a long also: line is cut, and says bb next has it whole"
+    (let [wf (assoc where-at-stage-1 :plan-problems [(str "docs/x.md: " (str/join ", " (repeat 40 "a mark")) " left to fill")])
+          also (some #(when (str/starts-with? % "  also:") %) (str/split-lines (next/render-where wf (next/next-action wf))))]
+      (is (str/ends-with? also "… (bb next prints it whole)"))
+      (is (< (count also) 220))))
   (testing "stage 0 with no kind read is the spike; before a stage, the phase and next only"
     (let [wf (-> where-at-stage-1 (assoc :map nil) (update :stage assoc :id 0 :kind nil))]
       (is (str/starts-with? (next/render-where wf (next/next-action wf)) "where: xyx-build - phase B PROVE, stage 0: spike\n")))

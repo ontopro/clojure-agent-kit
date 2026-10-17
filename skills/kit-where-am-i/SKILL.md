@@ -41,8 +41,9 @@ Nothing. Outside a workspace the block says setup is next, as `bb next` does; sh
    - **what is done**: each closed stage's gates record, and the current stage's gates passed;
    - **what is next**: the step's row in `workflow.md`'s table - who acts, the question it answers,
      what exists afterwards - and the `run:` line to type;
-   - **what is open**: each decision still PROVISIONAL, read from its row in the decision log with
-     the spike that gates it, and each risk OPEN, from the overview's §4a with the stage it runs in;
+   - **what is open**: each decision still PROVISIONAL or OPEN, read from its row in the decision log
+     with the spike that gates it or the stage that owns it, and each risk OPEN, from the
+     overview's §4a with the stage it runs in;
    - **an ID**: the file and section the `read more` lines name for its kind, and the row or
      point that defines it - never a file that only cites it;
    - **the stage map**: every row, with its kind and status.
