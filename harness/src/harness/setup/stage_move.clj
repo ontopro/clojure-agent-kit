@@ -57,6 +57,13 @@
 
 (defn- template? [nm] (str/includes? nm "-template."))
 
+(defn- stages-paths
+  "`l` with each `stages/stage-K-x` - a path written from `docs/` or above - put through the
+  stage's folder, `stages/stage-K/stage-K-x`; a template's name as it was."
+  [l]
+  (str/replace l #"(?<![\w-])stages/(stage-(\d+)-[\w.-]+)"
+               (fn [[m nm k]] (if (template? nm) m (str "stages/stage-" k "/" nm)))))
+
 (defn rewrite-moved
   "The text of a stage document that moved from `docs/stages/` into its folder, stage `own`.
   `resolves?` says whether a relative path (its anchor dropped) named something from the
@@ -77,21 +84,27 @@
           ;; a reading at its old place - reached by `../` (now three) or written from the build's root
           (str/replace #"(?<![\w./-])(?:\.\./\.\./\.\./)?reviews/stage-(\d+)/"
                        (fn [[_ k]] (if (= own (parse-long k)) "reviews/" (str "../stage-" k "/reviews/"))))
+          ;; a path written from `docs/` or above, inside a stage document
+          stages-paths
           ;; another stage's file, named bare when the two were neighbours
           (str/replace #"(?<![\w./-])(stage-(\d+)-[\w.-]*?(?:\.md|\.edn|security-review))(?![\w-])"
                        (fn [[m nm k]] (if (or (= own (parse-long k)) (template? nm)) m (str "../stage-" k "/" nm)))))))))
 
 (defn rewrite-doc
-  "The text of one of the build's other documents, under `docs/` and outside the stage folders."
+  "The text of one of the build's other documents, under `docs/` and outside the stage folders,
+  at any depth: a reading reached by `../` runs ONE `../` shorter to its stage folder under
+  `docs/`, since the run climbed to the build's root - `../reviews/stage-1/` from `docs/` is
+  `stages/stage-1/reviews/`, `../../reviews/stage-1/` from `docs/api-notes/` is
+  `../stages/stage-1/reviews/`; one written from the build's root, with none, is put as from `docs/`."
   [text]
   (outside-fences
    text
    (fn [l]
      (-> l
-         (str/replace #"(?<![\w-])stages/(stage-(\d+)-[\w.-]+)"
-                      (fn [[m nm k]] (if (template? nm) m (str "stages/stage-" k "/" nm))))
-         (str/replace #"(?<![\w./-])(?:\.\./)?reviews/stage-(\d+)/"
-                      (fn [[_ k]] (str "stages/stage-" k "/reviews/")))))))
+         stages-paths
+         (str/replace #"(?<![\w./-])((?:\.\./)*)reviews/stage-(\d+)/"
+                      (fn [[_ ups k]]
+                        (str (subs ups (min 3 (count ups))) "stages/stage-" k "/reviews/")))))))
 
 ;; ---------------------------------------------------------------------------
 ;; the edge

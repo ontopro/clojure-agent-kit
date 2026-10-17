@@ -27,6 +27,10 @@
       (is (= "`../stage-0/stage-0-security-review/`" (r "`stage-0-security-review/`")))
       (is (= "`stage-1-plan.md`, `stage-1-gates.edn`" (r "`stage-1-plan.md`, `stage-1-gates.edn`")))
       (is (= "`stage-0-spike-template.md`" (r "`stage-0-spike-template.md`"))))
+    (testing "a path written from docs/ or above, inside a moved document, goes through the folder"
+      (is (= "`stages/stage-0/stage-0-gates.edn` and `docs/stages/stage-1/stage-1-plan.md`"
+             (r "`stages/stage-0-gates.edn` and `docs/stages/stage-1-plan.md`")))
+      (is (= "`stages/stage-N-template.md`" (r "`stages/stage-N-template.md`"))))
     (testing "a path that led nowhere from the old place is a quotation, left as written"
       (let [old #{"../00-overview.md" "../../runs/s0.edn"}
             r* #(sm/rewrite-moved % 1 old)]
@@ -44,6 +48,10 @@
   (is (= "`docs/stages/stage-1/stage-1-blueprint.md`" (sm/rewrite-doc "`docs/stages/stage-1-blueprint.md`")))
   (is (= "(`stages/stage-0/reviews/`, `stages/stage-1/reviews/plan-review.edn`)"
          (sm/rewrite-doc "(`reviews/stage-0/`, `../reviews/stage-1/plan-review.edn`)")))
+  (testing "a document deeper under docs/: its run to the build's root, one shorter to the folder"
+    (is (= "`../stages/stage-1/reviews/x.edn` and `../stages/stage-0/stage-0-plan.md`"
+           (sm/rewrite-doc "`../../reviews/stage-1/x.edn` and `../stages/stage-0-plan.md`")))
+    (is (= "`../../stages/stage-2/reviews/`" (sm/rewrite-doc "`../../../reviews/stage-2/`"))))
   (is (= "`stages/stage-0-spike-template.md`, `reviews/plan-review.edn`"
          (sm/rewrite-doc "`stages/stage-0-spike-template.md`, `reviews/plan-review.edn`"))
       "a template and the project plan review are where they were"))

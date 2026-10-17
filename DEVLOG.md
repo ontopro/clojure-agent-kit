@@ -123,7 +123,11 @@ security review's folder, whose files quote the application. An uncommitted edit
 the step would touch stops it by name before anything moves. A relative path is deepened only when it led somewhere from the old place: the first run, on a copy of
 the first project's workspace, deepened a link its stage plan quoted from the site's content, which
 named nothing from the plan's folder and is a quotation; the new texts are now read before anything
-moves, against the old layout. The tests run the move on a git
+moves, against the old layout. Fable's review of the diff found two cases the rewrite missed, neither
+in the first project's documents (the old and new rewrites give the same text on all of them): a
+moved document citing a path written from `docs/` (`stages/stage-0-gates.edn`), now put through
+the folder as the other documents' are; and a document deeper under `docs/` reaching a reading by
+more than one `../`, now any run - one `../` shorter, to the stage folder under `docs/`. The tests run the move on a git
 repository in the old layout: the renames git detects, the paths, the fence untouched, the untracked
 files still untracked, and the second run moving nothing.
 
