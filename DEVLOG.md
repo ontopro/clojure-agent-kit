@@ -64,6 +64,26 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-17
 
+### Where the project stands, as one map: `bb next --where --edn` (plan 6.8, item 4)
+
+The block `bb next --where` prints is the Architect's, terse and at a step's boundary. A person
+back after a while needs more, and the fuller account and the roadmap page (items 5 and 6) need it
+from one place. `harness.setup.where` reads it into one map of plain data: the five phases with
+where the person is; every stage of the stage map with its state (closed, running, planned, next,
+ahead), its cap read from the gates record or the map's cell, its money and runs from the stage
+report's figures - a stage with no blueprint yet has its readings so far - and its days from
+approval to close; what waits on the person; what is open, each decision with its subject and
+owner, each risk with where it runs and its spike; and what changed since a date. The date is
+`--since`, else the person's last look once one is recorded, else the approval of the last closed
+stage, since its close date would show nothing of a stage approved and closed on one day. A
+decision settled counts by the date its RESOLVED cell carries; most cells carry none, and the map
+says how many. The next step is said once: it names the first gate not passed, so no gate is
+repeated in the person's list. The map is read through the readers `bb next` and the stage report
+already have, never the documents a second time; the clock and the build's commit are passed in,
+so a test prints the map and reads it back equal. A stage map cell is prose around IDs, so the IDs
+are read out of it, and an owner runs to the sentence's end, past a title's full stop. `bb next`
+stays read-only in every form; a KIT kept outside its workspace is now said by its absolute path.
+
 ### The gates template's comments carry no mark (plan 6.8, item 2b, register row 139)
 
 The gates record's template says, in a comment, what each gate holds once passed; the stage plan's

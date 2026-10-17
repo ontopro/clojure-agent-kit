@@ -363,7 +363,11 @@
           packets (when bp-text (mapv :task/id (blueprint/packets bp-text)))]
       {:workspace? true
        :build (str (fs/relativize (fs/absolutize (:workspace/dir ws)) (fs/absolutize build)))
-       :kit (some->> (:workspace/kit ws) fs/absolutize (fs/relativize (fs/absolutize (:workspace/dir ws))) str)
+       ;; the KIT folder as the build is said, relative to the workspace - absolute when it lies
+       ;; outside, where a relative path would climb out through `..`
+       :kit (when-let [k (some-> (:workspace/kit ws) fs/absolutize)]
+              (let [r (str (fs/relativize (fs/absolutize (:workspace/dir ws)) k))]
+                (if (str/starts-with? r "..") (str k) r)))
        :brief? (and (fs/exists? source) (not (str/includes? (slurp (str source)) "<the brief>")))
        :plan-problems (:problems (plan/check build ws))
        :stage (when id

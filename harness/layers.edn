@@ -89,6 +89,7 @@
  harness.setup.upgrade #{harness.models.profile harness.rules harness.setup.doctor harness.setup.front-door harness.setup.skills harness.setup.template harness.setup.workspace}
  harness.setup.next #{harness.contract.blueprint harness.setup.plan harness.setup.stages harness.setup.upgrade harness.setup.workspace}
  harness.setup.ws-gates #{harness.setup.next harness.setup.workspace}
+ harness.setup.where #{harness.money.stage-report harness.setup.next harness.setup.workspace}
  harness.setup.template-upgrade #{harness.gates.boundary harness.gates.run harness.loop.driver harness.rules harness.setup.app
                                   harness.setup.template harness.setup.workspace}
  harness.setup.upgrade-run #{harness.setup.doctor harness.setup.front-door harness.setup.init harness.setup.skills harness.setup.stage-move harness.setup.template

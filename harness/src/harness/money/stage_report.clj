@@ -297,6 +297,18 @@
          (sort-by (juxt #(order (:task/id %)) :run/id))
          vec)))
 
+(defn stage-readings
+  "Stage `id`'s readings as `[[label cost n] …]`, from its folder alone - so a stage still in its
+  plan step, with no blueprint yet, has them too."
+  [build id]
+  (let [reviews (stages/reviews-dir build id)]
+    ;; THE PROJECT PLAN REVIEW is read once a project, before stage 0 is approved, and
+    ;; is stage 0's money as much as stage 0's own stage plan review: both, said apart
+    (vec (remove nil? [(when (= 0 id) (reading "project plan review" (stages/project-plan-review build)))
+                       (reading "stage plan review" (fs/path reviews "plan-review.edn"))
+                       (reading "blueprint review" (fs/path reviews "blueprint-review.edn"))
+                       (folder-reading "security review" (stages/document build id "-security-review"))]))))
+
 (defn stage-facts
   "What `stage-summary` needs for stage `id` of the build at `build` with the
   records under `records-dir`: nil when the stage has no blueprint (no
@@ -306,18 +318,12 @@
         bp (doc "-blueprint.md")]
     (when (fs/exists? bp)
       (let [packets (mapv :task/id (blueprint/packets (slurp (str bp))))
-            reviews (stages/reviews-dir build id)
             plan (some (fn [[i p]] (when (= i id) p)) (stage-plans (stages/stages-dir build)))]
         {:id id
          :kind (some-> plan slurp stage-kind)
          :packets packets
          :records (records-for records-dir packets)
-         ;; THE PROJECT PLAN REVIEW is read once a project, before stage 0 is approved, and
-         ;; is stage 0's money as much as stage 0's own stage plan review: both, said apart
-         :readings (vec (remove nil? [(when (= 0 id) (reading "project plan review" (stages/project-plan-review build)))
-                                      (reading "stage plan review" (fs/path reviews "plan-review.edn"))
-                                      (reading "blueprint review" (fs/path reviews "blueprint-review.edn"))
-                                      (folder-reading "security review" (doc "-security-review"))]))
+         :readings (stage-readings build id)
          :gates (read-edn (doc "-gates.edn"))
          :checks (read-edn (doc "-security.edn"))
          :scans {:deps (read-edn (doc "-security-deps.edn"))

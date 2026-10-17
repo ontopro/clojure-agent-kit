@@ -139,9 +139,9 @@
 
   ;; The workflow's next step, read off the build's files - the loop's `next-action` one level
   ;; up, so the hand-off between steps lives in no skill. Information: exit 0 always.
-  next {:doc "bb next [--where] [--workspace <dir>]: the workflow's next step, its owner and the command or skill to run, from five facts that are files - a workspace, the plan check, the stage's gates record, its blueprint's review and sign-off, its packets' merged records; setup before a workspace exists, scoping in one with no brief yet. --where: where the project stands first - phase, stage, goal, what is done and open, where a phase, a step, the project plan and each kind of ID are defined"
-        :requires ([harness.setup.next :as next])
-        :task (apply next/-main *command-line-args*)}
+  next {:doc "bb next [--where [--edn [--since <YYYY-MM-DD>]]] [--workspace <dir>]: the workflow's next step, its owner and the command or skill to run, from five facts that are files - a workspace, the plan check, the stage's gates record, its blueprint's review and sign-off, its packets' merged records; setup before a workspace exists, scoping in one with no brief yet. --where: where the project stands first - phase, stage, goal, what is done and open, where a phase, a step, the project plan and each kind of ID are defined; --where --edn: the same and more as one EDN map - the phases, every stage with its money and days, what waits on the person, what changed since a date (harness.setup.where)"
+        :requires ([harness.setup.where :as where])
+        :task (apply where/-main *command-line-args*)}
 
   rules-prompt {:doc "Render the rules for one audience as a system-prompt block: --audience <name> [--out FILE] [--<key> <value>]..."
                 :requires ([harness.rules :as rules])

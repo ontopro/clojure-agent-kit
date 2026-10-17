@@ -428,7 +428,7 @@
     (spit (str (fs/path docs "stages" "stage-0" "stage-0-gates.edn")) (pr-str {:stage/id "0" :stage/closed {:date "2026-10-13"}}))
     (spit (str (fs/path docs "stages" "stage-1" "stage-1-plan.md")) "# Stage 1\n\n**Kind:** walking skeleton\n")
     (let [wf (next/where-facts (workspace/find-workspace ws))]
-      (is (= (str (fs/relativize ws kit-dir)) (:kit wf)) "the KIT folder, relative to the workspace, as the build is")
+      (is (= kit-dir (:kit wf)) "a KIT outside the workspace, said absolute: a relative path would climb out through ..")
       (is (= 1 (get-in wf [:stage :id])))
       (is (= {:stage/closed {:date "2026-10-13"}} (dissoc (get-in wf [:stages 0 :gates]) :stage/id)))
       (is (every? nil? ((juxt :map :decisions :risks) wf)) "no overview, no log: nil, said as such by the block"))
