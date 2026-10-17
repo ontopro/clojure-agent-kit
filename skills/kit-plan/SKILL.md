@@ -61,10 +61,12 @@ stage 0 runs; the security choices (the architecture's §8 - what the applicatio
 reaches it, the auth model, where it is deployed, the CSP), each a decision, asked against what
 §4 says the template does not do, and the threat model (§15) written from them - three lines for
 a public site that holds nothing private, more where it holds more; the method document's chosen
-part; and the rules overlay's three placeholders.
+part; and the rules overlay's three placeholders - the data conventions' defined terms each an
+ALL-CAPS phrase of two words or more, as the placeholder says.
 Then run `bb plan-review` - the project plan review, once, over the whole set - and read the findings cold with the person, resolving each in the
-overview's findings table; then `bb plan-check` until it passes, and read it its two lists -
-the inferred requirements, for the approval, and the uncited observations, for later.
+overview's findings table; then `bb plan-check` until it passes, and read it its lists -
+the inferred requirements, for the approval, the uncited observations, for later, and any one-word
+defined term, to make a phrase now.
 
 ## Writes
 

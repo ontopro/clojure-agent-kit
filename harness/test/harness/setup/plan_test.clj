@@ -327,6 +327,21 @@
     (is (= [] (plan/uncited-observations source [requirements "a decision resting on S-1.2 and S-1.3"]))
         "any governing document's mention counts")))
 
+(deftest a-one-word-defined-term-is-listed-not-failed
+  (is (= ["WORD" "THE TREE" "FIXTURE"]
+         (plan/one-word-terms (str "A WORD is a run of letters. THE TREE: the parsed page. THE WORDS OF A TREE are its words in order. "
+                                   "A FIXTURE is what the seam before produces. PAGE TEXT is the text of the page.")))
+      "A and THE aside; THE WORDS OF A TREE and PAGE TEXT are phrases")
+  (is (= [] (plan/one-word-terms nil)) "a placeholder still standing: no terms")
+  (let [ws (workspace {:filled? true})
+        overlay (fs/path ws "xyx-build" "rules.edn")]
+    (spit (str overlay) (pr-str (mapv #(if (= :data-conventions (:id %)) (assoc % :text "A WORD is a run of letters. PAGE TEXT is the text.") %)
+                                      (edn/read-string (slurp (str overlay))))))
+    (let [r (check ws)]
+      (is (= [] (:problems r)) "information, never a failure")
+      (is (= ["WORD"] (:one-word r)))
+      (is (str/includes? (plan/report r) "\n  one-word terms: 1 of the data conventions' defined terms is one word, and any guidance using the word is sent the definition - a phrase of two words or more names only itself (rules.edn :data-conventions): WORD")))))
+
 (deftest the-check-prints-the-two-lists-after-its-verdict
   (let [ws (workspace {:filled? true})
         plan (fs/path ws "xyx-build")

@@ -337,6 +337,17 @@
 (defn- read-edn-file [path]
   (edn/read-string (slurp (str path))))
 
+(defn one-word-terms
+  "The terms `conventions` - a project's `:data-conventions` text - defines (`rules/defined-terms`)
+  that are one word, a leading THE aside (A and AN are dropped already): WORD, THE TREE. Guidance
+  naming a term is sent its definition, and a one-word term is named by every sentence that uses
+  the word, so the KIT's vocabulary rule asks for two words or more. A list, never a failure."
+  [conventions]
+  (vec (for [{:keys [term]} (rules/defined-terms (or conventions ""))
+             :let [ws (str/split term #" ")]
+             :when (= 1 (count (if (= "THE" (first ws)) (rest ws) ws)))]
+         term)))
+
 (defn given-problems
   "The given parts of the workspace `ws`, checked: the application's
   `layers.edn` against the pin's (`pin`), and the plan's `loop.edn` gate keys.
@@ -402,17 +413,22 @@
      :workspace (some-> ws :workspace/dir)
      :documents (count texts)
      :problems (problems plan ws (fs/path (kit-dir ws) "build-docs") (template/pin (template/load-pins)))
-     ;; the two lists, not failures: what the person and the stage's end are shown
+     ;; the lists, not failures: what the person and the stage's end are shown, and the
+     ;; one-word defined terms the vocabulary rule asks to be phrases
      :inferred (inferred-requirements texts)
+     :one-word (if ws
+                 (one-word-terms (try (rules/data-conventions (rules/project-rules ws))
+                                      (catch clojure.lang.ExceptionInfo _ nil)))
+                 [])
      :uncited (if source
                 (uncited-observations source (map second (remove #(= "source.md" (first %)) texts)))
                 [])}))
 
 (defn report
   "The check's result as the lines `bb plan-check` prints: the verdict, then
-  the inferred requirements for the person and the uncited observations for
-  the stage's end, each only when there are any."
-  [{:keys [plan problems documents workspace inferred uncited]}]
+  the inferred requirements for the person, the uncited observations for
+  the stage's end and the one-word defined terms, each only when there are any."
+  [{:keys [plan problems documents workspace inferred uncited one-word]}]
   (str (if (seq problems)
          (str "plan-check: " (count problems) " thing" (when (> (count problems) 1) "s") " left in " plan "\n"
               (str/join "\n" (map #(str "  - " %) problems)))
@@ -427,7 +443,12 @@
        (when (seq uncited)
          (str "\n  uncited: " (count uncited) " observation" (when (> (count uncited) 1) "s")
               " of source.md nothing cites - the backlog nobody decided on, revised at the stage's end: "
-              (str/join ", " uncited)))))
+              (str/join ", " uncited)))
+       (when (seq one-word)
+         (str "\n  one-word terms: " (count one-word) " of the data conventions' defined terms "
+              (if (= 1 (count one-word)) "is" "are")
+              " one word, and any guidance using the word is sent the definition - a phrase of two words or more names only itself (rules.edn :data-conventions): "
+              (str/join ", " one-word)))))
 
 (defn -main
   "bb plan-check [<plan-dir>] [--workspace <dir>]

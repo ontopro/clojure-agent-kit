@@ -107,6 +107,17 @@ benefit. It is also a product artifact, and also not addressed to you.
   - The template is named in full, with the tag that applies: `ontopro/clojure-stack-lite` at tag
     `kit-v1.3`. Its `kit-vN` tags version THE TEMPLATE, not the KIT.
   - A workspace's clone of the KIT is `KIT/`.
+  - **One meaning per bare word.** A word the KIT already uses keeps that meaning; a second meaning
+    carries its qualifier, every time: the **project plan** and a **stage plan** ("the plan" is
+    the project plan), **the gates** and a stage's **gates record**, the KIT's `bb gates` and the
+    **workspace gates**, the **code reviewer** and the **security reviewer**, the **application
+    template** (`ontopro/clojure-stack-lite`) and the **build-docs templates**, a **run** of the
+    loop and `bb run-loop run`, the **project's name** and a repository's **folder name**. A new
+    identifier reusing a word carries the qualifier (`:security-reviewer`, `stage-report`). A
+    project's defined term - an ALL-CAPS heading of its data conventions - is a phrase of two words
+    or more, an article aside: guidance naming a term is sent its definition, and a one-word term
+    is named by every sentence using the word (`bb plan-check` lists them). Words found later are
+    added here; older prose is not swept (register row 126 showed the price).
   - Older prose that says "the kit" is not swept: `DEVLOG.md` is history, `NOTES.md` is
     summarised before it reaches `main`, and the adopter-facing documents change when they are
     next rewritten.

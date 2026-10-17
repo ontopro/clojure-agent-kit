@@ -87,6 +87,23 @@ the project's and the upgrade leaves it as it is: compare it with
 
 ## 2026-10-16
 
+### The vocabulary rule: one meaning per bare word, a defined term two words or more (plan 6.7, item 6)
+
+Plans 6.4 and 6.5 tripped over words the KIT gives two meanings - plan, gates, reviewer, name,
+run, stage, template - and over a project's one-word defined term. `CLAUDE.md`'s Vocabulary now
+holds the rule: a bare word keeps the meaning the KIT already gives it, a second meaning carries
+its qualifier every time (the project plan and a stage plan, the gates and a gates record, the
+code reviewer and the security reviewer, the application template and the build-docs
+templates), and a new identifier reusing a word carries the qualifier. For a project, the
+defined terms of its data conventions are what retry guidance is matched against, word for word
+in any case, and a matched term's definition is sent with the guidance. A one-word term - WORD,
+THE TREE - is matched by every sentence that uses the word. The `:data-conventions`
+placeholder says to name each term as a phrase of two words or more, an article aside, and
+`kit-plan` says so where the overlay is filled. `bb plan-check` lists a project's one-word
+terms after its verdict, failing nothing, beside the inferred requirements and the uncited
+observations. The matching is not changed, and a project's terms are its own to rename. No
+sweep of older prose.
+
 ### `bb next --where` after a stage's end, and what is open (plan 6.7, item 5, Fable's review)
 
 The block was a stage behind at the moment a person most asks where the project is. Between a
