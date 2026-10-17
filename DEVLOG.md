@@ -87,6 +87,24 @@ the project's and the upgrade leaves it as it is: compare it with
 
 ## 2026-10-16
 
+### The rules overlay refuses a key a rule does not have (plan 6.7, item 2, register row 134)
+
+In the first KIT project's stage 1, two quote pairs inside the overlay's `:data-conventions` text
+went in unescaped. The file still read as EDN: the `:text` string ended at the first quote and the
+rest of the sentence became keys of the map. Nothing noticed. `bb rules-sync` rendered the cut
+text, `bb rules-check` compared the mirror with the same broken source and stayed green, the plan
+check passed, and every packet of the stage went out with the project's data conventions ending
+mid-sentence. The packets' own targets carried most of what was lost, and every run merged; the
+project's session found it by reading the rendered `AGENTS.md`.
+
+`harness.rules/overlay` checked an entry's `:group`, `:audience`, `:title` and `:text`, and never
+its set of keys. It now refuses an entry with any key outside `rule-keys` (`:id :group :audience
+:title :text :from`, `:from` being the source's provenance key), naming the keys and the likely
+cause. Every reading of the rules goes through `overlay`, so the refusal reaches `rules-sync`,
+`rules-check`, the plan check, `start` and each role's prompt alike. A warning on a rule's text
+that ends without punctuation was suggested and not taken: an unescaped pair always leaves stray
+keys or EDN that does not read, and the key check is exact where punctuation is a guess.
+
 ### The toolchain held current (plan 6.7, item 1, register rows 131 and 133)
 
 The fresh-machine image was as old as its first build: `docker build` with no `--pull`, and no

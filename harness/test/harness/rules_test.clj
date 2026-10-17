@@ -5,6 +5,7 @@
   the drift check that keeps the mirror honest."
   (:require
    [babashka.fs :as fs]
+   [clojure.edn :as edn]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
@@ -219,7 +220,18 @@
       (is (some #(= "\"string\" is not a keyword :id" %) problems))))
   (testing "a placeholder entry cannot make the rule undispatchable either"
     (is (thrown? clojure.lang.ExceptionInfo
-                 (rules/overlay source-fixture [{:id :layers :text 42}])))))
+                 (rules/overlay source-fixture [{:id :layers :text 42}]))))
+  (testing "a :text cut short by an unescaped quote pair still reads as EDN; its stray keys are refused by name"
+    (let [entry (edn/read-string "{:id :layers :text \"Mark it \"Coming\" soon, and \"page\" here.\"}")
+          e (is (thrown? clojure.lang.ExceptionInfo (rules/overlay source-fixture [entry])))]
+      (is (= "Mark it " (:text entry)) "the string ended at the first unescaped quote")
+      (is (= [(str ":layers has keys a rule does not: Coming, page - a rule's keys are "
+                   ":audience :from :group :id :text :title; "
+                   "a quote left unescaped in a :text ends it there and leaves the rest as keys")]
+             (:problems (ex-data e))))))
+  (testing "a rule's provenance key is a rule's key"
+    (is (= "ours" (:from (last (rules/overlay source-fixture [{:id :ours :group :conventions :audience #{:coder}
+                                                               :title "Ours." :text "A rule." :from "ours"}])))))))
 
 (defn- workspace-with-overlay!
   "A workspace: the KIT's clone with its own mirror inside it (the default layout), the

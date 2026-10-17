@@ -102,6 +102,10 @@
     (not (string? title)) (conj ":title must be a string")
     (not (string? text)) (conj ":text must be a string")))
 
+(def rule-keys
+  "The keys a rule has, in the source and in an overlay entry."
+  #{:id :group :audience :title :text :from})
+
 (defn overlay
   "`shipped` with a project's `entries` merged over it by `:id`. An entry whose
   id is one of the source's PLACEHOLDER rules (`placeholder-ids`) replaces that
@@ -109,7 +113,11 @@
   An entry with an id the source lacks is a project rule, appended in the
   overlay's order, and must be whole (`:group`, `:audience`, `:title`, `:text`).
   An entry whose id is any OTHER rule of the source is refused by name: those
-  rules are the KIT's. Throws ex-info naming every problem at once."
+  rules are the KIT's. An entry with a key outside `rule-keys` is refused,
+  naming the keys: a quote left unescaped inside a `:text` ends the string
+  early and leaves the rest of the sentence as keys, still valid EDN, and the
+  rule cut short reached every role while every check stayed green (the first
+  KIT project's stage 1). Throws ex-info naming every problem at once."
   [shipped entries]
   (let [fillable (placeholder-ids shipped)
         shipped-ids (into #{} (map :id) shipped)
@@ -126,6 +134,12 @@
            (str (pr-str id) " is not a keyword :id"))
          (for [{:keys [id]} entries :when (and (shipped-ids id) (not (fillable id)))]
            (str id " is the KIT's rule, not a placeholder - not the overlay's to change"))
+         (for [{:keys [id] :as e} entries
+               :let [unknown (remove rule-keys (keys e))]
+               :when (seq unknown)]
+           (str (pr-str id) " has keys a rule does not: " (str/join ", " (map pr-str unknown))
+                " - a rule's keys are " (str/join " " (sort rule-keys))
+                "; a quote left unescaped in a :text ends it there and leaves the rest as keys"))
          (for [{:keys [id] :as r} merged :when (entry-of id)
                p (rule-problems r audiences)]
            (str id ": " p)))]
