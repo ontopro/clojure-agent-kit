@@ -1366,7 +1366,14 @@
 
   ONE `:triage` EVENT PER ROUND, whoever decided. `role-rounds` counts them per role, so
   a retry the model routed and a retry a person typed spend the same cap - the role's."
-  [ctx role {:keys [decision feedback]} allow? extra]
+  [ctx role {:keys [decision feedback] :as triage} allow? extra]
+  ;; THE FILE FIRST: a decision the loop cannot send is refused before the round is counted or
+  ;; any event written - a bare string under :feedback had crashed the dispatch after both
+  (when-let [errors (shapes/explain-triage triage)]
+    (throw (ex-info (str "the triage file is not a decision the loop can send: "
+                         (binding [*print-namespace-maps* false] (pr-str errors))
+                         " - write it as " shapes/triage-example "; nothing was written and no round counted")
+                    {:run-loop/error :bad-triage :errors errors})))
   (let [base (first-packet ctx role)
         cap (:retry-cap (:gates base))
         round (role-rounds @(:state ctx) role)
@@ -1403,7 +1410,12 @@
   shielded by hand from the code reviewer's findings and the implementation's names; `leaks` is that shield as a rule, and `--allow-leak`
   is the judgement to pass one anyway, recorded on the triage event either way."
   [ctx role-name triage-file & flags]
-  (retry-with! ctx (keyword role-name) (edn/read-string (slurp triage-file))
+  (retry-with! ctx (keyword role-name)
+               (try (edn/read-string (slurp triage-file))
+                    (catch Exception e
+                      (throw (ex-info (str "the triage file " triage-file " is not EDN that reads (" (ex-message e) ") - write it as "
+                                           shapes/triage-example)
+                                      {:run-loop/error :bad-triage}))))
                (boolean (some #{"--allow-leak"} flags)) nil))
 
 (defn amend!

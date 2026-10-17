@@ -340,6 +340,18 @@
     (testing "a person retries by hand; `run` then checks and reviews without asking triage again"
       (let [triage (str (fs/path rd "triage.edn"))
             asked (atom 0)]
+        (testing "a file the loop cannot send is refused before any event is written or round counted"
+          (let [before (count (events rd))]
+            (doseq [bad [(pr-str {:decision "retry" :feedback ["a plain string"]}) "{:decision \"unclosed"]]
+              (spit triage bad)
+              (let [e (try (with-redefs-fn {#'driver/dispatch! (fn [& _] (throw (ex-info "dispatched" {})))}
+                             #(with-out-str (driver/retry! (driver/context rd) "coder" triage)))
+                           nil
+                           (catch clojure.lang.ExceptionInfo e e))]
+                (is (= :bad-triage (:run-loop/error (ex-data e))) bad)
+                (is (str/includes? (ex-message e) ":feedback/from :triage") "the refusal shows the shape")))
+            (is (= before (count (events rd))) "no :triage event")
+            (is (= 1 (:coder (:attempts @(:state (driver/context rd))))) "no round counted")))
         (spit triage (pr-str {:decision "amended; the word is fixed" :feedback [{:feedback/from :architect :feedback/text "say fixed"}]}))
         (with-redefs-fn {#'driver/dispatch! (fake-dispatch writes {})}
           #(with-out-str (driver/retry! (driver/context rd) "coder" triage)))

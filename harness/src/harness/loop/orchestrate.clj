@@ -39,6 +39,7 @@
   loop be exercised without either."
   (:require
    [clojure.string :as str]
+   [harness.contract.shapes :as shapes]
    [harness.loop.driver :as driver]
    [harness.loop.log :as log]
    [harness.loop.triage :as triage]
@@ -233,7 +234,8 @@
                     "then fix spec.edn and `start` again"]
    :repl-dead ["check the nREPL in the role's worktree, then:"
                "bb run-loop run <run-dir>   ; the probe runs again before any dispatch"]
-   :dispatch-failed ["bb run-loop retry <run-dir> <role> <triage.edn>   ; {:decision \"...\" :feedback [...]}"
+   :dispatch-failed ["bb run-loop retry <run-dir> <role> <triage.edn>   ; the file:"
+                     (str "  " shapes/triage-example)
                      "bb run-loop check <run-dir>                       ; if it was the code reviewer: gates and review again"]
    :credit ["a credit limit, not a model error: read the reason above, add credit to that account, then"
             "bb balance                                        ; the key's limit and the account's credit, as the provider reports them"

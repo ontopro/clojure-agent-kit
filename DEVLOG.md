@@ -62,6 +62,20 @@ tested" stays information for an adopter, never a block.
 
 ---
 
+## 2026-10-17 (plan 6.9)
+
+### A retry checks its triage file before it counts the round (plan 6.9, item 1, register row 141)
+
+`bb run-loop retry <run-dir> <role> <triage.edn>` read the file and recorded the `:triage` event
+and the round before anything used the feedback, so a file with a bare string where a feedback item
+belongs crashed the dispatch after the round was spent: one of the first KIT project's Coder rounds
+went on nothing. The stop's printed hint had shown the file as `{:decision "..." :feedback [...]}`,
+never an item's keys. A triage file is now a shape, `shapes/TriageDecision` - a decision, and
+feedback items that are `Feedback` maps - checked first in `retry-with!`, which a person's retry and
+triage's routed one both go through: a file that is not one, or not EDN that reads, is refused with
+a sentence that shows the shape, nothing written and no round counted. The hint prints the shape
+whole.
+
 ## 0.6.8 — plan 6.8's boundary: orienting the person
 
 Plan 6.8 added what a person needs to find their place in a long build: `bb next --where --edn`,

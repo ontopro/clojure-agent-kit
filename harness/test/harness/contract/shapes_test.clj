@@ -106,3 +106,11 @@
               :run/started-at (java.util.Date.)}]
     (is (shapes/valid-run? (assoc base :run/kit-commit "abc" :run/app-commit "def" :run/plan-commit nil)))
     (is (not (shapes/valid-run? (assoc base :run/kit-commit 12))) "a hash is a string")))
+
+(deftest a-triage-file-is-a-decision-and-feedback-items
+  (is (nil? (shapes/explain-triage (read-string shapes/triage-example))) "the printed example is a decision the loop sends")
+  (is (nil? (shapes/explain-triage {:decision "credit added"})) "feedback is optional: the same packet, sent again")
+  (is (some? (shapes/explain-triage {:decision "x" :feedback ["a plain string"]})) "an item is a Feedback map, never a string")
+  (is (some? (shapes/explain-triage {:decision "x" :feedback [{:feedback/from :me :feedback/text "y"}]})) "a source the enum does not have")
+  (is (some? (shapes/explain-triage {:feedback []})) "no decision")
+  (is (some? (shapes/explain-triage "retry it")) "not a map"))

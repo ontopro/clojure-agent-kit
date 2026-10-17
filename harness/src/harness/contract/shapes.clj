@@ -96,6 +96,18 @@
    [:feedback/from [:enum :gate :reviewer :coder :tester :triage :architect :conventions]]
    [:feedback/text [:string {:min 1}]]])
 
+(def TriageDecision
+  "A retry's decision as a triage file holds it, and as triage routes one: why, and what the role
+  is told - each item a `Feedback`, never a bare string. Checked before a retry writes anything: a
+  file read as a decision after its round was counted spent a round of the cap on nothing."
+  [:map
+   [:decision [:string {:min 1}]]
+   [:feedback {:optional true} [:vector Feedback]]])
+
+(def triage-example
+  "A triage file as a person writes one, printed wherever the loop asks for one."
+  "{:decision \"why\" :feedback [{:feedback/from :triage :feedback/text \"what the role is told\"}]}")
+
 (def PacketBase
   [:map
    [:task/id [:string {:min 1}]]
@@ -492,6 +504,11 @@
 (defn valid-step? [step] (m/validate RunStep step))
 (defn valid-session? [session] (m/validate Session session))
 (defn valid-profile? [profile] (m/validate Profile profile))
+
+(defn explain-triage
+  "Why `t` is not a `TriageDecision`, in words, or nil."
+  [t]
+  (some-> (m/explain TriageDecision t) me/humanize))
 
 (defn explain-packet
   "Humanized validation errors for a packet, or nil when valid."

@@ -79,7 +79,7 @@
                        harness.loop.provision harness.models.profile harness.models.runner harness.money.balance
                        harness.money.report harness.money.reprice harness.rules harness.setup.plan harness.setup.workspace}
  harness.loop.triage #{harness.contract.packet harness.loop.driver harness.models.agent harness.rules}
- harness.loop.orchestrate #{harness.loop.driver harness.loop.log harness.loop.triage harness.models.profile harness.money.balance
+ harness.loop.orchestrate #{harness.contract.shapes harness.loop.driver harness.loop.log harness.loop.triage harness.models.profile harness.money.balance
                             harness.money.report harness.setup.workspace}
 
  ;; the roots - nothing requires them
