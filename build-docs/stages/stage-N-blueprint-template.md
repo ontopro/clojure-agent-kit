@@ -14,6 +14,8 @@
 
 ## 0. Dispatch preconditions — HUMAN PREP (not task packets)
 
+**IDs.** HP-n is defined here; cite one as `HP-n (stages/stage-N/stage-N-blueprint.md §0)`.
+
 > Anything a task depends on that no agent can do: an account, a licensed download, a
 > signed agreement, a provisioned machine. Naming these up front is cheaper than
 > discovering them at attempt one.
@@ -57,6 +59,8 @@
 |---|---|---|
 
 ## 4. Dependency-ordered task packets
+
+**IDs.** t-NN, a packet, is defined here, by its heading and its fence's `:task/id`; cite one as `t-NN (stages/stage-N/stage-N-blueprint.md §4)`.
 
 ### t-01 — <title>
 

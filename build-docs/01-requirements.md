@@ -55,6 +55,8 @@
 
 ### 6b. The index — every requirement, by the stage that wrote it
 
+**IDs.** FR-n is found here: this index names where each requirement is written, this document's §6 or a stage plan's §2. Cite one as `FR-n (01-requirements.md §6b)`.
+
 > Appended at each stage boundary, by the stage's end: one line per requirement, where it is
 > written. This is the one place every ID is findable.
 
@@ -64,6 +66,8 @@
 | FR-n | <N> | `stages/stage-N/stage-N-plan.md` §2 | |
 
 ## 7. Non-functional requirements
+
+**IDs.** NFR-n is defined here; cite one as `NFR-n (01-requirements.md §7)`.
 
 > The four most commonly omitted are listed here on purpose — delete only deliberately. Most
 > of these are written when the pre-release stages are pulled, as any requirement is; a target

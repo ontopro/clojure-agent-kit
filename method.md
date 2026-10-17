@@ -545,6 +545,10 @@ Stage boundaries are **gates, not dates**. A gate can loop back: if a spike fail
 
 At a stage's end, three things are written before the next stage is pulled: the lessons, one section of `05-lessons.md`, each ending as a rule, a line in the next stage plan, or a decision; the scope lists, revised against the source; and the stage map, re-ranked. Then the next stage — an increment, a pre-release stage, or the release — is pulled, and its document written.
 
+### A report to the person opens with where we are
+
+When the Architect's session reports to the person - a stage plan for approval, a blueprint for sign-off, a stage's end - the report opens with the block `bb next --where` prints, pasted as printed and never restated: the phase and the stage, the stage's goal, what is done, what is next, the decisions still PROVISIONAL and the risks OPEN. Then the report. **Every ID it cites carries the file and section that define it** - `FR-8 (01-requirements.md §6b)`, `S-3.2 (source.md §2)` - never a file that only cites it: an ID is defined once and cited in many places, and a person given the ID alone has to search for it. The block's `read more` lines say where each kind is defined, and each template says the same where it defines one, in a sentence that begins **IDs.** The person can run `bb next --where` at any time.
+
 ### For a reader who knows Scrum or Kanban
 
 The method is Kanban's shape with two of Scrum's ceremonies attached to the gate. **Stage is the word**: not sprint, which brings a timebox the method rejects; not iteration, which is already taken by the loop's rounds and a task's retries.

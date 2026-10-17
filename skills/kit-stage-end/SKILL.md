@@ -22,6 +22,7 @@ exit criteria and says what is kept.
 | File | Heading |
 |---|---|
 | `method.md` | `Exit criteria, and what happens when a gate fails` |
+| `method.md` | `A report to the person opens with where we are` |
 | `method.md` | `Scope is three lists, revised at every stage's end` |
 | `method.md` | `Rank risks, then order the stages by them` |
 | `method.md` | `Security is a decision in stage 0 and a signature before release, not a gate` |
@@ -51,7 +52,11 @@ gates record, the run records under `<xyx>-build/runs/` for the stage, `docs/00-
 
 ## Asks
 
-The exit criteria of the stage plan's §11, one at a time, each with its evidence: the command
+Before anything else, run `bb next --where` from the workspace folder and show its block as printed;
+the report to the person opens with it, and every ID the report cites carries the file and section
+that define it (`method.md`, `A report to the person opens with where we are`).
+
+Then the exit criteria of the stage plan's §11, one at a time, each with its evidence: the command
 and its result, the browser pack's screenshots (run `bb --config <kit>/tools/browser/bb.edn
 check` against the local server; the README's three things say what it does and does not
 prove), the security pack's table (run `bb --config <kit>/tools/security/bb.edn check --routes

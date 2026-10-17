@@ -20,6 +20,7 @@ before the blueprint is cut.
 | File | Heading |
 |---|---|
 | `method.md` | `The stage plan, written just-in-time` |
+| `method.md` | `A report to the person opens with where we are` |
 | `method.md` | `Spike gates: how a PROVISIONAL decision gets settled` |
 | `method.md` | `Pre-release and release` |
 | `build-docs/05-lessons.md` | `Stage <N>` |
@@ -47,7 +48,11 @@ index, and `docs/source.md`'s observations.
 
 ## Asks
 
-First, out loud: which lessons of the last stage this plan answers, and how (a rule in the
+Before anything else, run `bb next --where` from the workspace folder and show its block as printed;
+the report to the person opens with it, and every ID the report cites carries the file and section
+that define it (`method.md`, `A report to the person opens with where we are`).
+
+Then, out loud: which lessons of the last stage this plan answers, and how (a rule in the
 overlay, a line in this plan, a decision) - the plan review will ask for the one it does not.
 Then the template's sections in order for the stage's kind: stage 0 from the spike template
 (the risks it proves, each with its pass criterion and fallback; the loop proved by its first

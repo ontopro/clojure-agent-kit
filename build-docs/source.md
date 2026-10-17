@@ -28,6 +28,8 @@
 
 ## 2. What was read from it
 
+**IDs.** S-n.m is defined here: the heading S-n, its point m. Cite one as `S-n.m (source.md §2)`.
+
 > The analysis, by item: what it shows, what it implies, what it leaves open. Number the
 > observations (`S-1.1`, `S-1.2` …) so `01-requirements.md` can cite them - *FR-3 follows
 > from S-1.4* - and so a reader can see which requirements rest on a reading rather than
@@ -40,6 +42,8 @@
 - **S-1.3** <what it leaves open, and who answers it>
 
 ## 3. Questions asked, and answered
+
+**IDs.** Q-n is defined here; cite one as `Q-n (source.md §3)`.
 
 > Everything the source did not say that the plan needed, with the answer and its date. An
 > answer that changed a requirement is also a decision-log entry; this is the record of the

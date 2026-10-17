@@ -42,11 +42,15 @@ change. Full checklist and rationale: `method.md` §08.
 
 ## 1. Plan-review decisions (RV)
 
+**IDs.** RV-n is defined here; cite one as `RV-n (04-decision-log.md §1)`.
+
 | # | Decision | Status / Resolution |
 |---|---|---|
 | RV-1 | | |
 
 ## 2. Architecture decisions (D)
+
+**IDs.** D1, D2 … are defined here; cite one as `D1 (04-decision-log.md §2)`.
 
 | # | Decision | Options considered | Status / Resolution | Impact analysis |
 |---|---|---|---|---|
@@ -55,11 +59,15 @@ change. Full checklist and rationale: `method.md` §08.
 
 ## 3. Schema / data-model decisions (S)
 
+**IDs.** S1, S2 …, the schema decisions, are defined here; cite one as `S1 (04-decision-log.md §3)`. An S-n.m is an observation, in `source.md` §2.
+
 | # | Decision | Options considered | Status / Resolution |
 |---|---|---|---|
 | S1 | | | |
 
 ## 4. Method & tooling decisions (P0)
+
+**IDs.** P0-n is defined here; cite one as `P0-n (04-decision-log.md §4)`.
 
 | # | Decision | Options considered | Status / Resolution |
 |---|---|---|---|
@@ -72,6 +80,8 @@ change. Full checklist and rationale: `method.md` §08.
 | P0-7 | Orchestration | hand-run · built harness | |
 
 ## 5. Validation spikes (R)
+
+**IDs.** R1, R2 … here are the spikes, each numbered as the risk it proves; the risk is defined in `00-overview.md` §4a. Cite a spike as `R1 (04-decision-log.md §5)`.
 
 > A spike is not "try it and see". Each has a stage that runs it, a pass criterion written
 > **before** it runs, and a fallback that executes on failure.

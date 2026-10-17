@@ -205,6 +205,8 @@ flowchart TB
 
 ## 15. Threat model
 
+**IDs.** A threat is its number in this table; cite one as `threat n (02-architecture.md §15)`.
+
 > What is worth protecting, who might come for it, and one line per threat with its answer:
 > a line of §4 that already answers it, a decision, or the stage that will. Written in stage 0
 > from §8, and revised at a stage's end when the stage changed what the application holds or who

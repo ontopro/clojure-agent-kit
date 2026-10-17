@@ -87,6 +87,21 @@ the project's and the upgrade leaves it as it is: compare it with
 
 ## 2026-10-16
 
+### A report opens with where we are, and cites an ID where it is defined (plan 6.7, item 5)
+
+The rule is written once, in `method.md` §04: a report of the Architect's session to the person -
+a stage plan for approval, a blueprint for sign-off, a stage's end - opens with the block `bb next
+--where` prints, as printed, and every ID it cites carries the file and section that define it,
+never one that only cites it. `workflow.md`'s steps 7, 8 and 14 say so, and `kit-stage-plan` and
+`kit-stage-end` begin with it. Each template says what it defines where it defines it, in a
+sentence opening `**IDs.**` - the requirements' index and NFRs, the source's observations and
+questions, the decision log's five sections, the stage map, the risks, the findings, the threat
+model, the blueprint's human prep and packets - in the form the file writes its IDs (`D1`,
+`P0-n`). The test of `id-kinds` now asks for that sentence in each section it names. Plain prose,
+not a blockquote: the plan check reads a template's blockquote as an instruction to delete, and
+these stay. A project's documents are filled, so the upgrade's build-docs step cannot place most
+of these sentences by context; it saves them as conflicts, one line each to add by hand.
+
 ### `bb next --where`: where the project stands, in one block (plan 6.7, item 5)
 
 The first project's person, at stage 1's plan step, read a report citing FR-8 and S-3.2 with no

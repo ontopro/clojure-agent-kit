@@ -369,12 +369,14 @@
                           "where: phase A SETUP - no workspace yet\n  next:        step 0 - setup"))))
 
 (deftest every-kind-of-id-has-its-home-in-the-templates
-  ;; the table `bb next --where` prints and the templates it points into: a file renamed or a
-  ;; section renumbered there fails here, not in a person's reading
+  ;; the table `bb next --where` prints and the templates it points into: a file renamed, a
+  ;; section renumbered or its **IDs.** sentence lost there fails here, not in a person's reading
   (doseq [{:keys [id file section]} next/id-kinds
-          :let [f (fs/path build-docs file)]]
+          :let [f (fs/path build-docs file)
+                lines (when (fs/exists? f) (next/section-lines (slurp (str f)) section))]]
     (is (fs/exists? f) (str id ": " file))
-    (is (some? (next/section-lines (slurp (str f)) section)) (str id ": " file " §" section))))
+    (is (some? lines) (str id ": " file " §" section))
+    (is (some #(str/starts-with? % "**IDs.** ") lines) (str id ": " file " §" section " says what it defines"))))
 
 (deftest where-reads-the-builds-documents
   (let [ws (str (fs/real-path (fs/create-temp-dir {:prefix "where-"})))

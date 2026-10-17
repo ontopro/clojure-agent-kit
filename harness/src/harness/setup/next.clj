@@ -399,13 +399,13 @@
    {:id "S-n.m" :file "source.md" :section "2" :note "heading S-n, point m"}
    {:id "Q-n" :file "source.md" :section "3"}
    {:id "RV-n" :file "04-decision-log.md" :section "1"}
-   {:id "D-n" :file "04-decision-log.md" :section "2"}
-   {:id "S-n" :file "04-decision-log.md" :section "3" :note "a schema decision"}
+   {:id "Dn" :file "04-decision-log.md" :section "2"}
+   {:id "Sn" :file "04-decision-log.md" :section "3" :note "a schema decision"}
    {:id "P0-n" :file "04-decision-log.md" :section "4"}
-   {:id "R-n" :file "00-overview.md" :section "4a" :note "the risk"}
-   {:id "R-n" :file "04-decision-log.md" :section "5" :note "the risk's spike"}
+   {:id "Rn" :file "00-overview.md" :section "4a" :note "the risk"}
+   {:id "Rn" :file "04-decision-log.md" :section "5" :note "the risk's spike"}
    {:id "stage N" :file "00-overview.md" :section "4"}
-   {:id "F-n" :file "00-overview.md" :section "5"}
+   {:id "Fn" :file "00-overview.md" :section "5"}
    {:id "threat n" :file "02-architecture.md" :section "15"}
    {:id "HP-n" :file "stages/stage-N-blueprint-template.md" :section "0" :shown "the stage's blueprint"}
    {:id "t-NN" :file "stages/stage-N-blueprint-template.md" :section "4" :shown "the stage's blueprint"}])

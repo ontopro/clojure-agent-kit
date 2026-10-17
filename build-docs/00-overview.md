@@ -57,6 +57,8 @@ architecture doc stays readable because decision churn lives in the log, not the
 
 ## 4. Stage map
 
+**IDs.** A stage is its number in this table; cite one as `stage N (00-overview.md §4)`.
+
 Stages are numbered through, and each has a kind (`method.md` §04): stage 0 the **spike**,
 stage 1 the **walking skeleton**, stages 2 to N the **increments**, then **pre-release** stages
 and **release**. **Method and tooling** (`03-method-and-tooling.md`) are set in stage 0's plan, before
@@ -91,6 +93,8 @@ Stage content beyond the next stage is indicative and will be re-planned.
 
 ## 4a. Risk register
 
+**IDs.** R1, R2 …, the risks, are defined here; cite one as `R1 (00-overview.md §4a)`. Its spike has the same number, in `04-decision-log.md` §5.
+
 > Ranked by what would hurt most, highest first. **The stage order follows this table**, not
 > dependency convenience — a wrong store discovered in stage 4 is a rewrite; the same choice
 > discovered in stage 1 is a config change behind a protocol.
@@ -105,6 +109,8 @@ Stage content beyond the next stage is indicative and will be re-planned.
 | R2 | | | | | |
 
 ## 5. Review findings
+
+**IDs.** F1, F2 … are defined here; cite one as `F1 (00-overview.md §5)`.
 
 > Filled by the plan-review pass (`method.md` §03), which runs in every stage's plan step: for
 > stage 0 over the whole set, before its approval; for every stage after, over the stage plan and
