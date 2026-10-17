@@ -7,7 +7,9 @@
 ;;
 ;; The family is the slug's prefix on OpenRouter (`anthropic/…`, `openai/…`, `google/…`, `x-ai/…`).
 ;; `:anthropic-direct` is the same family reached at its own API with its own shape - the route
-;; agy-ide.edn's reviewers take - and is chosen by name, never by prefix.
+;; agy-ide.edn's reviewers take - and is chosen by name, never by prefix. `:google-direct` is Gemini
+;; at Google's OpenAI-compatible endpoint, the same way: no provider to pin, Gemini's thought
+;; signature returned on each tool call (`adapter/parse :openai`), its errors read from an array.
 ;;
 ;; EFFORT LEVELS ARE NOT IN THE LISTING. OpenRouter says whether a model takes a reasoning
 ;; parameter, not which values; the levels here are what each family's API documents and what
@@ -43,6 +45,10 @@
         :shape :openai
         :provider "alibaba"
         :effort {:param :reasoning_effort :levels ["low" "medium" "high"]}}
+ :google-direct {:endpoint "https://generativelanguage.googleapis.com/v1beta/openai"
+                 :key-env "GEMINI_API_KEY"
+                 :shape :openai
+                 :effort {:param :reasoning_effort :levels ["low" "medium" "high"]}}
  :anthropic-direct {:endpoint "https://api.anthropic.com"
                     :key-env "ANTHROPIC_API_KEY"
                     :shape :anthropic

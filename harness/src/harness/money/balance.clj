@@ -18,7 +18,8 @@
             [cheshire.core :as json]
             [clojure.edn :as edn]
             [clojure.string :as str]
-            [harness.models.profile :as profile]))
+            [harness.models.profile :as profile]
+            [harness.models.provenance :as provenance]))
 
 (defn- get-data
   "`GET <endpoint>/<path>` with the key, as the parsed `:data` map, or
@@ -87,8 +88,11 @@
         ;; through OpenRouter records its serving provider ("Anthropic"), and that spend is
         ;; already in the key's figure. This once summed both and called the sum "Anthropic
         ;; spend" on a project where no role was on Anthropic's API at all.
-        anthropic (get spend "Anthropic API" 0)
-        direct? (some #(some-> (:endpoint %) (str/includes? "api.anthropic.com")) (vals (:roles profile)))]
+        ;; EVERY DIRECT PROVIDER the profile's roles reach, by the name a direct dispatch records
+        ;; (`provenance/provider-of-endpoint`): none has a balance endpoint, so the run's own spend
+        ;; is what can be said. Anthropic alone was named once, and a project's direct Gemini
+        ;; role spent with nothing saying so.
+        direct (sort (distinct (keep #(provenance/provider-of-endpoint (:endpoint %)) (vals (:roles profile)))))]
     (str "balance: OpenRouter "
          (cond (nil? or-role) "not in this profile"
                (:unavailable status) (str "unavailable (" (:unavailable status) ")")
@@ -98,10 +102,10 @@
                             (str "; account credit " (money (:remaining c)) " remaining of "
                                  (money (:total c)) " bought - the number a cap is really against")
                             "; account credit unavailable")))
-         (if direct?
-           (str " · Anthropic API spend this run " (money anthropic)
-                " (its API has no balance endpoint; the console has it)")
-           " · no role is on Anthropic's API directly, so the key's usage is the whole spend"))))
+         (if (seq direct)
+           (str " · direct spend this run: " (str/join ", " (for [p direct] (str p " " (money (get spend p 0)))))
+                " (no balance endpoint; each console has it)")
+           " · no role is on a provider's API directly, so the key's usage is the whole spend"))))
 
 (defn- profile-file?
   "Whether `path` reads as a profile - a map with `:roles` - rather than as a

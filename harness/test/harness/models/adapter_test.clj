@@ -250,3 +250,24 @@
     (is (= "one" (adapter/first-line "one\r\ntwo")))
     (is (= "see" (adapter/first-line "see http://x.test/y and more")))
     (is (= "" (adapter/first-line nil)))))
+
+(deftest a-tool-calls-provider-content-goes-back-on-the-same-call
+  ;; Gemini puts its thought signature in each call's extra_content and refuses the next
+  ;; completion when a call comes back without it (HTTP 400); every call once came back bare
+  (let [sig {:google {:thought_signature "CiQB-signature"}}
+        body {:choices [{:message {:content nil
+                                   :tool_calls [{:id "c1" :type "function" :function {:name "eval" :arguments "{}"}
+                                                 :extra_content sig}
+                                                {:id "c2" :type "function" :function {:name "note" :arguments "{}"}}]}}]
+              :usage {:prompt_tokens 10 :completion_tokens 5}}
+        parsed (adapter/parse :openai body)
+        back (adapter/assistant-message :openai parsed)]
+    (is (= sig (:extra-content (first (:tool-calls parsed)))))
+    (is (= [sig nil] (mapv :extra_content (:tool_calls back))) "on its own call, and none where none came")
+    (is (= ["c1" "c2"] (mapv :id (:tool_calls back))))))
+
+(deftest an-error-body-that-is-an-array-is-read
+  ;; Google's OpenAI-compatible endpoint answers [{"error": {...}}]; read as a map it logged "no message"
+  (is (= {:harness/error :api-error :status 400 :message "Function call is missing a thought_signature"}
+         (adapter/error 400 [{:error {:code 400 :message "Function call is missing a thought_signature" :status "INVALID_ARGUMENT"}}])))
+  (is (= "rate limited" (:message (adapter/error 429 {:error {:message "rate limited"}}))) "the map, as before"))

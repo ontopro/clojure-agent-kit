@@ -267,7 +267,9 @@
     [:map {:closed true}
      [:per-mtok [:map {:closed true}
                  [:in number?] [:out number?]
-                 [:cache-write-5m number?] [:cache-write-1h number?]
+                 ;; Anthropic's cache writes; a family that charges none (Gemini caches
+                 ;; implicitly) leaves them out, and a write is then no charge
+                 [:cache-write-5m {:optional true} number?] [:cache-write-1h {:optional true} number?]
                  [:cache-read number?]]]
      [:source [:string {:min 1}]]
      [:as-of [:string {:min 1}]]]]])

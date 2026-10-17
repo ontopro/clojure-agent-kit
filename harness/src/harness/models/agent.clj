@@ -233,7 +233,9 @@
                      messages (-> messages
                                   (conj (adapter/assistant-message (:shape role) parsed))
                                   (into (adapter/tool-results-message (:shape role) results)))
-                     made (mapv (fn [c r] (merge c (select-keys r [:content :error? :args :ms])))
+                     ;; the provider's :extra-content (Gemini's thought signature) travels back in the
+                     ;; assistant message above, not into the transcript and the run log
+                     made (mapv (fn [c r] (merge (dissoc c :extra-content) (select-keys r [:content :error? :args :ms])))
                                 (:tool-calls parsed) results)
                      calls (into calls made)
                      turns (conj turns {:text (:text parsed) :calls made})]

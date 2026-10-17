@@ -2,7 +2,8 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
-   [harness.contract.shapes :as shapes]))
+   [harness.contract.shapes :as shapes]
+   [malli.core :as m]))
 
 (deftest the-loop-s-keys-are-described-once-and-the-documents-hold-to-them
   (testing "every entry says its key, what it is for and who reads it; a file key says its type"
@@ -114,3 +115,11 @@
   (is (some? (shapes/explain-triage {:decision "x" :feedback [{:feedback/from :me :feedback/text "y"}]})) "a source the enum does not have")
   (is (some? (shapes/explain-triage {:feedback []})) "no decision")
   (is (some? (shapes/explain-triage "retry it")) "not a map"))
+
+(deftest a-role-priced-without-cache-writes-is-a-role
+  ;; Gemini caches implicitly and charges no write; the rates once had to name Anthropic's two
+  (let [role {:family :google :model "gemini-4-argon" :shape :openai
+              :endpoint "https://generativelanguage.googleapis.com/v1beta/openai" :key-env "GEMINI_API_KEY"
+              :pricing {:per-mtok {:in 2.0 :out 12.0 :cache-read 0.5} :source "the provider's page" :as-of "2026-10-17"}}]
+    (is (m/validate shapes/RoleProfile role))
+    (is (m/validate shapes/RoleProfile (assoc-in role [:pricing :per-mtok :cache-write-5m] 2.5)) "Anthropic's, still taken")))

@@ -198,3 +198,12 @@
     (testing "no raw reply, no new keys"
       (is (= #{:model :provider :cost :tokens :reasoning-tokens :generation-ms :service-tier :generation-id}
              (set (keys (prov/of {:id "g" :usage {:in 1 :out 2}} nil))))))))
+
+(deftest a-family-that-charges-no-cache-write-is-priced
+  ;; Gemini caches implicitly with no write charge: its rates leave the write out, and a
+  ;; project once wrote the input price there to satisfy the schema
+  (let [gemini {:in 2.0 :out 12.0 :cache-read 0.5}]
+    (is (== 0.044 (prov/list-price {:in 10000 :out 2000} gemini)))
+    (is (== 0.0465 (prov/list-price {:in 10000 :out 2000 :cache-read 5000} gemini)))
+    (is (nil? (prov/list-price {:in 10000 :out 2000} {:in 2.0 :out 12.0})) "no cache-read rate: not priced, as before"))
+  (is (= "Google AI API" (prov/provider-of-endpoint "https://generativelanguage.googleapis.com/v1beta/openai"))))

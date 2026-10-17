@@ -112,10 +112,15 @@
   (let [msg (get-in body [:choices 0 :message])
         usage (:usage body)]
     {:text (:content msg)
+     ;; A CALL'S `extra_content` IS THE PROVIDER'S, KEPT AS IT CAME: Gemini puts its thought
+     ;; signature there and refuses the next completion when the call comes back without it
+     ;; (HTTP 400, "missing a thought_signature"). Nothing here reads it; `assistant-message`
+     ;; returns it on the same call, as the :anthropic shape returns its raw blocks.
      :tool-calls (vec (for [c (:tool_calls msg)]
-                        {:id (:id c)
-                         :name (get-in c [:function :name])
-                         :args (get-in c [:function :arguments])}))
+                        (cond-> {:id (:id c)
+                                 :name (get-in c [:function :name])
+                                 :args (get-in c [:function :arguments])}
+                          (:extra_content c) (assoc :extra-content (:extra_content c)))))
      :stop (if (seq (:tool_calls msg)) :tool-use :end)
      ;; CACHED TOKENS, WHEN THE ENDPOINT REPORTS THEM. OpenRouter puts them under
      ;; `prompt_tokens_details` (`cached_tokens`, `cache_write_tokens`), and its
@@ -186,21 +191,25 @@
   retries, and the caller decides. The message is kept because it is the only
   useful part of a failed dispatch and it goes in the run log."
   [status body]
+  ;; AN ARRAY OF ERRORS IS ONE ERROR: Google's OpenAI-compatible endpoint answers
+  ;; `[{"error": {...}}]`, and read as a map that logged "no message" for a 400 whose
+  ;; body said exactly what was wrong.
+  (let [body (if (and (sequential? body) (map? (first body))) (first body) body)]
   ;; A 2xx CAN BE A FAILURE. OpenRouter streams keep-alive whitespace before it
   ;; knows the outcome, so an upstream 429 arrives as HTTP 200 with the real
   ;; code inside `error`. Checking the status alone read that as a completion
   ;; with no text, no tokens and no model — found switching the Tester to
   ;; gpt-5.6-sol on flex, whose first dispatch was rate-limited and reported
   ;; itself :done.
-  (cond
-    (or (not (<= 200 status 299)) (:error body))
-    (let [status (let [code (get-in body [:error :code])]
-                   (if (and (<= 200 status 299) (int? code)) code status))
+    (cond
+      (or (not (<= 200 status 299)) (:error body))
+      (let [status (let [code (get-in body [:error :code])]
+                     (if (and (<= 200 status 299) (int? code)) code status))
           ;; `(str nil)` is "", not nil, so an `or` over it silently picks the
           ;; empty string and the run log records an error with no message.
-          message (or (get-in body [:error :message])
-                      (when-let [e (:error body)] (str e))
-                      "no message")]
+            message (or (get-in body [:error :message])
+                        (when-let [e (:error body)] (str e))
+                        "no message")]
       ;; A 402 IS ITS OWN KIND: credit, not the model. No retry can fix it, so
       ;; the loop stops on it by name rather than as one more failed dispatch.
       ;; And its message is CLIPPED HERE, before anything records it: the
@@ -208,9 +217,9 @@
       ;; the run log, `state.edn` and the console had all kept it whole by the
       ;; time anyone read it. The status and the first line, with no URL, is
       ;; what a record needs from a refusal for money.
-      (if (= 402 status)
-        {:harness/error :credit :status 402 :message (first-line message)}
-        {:harness/error :api-error :status status :message message}))
+        (if (= 402 status)
+          {:harness/error :credit :status 402 :message (first-line message)}
+          {:harness/error :api-error :status status :message message}))
 
     ;; AND A 200 CAN BE A REFUSAL OR A TRUNCATION. Anthropic reports both as a
     ;; normal response with a `stop_reason`, and `parse` would have read either
@@ -218,21 +227,21 @@
     ;; `refusal`; its thinking counts against `max_tokens`. Both are failed
     ;; dispatches that triage must see. The profile configures no fallback
     ;; model, so nothing else answers in their place.
-    (= "refusal" (:stop_reason body))
-    {:harness/error :api-error
-     :status status
-     :stop-reason "refusal"
-     :message (let [{:keys [category explanation]} (:stop_details body)]
-                (str "the model refused"
-                     (when category (str " (" category ")"))
-                     (when explanation (str ": " explanation))))}
+      (= "refusal" (:stop_reason body))
+      {:harness/error :api-error
+       :status status
+       :stop-reason "refusal"
+       :message (let [{:keys [category explanation]} (:stop_details body)]
+                  (str "the model refused"
+                       (when category (str " (" category ")"))
+                       (when explanation (str ": " explanation))))}
 
-    (= "max_tokens" (:stop_reason body))
-    {:harness/error :api-error
-     :status status
-     :stop-reason "max_tokens"
-     :message (str "the response hit max_tokens before it finished; raise :max_tokens "
-                   "in the role's :params (thinking counts against it)")}))
+      (= "max_tokens" (:stop_reason body))
+      {:harness/error :api-error
+       :status status
+       :stop-reason "max_tokens"
+       :message (str "the response hit max_tokens before it finished; raise :max_tokens "
+                     "in the role's :params (thinking counts against it)")})))
 
 (defn transient?
   "Whether an `error` is the kind a second request may not get: a rate limit
@@ -263,9 +272,10 @@
   {:role "assistant"
    :content (:text parsed)
    :tool_calls (vec (for [c (:tool-calls parsed)]
-                      {:id (:id c)
-                       :type "function"
-                       :function {:name (:name c) :arguments (:args c)}}))})
+                      (cond-> {:id (:id c)
+                               :type "function"
+                               :function {:name (:name c) :arguments (:args c)}}
+                        (:extra-content c) (assoc :extra_content (:extra-content c)))))})
 
 (defmethod assistant-message :anthropic
   [_ parsed]

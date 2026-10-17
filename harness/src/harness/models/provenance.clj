@@ -91,11 +91,12 @@
   "Dollars for `usage` at `per-mtok` rates, or nil when the uncached input or
   the output count is missing. Cache reads and writes are priced at their own
   rates; a write is at the 5-minute rate unless the usage splits it by
-  duration. Checked against the pricing page's own worked examples in the tests."
+  duration; a family with no cache-write rate charges none. Checked against the pricing page's own
+  worked examples in the tests."
   [usage per-mtok]
   (let [{:keys [in out cache-read cache-write cache-write-5m cache-write-1h]} usage
-        {i :in o :out cr :cache-read w5 :cache-write-5m w1 :cache-write-1h} per-mtok]
-    (when (and in out i o cr w5 w1)
+        {i :in o :out cr :cache-read w5 :cache-write-5m w1 :cache-write-1h :or {w5 0 w1 0}} per-mtok]
+    (when (and in out i o cr)
       (/ (+ (* in i)
             (* out o)
             (* (or cache-read 0) cr)
@@ -107,7 +108,8 @@
 (def ^:private endpoint-providers
   "Who serves a direct endpoint, from its host. A fact about where the request
   went, not a guess about who answered; an unknown host stays nil."
-  {"api.anthropic.com" "Anthropic API"})
+  {"api.anthropic.com" "Anthropic API"
+   "generativelanguage.googleapis.com" "Google AI API"})
 
 (defn provider-of-endpoint [endpoint]
   (some->> endpoint (re-find #"^https?://([^/:]+)") second endpoint-providers))

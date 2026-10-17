@@ -20,14 +20,20 @@
     (let [l (balance/line {:roles {:coder {:endpoint "https://api.anthropic.com"}}}
                           [{:step/provider "Anthropic API" :step/cost 0.25}])]
       (is (str/includes? l "OpenRouter not in this profile"))
-      (is (str/includes? l "Anthropic API spend this run $0.25"))
+      (is (str/includes? l "direct spend this run: Anthropic API $0.25"))
       (is (str/includes? l "no balance endpoint"))))
+  (testing "every direct provider the roles reach is named, each with its spend"
+    ;; a project's Coder went to Gemini direct and the line named Anthropic's spend alone
+    (let [l (balance/line {:roles {:coder {:endpoint "https://generativelanguage.googleapis.com/v1beta/openai"}
+                                   :reviewer {:endpoint "https://api.anthropic.com"}}}
+                          [{:step/provider "Google AI API" :step/cost 0.4} {:step/provider "Anthropic API" :step/cost 0.1}])]
+      (is (str/includes? l "direct spend this run: Anthropic API $0.10, Google AI API $0.40"))))
   (testing "every role through OpenRouter: an Anthropic model's serving provider is not Anthropic API spend"
     ;; The line once summed every provider containing "Anthropic" and called it Anthropic
     ;; spend, on a project whose direct Anthropic spend was $0.00.
     (let [l (balance/line {:roles {:coder {:endpoint "http://127.0.0.1:9/api/v1" :key-env "NOPE_KEY"}}}
                           [{:step/provider "Anthropic" :step/cost 0.18}])]
-      (is (not (str/includes? l "Anthropic API spend")))
+      (is (not (str/includes? l "direct spend")))
       (is (str/includes? l "the key's usage is the whole spend"))))
   (testing "an OpenRouter key that answers, and the account's credit beside it"
     ;; Two endpoints, two facts: the key's limit and the account's credit. A key limited

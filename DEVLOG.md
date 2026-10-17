@@ -64,6 +64,24 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-17 (plan 6.9)
 
+### Gemini at Google's own endpoint: the signature returned, a route, the prices it has (plan 6.9, item 2, register rows 142 and 143)
+
+The first KIT project moved its Coder to Gemini at Google's OpenAI-compatible endpoint, and every
+dispatch failed at its second completion with HTTP 400: Gemini returns each tool call with its
+thought signature under `extra_content` and refuses a history that comes back without it, and the
+adapter kept a call's id, name and arguments only. `adapter/parse :openai` now keeps a call's
+`extra_content` and `assistant-message :openai` returns it on the same call - the way the
+`:anthropic` shape returns its raw blocks - while the transcript and the run log leave it out. A
+provider that sends none is unchanged. Not taken: Google's validator-bypass token, which passes
+the check by dropping the model's reasoning between calls, and a native Gemini request shape, which
+the compatible endpoint does not need. Google's endpoint also answers an error as a JSON array, and
+the adapter had logged such a 400 as "no message"; an array is read as its first error. With it,
+`:google-direct` in `resources/routes.edn` (Google's endpoint, `GEMINI_API_KEY`, no provider to
+pin), the role schema's cache-write prices optional - Gemini charges none, and the project had
+written its input price there to satisfy the schema - a direct dispatch to Google recorded as
+"Google AI API", and `bb balance` naming every direct provider's spend, not Anthropic's alone.
+Proved against Google's API itself only at the person's word: a real call costs money.
+
 ### A retry checks its triage file before it counts the round (plan 6.9, item 1, register row 141)
 
 `bb run-loop retry <run-dir> <role> <triage.edn>` read the file and recorded the `:triage` event
