@@ -64,6 +64,15 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-17
 
+### A name says what the thing is (the vocabulary rule's other half)
+
+`CLAUDE.md`'s Vocabulary gains the half of the rule that chooses a new name, beside the half that
+keeps an existing word's meaning: before naming something new, say in one sentence what it is,
+and the name is that sentence's noun phrase, in the words the KIT already uses for its category.
+A shortening, an image or a metaphor that only hints at the thing is not a name. It came from a
+correction while plan 6.8 was written: "the road page" for what is the project's roadmap, now the
+roadmap page.
+
 ### A stage's total counts its security review (plan 6.8, item 1, register row 137)
 
 `bb stage-report` summed a stage's runs and its readings - the project plan review, the stage plan

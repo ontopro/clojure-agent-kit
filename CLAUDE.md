@@ -118,6 +118,10 @@ benefit. It is also a product artifact, and also not addressed to you.
     or more, an article aside: guidance naming a term is sent its definition, and a one-word term
     is named by every sentence using the word (`bb plan-check` lists them). Words found later are
     added here; older prose is not swept (register row 126 showed the price).
+  - **A name says what the thing is.** Before naming something new, say in one sentence what it
+    is; the name is that sentence's noun phrase, in the words the KIT already uses for its
+    category. A shortening, an image or a metaphor that only hints at the thing is not a name: the
+    roadmap page, not "the road page"; the gates record, not "the gates file".
   - Older prose that says "the kit" is not swept: `DEVLOG.md` is history, `NOTES.md` is
     summarised before it reaches `main`, and the adopter-facing documents change when they are
     next rewritten.
