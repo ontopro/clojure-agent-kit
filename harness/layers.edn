@@ -67,7 +67,7 @@
  harness.money.reprice #{harness.models.profile harness.models.provenance harness.money.report}
 
  ;; the plan and the readings
- harness.setup.plan #{harness.gates.boundary harness.gates.run harness.rules harness.setup.template harness.setup.workspace}
+ harness.setup.plan #{harness.contract.blueprint harness.gates.boundary harness.gates.run harness.rules harness.setup.stages harness.setup.template harness.setup.workspace}
  harness.setup.app #{harness.gates.boundary harness.gates.forms harness.rules harness.setup.template}
  harness.contract.spec-review #{harness.models.agent harness.models.profile harness.rules}
  harness.setup.plan-review #{harness.models.agent harness.models.profile harness.setup.plan harness.setup.stages harness.setup.workspace}

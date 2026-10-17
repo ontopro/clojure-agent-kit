@@ -64,6 +64,23 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-17
 
+### A run belongs to its stage, not to every stage with its task id (plan 6.8, item 2c, register row 140)
+
+A task id is its blueprint's, and the first KIT project's stage 2 reused five of stage 0's and
+stage 1's. A run was placed by its task id alone: `bb next` read four stage 2 packets as merged
+from the older runs, though they had not been dispatched, and would have pointed past them to the
+next; and `bb stage-report` counted runs in a stage that did not make them - stage 0's report took
+stage 2's run of the same id, and stage 2's took stage 0's. A copy of the workspace, rendered while
+the tag's checklist ran, printed stage 2's figures from five old runs and no one noticed until the
+project said so. Now each run records its stage: `bb spec-from-blueprint` writes the stage of the
+blueprint's folder into the spec as `:task/stage`, the run record carries it, and `bb next`, the
+stage report and where-we-are read a stage's own runs. A record from before is placed by date - of
+the stages whose blueprint names its task, the latest approved on or before the day the run started,
+on this machine's calendar, since an evening run west of UTC is the next day in UTC; one stage
+naming it is that one's; two that no date tells apart, neither. `bb plan-check` lists a task id more
+than one stage's blueprint carries, failing nothing. The tests take the project's shape, two stages
+sharing ids, and fail on the old code.
+
 ### The fuller account offered, and the person's last look (plan 6.8, item 5)
 
 `kit-where-am-i` shows the block, then offers the fuller account and prints `bb next --where

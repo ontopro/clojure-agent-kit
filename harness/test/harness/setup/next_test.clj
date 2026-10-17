@@ -444,3 +444,31 @@
       (is (= ["R2"] (:risks wf)))
       (is (str/includes? (next/render-where wf (next/next-action wf)) "where: xyx-build - phase C BUILD, stage 1 of 0-1: walking skeleton, \"the door\"")))
     (is (= {:workspace? false} (next/where-facts nil)))))
+
+(deftest a-packet-is-merged-by-its-own-stages-run
+  ;; stage 1 reuses stage 0's task id: stage 0's merged run of it is not stage 1's
+  (let [ws (str (fs/real-path (fs/create-temp-dir {:prefix "next-reuse-"})))
+        build (fs/path ws "xyx-build")
+        stages (fs/path build "docs" "stages")
+        records (fs/path build "runs")]
+    (spit (str (fs/path ws "workspace.edn"))
+          (pr-str {:workspace/kit kit-dir :workspace/app "xyx-app" :workspace/build "xyx-build" :workspace/work "work"
+                   :workspace/records "xyx-build/runs"}))
+    (doseq [[i gates] [[0 {:stage/id "0" :stage/approved {:date "2026-10-13" :by "Ada"} :blueprint/signed {:date "2026-10-13" :by "Ada"}
+                           :stage/closed {:date "2026-10-13"}}]
+                       [1 {:stage/id "1" :stage/approved {:date "2026-10-16" :by "Ada"} :blueprint/signed {:date "2026-10-16" :by "Ada"}}]]
+            :let [d (fs/path stages (str "stage-" i))]]
+      (fs/create-dirs d)
+      (spit (str (fs/path d (str "stage-" i "-plan.md"))) (str "# Stage " i "\n\n**Kind:** increment\n"))
+      (spit (str (fs/path d (str "stage-" i "-blueprint.md"))) "# b\n\n```clojure\n{:task/id \"t-02-pages\"}\n```\n")
+      (spit (str (fs/path d (str "stage-" i "-gates.edn"))) (pr-str gates)))
+    (spit (str (fs/path build "docs" "source.md")) "# Source\n\n| S-1 | the brief, received |\n")
+    (fs/create-dirs (fs/path stages "stage-1" "reviews"))
+    (spit (str (fs/path stages "stage-1" "reviews" "blueprint-review.edn")) (pr-str {:cost 0.1}))
+    (fs/create-dirs records)
+    (spit (str (fs/path records "s0-t02.edn"))
+          (pr-str {:run/id "s0-t02" :task/id "t-02-pages" :run/status :merged :run/started-at #inst "2026-10-13T15:00:00Z"}))
+    (let [f (next/facts (workspace/find-workspace ws))]
+      (is (= 1 (get-in f [:stage :id])))
+      (is (= #{} (get-in f [:stage :merged])) "stage 0's run of the same id is not stage 1's")
+      (is (= 11 (:step (next/next-action f))) "the packet is next, not the stage's end"))))

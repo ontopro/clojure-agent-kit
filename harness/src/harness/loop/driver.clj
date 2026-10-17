@@ -436,6 +436,9 @@
            :run/kit-commit (get-in state [:commits :kit])
            :run/app-commit (get-in state [:commits :app])
            :run/plan-commit (get-in state [:commits :plan])}
+    ;; the stage the spec was cut for, so the run is counted in it and not in another stage that
+    ;; used the same task id
+    (:task/stage (:spec state)) (assoc :task/stage (:task/stage (:spec state)))
     ;; the code the run produced, so a document can quote it from the record
     (seq (:final-files state)) (assoc :run/files (:final-files state))
     ;; and, where gate 0 changed a file, what the role wrote before it did

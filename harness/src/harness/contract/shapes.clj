@@ -173,6 +173,9 @@
   [:map
    [:task/id [:string {:min 1}]]
    [:task/title [:string {:min 1}]]
+   ;; the stage whose blueprint the spec was cut from - a task id is the blueprint's, and the
+   ;; next stage's may reuse it; `bb spec-from-blueprint` writes it, the record carries it
+   [:task/stage {:optional true} nat-int?]
    [:blueprint/slice BlueprintSlice]
    ;; ONE implementation file: a slice is the shapes and signatures of one
    ;; namespace, and `stub/write!` has always refused a second file - but the
@@ -457,6 +460,7 @@
   [:map
    [:run/id [:string {:min 1}]]
    [:task/id [:string {:min 1}]]
+   [:task/stage {:optional true} nat-int?]
    [:run/attempts nat-int?]
    [:run/status RunStatus]
    [:run/cost [:maybe number?]]

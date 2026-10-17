@@ -211,3 +211,29 @@
     (is (= [] (sr/check build records)) "a record for a task the blueprint does not name is not this stage's")
     (spit (str (fs/path records "t2.edn")) (pr-str (assoc escalated-run :run/status :merged)))
     (is (= ["stage-1-plan.md's stage report does not match its records: run `bb stage-report`"] (sr/check build records)))))
+
+(deftest a-reused-task-id-is-counted-in-its-own-stage
+  ;; the first KIT project's stage 2 reused stage 0's task ids: read by id alone, stage 0's report
+  ;; counted the stage 2 run and stage 2's counted stage 0's
+  (let [ws (str (fs/real-path (fs/create-temp-dir {:prefix "stage-report-reuse-"})))
+        build (str (fs/path ws "xyx-build"))
+        stages (fs/path build "docs" "stages")
+        records (str (fs/path build "runs"))
+        run (fn [id stage? at status cost]
+              (cond-> {:run/id id :task/id "t1" :run/status status :run/started-at at
+                       :run/steps [{:step/kind :dispatch :step/name "coder" :step/cost cost}] :run/events []}
+                stage? (assoc :task/stage stage?)))]
+    (doseq [[i approved] [[0 "2026-10-13"] [1 "2026-10-16"]]
+            :let [d (fs/path stages (str "stage-" i))]]
+      (fs/create-dirs d)
+      (spit (str (fs/path d (str "stage-" i "-plan.md"))) (str "# Stage " i "\n"))
+      (spit (str (fs/path d (str "stage-" i "-blueprint.md"))) "# b\n\n```clojure\n{:task/id \"t1\"}\n```\n")
+      (spit (str (fs/path d (str "stage-" i "-gates.edn"))) (pr-str {:stage/id (str i) :stage/approved {:date approved :cap "$5" :by "Ada"}})))
+    (fs/create-dirs records)
+    (spit (str (fs/path records "s0-t1.edn")) (pr-str (run "s0-t1" nil #inst "2026-10-13T15:00:00Z" :merged 1.0)))
+    (spit (str (fs/path records "s1-t1.edn")) (pr-str (run "s1-t1" nil #inst "2026-10-16T15:00:00Z" :escalated 0.5)))
+    (spit (str (fs/path records "s1-t1b.edn")) (pr-str (run "s1-t1b" 1 #inst "2026-10-13T16:00:00Z" :merged 0.25)))
+    (is (= ["s0-t1"] (mapv :run/id (:records (sr/stage-facts build records 0)))) "stage 0: its own run, by date")
+    (is (= ["s1-t1" "s1-t1b"] (mapv :run/id (:records (sr/stage-facts build records 1))))
+        "stage 1: by date, and the record that says stage 1 whatever its date")
+    (is (= [1 1.0] ((juxt :run-count :money) (sr/summary-for build records 0))))))

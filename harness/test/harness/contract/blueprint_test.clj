@@ -174,3 +174,9 @@
                                         "bb" "spec-from-blueprint" file "t-02-ghost")]
         (is (= 1 exit))
         (is (str/includes? out "defines no shape named Ghost"))))))
+
+(deftest a-blueprints-stage-is-its-folder
+  (is (= 2 (bp/stage-of "/w/xyx-build/docs/stages/stage-2/stage-2-blueprint.md")))
+  (is (= 12 (bp/stage-of "xyx-build/docs/stages/stage-12/stage-12-blueprint.md")))
+  (is (nil? (bp/stage-of "/tmp/blueprint.md")) "a blueprint outside a stage folder: no stage written")
+  (is (nil? (bp/stage-of "/w/docs/stages/stage-N-blueprint-template.md")) "the template is no stage's"))

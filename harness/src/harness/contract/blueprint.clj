@@ -189,7 +189,7 @@
 
 (def key-order
   "The template's order, which is the order a reader meets the packet in."
-  [:task/id :task/title :blueprint/slice :files/impl :files/test :files/context
+  [:task/id :task/title :task/stage :blueprint/slice :files/impl :files/test :files/context
    :layer/name :property-targets :gates])
 
 (defn- ordered
@@ -226,6 +226,14 @@
                     ", deps-sigs: " (count (:deps-sigs slice))
                     ", property targets: " (count (:property-targets spec)))])))
 
+(defn stage-of
+  "The stage a blueprint at `path` belongs to - `N` of its folder `docs/stages/stage-N/` - or nil
+  for a blueprint anywhere else."
+  [path]
+  (let [dir (fs/parent (fs/absolutize path))]
+    (when (and dir (= "stages" (str (fs/file-name (fs/parent dir)))))
+      (some->> (re-matches #"stage-(\d+)" (str (fs/file-name dir))) second parse-long))))
+
 (defn -main
   "bb spec-from-blueprint <blueprint.md> <task-id> [<out.edn>]
 
@@ -244,7 +252,10 @@
                     (catch clojure.lang.ExceptionInfo e
                       (println (str "spec-from-blueprint: " (ex-message e)))
                       (System/exit 1)))
-        text (render (:spec result))]
+        ;; THE STAGE, WRITTEN IN: a task id is the blueprint's own, and a later stage may reuse one;
+        ;; the record carries the spec's stage, so a run is counted in its stage and no other
+        stage (stage-of blueprint)
+        text (render (cond-> (:spec result) stage (assoc :task/stage stage)))]
     (if out
       (do (fs/create-dirs (or (fs/parent out) "."))
           (spit out text)

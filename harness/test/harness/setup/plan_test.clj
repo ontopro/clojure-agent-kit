@@ -421,3 +421,10 @@
     (let [dir (str (fs/create-temp-dir))]
       (fs/create-dirs (fs/path dir "runs" "r1"))
       (is (nil? (driver/plan-check! {:run-dir (str (fs/path dir "runs" "r1")) :config {} :state (atom nil)}))))))
+
+(deftest a-task-id-two-stages-carry-is-listed-not-failed
+  (is (= [["t-02-pages" [0 2]] ["t-05" [1 2]]]
+         (plan/reused-task-ids [{:id 0 :tasks #{"t-01" "t-02-pages"}} {:id 1 :tasks #{"t-05"}} {:id 2 :tasks #{"t-02-pages" "t-05"}}])))
+  (is (= [] (plan/reused-task-ids [{:id 0 :tasks #{"t-01"}} {:id 1 :tasks #{"t-02"}}])))
+  (is (str/includes? (plan/report {:plan "p" :problems [] :documents 1 :workspace "w" :reused [["t-02-pages" [0 2]]]})
+                     "reused task ids: 1 task id more than one stage's blueprint carries")))

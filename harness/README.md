@@ -68,10 +68,10 @@ the source by name: a namespace the source has that the table never mentions fai
 | `harness.setup.init` | setup | 3 | `bb init [<name> [dir]]` - create the workspace a project is built in. |
 | `harness.setup.init-args` | setup | 0 | `bb init`'s arguments, parsed - here and not in `harness.setup.init`, because |
 | `harness.setup.inventory` | setup | 2 | The harness's namespaces, rendered into its README from the source: |
-| `harness.setup.next` | setup | 3 | What comes next in the workflow, read off the build's files: `bb next`. |
-| `harness.setup.plan` | setup | 2 | What the harness knows about a plan's documents: the template the KIT ships |
+| `harness.setup.next` | setup | 4 | What comes next in the workflow, read off the build's files: `bb next`. |
+| `harness.setup.plan` | setup | 3 | What the harness knows about a plan's documents: the template the KIT ships |
 | `harness.setup.plan-review` | setup | 4 | The plan-review pass of `method.md` §03, run: `bb plan-review [<plan-dir> | <stage-plan.md>]`. |
-| `harness.setup.roadmap-page` | setup | 5 | The roadmap page: `bb roadmap-page`. |
+| `harness.setup.roadmap-page` | setup | 6 | The roadmap page: `bb roadmap-page`. |
 | `harness.setup.security-fixture` | setup | 1 | `bb security-fixture <dir>`: the application a security reading is measured on - generated |
 | `harness.setup.skills` | setup | 1 | The KIT's fifth part, `skills/`, and where it is rendered to - a workspace: |
 | `harness.setup.stage-move` | setup | 1 | A workspace made before the folder per stage (`harness.setup.stages`) brought into it: the |
@@ -80,9 +80,9 @@ the source by name: a namespace the source has that the table never mentions fai
 | `harness.setup.template-upgrade` | setup | 6 | `bb template-upgrade`: the application brought to the template the KIT now pins, by a |
 | `harness.setup.upgrade` | setup | 2 | What a pulled KIT expects that this workspace lacks - a report, never a |
 | `harness.setup.upgrade-run` | setup | 7 | `bb upgrade --after-pull`: phase 2 of a KIT upgrade - the workspace brought up to the KIT |
-| `harness.setup.where` | setup | 4 | Where the project stands, as one map: `bb next --where --edn`. |
+| `harness.setup.where` | setup | 5 | Where the project stands, as one map: `bb next --where --edn`. |
 | `harness.setup.workspace` | setup | 0 | Where things are: the workspace a path is in, and what its `workspace.edn` says. |
-| `harness.setup.ws-gates` | setup | 4 | A workspace's own gates: `bb gates` at its front door, `bb workspace-gates` here. |
+| `harness.setup.ws-gates` | setup | 5 | A workspace's own gates: `bb gates` at its front door, `bb workspace-gates` here. |
 | `harness.loop.driver` | loop | 5 | `bb run-loop <command> <run-dir> [args]` — the loop's steps as commands, with a |
 | `harness.loop.log` | loop | 0 | The run's append-only event log. One EDN map per line; never rewritten. |
 | `harness.loop.orchestrate` | loop | 7 | The loop: `bb run-loop run <run-dir>` drives one task to its next stop. |

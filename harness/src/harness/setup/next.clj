@@ -339,11 +339,13 @@
 
 (defn run-statuses
   "Task id → the latest record's `:run/status` under `records-dir`, latest by
-  `:run/started-at`; a merged record wins over any other."
-  [records-dir]
+  `:run/started-at`; a merged record wins over any other. With `own?`, only the records it
+  keeps - a stage's own, since a later stage may reuse a task id."
+  [records-dir & [own?]]
   (->> (when (and records-dir (fs/directory? records-dir)) (fs/glob records-dir "*.edn"))
        (keep read-edn)
        (filter :task/id)
+       (filter (or own? any?))
        (sort-by #(some-> (:run/started-at %) .getTime) (fnil compare 0 0))
        (reduce (fn [m {:task/keys [id] :run/keys [status]}]
                  (if (= :merged (get m id)) m (assoc m id status)))
@@ -358,7 +360,10 @@
           source (fs/path build "docs" "source.md")
           stages (stage-files (fs/path build "docs" "stages"))
           [id files] (last stages)
-          statuses (run-statuses (:workspace/records ws))
+          infos (stages/stage-infos build #(mapv :task/id (blueprint/packets %)))
+          ;; A STAGE'S OWN RUNS: a task id is its blueprint's, and a later stage may reuse one - read
+          ;; by id alone, a stage 2 packet showed merged from stage 0's run of the same id
+          statuses (run-statuses (:workspace/records ws) #(= id (stages/record-stage % infos)))
           bp-text (some->> (:blueprint files) (fs/path build "docs" "stages") str slurp)
           packets (when bp-text (mapv :task/id (blueprint/packets bp-text)))]
       {:workspace? true

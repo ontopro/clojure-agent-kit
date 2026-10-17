@@ -33,9 +33,11 @@
    [babashka.fs :as fs]
    [clojure.edn :as edn]
    [clojure.string :as str]
+   [harness.contract.blueprint :as blueprint]
    [harness.gates.boundary :as boundary]
    [harness.gates.run :as gates]
    [harness.rules :as rules]
+   [harness.setup.stages :as stages]
    [harness.setup.template :as template]
    [harness.setup.workspace :as workspace]))
 
@@ -337,6 +339,15 @@
 (defn- read-edn-file [path]
   (edn/read-string (slurp (str path))))
 
+(defn reused-task-ids
+  "The task ids more than one stage's blueprint carries, as `[[id [stage ...]] ...]` in id order.
+  Legal - a run says its stage, and an older record is placed by date - but said, so a person
+  reading `bb next` or a run's id knows the id alone does not name the packet."
+  [infos]
+  (vec (for [[t ids] (sort (group-by first (for [{:keys [id tasks]} infos t tasks] [t id])))
+             :when (> (count ids) 1)]
+         [t (mapv second ids)])))
+
 (defn one-word-terms
   "The terms `conventions` - a project's `:data-conventions` text - defines (`rules/defined-terms`)
   that are one word, a leading THE aside (A and AN are dropped already): WORD, THE TREE. Guidance
@@ -420,6 +431,7 @@
                  (one-word-terms (try (rules/data-conventions (rules/project-rules ws))
                                       (catch clojure.lang.ExceptionInfo _ nil)))
                  [])
+     :reused (reused-task-ids (stages/stage-infos plan #(mapv :task/id (blueprint/packets %))))
      :uncited (if source
                 (uncited-observations source (map second (remove #(= "source.md" (first %)) texts)))
                 [])}))
@@ -428,7 +440,7 @@
   "The check's result as the lines `bb plan-check` prints: the verdict, then
   the inferred requirements for the person, the uncited observations for
   the stage's end and the one-word defined terms, each only when there are any."
-  [{:keys [plan problems documents workspace inferred uncited one-word]}]
+  [{:keys [plan problems documents workspace inferred uncited one-word reused]}]
   (str (if (seq problems)
          (str "plan-check: " (count problems) " thing" (when (> (count problems) 1) "s") " left in " plan "\n"
               (str/join "\n" (map #(str "  - " %) problems)))
@@ -448,7 +460,11 @@
          (str "\n  one-word terms: " (count one-word) " of the data conventions' defined terms "
               (if (= 1 (count one-word)) "is" "are")
               " one word, and any guidance using the word is sent the definition - a phrase of two words or more names only itself (rules.edn :data-conventions): "
-              (str/join ", " one-word)))))
+              (str/join ", " one-word)))
+       (when (seq reused)
+         (str "\n  reused task ids: " (count reused) " task id" (when (> (count reused) 1) "s")
+              " more than one stage's blueprint carries - a run records its stage, an older record is placed by date: "
+              (str/join ", " (for [[t ids] reused] (str t " (stages " (str/join ", " ids) ")")))))))
 
 (defn -main
   "bb plan-check [<plan-dir>] [--workspace <dir>]

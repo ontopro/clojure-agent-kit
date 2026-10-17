@@ -18,6 +18,7 @@
   (`harness.setup.stage-move`)."
   (:require
    [babashka.fs :as fs]
+   [clojure.edn :as edn]
    [clojure.string :as str]))
 
 (defn stages-dir [build] (fs/path build "docs" "stages"))
@@ -89,3 +90,43 @@
                (= "stages" (str (fs/file-name stages)))
                (= "docs" (str (fs/file-name docs))))
       {:build (fs/parent docs) :id id :dir dir})))
+
+(defn day
+  "A run's start as `YYYY-MM-DD` on this machine's calendar - the one the person wrote the gates
+  record's dates in: an evening run in UTC-5 is the next day in UTC. An `#inst`, or a string that
+  starts with the date."
+  [x]
+  (cond (inst? x) (str (.toLocalDate (.atZone (.toInstant ^java.util.Date x) (java.time.ZoneId/systemDefault))))
+        (string? x) (subs x 0 (min 10 (count x)))
+        :else nil))
+
+(defn stage-infos
+  "Every stage of the build with a blueprint, as `{:id :tasks :approved}`: the task ids its
+  blueprint carries (`task-ids-of` reads them from the text) and the date of its approval in its
+  gates record, or nil."
+  [build task-ids-of]
+  (vec (for [[id _] (folders (stages-dir build))
+             :let [bp (document build id "-blueprint.md")
+                   g (document build id "-gates.edn")]
+             :when (fs/exists? bp)]
+         {:id id
+          :tasks (set (task-ids-of (slurp (str bp))))
+          :approved (some-> (when (fs/exists? g) (try (edn/read-string (slurp (str g))) (catch Exception _ nil)))
+                            :stage/approved :date str)})))
+
+(defn record-stage
+  "The stage a run record belongs to. Its `:task/stage` when it carries one - the spec's, written
+  from the blueprint's folder. A record from before that is placed by date: of the stages whose
+  blueprint names its task, the latest approved on or before the day the run started; the only one,
+  when one alone names it; else nil - a task id two stages reuse, with no date to tell them
+  apart, is counted in neither rather than in both."
+  [record infos]
+  (or (:task/stage record)
+      ;; same-day: two stages approved on or before the day, the later wins - the gates carry dates,
+      ;; not times
+      (let [t (:task/id record)
+            d (day (:run/started-at record))
+            naming (filter #(contains? (:tasks %) t) infos)
+            before (filter #(and d (:approved %) (<= (compare (:approved %) d) 0)) naming)]
+        (:id (or (last (sort-by :id before))
+                 (when (= 1 (count naming)) (first naming)))))))

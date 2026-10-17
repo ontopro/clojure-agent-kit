@@ -156,6 +156,8 @@
     (is (= :awaiting-merge (:run/status r)) "green and reviewed, waiting on a person to merge")
     (is (= "d10" (:run/id r)))
     (is (= "t-12" (:task/id r)))
+    (is (not (contains? r :task/stage)) "a spec with no stage, a record with none")
+    (is (= 2 (:task/stage (loop/run-record (assoc-in state [:spec :task/stage] 2)))) "the spec's stage, carried")
     (is (= #inst "2025-09-04T15:33:20.000-00:00" (:run/started-at r)) "the clock the wall time is measured from")
     (is (= :escalated (:run/status (loop/run-record (assoc state :last-gates {:gates/passed? false})))))
     (testing "and the loop's own stop wins over the gates"

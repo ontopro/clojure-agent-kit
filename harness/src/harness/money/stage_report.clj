@@ -284,9 +284,10 @@
       [label (reduce + 0 (keep :cost ms)) (count ms)])))
 
 (defn- records-for
-  "The run records under `records-dir` whose task is one of `packets`, in the
-  packets' order; several records for one task all count."
-  [records-dir packets]
+  "The run records under `records-dir` that are stage `id`'s (`stages/record-stage` over `infos`)
+  and whose task is one of `packets`, in the packets' order; several records for one task all
+  count. A task id another stage's blueprint also carries is never counted twice."
+  [records-dir packets id infos]
   (let [all (->> (when (and records-dir (fs/directory? records-dir)) (fs/glob records-dir "*.edn"))
                  (keep read-edn)
                  (filter :run/id))
@@ -294,6 +295,7 @@
         order (into {} (map-indexed (fn [i t] [t i])) packets)]
     (->> all
          (filter #(wanted (:task/id %)))
+         (filter #(= id (stages/record-stage % infos)))
          (sort-by (juxt #(order (:task/id %)) :run/id))
          vec)))
 
@@ -322,7 +324,7 @@
         {:id id
          :kind (some-> plan slurp stage-kind)
          :packets packets
-         :records (records-for records-dir packets)
+         :records (records-for records-dir packets id (stages/stage-infos build #(mapv :task/id (blueprint/packets %))))
          :readings (stage-readings build id)
          :gates (read-edn (doc "-gates.edn"))
          :checks (read-edn (doc "-security.edn"))
