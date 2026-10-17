@@ -245,6 +245,124 @@
      :by-stage (vec (for [s stage-rows :when (or (:money s) (:cap s))] [(:id s) (:money s) (:cap s)]))}))
 
 ;; ---------------------------------------------------------------------------
+;; pure: the fuller account, `bb next --where --full`
+;; ---------------------------------------------------------------------------
+
+(defn- dollars [x] (if (and (number? x) (== x (Math/floor x)) (< (Math/abs (double x)) 1e9)) (str "$" (long x)) (format "$%.2f" (double x))))
+
+(defn- money-cell [{:keys [money money-note]}]
+  (cond (nil? money) "-" money-note (str (format "$%.2f" (double money)) " (readings only)") :else (format "$%.2f" (double money))))
+
+(defn- cap-cell [{:keys [cap cap-note]}]
+  (cond cap (str (dollars cap) (when cap-note (str " " cap-note))) cap-note (str "(cap " cap-note ")") :else "-"))
+
+(defn- state-cell [{:keys [state closed approved]}]
+  (case state
+    :closed (str "closed " closed)
+    :running (str "running, approved " approved)
+    :planned "planned, not approved"
+    :next "next - not pulled yet"
+    :ahead "ahead"))
+
+(defn- stages-said
+  "A phase's stages in a few words: each closed, running, planned or next one by itself, the
+  stages ahead together."
+  [rows]
+  (let [{ahead true others false} (group-by #(= :ahead (:state %)) rows)]
+    (str/join "; " (concat (for [{:keys [id state closed]} others]
+                             (str "stage " id " " (case state :closed (str "closed " closed) :running "running"
+                                                        :planned "planned" :next "next")))
+                           (when (seq ahead)
+                             [(str (if (next ahead) "stages " "stage ")
+                                   (str/join ", " (map :id ahead)) " ahead")])))))
+
+(defn render-full
+  "The fuller account, from `where-data`'s map `d`: Where, The road, Waits on you, Since you last
+  looked, Open, Next, Read more - in that order, Markdown a person reads in a terminal or a chat,
+  every figure the map's. A fact the map does not have is said as such."
+  [{nxt :next :keys [workspace generated phases stages headline open since money terms] :as d}
+   & [{:keys [page]}]]
+  (let [{:keys [build kit]} workspace
+        kit (or kit "KIT")
+        by-id (into {} (map (juxt :id identity) stages))
+        waits (:waits-on-the-person d)
+        {:keys [decisions risks]} open]
+    (str/join
+     "\n"
+     (concat
+      [(str "# Where the project stands - " build)
+       (str "Generated " (some-> (:at generated) (subs 0 (min 10 (count (:at generated)))))
+            (when (:plan-commit generated) (str " from " build " at " (:plan-commit generated)))
+            (when (:kit-version generated) (str ", KIT " (:kit-version generated))) ".")
+       ""
+       "## Where"
+       ""
+       headline
+       ""]
+      (for [{:keys [letter word status] ids :stages} phases
+            :let [rows (keep by-id ids)]]
+        (str "- " letter " " word " - " (case status :done "done" :here "**you are here**" :ahead "ahead")
+             (when (seq rows) (str ": " (if (= :ahead status)
+                                          (str (if (next rows) "stages " "stage ") (str/join ", " (map :id rows)))
+                                          (stages-said rows))))))
+      [""
+       "## The road"
+       ""
+       "| Stage | Kind | Name | State | Cap | Spent | Days | Runs |"
+       "|---|---|---|---|---|---|---|---|"]
+      (for [{:keys [id kind days runs merged] nm :name :as s} stages]
+        (str "| " id " | " (or (not-empty kind) "-") " | " (or (not-empty nm) "-") " | " (state-cell s) " | " (cap-cell s)
+             " | " (money-cell s) " | " (or days "-") " | " (if (pos? (or runs 0)) (str runs ", " merged " merged") "-") " |"))
+      [""
+       (str "Spent " (format "$%.2f" (double (:spent money))) " against " (dollars (:caps-approved money)) " of caps approved"
+            (when (pos? (:caps-proposed money)) (str "; " (dollars (:caps-proposed money)) " proposed")) ".")
+       ""
+       (str "## Waits on you (" (count waits) ")")
+       ""]
+      (if (seq waits)
+        (for [{:keys [what why where run]} waits]
+          (str "- **" what "** - " why (when run (str ". Run: " run)) " (" where ")"))
+        ["Nothing: no step, gate, prep row, decision or risk is the person's now."])
+      [""
+       (str "## Since you last looked" (if (:from since) (str ": " (:from since) " (" (:why since) ")") ""))
+       ""]
+      (if-not (:from since)
+        [(str "No date to count from: " (:why since) ".")]
+        (let [ids (fn [xs] (if (seq xs) (str/join ", " (map #(str "stage " %) xs)) "none"))
+              settled (:decisions-settled since)]
+          [(str "- closed: " (ids (:stages-closed since)) " · approved: " (ids (:approved since))
+                " · blueprint signed: " (ids (:signed since)))
+           (str "- decisions settled: " (if (seq settled) (str/join ", " (map :id settled)) "none dated")
+                (when (pos? (:settled-undated since)) (str "; " (:settled-undated since) " settled with no date, not counted")))
+           (str "- runs: " (:runs since) ", " (:merged since) " merged, " (format "$%.2f" (double (:run-money since)))
+                " (runs only; a reading carries no date)")]))
+      [""
+       "## Open"
+       ""
+       (str "Decisions PROVISIONAL or OPEN (" (count decisions) ") - " build "/docs/04-decision-log.md")]
+      (for [{:keys [id section status subject owner]} decisions]
+        (str "- **" id "** " subject " - " status " (§" section ")" (when owner (str ", owner: " owner))))
+      [""
+       (str "Risks OPEN (" (count risks) ") - " build "/docs/00-overview.md §4a")]
+      (for [{:keys [id subject runs-in spike]} risks]
+        (str "- **" id "** " subject " - runs in " (or (not-empty runs-in) "(not said)")
+             (when (seq spike) (str "; " spike))))
+      [""
+       "## Next"
+       ""
+       (str "Step " (:step nxt) " - " (:name nxt) "; owner: " (:owner nxt) "; run: " (:run nxt))]
+      (when (:also nxt) [(str "Also: " (:also nxt))])
+      [""
+       "## Read more"
+       ""
+       (str "- " (str/join " · " (for [{:keys [id file heading]} (:kit terms)] (str id ": " kit "/" file " \"" heading "\""))))
+       (str "- the project plan: " build "/docs/" (get-in terms [:project-plan :file])
+            " (§" (get-in terms [:project-plan :section]) " lists its documents)")
+       (str "- the IDs, in " build "/docs/: "
+            (str/join " · " (for [{:keys [id file section shown]} (:ids terms)] (str id " " (or shown file) " §" section))))]
+      (when page [(str "- the roadmap page: " page)])))))
+
+;; ---------------------------------------------------------------------------
 ;; the edge: reading the workspace
 ;; ---------------------------------------------------------------------------
 
@@ -275,7 +393,8 @@
 
 (defn where-data
   "Where the project in workspace `ws` stands, as one map of plain data (the design's Part A):
-  `:workspace` `:generated` `:phases` `:stages` `:current` `:next` `:open` `:waits-on-the-person`
+  `:workspace` `:generated` `:phases` `:stages` `:current` `:headline` (the block's first line)
+  `:next` `:open` `:waits-on-the-person`
   `:since` `:money` `:terms`. `opts`: `:at` and `:plan-commit`, the clock and the build's commit,
   passed in; `:since`, the date `--since` named. Outside a workspace: `{:workspace nil :next ..}`."
   [ws {:keys [at plan-commit since]}]
@@ -312,6 +431,7 @@
          :stages rows
          :current (when stage (cond-> (dissoc stage :preconditions)
                                 (:stage/closed (:gates stage)) (assoc :between? true)))
+         :headline (first (str/split-lines (next/render-where wf nxt)))
          :next nxt
          :open open
          :waits-on-the-person (waits {:next nxt :current stage :open open :names names :kit (:kit wf) :build (:build wf)})
@@ -326,37 +446,40 @@
        (catch Exception _ nil)))
 
 (defn parse-args
-  "`bb next`'s command line: `{:edn? :since :args}` - `:args` what `harness.setup.next` takes - or
+  "`bb next`'s command line: `{:edn? :full? :since :args}` - `:args` what `harness.setup.next` takes - or
   `{:error sentence}`: a `--since` with no date after it, one that is not a date of the calendar
-  (`2026-13-99`), or one without `--edn` to count for."
+  (`2026-13-99`), or one without `--edn` or `--full` to count for."
   [args]
   (let [i (.indexOf ^java.util.List (vec args) "--since")
         d (when (>= i 0) (get (vec args) (inc i)))
         date? (fn [s] (try (java.time.LocalDate/parse s) true (catch Exception _ false)))
         edn? (boolean (some #{"--edn"} args))
+        full? (boolean (some #{"--full"} args))
         kept (loop [[a & more] args kept []]
                (cond (nil? a) kept
-                     (= "--edn" a) (recur more kept)
+                     (#{"--edn" "--full"} a) (recur more kept)
                      (= "--since" a) (recur (rest more) kept)
                      :else (recur more (conj kept a))))]
-    (cond (neg? i) {:edn? edn? :since nil :args kept}
+    (cond (neg? i) {:edn? edn? :full? full? :since nil :args kept}
           (not (and d (date? d))) {:error (str "--since needs a date after it, YYYY-MM-DD" (when d (str "; got " d)))}
-          (not edn?) {:error "--since needs --edn: the block does not count since a date"}
-          :else {:edn? edn? :since d :args kept})))
+          (not (or edn? full?)) {:error "--since needs --edn or --full: the block does not count since a date"}
+          :else {:edn? edn? :full? full? :since d :args kept})))
 
 (defn -main
-  "bb next [--where [--edn [--since <YYYY-MM-DD>]]] [--workspace <dir>]
+  "bb next [--where [--edn | --full] [--since <YYYY-MM-DD>]] [--workspace <dir>]
 
-  With `--where --edn`, where the project stands as one EDN map (`where-data`); `--since` names
+  With `--where --edn`, where the project stands as one EDN map (`where-data`); with `--where
+  --full`, the same as the fuller account a person reads (`render-full`); `--since` names
   the date \"since you last looked\" counts from. Every other form is `harness.setup.next`'s.
   Information, and nothing written: exit 0, but 1 for a `--since` `parse-args` refuses."
   [& args]
-  (let [{:keys [edn? since error] rest-args :args} (parse-args args)]
+  (let [{:keys [edn? full? since error] rest-args :args} (parse-args args)
+        data #(let [ws (workspace/current-or-exit (remove #{"--where"} rest-args))]
+                (where-data ws {:at (str (java.time.Instant/now))
+                                :plan-commit (some-> ws :workspace/build build-commit)
+                                :since since}))]
     (cond
       error (do (println error) (System/exit 1))
-      edn? (let [ws (workspace/current-or-exit (remove #{"--where"} rest-args))]
-             (binding [*print-namespace-maps* false]
-               (pprint/pprint (where-data ws {:at (str (java.time.Instant/now))
-                                              :plan-commit (some-> ws :workspace/build build-commit)
-                                              :since since}))))
+      edn? (binding [*print-namespace-maps* false] (pprint/pprint (data)))
+      full? (let [d (data)] (println (if (:workspace d) (render-full d) (next/render (:next d)))))
       :else (apply next/-main rest-args))))

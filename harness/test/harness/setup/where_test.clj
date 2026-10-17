@@ -4,6 +4,7 @@
   (:require
    [babashka.fs :as fs]
    [clojure.edn :as edn]
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [harness.setup.where :as where]
    [harness.setup.workspace :as workspace]))
@@ -18,14 +19,15 @@
   (is (= {:cap nil :cap-note "not read: twelve dollars"} (where/cap "twelve dollars")) "said, not guessed"))
 
 (deftest the-command-line-refuses-a-since-it-cannot-count-from
-  (is (= {:edn? true :since "2026-10-13" :args ["--where" "--workspace" "w"]}
+  (is (= {:edn? true :full? false :since "2026-10-13" :args ["--where" "--workspace" "w"]}
          (where/parse-args ["--where" "--edn" "--since" "2026-10-13" "--workspace" "w"])))
-  (is (= {:edn? false :since nil :args ["--where"]} (where/parse-args ["--where"])) "the block's own form, untouched")
+  (is (= {:edn? false :full? false :since nil :args ["--where"]} (where/parse-args ["--where"])) "the block's own form, untouched")
   (is (= {:error "--since needs a date after it, YYYY-MM-DD; got 2026-13-99"}
          (where/parse-args ["--where" "--edn" "--since" "2026-13-99"]))
       "a date's shape is not a date: the thirteenth month")
   (is (= {:error "--since needs a date after it, YYYY-MM-DD"} (where/parse-args ["--where" "--edn" "--since"])))
-  (is (= {:error "--since needs --edn: the block does not count since a date"}
+  (is (= {:edn? false :full? true :since "2026-10-13" :args ["--where"]} (where/parse-args ["--where" "--full" "--since" "2026-10-13"])))
+  (is (= {:error "--since needs --edn or --full: the block does not count since a date"}
          (where/parse-args ["--where" "--since" "2026-10-13"]))
       "said, not dropped"))
 
@@ -172,3 +174,45 @@
       (let [s (:since (where/where-data (workspace/find-workspace ws) opts))]
         (is (= ["2026-10-14" "your last look, by Ada" [1] 0] ((juxt :from :why :approved :runs) s)))))
     (is (= [8 "the Architect's session"] ((juxt :step :owner) (:next d))) "the next step is next-action's: stage 1's blueprint")))
+
+(deftest the-fuller-account-says-the-map-in-seven-parts
+  (let [ws (workspace-on-disk)
+        d (where/where-data (workspace/find-workspace ws) {:at "2026-10-17T12:00:00Z" :plan-commit "abc1234"})
+        lines (str/split-lines (where/render-full d))
+        after (fn [heading n] (take n (rest (drop-while #(not= heading %) lines))))]
+    (is (= ["# Where the project stands - xyx-build" "Generated 2026-10-17 from xyx-build at abc1234, KIT 0.6.8."] (take 2 lines)))
+    (is (= ["## Where" "## The road" "## Waits on you (2)" "## Since you last looked: 2026-10-13 (stage 0 approved)"
+            "## Open" "## Next" "## Read more"]
+           (filter #(str/starts-with? % "## ") lines))
+        "the seven parts, in order")
+    (is (= ["" (:headline d) ""
+            "- A SETUP - done" "- B PROVE - done: stage 0 closed 2026-10-13"
+            "- C BUILD - **you are here**: stage 1 running" "- D PRE-RELEASE - ahead: stage 2" "- E RELEASE - ahead"]
+           (after "## Where" 8)))
+    (is (= ["" "| Stage | Kind | Name | State | Cap | Spent | Days | Runs |" "|---|---|---|---|---|---|---|---|"
+            "| 0 | spike | the proof | closed 2026-10-13 | $20 | $1.00 | 1 | 1, 1 merged |"
+            "| 1 | increment | the pages | running, approved 2026-10-14 | $15 | $0.25 (readings only) | - | - |"
+            "| 2 | pre-release | going live | ahead | - | - | - | - |"
+            "" "Spent $1.25 against $35 of caps approved."]
+           (after "## The road" 8)))
+    (is (= ["" "- **D1, Hosting** - an open decision whose owner is the person: the person (xyx-build/docs/04-decision-log.md §2)"
+            "- **R2, Publishing** - an open risk the person retires: no spike: Ada's, at the release (xyx-build/docs/00-overview.md §4a)"]
+           (after "## Waits on you (2)" 3)))
+    (is (= ["" "- closed: stage 0 · approved: stage 0, stage 1 · blueprint signed: stage 0"
+            "- decisions settled: D2; 1 settled with no date, not counted"
+            "- runs: 1, 1 merged, $1.00 (runs only; a reading carries no date)"]
+           (after "## Since you last looked: 2026-10-13 (stage 0 approved)" 4)))
+    (is (= ["" "Decisions PROVISIONAL or OPEN (1) - xyx-build/docs/04-decision-log.md"
+            "- **D1** Hosting - OPEN (§2), owner: the person"
+            "" "Risks OPEN (1) - xyx-build/docs/00-overview.md §4a"
+            "- **R2** Publishing - runs in Stage 2; no spike: Ada's, at the release"]
+           (after "## Open" 6))
+        "one line a decision and one a risk, under a line with the count and the file")
+    (is (= "" (first (after "## Next" 2))))
+    (is (str/starts-with? (second (after "## Next" 2)) "Step 8 - the blueprint; owner: the Architect's session; run: "))
+    (is (= "- phase: KIT/method.md \"01 — The phase map\" · step n: KIT/workflow.md \"The steps, and what each produces\""
+           (second (after "## Read more" 2))))
+    (testing "nothing waiting, and no date to count from: each said"
+      (let [s (where/render-full (assoc d :waits-on-the-person [] :since {:from nil :why "no stage closed and no last look recorded"}))]
+        (is (str/includes? s "## Waits on you (0)\n\nNothing: no step, gate, prep row, decision or risk is the person's now."))
+        (is (str/includes? s "## Since you last looked\n\nNo date to count from: no stage closed and no last look recorded."))))))

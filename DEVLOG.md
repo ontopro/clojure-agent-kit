@@ -64,6 +64,19 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-17
 
+### The fuller account: `bb next --where --full` (plan 6.8, item 5)
+
+What a person back after a while reads, rendered by code from item 4's map so its figures are the
+files' and the skill that shows it restates nothing: where - the block's first line, then each
+phase with its stages and "you are here"; the road, a table of every stage with its kind, state,
+cap, spend, days and runs, and the spend against the caps approved; what waits on the person, each
+with its command or its file and section; what changed since the date and why that date; what is
+open, a line a decision and a line a risk under a heading with the count and the file - the
+person's correction at the roadmap page's mock-up, never the block's packed line; next; and where
+to read more. A fact the map lacks is said: nothing waiting, no date to count from, a stage's
+readings only before its blueprint, the runs' money since a date as runs only. The block that opens
+the Architect's reports is unchanged.
+
 ### Where the project stands, as one map: `bb next --where --edn` (plan 6.8, item 4)
 
 The block `bb next --where` prints is the Architect's, terse and at a step's boundary. A person
