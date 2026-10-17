@@ -87,6 +87,20 @@ the project's and the upgrade leaves it as it is: compare it with
 
 ## 2026-10-16
 
+### `bb next --where`: where the project stands, in one block (plan 6.7, item 5)
+
+The first project's person, at stage 1's plan step, read a report citing FR-8 and S-3.2 with no
+file, and S-3.2 is cited in many files and defined in one. They asked for a bird's-eye view of where
+the project is in the process, and a guided way into the details, at any time. `bb next --where`
+prints it, from the files `bb next` reads and three more: the phase (`method.md` §01, by the stage's
+kind) and the stage with its name from the stage map; its status there; its goal, the map's
+Delivers cell, and its plan's §1 to read; the blueprint, reviewed, signed, its packets merged; what
+is done, every stage's close and the current stage's gates; the next step, as `bb next` says it; the
+decisions still PROVISIONAL and the risks OPEN, six of each named; and where each kind of ID is
+defined, file and section (`id-kinds`). One renderer, so the Architect's reports, a skill and the
+person asking cannot say it three ways. A fact it cannot read is said as such. A test holds
+`id-kinds` to the shipped templates: each file there, each section a heading in it.
+
 ### A stage report re-renders wherever it sits in its plan (plan 6.7, item 4, register row 136)
 
 Item 4's run on a copy of the first project's workspace re-rendered its two stage reports after the

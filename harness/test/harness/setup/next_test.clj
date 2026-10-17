@@ -280,3 +280,126 @@
       (let [a (next/next-action (-> f (assoc :plan-problems []) (assoc-in [:stage :merged] #{})))]
         (is (str/includes? (:run a) "bb spec-from-blueprint xyx-build/docs/stages/stage-1/stage-1-blueprint.md t1")
             "a printed command runs from the workspace folder, where every command is run")))))
+
+;; ---------------------------------------------------------------------------
+;; where we are: `bb next --where`
+;; ---------------------------------------------------------------------------
+
+(def ^:private build-docs (str (fs/path kit-dir "build-docs")))
+
+(deftest the-overview-and-the-log-are-read-as-their-tables
+  (let [overview (slurp (str (fs/path build-docs "00-overview.md")))
+        log (slurp (str (fs/path build-docs "04-decision-log.md")))]
+    (testing "the shipped templates, marks and all"
+      (is (= 6 (count (next/table-rows overview "4"))) "every row of the stage map, the separator not one")
+      (is (= [0 1 2] (keys (next/stage-map overview))) "a numbered stage only: not N, … or N+1")
+      (is (= {:kind "spike" :name "" :status "PLANNED"} (dissoc (get (next/stage-map overview) 0) :delivers)))
+      (is (= ["R1"] (next/open-risks overview)))
+      (is (= [{:id "D1" :section "2"}] (next/provisional-decisions log)) "D2 is OPEN, not PROVISIONAL"))
+    (testing "a section ends at the next heading; one the text lacks has no rows"
+      (is (= [] (next/table-rows "## 4. A\n\n### sub\n\n| a |\n|---|\n| 1 |\n" "4")))
+      (is (= [{"a" "1" "b" ""}] (next/table-rows "### 6b. X\n\n| a | b |\n|---|---|\n| 1 |\n" "6b")) "a short row: its missing cells blank")
+      (is (= [] (next/table-rows "## 4a. Risks\n\n| # |\n|---|\n| R9 |\n" "4")) "4 is not 4a")
+      (is (nil? (next/section-lines "# none\n" "4"))))
+    (testing "a filled log: RESOLVED that was PROVISIONAL is not open; bold or not, the Status cell is read"
+      (is (= [{:id "D3" :section "2"} {:id "P0-9" :section "4"}]
+             (next/provisional-decisions
+              (str "## 2. D\n\n| # | Decision | Status / Resolution |\n|---|---|---|\n"
+                   "| D2 | x | **RESOLVED 2026-10-13: y** - was PROVISIONAL |\n| D3 | x | **PROVISIONAL: z** |\n"
+                   "## 4. P0\n\n| # | Decision | Status / Resolution |\n|---|---|---|\n| P0-9 | x | PROVISIONAL - a note |\n")))))))
+
+(deftest a-stages-kind-is-its-phase
+  (is (= ["B PROVE" "C BUILD" "C BUILD" "D PRE-RELEASE" "E RELEASE" nil nil]
+         (map next/phase ["spike" "walking skeleton" "increment" "pre-release" "release" "something else" nil]))))
+
+(def ^:private where-at-stage-1
+  {:workspace? true :brief? true :plan-problems [] :build "xyx-build"
+   :stage {:id 1 :kind "walking skeleton" :plan "stage-1/stage-1-plan.md" :blueprint "stage-1/stage-1-blueprint.md" :reviewed? true
+           :gates {:stage/id "1" :stage/approved {:date "2026-10-14" :by "Ada"} :blueprint/signed {:date "2026-10-15" :by "Ada"}}
+           :packets ["t1" "t2" "t3"] :merged #{"t1"} :runs {} :preconditions []}
+   :stages {0 {:gates {:stage/closed {:date "2026-10-13"}}} 1 {}}
+   :map {0 {:kind "spike" :name "the proof" :delivers "the loop proved" :status "DONE"}
+         1 {:kind "walking skeleton" :name "the front door" :delivers (apply str "FR-1 to FR-12: " (repeat 30 "a page, "))
+            :status "IN PROGRESS"}
+         2 {:kind "increment" :name "" :delivers "more" :status "NOT STARTED"}}
+   :decisions [{:id "D3" :section "2"} {:id "D8" :section "2"} {:id "P0-20" :section "4"}]
+   :risks ["R4" "R5"]})
+
+(deftest the-block-says-where-the-project-stands
+  (let [block (next/render-where where-at-stage-1 (next/next-action where-at-stage-1))
+        lines (str/split-lines block)]
+    (is (= "where: xyx-build - phase C BUILD, stage 1 of 0-2: walking skeleton, \"the front door\"" (first lines)))
+    (is (= ["  stage map:   xyx-build/docs/00-overview.md §4 - status there: IN PROGRESS"
+            (str "  stage goal:  FR-1 to FR-12: " (subs (apply str (repeat 30 "a page, ")) 0 85) "…")
+            "               xyx-build/docs/stages/stage-1/stage-1-plan.md §1"
+            "  blueprint:   xyx-build/docs/stages/stage-1/stage-1-blueprint.md - reviewed, signed 2026-10-15; 3 packets, 1 merged"
+            "  done:        stage 0 closed 2026-10-13; stage 1 approved 2026-10-14, blueprint signed 2026-10-15"]
+           (subvec lines 1 6)))
+    (is (str/starts-with? (nth lines 6) "  next:        step 11 - a packet; owner: the Architect's session; run: bb spec-from-blueprint xyx-build/docs/"))
+    (is (= ["  open:        decisions PROVISIONAL: D3, D8 (§2), P0-20 (§4) - xyx-build/docs/04-decision-log.md"
+            "               risks OPEN: R4, R5 - xyx-build/docs/00-overview.md §4a"]
+           (subvec lines 7 9)))
+    (is (str/starts-with? (nth lines 9) "  read more:   in xyx-build/docs/: FR-n 01-requirements.md §6b"))
+    (testing "every kind of ID is in the read more lines, and no line runs long"
+      (doseq [{:keys [id section]} next/id-kinds]
+        (is (str/includes? (str/join "\n" (drop 9 lines)) (str id " ")) id)
+        (is (str/includes? block (str "§" section))))
+      (is (every? #(< (count %) 140) (drop 9 lines)))))
+  (testing "what cannot be read is said as such"
+    (let [wf (-> where-at-stage-1 (assoc :map nil :decisions nil :risks []) (assoc-in [:stage :blueprint] nil)
+                 (assoc-in [:stage :kind] nil))
+          block (next/render-where wf (next/next-action wf))]
+      (is (str/includes? block "phase (not read: the stage's kind), stage 1\n"))
+      (is (str/includes? block "§4 (not there)"))
+      (is (str/includes? block "stage goal:  (no Delivers cell on the stage map)"))
+      (is (str/includes? block "blueprint:   (none yet)"))
+      (is (str/includes? block "open:        decisions: (no xyx-build/docs/04-decision-log.md)\n               risks: none OPEN"))))
+  (testing "more than six: the first six and a count"
+    (let [wf (assoc where-at-stage-1 :decisions (mapv #(hash-map :id (str "D" %) :section "2") (range 1 10)))]
+      (is (str/includes? (next/render-where wf (next/next-action wf))
+                         "decisions PROVISIONAL: D1, D2, D3, D4, D5, D6 (§2) and 3 more - "))))
+  (testing "stage 0 with no kind read is the spike; before a stage, the phase and next only"
+    (let [wf (-> where-at-stage-1 (assoc :map nil) (update :stage assoc :id 0 :kind nil))]
+      (is (str/starts-with? (next/render-where wf (next/next-action wf)) "where: xyx-build - phase B PROVE, stage 0: spike\n")))
+    (let [wf {:workspace? true :brief? true :plan-problems ["x"] :build "xyx-build"}]
+      (is (= (str "where: xyx-build - phase B PROVE, before stage 0: the brief, then the plan\n"
+                  "  next:        step 2 - the plan, for stage 0; owner: the Architect's session; run: /kit-plan; bb plan-check lists what is left, bb plan-review before the approval")
+             (next/render-where wf (next/next-action wf)))))
+    (is (str/starts-with? (next/render-where {:workspace? false} (next/next-action {:workspace? false}))
+                          "where: phase A SETUP - no workspace yet\n  next:        step 0 - setup"))))
+
+(deftest every-kind-of-id-has-its-home-in-the-templates
+  ;; the table `bb next --where` prints and the templates it points into: a file renamed or a
+  ;; section renumbered there fails here, not in a person's reading
+  (doseq [{:keys [id file section]} next/id-kinds
+          :let [f (fs/path build-docs file)]]
+    (is (fs/exists? f) (str id ": " file))
+    (is (some? (next/section-lines (slurp (str f)) section)) (str id ": " file " §" section))))
+
+(deftest where-reads-the-builds-documents
+  (let [ws (str (fs/real-path (fs/create-temp-dir {:prefix "where-"})))
+        build (fs/path ws "xyx-build")
+        docs (fs/path build "docs")]
+    (fs/create-dirs (fs/path docs "stages" "stage-0"))
+    (fs/create-dirs (fs/path docs "stages" "stage-1"))
+    (spit (str (fs/path ws "workspace.edn"))
+          (pr-str {:workspace/kit kit-dir :workspace/app "xyx-app" :workspace/build "xyx-build" :workspace/work "work"}))
+    (spit (str (fs/path docs "source.md")) "# Source\n\n| S-1 | the brief, received |\n")
+    (spit (str (fs/path docs "stages" "stage-0" "stage-0-gates.edn")) (pr-str {:stage/id "0" :stage/closed {:date "2026-10-13"}}))
+    (spit (str (fs/path docs "stages" "stage-1" "stage-1-plan.md")) "# Stage 1\n\n**Kind:** walking skeleton\n")
+    (let [wf (next/where-facts (workspace/find-workspace ws))]
+      (is (= 1 (get-in wf [:stage :id])))
+      (is (= {:stage/closed {:date "2026-10-13"}} (dissoc (get-in wf [:stages 0 :gates]) :stage/id)))
+      (is (every? nil? ((juxt :map :decisions :risks) wf)) "no overview, no log: nil, said as such by the block"))
+    (spit (str (fs/path docs "00-overview.md"))
+          (str "## 4. Stage map\n\n| Stage | Kind | Name (optional) | Delivers | Cap | Status |\n|---|---|---|---|---|---|\n"
+               "| **0** | spike | | the proof | $5 | DONE |\n| **1** | walking skeleton | the door | the home page | $5 | IN PROGRESS |\n\n"
+               "## 4a. Risk register\n\n| # | Risk | Status |\n|---|---|---|\n| R1 | a | **RETIRED** |\n| R2 | b | OPEN |\n"))
+    (spit (str (fs/path docs "04-decision-log.md"))
+          "## 2. Architecture decisions (D)\n\n| # | Decision | Status / Resolution |\n|---|---|---|\n| D1 | x | **PROVISIONAL: y** |\n")
+    (let [wf (next/where-facts (workspace/find-workspace ws))]
+      (is (= "the home page" (get-in wf [:map 1 :delivers])))
+      (is (= [{:id "D1" :section "2"}] (:decisions wf)))
+      (is (= ["R2"] (:risks wf)))
+      (is (str/includes? (next/render-where wf (next/next-action wf)) "where: xyx-build - phase C BUILD, stage 1 of 0-1: walking skeleton, \"the door\"")))
+    (is (= {:workspace? false} (next/where-facts nil)))))

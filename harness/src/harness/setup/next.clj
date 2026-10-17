@@ -385,11 +385,202 @@
        "  because: " because
        (when also (str "\n  also:    " also))))
 
+;; ---------------------------------------------------------------------------
+;; where we are: `bb next --where`
+;; ---------------------------------------------------------------------------
+
+(def id-kinds
+  "Every kind of ID a project's documents carry, and the file (under the build's `docs/`; the
+  blueprint's as its template is named in `build-docs/`) and section that DEFINE it - the one place
+  to read one, however many files cite it. The templates say the same at each section, in a
+  sentence opening `**IDs.**`; a test holds the two together."
+  [{:id "FR-n" :file "01-requirements.md" :section "6b" :note "the index names the document that wrote it"}
+   {:id "NFR-n" :file "01-requirements.md" :section "7"}
+   {:id "S-n.m" :file "source.md" :section "2" :note "heading S-n, point m"}
+   {:id "Q-n" :file "source.md" :section "3"}
+   {:id "RV-n" :file "04-decision-log.md" :section "1"}
+   {:id "D-n" :file "04-decision-log.md" :section "2"}
+   {:id "S-n" :file "04-decision-log.md" :section "3" :note "a schema decision"}
+   {:id "P0-n" :file "04-decision-log.md" :section "4"}
+   {:id "R-n" :file "00-overview.md" :section "4a" :note "the risk"}
+   {:id "R-n" :file "04-decision-log.md" :section "5" :note "the risk's spike"}
+   {:id "stage N" :file "00-overview.md" :section "4"}
+   {:id "F-n" :file "00-overview.md" :section "5"}
+   {:id "threat n" :file "02-architecture.md" :section "15"}
+   {:id "HP-n" :file "stages/stage-N-blueprint-template.md" :section "0" :shown "the stage's blueprint"}
+   {:id "t-NN" :file "stages/stage-N-blueprint-template.md" :section "4" :shown "the stage's blueprint"}])
+
+(defn section-lines
+  "The lines of `text`'s section `section` (`\"4a\"`: the heading `## 4a.` or `### 4a.`), up to the
+  next heading of any level; nil when there is no such heading."
+  [text section]
+  (let [head (re-pattern (str "^#{2,3} " (java.util.regex.Pattern/quote section) "\\."))
+        [h & more] (drop-while #(not (re-find head %)) (str/split-lines text))]
+    (when h (take-while #(not (re-find #"^#{1,6} " %)) more))))
+
+(defn table-rows
+  "The rows of the first Markdown table in `text`'s section `section`, as maps from each header
+  cell, in lower case, to the row's cell; the separator row is not one."
+  [text section]
+  (let [[header & rows] (->> (section-lines text section)
+                             (drop-while #(not (str/starts-with? (str/trim %) "|")))
+                             (take-while #(str/starts-with? (str/trim %) "|")))
+        ks (when header (mapv str/lower-case (cells header)))]
+    (vec (for [r rows
+               :let [c (cells r)]
+               :when (not (every? #(re-matches #":?-+:?" %) c))]
+           (zipmap ks (concat c (repeat "")))))))
+
+(defn- plain [s] (str/trim (str/replace (or s "") #"[*`]" "")))
+
+(defn- status-cell [row] (some (fn [[k v]] (when (str/includes? k "status") v)) row))
+
+(defn provisional-decisions
+  "The decision log's entries still PROVISIONAL - the Status cell begins so - as `{:id :section}`,
+  in the log's order."
+  [log]
+  (vec (for [s ["1" "2" "3" "4" "5"]
+             r (table-rows log s)
+             :when (str/starts-with? (str/upper-case (plain (status-cell r))) "PROVISIONAL")]
+         {:id (plain (get r "#")) :section s})))
+
+(defn open-risks
+  "The overview's §4a risks whose Status is OPEN, by id, in the register's order."
+  [overview]
+  (vec (for [r (table-rows overview "4a")
+             :when (str/starts-with? (str/upper-case (plain (status-cell r))) "OPEN")]
+         (plain (get r "#")))))
+
+(defn stage-map
+  "The overview's §4 stage map: `{id {:kind :name :delivers :status}}` for every row whose Stage
+  cell is a number."
+  [overview]
+  (into (sorted-map)
+        (for [r (table-rows overview "4")
+              :let [id (plain (get r "stage"))]
+              :when (re-matches #"\d+" id)]
+          [(parse-long id) {:kind (plain (get r "kind")) :name (plain (get r "name (optional)"))
+                            :delivers (str/trim (get r "delivers" "")) :status (plain (get r "status"))}])))
+
+(def ^:private phases
+  "A stage's kind → its phase, `method.md` §01; pre-release is tried before release."
+  [[#"(?i)pre-?release" "D PRE-RELEASE"] [#"(?i)release" "E RELEASE"] [#"(?i)spike" "B PROVE"]
+   [#"(?i)skeleton|increment" "C BUILD"]])
+
+(defn phase
+  "The phase of a stage of kind `kind`, letter and word, or nil for a kind not one of §01's."
+  [kind]
+  (when kind (some (fn [[re p]] (when (re-find re kind) p)) phases)))
+
+(defn where-facts
+  "`facts`, and what the block adds, from the build's documents: `:stages` every stage's files
+  (`stage-files`), `:map` the stage map, `:decisions` the PROVISIONAL ones, `:risks` the OPEN
+  ones - each nil when its document is not there."
+  [ws]
+  (let [f (facts ws)]
+    (if-not (:workspace? f)
+      f
+      (let [docs (fs/path (:workspace/build ws) "docs")
+            text #(let [p (fs/path docs %)] (when (fs/exists? p) (slurp (str p))))
+            overview (text "00-overview.md")
+            log (text "04-decision-log.md")]
+        (assoc f
+               :stages (stage-files (fs/path docs "stages"))
+               :map (some-> overview stage-map)
+               :decisions (some-> log provisional-decisions)
+               :risks (some-> overview open-risks))))))
+
+(defn- cut [n s] (if (> (count s) n) (str (subs s 0 n) "…") s))
+
+(defn- more [xs] (when (> (count xs) 6) (str " and " (- (count xs) 6) " more")))
+
+(defn- gate-date [g] (if (and (map? g) (:date g)) (str " " (:date g)) ""))
+
+(defn- done-line [stages {:keys [id gates]}]
+  (let [ended (for [[k {g :gates}] stages :when (:stage/closed g)] (str "stage " k " closed" (gate-date (:stage/closed g))))
+        {:stage/keys [approved closed] :blueprint/keys [signed]} gates
+        now (when-not closed
+              (seq (remove nil? [(when approved (str "approved" (gate-date approved)))
+                                 (when signed (str "blueprint signed" (gate-date signed)))])))]
+    (str/join "; " (or (seq (concat ended (when now [(str "stage " id " " (str/join ", " now))])))
+                       ["nothing closed yet"]))))
+
+(defn- open-lines [decisions risks]
+  [(cond (nil? decisions) "decisions: (no docs/04-decision-log.md)"
+         (empty? decisions) "decisions: none PROVISIONAL"
+         :else (str "decisions PROVISIONAL: "
+                    (str/join ", " (for [ds (partition-by :section (take 6 decisions)) :let [s (:section (first ds))]]
+                                     (str (str/join ", " (map :id ds)) " (§" s ")")))
+                    (more decisions) " - docs/04-decision-log.md"))
+   (cond (nil? risks) "risks: (no docs/00-overview.md)"
+         (empty? risks) "risks: none OPEN"
+         :else (str "risks OPEN: " (str/join ", " (take 6 risks)) (more risks) " - docs/00-overview.md §4a"))])
+
+(defn- read-more-lines
+  "`id-kinds` as lines of about a hundred characters."
+  []
+  (->> id-kinds
+       (map (fn [{:keys [id file section note shown]}]
+              (str id " " (or shown file) " §" section (when note (str " (" note ")")))))
+       (reduce (fn [lines e]
+                 (let [l (peek lines)]
+                   (if (and l (< (+ (count l) (count e)) 100)) (conj (pop lines) (str l " · " e)) (conj lines e))))
+               [])))
+
+(defn render-where
+  "The block `bb next --where` prints, from `where-facts` and its `next-action`: fixed lines, a
+  fact that cannot be read said as such. The phase and `next:` before a stage exists; the rest
+  once one does. Every `docs/` path is put under the build, as `next-action`'s are."
+  [{:keys [workspace? build stage stages decisions risks] smap :map} {:keys [step name owner run also]}]
+  (let [line (fn [label s] (str "  " label (subs "             " (min 13 (count label))) s))
+        nxt (line "next:" (str "step " step " - " name "; owner: " owner "; run: " run))
+        alsos (when also [(line "also:" also)])
+        out (fn [ls] (in-build build (str/join "\n" ls)))]
+    (cond
+      (not workspace?)
+      (out (concat ["where: phase A SETUP - no workspace yet" nxt] alsos))
+
+      (nil? stage)
+      (out (concat [(str "where: " build " - phase B PROVE, before stage 0: the brief, then the plan") nxt] alsos))
+
+      :else
+      (let [{:keys [id plan blueprint gates reviewed? packets merged]} stage
+            row (get smap id)
+            kind (or (:kind stage) (:kind row) (when (zero? id) "spike"))
+            last-id (some-> smap keys last)
+            indent (str "  " (subs "             " 0 13))]
+        (out (concat
+              [(str "where: " build " - phase " (or (phase kind) "(not read: the stage's kind)")
+                    ", stage " id (when last-id (str " of 0-" last-id))
+                    (when kind (str ": " kind)) (when (seq (:name row)) (str ", \"" (:name row) "\"")))
+               (line "stage map:" (str "docs/00-overview.md §4"
+                                       (cond (nil? smap) " (not there)"
+                                             (nil? row) (str " (no row for stage " id ")")
+                                             :else (str " - status there: " (cut 60 (:status row))))))
+               (line "stage goal:" (if (seq (:delivers row)) (cut 100 (:delivers row)) "(no Delivers cell on the stage map)"))
+               (str indent (if plan (str "docs/stages/" plan " §1") (str "(no plan yet in docs/stages/stage-" id "/)")))
+               (line "blueprint:" (if blueprint
+                                    (str "docs/stages/" blueprint " - " (if reviewed? "reviewed" "not reviewed") ", "
+                                         (if (:blueprint/signed gates) (str "signed" (gate-date (:blueprint/signed gates))) "not signed")
+                                         "; " (count packets) " packet" (when (not= 1 (count packets)) "s") ", " (count merged) " merged")
+                                    "(none yet)"))
+               (line "done:" (done-line stages stage))
+               nxt]
+              alsos
+              (let [[d r] (open-lines decisions risks)] [(line "open:" d) (str indent r)])
+              (let [[l & ls] (read-more-lines)]
+                (cons (line "read more:" (str "in docs/: " l)) (map #(str indent %) ls)))))))))
+
 (defn -main
-  "bb next [--workspace <dir>]
+  "bb next [--where] [--workspace <dir>]
 
   The workflow's next step, its owner, and the command or skill to run, from
-  the build's files. Information: exit 0 always."
+  the build's files; with `--where`, the block that says where the project
+  stands first - the phase, the stage and its goal, what is done, what is
+  open, where each kind of ID is defined. Information: exit 0 always."
   [& args]
-  (let [ws (workspace/current-or-exit args)]
-    (println (render (next-action (facts ws))))))
+  (let [ws (workspace/current-or-exit (remove #{"--where"} args))]
+    (if (some #{"--where"} args)
+      (let [wf (where-facts ws)]
+        (println (render-where wf (next-action wf))))
+      (println (render (next-action (facts ws)))))))
