@@ -47,13 +47,21 @@
           "source.md" 10
           "stages/stage-0-spike-template.md" 12
           "stages/stage-N-blueprint-template.md" 8
-          "stages/stage-N-gates-template.edn" 2
+          "stages/stage-N-gates-template.edn" 1
           "stages/stage-N-template.md" 26
           "stages/stage-prerelease-template.md" 14
           "stages/stage-release-template.md" 8}
          (plan/placeholder-counts template-dir)))
   (is (= (keys (plan/placeholder-counts template-dir)) (init/build-docs-files (str (fs/parent template-dir))))
       "what bb init lists is what is counted, source.md and the README included"))
+
+(deftest the-gates-templates-comments-carry-no-mark
+  ;; a copy keeps its comments after the gates are filled, so a mark in one is left to fill for
+  ;; ever: the plan check reported a stage approved with its cap as one mark short
+  (let [comments (->> (str/split-lines (slurp (str (fs/path template-dir "stages" "stage-N-gates-template.edn"))))
+                      (filter #(re-find #"^\s*;;" %)))]
+    (is (seq comments))
+    (is (= [] (vec (mapcat plan/placeholders comments))))))
 
 (deftest the-given-parts-ask-nothing
   ;; 02 and 03 are in three parts; the first states what adopting the KIT fixed, as references.

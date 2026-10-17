@@ -4,9 +4,11 @@
 ;; the person passes it, then a map with the date and, for a sign-off, who signed: `:by` is a
 ;; name, never a role ("the person"). Nothing but the person writes one, and a gate once passed
 ;; is not unpassed - a stage that loops back re-runs its exit criteria and closes again with a
-;; later date. Three gates for every stage, and a fourth for a pre-release stage.
+;; later date. Three gates for every stage, and a fourth for a pre-release stage. "The exit
+;; criteria section" below is the stage plan's section headed "Exit criteria (the stage's gate), and
+;; the cap", whose number differs by the stage's kind. A comment carries no mark to fill.
 {:stage/id "<N>"
- ;; the stage plan approved, with its cap (the plan's §11): {:date "YYYY-MM-DD" :cap "<$>" :by "NAME OF WHO SIGNED"}
+ ;; the stage plan approved, with its cap (the exit criteria section): {:date "YYYY-MM-DD" :cap "$n" :by "NAME OF WHO SIGNED"}
  :stage/approved nil
  ;; the blueprint signed off (workflow step 10): {:date "YYYY-MM-DD" :by "NAME OF WHO SIGNED"}
  :blueprint/signed nil
@@ -14,5 +16,5 @@
  ;; answered, each with its evidence (the stage plan's §7): {:date "YYYY-MM-DD" :by "NAME OF WHO SIGNED"}.
  ;; Another kind leaves it nil; `bb next` asks for it of a pre-release stage, before it closes
  :security/signed nil
- ;; the exit criteria met, deployed locally and walked (the plan's §11): {:date "YYYY-MM-DD" :mvp? false}
+ ;; the exit criteria met, deployed locally and walked (the exit criteria section): {:date "YYYY-MM-DD" :mvp? false}
  :stage/closed nil}

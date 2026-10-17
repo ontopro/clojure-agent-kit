@@ -64,6 +64,17 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-17
 
+### The gates template's comments carry no mark (plan 6.8, item 2b, register row 139)
+
+The gates record's template says, in a comment, what each gate holds once passed; the stage plan's
+approval was written `{:date "YYYY-MM-DD" :cap "<$>" ...}`. A copy keeps its comments when its
+gates are filled, and `bb plan-check` reads every angle-bracket mark outside a code fence, comments
+included, so a stage approved with its cap was reported one mark short. The comment now writes the
+cap `"$n"`, as its date and signer were already written, and a test holds the template's comments
+free of marks. The same comments sent the reader to "the plan's §11" for the cap and the exit
+criteria, which is the section's number only for an increment; they name the section by its
+heading now. A stage copy already made keeps its own text.
+
 ### The block says where a phase, a step and the project plan are defined (plan 6.8, item 2, register row 138)
 
 `bb next --where` names a phase ("phase C BUILD") and a step ("step 7") and pointed only at
