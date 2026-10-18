@@ -209,22 +209,34 @@
                  (update :blueprint/slice ordered [:shapes :interfaces :deps-sigs]))]
     (with-out-str (binding [pp/*print-right-margin* 100] (pp/pprint spec)))))
 
+(def large-spec-bytes
+  "Past this a spec is said to be large: every spec the first project dispatched was 10.2 KB or
+  less, and the one that failed, its targets carrying thirty icons' geometry, 38 KB (method §06,
+  rule 15). Information for the Architect, never a refusal."
+  16384)
+
 (defn report
   "What was written, one line per fact: the task, where it went, the targets,
-  the shapes inlined from §1, the counts."
-  [{:keys [spec inlined]} blueprint out]
-  (let [{:keys [blueprint/slice]} spec]
+  the shapes inlined from §1, the counts, the size of `text` (the spec as written) - and, past
+  `large-spec-bytes`, that a spec this size usually carries data a target should name."
+  [{:keys [spec inlined]} blueprint out text]
+  (let [{:keys [blueprint/slice]} spec
+        bytes (count (.getBytes ^String text "UTF-8"))]
     (str/join "\n"
-              [(str "spec-from-blueprint: " (:task/id spec) " from " blueprint
-                    (if out (str " -> " out) " -> stdout"))
-               (str "  impl:    " (str/join ", " (:files/impl spec)))
-               (str "  test:    " (str/join ", " (:files/test spec)))
-               (str "  context: " (if (seq (:files/context spec)) (str/join ", " (:files/context spec)) "none"))
-               (str "  shapes:  " (count (:shapes slice)) " (" (count inlined) " inlined from §1"
-                    (when (seq inlined) (str ": " (str/join ", " (map str inlined)))) ")")
-               (str "  interfaces: " (count (:interfaces slice))
-                    ", deps-sigs: " (count (:deps-sigs slice))
-                    ", property targets: " (count (:property-targets spec)))])))
+              (cond->
+               [(str "spec-from-blueprint: " (:task/id spec) " from " blueprint
+                     (if out (str " -> " out) " -> stdout"))
+                (str "  impl:    " (str/join ", " (:files/impl spec)))
+                (str "  test:    " (str/join ", " (:files/test spec)))
+                (str "  context: " (if (seq (:files/context spec)) (str/join ", " (:files/context spec)) "none"))
+                (str "  shapes:  " (count (:shapes slice)) " (" (count inlined) " inlined from §1"
+                     (when (seq inlined) (str ": " (str/join ", " (map str inlined)))) ")")
+                (str "  interfaces: " (count (:interfaces slice))
+                     ", deps-sigs: " (count (:deps-sigs slice))
+                     ", property targets: " (count (:property-targets spec)))
+                (format "  size:    %.1f KB" (/ bytes 1024.0))]
+                (> bytes large-spec-bytes)
+                (conj "  a spec this size usually carries data a target should name as a file placed by a §0 row (method §06, rule 15)")))))
 
 (defn stage-of
   "The stage a blueprint at `path` belongs to - `N` of its folder `docs/stages/stage-N/` - or nil
@@ -259,7 +271,7 @@
     (if out
       (do (fs/create-dirs (or (fs/parent out) "."))
           (spit out text)
-          (println (report result blueprint out)))
-      (do (binding [*out* *err*] (println (report result blueprint nil)))
+          (println (report result blueprint out text)))
+      (do (binding [*out* *err*] (println (report result blueprint nil text)))
           (print text)
           (flush)))))

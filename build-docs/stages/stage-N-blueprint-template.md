@@ -16,9 +16,12 @@
 
 **IDs.** HP-n is defined here; cite one as `HP-n (stages/stage-N/stage-N-blueprint.md §0)`.
 
-> Anything a task depends on that no agent can do: an account, a licensed download, a
-> signed agreement, a provisioned machine. Naming these up front is cheaper than
-> discovering them at attempt one.
+> Anything a task depends on that no dispatched role can do: an account, a licensed
+> download, a signed agreement, a provisioned machine - and the files a task reads that no
+> role may write: data and assets a target would otherwise quote at length (method §06, rule
+> 15), placed by the person or the Architect's session under the path the targets name - say
+> `resources/icons/`, one file per icon. Naming these up front is cheaper than discovering them
+> at attempt one.
 >
 > Status is `done` and its date once the prep is done, or `per run` when it is done again before
 > every run of what it blocks; anything else is open. Blocks names a packet's id, or `every task`:

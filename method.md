@@ -667,7 +667,7 @@ The same shapes and interfaces the Coder implements against are what the Tester 
 
 ### Writing property targets
 
-Fourteen rules, each paid for once by a round or a stop in the projects built on this kit:
+Fifteen rules, each paid for once by a round or a stop in the projects built on this kit:
 
 1. **One promise per target.** A two-clause target is "accounted for" when one clause is tested.
 2. **State a target as something checkable** — an equality, a named error — not a description.
@@ -760,6 +760,18 @@ Fourteen rules, each paid for once by a round or a stop in the projects built on
     person's ask to restyle the page needed the contract changed. The words a user is to see are
     the requirement's, quoted; the markers are what a test finds (rule 3); the rest is presentation
     (rule 11).
+15. **A target names data; it never carries it.** Geometry, fixtures beyond a few lines, copy,
+    tables, images - anything a target would quote at length - is a file placed before dispatch
+    by a §0 row, and the target names the file's path and what the code does with it (*`icons/svg`
+    returns the text of `resources/icons/<name>.svg`, nil for a name with no file*). One project
+    put thirty icons' SVG into a packet's targets: a 38 KB spec that one Coder could not finish
+    inside its provider's timeout and another spent every round retyping at the REPL. As files
+    the spec was 9 KB and the packet ran. A dispatched role writes its target and nothing else,
+    so no role can place such a file, and content a model types from a target is a copy nobody
+    checked. The file is the fixture rule 12 names; the Tester reads it with its tools, as the
+    Coder does. `bb spec-from-blueprint` prints a spec's size and says when it passes 16 KB -
+    well above the largest packet a project has dispatched, which is information for the
+    Architect, never a refusal.
 
 And one rule that is not about writing but about reading, set by a person after every model in the
 loop got it wrong on the same sentence: **types are followed as the language defines them.** A type
@@ -816,7 +828,7 @@ The trick worth keeping is `:deps-sigs`: upstream namespaces are handed over as 
 
 > **The key invariant:** the Tester reads the *contract*, never the *code*. Tests derived from an implementation only re-assert what the code already does; tests derived from the shapes catch where the code and the contract disagree.
 
-Also worth writing into the blueprint explicitly: a **§0 of human prep** — anything a task depends on that no agent can do (an account, a licensed data download, a signed agreement, a machine with a GPU). These are not task packets and they block dispatch; naming them up front is cheaper than discovering them at attempt one.
+Also worth writing into the blueprint explicitly: a **§0 of dispatch preconditions** — anything a task depends on that no dispatched role can do. Two kinds. What no agent can do at all: an account, a licensed data download, a signed agreement, a machine with a GPU — the person's. And the files a task reads but no role may write: the data and assets rule 15 keeps out of the targets, placed by the person or by the Architect's session at the person's word, under a path the targets name. These are not task packets and they block dispatch; naming them up front is cheaper than discovering them at attempt one.
 
 ### The rule source — where a convention actually lives
 
@@ -882,7 +894,9 @@ it provisions - is never in the blueprint. In the harness, `bb spec-from-bluepri
 <task-id> [<out.edn>]` pulls it out: the fenced packet whose `:task/id` matches, every shape it
 names under `:shapes` replaced by §1's definition of it (verbatim, in §1's order), validated, and
 written to the run directory; a shape §1 does not define and a task id the blueprint does not carry
-are refused by name, and without an output path it pipes into `bb sigs`. Every build had made that
+are refused by name, and without an output path it pipes into `bb sigs`. It prints the spec's size
+with its counts and, past 16 KB, says so - a spec that size carries data a §0 row should have placed
+(§06, rule 15); it writes the spec either way. Every build had made that
 copy by hand, each a little differently, while the template's own packet drifted from the schema -
 so the extraction is a command, and a test reads the template's packet as a spec.
 

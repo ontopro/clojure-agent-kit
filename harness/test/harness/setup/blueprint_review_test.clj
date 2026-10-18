@@ -22,6 +22,7 @@
     (is (str/includes? c "One promise per target"))
     (is (str/includes? c "A target that takes a value names where the value comes from") "rule 13")
     (is (str/includes? c "never its whole Hiccup") "rule 14")
+    (is (str/includes? c "A target names data; it never carries it") "rule 15")
     (is (not (str/includes? c "### Per-role deltas")) "§06 ends before the per-role deltas")
     (is (< (str/index-of c "### The blueprint") (str/index-of c "### Data shapes first")) "the question, then the rules"))
   (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no '### The blueprint — the plan step's end'"

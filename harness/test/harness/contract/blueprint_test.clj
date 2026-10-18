@@ -175,6 +175,27 @@
         (is (= 1 exit))
         (is (str/includes? out "defines no shape named Ghost"))))))
 
+(deftest the-report-says-the-specs-size
+  (let [result (bp/spec-for blueprint "t-01-concept-ops")
+        text (bp/render (:spec result))
+        r (bp/report result "b.md" nil text)]
+    (is (str/includes? r (format "  size:    %.1f KB" (/ (count (.getBytes ^String text "UTF-8")) 1024.0))))
+    (is (not (str/includes? r "a spec this size")) "the template's packet is not large")))
+
+(deftest a-spec-carrying-its-data-in-a-target-is-said-to-be-large-and-still-written
+  ;; thirty icons' geometry in one packet's targets made a 38 KB spec; as files it was 9 KB
+  (let [big (str/replace blueprint "\"(lookup store id opts) is nil for an id the store does not hold\""
+                         (str "\"(lookup store id opts) returns " (apply str (repeat 20000 "M")) "\""))
+        dir (str (fs/create-temp-dir))
+        file (str (fs/path dir "blueprint.md"))
+        out-file (str (fs/path dir "spec.edn"))
+        _ (spit file big)
+        {:keys [out exit]} (p/shell {:out :string :err :string :continue true}
+                                    "bb" "spec-from-blueprint" file "t-01-concept-ops" out-file)]
+    (is (= 0 exit) "information, never a refusal")
+    (is (str/includes? out "a spec this size usually carries data a target should name as a file placed by a §0 row"))
+    (is (fs/exists? out-file))))
+
 (deftest a-blueprints-stage-is-its-folder
   (is (= 2 (bp/stage-of "/w/xyx-build/docs/stages/stage-2/stage-2-blueprint.md")))
   (is (= 12 (bp/stage-of "xyx-build/docs/stages/stage-12/stage-12-blueprint.md")))

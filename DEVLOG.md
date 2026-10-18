@@ -64,6 +64,22 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-17 (plan 6.9)
 
+### Data a target needs is a file placed before dispatch (plan 6.9, item 3, register row 144)
+
+A packet carried thirty icons' SVG geometry in its targets: a 38 KB spec, where every other the
+first project dispatched was 10.2 KB or less. One Coder hit its provider's timeout twice; a faster
+one spent its rounds retyping the geometry. As files placed before dispatch and read at load, the
+spec was 9 KB and the packet ran. The method had no word on where bulk data goes, and no dispatched
+role may write outside its target. Now method §06 rule 15: a target names data, it never carries it -
+geometry, long fixtures, copy, tables, images are files a §0 row places, and the target names the
+path and what the code does with it. §0 is widened to say so (the files a task reads that no role
+may write, placed by the person or the Architect's session), in §06 and in the blueprint template;
+the blueprint review asks it with no code change, since its checklist sends §06's rules whole.
+`bb spec-from-blueprint` prints a spec's size and, past 16 KB, says such a spec usually carries data
+a §0 row should place - information for the Architect, never a refusal; §07 says so. Not taken: a
+rule for the Coder (the fault was the packet's), a hard limit (a large spec can be right), a token
+count (bytes are what `wc -c` checks). Drafted by Fable 5.1, reviewed and built by Opus 5.5.
+
 ### Gemini at Google's own endpoint: the signature returned, a route, the prices it has (plan 6.9, item 2, register rows 142 and 143)
 
 The first KIT project moved its Coder to Gemini at Google's OpenAI-compatible endpoint, and every
