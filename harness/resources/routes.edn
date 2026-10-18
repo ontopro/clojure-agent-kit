@@ -7,9 +7,10 @@
 ;;
 ;; The family is the slug's prefix on OpenRouter (`anthropic/…`, `openai/…`, `google/…`, `x-ai/…`).
 ;; `:anthropic-direct` is the same family reached at its own API with its own shape - the route
-;; agy-ide.edn's reviewers take - and is chosen by name, never by prefix. `:google-direct` is Gemini
-;; at Google's OpenAI-compatible endpoint, the same way: no provider to pin, Gemini's thought
-;; signature returned on each tool call (`adapter/parse :openai`), its errors read from an array.
+;; agy-ide.edn's reviewers take. `:google-direct` is Gemini at Google's OpenAI-compatible endpoint: no provider to pin, Gemini's thought
+;; signature returned on each tool call (`adapter/parse :openai`), its errors read from an array. NOTHING READS A `-direct` ROUTE: `catalogue` takes a
+;; model's family from its slug's prefix, so `bb models` builds the OpenRouter block; the direct
+;; routes are what a person copies into a profile's role, the model named as the provider names it.
 ;;
 ;; EFFORT LEVELS ARE NOT IN THE LISTING. OpenRouter says whether a model takes a reasoning
 ;; parameter, not which values; the levels here are what each family's API documents and what

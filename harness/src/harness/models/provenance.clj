@@ -95,7 +95,10 @@
   worked examples in the tests."
   [usage per-mtok]
   (let [{:keys [in out cache-read cache-write cache-write-5m cache-write-1h]} usage
-        {i :in o :out cr :cache-read w5 :cache-write-5m w1 :cache-write-1h :or {w5 0 w1 0}} per-mtok]
+        {i :in o :out cr :cache-read w5 :cache-write-5m w1 :cache-write-1h} per-mtok
+        ;; absent or nil alike: `:or` covers only an absent key, and a nil reached `(* 0 nil)`
+        w5 (or w5 0)
+        w1 (or w1 0)]
     (when (and in out i o cr)
       (/ (+ (* in i)
             (* out o)
@@ -113,6 +116,12 @@
 
 (defn provider-of-endpoint [endpoint]
   (some->> endpoint (re-find #"^https?://([^/:]+)") second endpoint-providers))
+
+(defn direct-provider?
+  "Whether a step's recorded provider is a provider's own API, reached directly -
+  the names `provider-of-endpoint` gives - rather than a host OpenRouter routed to."
+  [provider]
+  (contains? (set (vals endpoint-providers)) provider))
 
 (defn of
   "What a dispatch should record, from the parsed completion and an optional

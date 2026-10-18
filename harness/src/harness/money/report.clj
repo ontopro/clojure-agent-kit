@@ -32,6 +32,7 @@
    [clojure.edn :as edn]
    [clojure.string :as str]
    [harness.contract.shapes :as shapes]
+   [harness.models.provenance :as provenance]
    [harness.setup.workspace :as workspace]))
 
 (defn gate-steps
@@ -242,7 +243,7 @@
 (defn money-lines
   "Cost by provider, by role and by model, from the steps; the OpenRouter balance
   at start and at record from the `:balance` events, with the difference beside
-  the summed OpenRouter cost; Anthropic as spend, since its API has no balance."
+  the summed OpenRouter cost; each direct provider as spend, since none has a balance."
   [{:keys [run/events run/steps]}]
   (let [priced (filter :step/cost steps)
         by (fn [f] (->> priced (group-by f) (map (fn [[k ss]] [k (reduce + (map :step/cost ss))])) (sort-by (comp - second))))
@@ -255,9 +256,13 @@
         ;; not: a step priced later by `bb reprice` had cost and no provider, and
         ;; `some->` over nil dropped it, so a run of three repriced steps printed
         ;; "$0.000000 summed from this run's OpenRouter steps" beside its total.
-        ;; A direct Anthropic step always has its provider, from the endpoint.
-        openrouter-cost (reduce + 0 (map :step/cost (remove #(= "Anthropic API" (:step/provider %)) priced)))
-        anthropic-cost (reduce + 0 (map :step/cost (filter #(= "Anthropic API" (:step/provider %)) priced)))
+        ;; A direct step always has its provider, from the endpoint - Anthropic's API, Google's
+        ;; (`provenance/direct-provider?`); Google's was once summed here as OpenRouter's.
+        openrouter-cost (reduce + 0 (map :step/cost (remove #(provenance/direct-provider? (:step/provider %)) priced)))
+        direct-cost (->> priced (filter #(provenance/direct-provider? (:step/provider %)))
+                         (group-by :step/provider)
+                         (map (fn [[p ss]] [p (reduce + (map :step/cost ss))]))
+                         (sort-by first))
         money (fn [x] (if x (format "$%.2f" (double x)) "—"))]
     (into [(format "  Money: %s over %d priced step%s%s."
                    (fmt-cost total) (count priced) (if (= 1 (count priced)) "" "s")
@@ -276,11 +281,12 @@
                              (money (- (:remaining b0) (:remaining b1))) (fmt-cost openrouter-cost)
                              (if (> (Math/abs (- (- (:remaining b0) (:remaining b1)) openrouter-cost)) 0.02)
                                " — they differ by more than two cents: other calls on the same key, or costs that arrived late" ""))]
-              ;; Only when a step went to Anthropic's API directly. A run with every role
+              ;; Only for a provider a step went to directly. A run with every role
               ;; through OpenRouter printed "Anthropic spend $0.00" under a provider line
               ;; that said "Anthropic $0.18" - the serving provider - and read as a contradiction.
-              (pos? anthropic-cost)
-              (conj (format "        Anthropic API spend %s (its API has no balance endpoint; the console has it)." (fmt-cost anthropic-cost))))))))
+              (seq direct-cost)
+              (into (for [[p c] direct-cost]
+                      (format "        %s spend %s (its API has no balance endpoint; the console has it)." p (fmt-cost c)))))))))
 
 (defn token-lines
   "Tokens per model from the dispatch events' `:usage`, with the cache share for

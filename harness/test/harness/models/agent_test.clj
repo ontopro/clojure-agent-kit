@@ -79,6 +79,20 @@
             "matched by id, or the model cannot tell which call this answers")
         (is (= "CONTENTS" (:content (nth msgs 3))))))))
 
+(deftest a-providers-extra-content-goes-back-on-its-call-and-stays-out-of-the-calls
+  ;; Gemini refused the second completion of every dispatch (HTTP 400) when the loop sent its
+  ;; tool call back without the thought signature it came with
+  (let [dir (workspace)
+        sig {:google {:thought_signature "SIG-1"}}
+        [r reqs] (with-stub [(assoc-in (tool-reply "read_file" {:path "src/in.clj"})
+                                       [:choices 0 :message :tool_calls 0 :extra_content] sig)
+                             (text-reply "I read it")]
+                   #(agent/converse! (role %) "RULES" "go" {:dir dir}))]
+    (is (= :done (:status r)))
+    (is (= sig (get-in (second reqs) [:body :messages 2 :tool_calls 0 :extra_content]))
+        "the second request carries the signature on the same call")
+    (is (nil? (:extra-content (first (:calls r)))) "the transcript and the run log do not")))
+
 (deftest a-failing-tool-still-continues-the-conversation
   ;; The point of §10 lesson 8: the model gets to read the error and try again.
   (let [[r reqs] (with-stub [(tool-reply "read_file" {:path "nope.clj"})

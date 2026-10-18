@@ -205,5 +205,13 @@
   (let [gemini {:in 2.0 :out 12.0 :cache-read 0.5}]
     (is (== 0.044 (prov/list-price {:in 10000 :out 2000} gemini)))
     (is (== 0.0465 (prov/list-price {:in 10000 :out 2000 :cache-read 5000} gemini)))
-    (is (nil? (prov/list-price {:in 10000 :out 2000} {:in 2.0 :out 12.0})) "no cache-read rate: not priced, as before"))
+    (is (nil? (prov/list-price {:in 10000 :out 2000} {:in 2.0 :out 12.0})) "no cache-read rate: not priced, as before")
+    (is (== 0.044 (prov/list-price {:in 10000 :out 2000 :cache-write 100} (assoc gemini :cache-write-5m nil)))
+        "a write rate written as nil charges nothing, as an absent one does"))
   (is (= "Google AI API" (prov/provider-of-endpoint "https://generativelanguage.googleapis.com/v1beta/openai"))))
+
+(deftest a-direct-provider-is-one-the-endpoint-names
+  (is (prov/direct-provider? "Anthropic API"))
+  (is (prov/direct-provider? "Google AI API"))
+  (is (not (prov/direct-provider? "Google")) "a host OpenRouter routed to")
+  (is (not (prov/direct-provider? nil)) "a repriced step with no provider is OpenRouter's"))

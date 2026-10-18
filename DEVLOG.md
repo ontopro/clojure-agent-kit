@@ -84,6 +84,17 @@ Proved on a real dispatch at the person's word: a Coder on `:google-direct` (Gem
 project packet's dispatch through 5 completions and 4 tool calls with no 400, recorded as "Google
 AI API" at list price (~$0.05), no signature in the transcript or the run log.
 
+The code reviewer's reading of it found four more. A run record's money lines summed every step
+not on Anthropic's API as OpenRouter's, so a direct Gemini step went into "summed from this run's
+OpenRouter steps" and set off the two-cent drift note; the line beneath named Anthropic's spend
+alone - the defect `bb balance` had just lost, one file over. One test now says which providers are
+direct (`provenance/direct-provider?`), and the record prints a spend line for each. The new route
+was said to let `bb models` build the role; nothing reads a `-direct` route - the family comes from
+the slug's prefix - so the route is what a person copies into a profile, and row 143 and the routes
+file now say so. The signature's round trip had a test of the adapter's two halves only, where the
+defect was in the loop between them; a stub conversation now holds it, and fails on the old
+adapter. And a cache-write rate written as nil, which `:or` does not cover, is no charge too.
+
 ### A retry checks its triage file before it counts the round (plan 6.9, item 1, register row 141)
 
 `bb run-loop retry <run-dir> <role> <triage.edn>` read the file and recorded the `:triage` event

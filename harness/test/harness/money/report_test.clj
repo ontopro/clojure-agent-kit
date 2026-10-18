@@ -529,6 +529,17 @@
     (is (str/includes? out "differ by more than two cents"))
     (is (str/includes? out "Anthropic API spend $0.300000"))))
 
+(deftest a-step-on-googles-own-api-is-direct-spend-not-openrouter-spend
+  (let [run (update timed-run :run/steps conj
+                    {:step/name :reviewer :step/kind :dispatch :step/status :done :step/ms 1000 :step/cost 0.1
+                     :step/model "gemini-x" :step/provider "Google AI API" :step/source :measured
+                     :step/cost-source :list-price})
+        out (report/render run)]
+    (is (str/includes? out "against $0.200000 summed from this run's OpenRouter steps")
+        "the OpenRouter-served Google step counts; the direct one does not")
+    (is (str/includes? out "Anthropic API spend $0.300000"))
+    (is (str/includes? out "Google AI API spend $0.100000"))))
+
 (deftest tokens-rounds-and-roles-come-from-the-record
   (let [out (report/render timed-run)]
     (is (str/includes? out "m-a                                  100 / 50 / 300 / 100  — 60% of the prompt tokens were cache reads"))
