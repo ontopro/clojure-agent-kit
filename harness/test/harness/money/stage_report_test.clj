@@ -179,6 +179,9 @@
     (spit (str (fs/path s1 "stage-1-security-review" "m-2.edn")) (pr-str {:cost 1.0 :model "m"}))
     (spit (str (fs/path s1 "stage-1-security-review" "m-3.edn")) (pr-str {:cost 0.25 :model "m"}))
     (spit (str (fs/path s1 "stage-1-security-review" "m-2-tests" "t.edn")) (pr-str {:cost 9.0}))
+    (spit (str (fs/path s1 "stage-1-security-review" "security-routing.edn"))
+          (pr-str {:review "m-2.edn" :routed [{:verdict {:route :coder :cost 0.125}} {:verdict {:route :architect :cost 0.125}}]
+                   :hypotheses []}))
     (spit (str (fs/path s1 "stage-1-security-deps.edn"))
           (pr-str {:security/at "2026-10-08T12:30" :scan :deps :counts {:ok 1 :warn 0 :fail 0 :skipped 0} :ok? true :rows []}))
     (spit (str (fs/path s1 "stage-1-security.edn"))
@@ -191,8 +194,10 @@
     (is (nil? (sr/summary-for build records 2)) "no blueprint, nothing to roll up")
     (let [s (sr/summary-for build records 1)]
       (is (= ["t1" "t2"] (mapv :task/id (:runs s))) "the records of the blueprint's packets, in its order; w0 is stage 0's")
-      (is (= [["blueprint review" 1.5 2] ["security review" 1.25 2] ["spec reviews" 0.75 3]] (:readings s))
-          "the history's readings; no plan review for this stage; two security reviews, the -tests folder's file none")
+      (is (= [["blueprint review" 1.5 2] ["security review" 1.25 2] ["security routing" 0.25 2] ["spec reviews" 0.75 3]]
+             (:readings s))
+          "the history's readings; no plan review for this stage; two security reviews, the -tests folder's file
+           none and the routing file its own reading: two findings triaged")
       (is (= "$20" (:cap s)))
       (is (= "increment" (:kind s)) "the plan's kind line")
       (is (= {:id 0 :cost 5.375 :runs 1 :rounds 2 :stops 1} (:before s)) "stage 0: its run, its spec review, the project plan review, its stage plan review and its security review")

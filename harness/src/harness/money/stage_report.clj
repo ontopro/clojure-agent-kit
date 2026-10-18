@@ -274,14 +274,32 @@
     (let [rs (or (seq (:reviews m)) [m])]
       [label (reduce + 0 (keep :cost rs)) (count rs)])))
 
+(def ^:private routing-file
+  "What `bb security-route` writes into a stage's security review folder, beside the
+  review records: triage's verdict on each reproduced finding, which is not a review.
+  Counted as one, it made one review read as two."
+  "security-routing.edn")
+
 (defn- folder-reading
   "`[label cost n]` over the record files directly in `dir`, each one reading -
   a stage's security review writes one per review, its `-tests` folder beside
-  them; nil when there is none."
+  them, the routing file not one of them; nil when there is none."
   [label dir]
-  (let [ms (when (fs/directory? dir) (keep read-edn (sort (fs/glob dir "*.edn"))))]
+  (let [ms (when (fs/directory? dir)
+             (->> (fs/glob dir "*.edn")
+                  (remove #(= routing-file (str (fs/file-name %))))
+                  sort
+                  (keep read-edn)))]
     (when (seq ms)
       [label (reduce + 0 (keep :cost ms)) (count ms)])))
+
+(defn- routing-reading
+  "`[label cost n]` for the routing file in `dir`: a triage call per finding routed,
+  each verdict carrying its cost; nil when there is no routing file. Its money was in
+  no reading before."
+  [label dir]
+  (when-let [{:keys [routed]} (read-edn (fs/path dir routing-file))]
+    [label (reduce + 0 (keep #(get-in % [:verdict :cost]) routed)) (count routed)]))
 
 (defn- records-for
   "The run records under `records-dir` that are stage `id`'s (`stages/record-stage` over `infos`)
@@ -309,7 +327,8 @@
     (vec (remove nil? [(when (= 0 id) (reading "project plan review" (stages/project-plan-review build)))
                        (reading "stage plan review" (fs/path reviews "plan-review.edn"))
                        (reading "blueprint review" (fs/path reviews "blueprint-review.edn"))
-                       (folder-reading "security review" (stages/document build id "-security-review"))]))))
+                       (folder-reading "security review" (stages/document build id "-security-review"))
+                       (routing-reading "security routing" (stages/document build id "-security-review"))]))))
 
 (defn stage-facts
   "What `stage-summary` needs for stage `id` of the build at `build` with the

@@ -64,6 +64,19 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-17 (plan 6.9)
 
+### A stage's security routing is its own reading, not a second review (plan 6.9, item 4b, register row 146)
+
+The first project's stage 2 report read "security review 2" where one review ran: the stage
+report's folder reading counted every `.edn` in the stage's security review folder, and
+`bb security-route` writes `security-routing.edn` there. The total was right only because that
+routing had triaged no finding - and the triage calls a routing does make, each verdict carrying
+its cost, were in no reading at all. Now the folder reading leaves the routing file out, and the
+routing file is its own reading, "security routing", its cost the verdicts' and its count the
+findings triaged. The fixture's routing file makes the old report read three reviews. On the first
+project's stage 2: "security review 1", "security routing 0". Also a sentence in the targets
+gate's docstring (item 4's read, Fable 5.1): after a merge, `check` on that run would read every
+marker as earlier, and nothing in the loop checks after a merge. Built by Opus 5.5.
+
 ### An earlier packet's test markers are its own (plan 6.9, item 4, register row 145)
 
 A fix packet of 5 targets named, as its `:files/test`, the file an earlier packet wrote with 13.

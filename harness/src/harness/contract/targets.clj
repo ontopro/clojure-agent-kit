@@ -71,7 +71,9 @@
   Only what this Tester added counts: an old test marked anew counts for the
   number it is marked with, the earlier packet's number included, since the
   markers are counted rather than matched. A file this run created has no
-  base, and is read as before. Renumbering was the other way, and it erases the earlier
+  base, and is read as before. After the merge, HEAD is this run's own commit,
+  so a `check` typed on a merged run reads every marker as earlier and every
+  target as uncovered; nothing in the loop checks after a merge. Renumbering was the other way, and it erases the earlier
   packet's accounting to make room for this one's."
   (:require [babashka.fs :as fs]
             [babashka.process :as p]
