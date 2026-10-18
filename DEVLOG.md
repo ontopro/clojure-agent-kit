@@ -64,9 +64,27 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-17 (plan 6.9)
 
+### An earlier packet's test markers are its own (plan 6.9, item 4, register row 145)
+
+A fix packet of 5 targets named, as its `:files/test`, the file an earlier packet wrote with 13.
+The targets gate read every marker in the file as this packet's: "a marker names target N and the
+spec has 5" came eight times, and the project's workaround was a target telling the Tester to
+renumber. That was the loud half. The quiet half: the earlier `;; target 1` to `;; target 5` counted
+as this packet's coverage, so a Tester that wrote no test would have passed. Now `targets/coverage`
+reads each test file as the gate worktree's HEAD has it - the base, until the merge commits - and
+leaves out a marker that already stood there over the same test (or with the same reason): neither
+coverage nor an unknown target, reported as `:earlier` in the targets event. Only what this Tester
+added counts, and the markers are counted rather than matched, so an old test marked anew with the
+earlier packet's own number counts once for this packet (Fable 5.1's catch, before the commit); a
+file the run created reads as before. The Tester's instruction says the markers
+already in a file are an earlier packet's, to leave them and mark its own. Not taken: renumbering
+(it erases the earlier packet's accounting) and task ids in the markers (every marker a project has
+is bare, so it fixes nothing already written, and it rests on every model writing the id). Four
+tests on a real repository; three fail on the old gate. Designed and built by Opus 5.5.
+
 ### Data a target needs is a file placed before dispatch (plan 6.9, item 3, register row 144)
 
-A packet carried thirty icons' SVG geometry in its targets: a 38 KB spec, where every other the
+A packet carried thirty icons' SVG geometry in its targets: a 38 KB spec, where every other spec the
 first project dispatched was 10.2 KB or less. One Coder hit its provider's timeout twice; a faster
 one spent its rounds retyping the geometry. As files placed before dispatch and read at load, the
 spec was 9 KB and the packet ran. The method had no word on where bulk data goes, and no dispatched

@@ -886,7 +886,7 @@
             ;; adequacy — a test may name a target and still not pin it — so it
             ;; raises the floor and replaces nothing.
             [cov mst] (timed #(targets/coverage gate-dir sp))
-            _ (event! ctx (assoc (select-keys cov [:covered :exempt :uncovered :total])
+            _ (event! ctx (assoc (select-keys cov [:covered :exempt :uncovered :earlier :total])
                                  :event/kind :targets))
             ;; A TARGET DECLARED NO TEST'S JOB IS SHOWN, NOT SWALLOWED: it is a
             ;; judgement, and the point of writing it down is that a person sees it.

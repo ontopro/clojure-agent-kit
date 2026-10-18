@@ -1,6 +1,7 @@
 (ns harness.contract.targets-test
   (:require
    [babashka.fs :as fs]
+   [babashka.process :as p]
    [clojure.test :refer [deftest is testing]]
    [harness.contract.targets :as targets]))
 
@@ -126,3 +127,74 @@
 (deftest the-marker-is-case-and-spacing-tolerant
   (doseq [line [";; Target 1" ";;target 1" ";;;  TARGETS  1" "   ;; target 1"]]
     (is (empty? (:uncovered (cover (str line "\n(deftest one [] nil)\n") 1))) line)))
+
+(defn- based!
+  "A repo whose HEAD holds `before` - what an earlier packet merged - and whose
+  working tree holds `after`, as the gate worktree does before the merge."
+  [before after]
+  (let [dir (str (fs/create-temp-dir))
+        git! #(apply p/shell {:dir dir :out :string :err :string} "git" %&)
+        put! (fn [files]
+               (doseq [[path src] files]
+                 (fs/create-dirs (fs/path dir (fs/parent path)))
+                 (spit (str (fs/path dir path)) src)))]
+    (git! "init" "-q")
+    (git! "config" "user.email" "t@example.com")
+    (git! "config" "user.name" "T")
+    (put! before)
+    (git! "add" "-A")
+    (git! "commit" "-qm" "earlier packet")
+    (put! after)
+    dir))
+
+(def ^:private thirteen
+  "An earlier packet's test file: thirteen targets, one test each."
+  (apply str (for [n (range 1 14)] (str ";; target " n "\n(deftest old-" n " [] nil)\n\n"))))
+
+(deftest an-earlier-packets-markers-are-not-this-packets
+  (testing "numbers past this spec are not unknown targets: the first project met eight of them"
+    (let [dir (based! {"test/t.clj" thirteen}
+                      {"test/t.clj" (str thirteen ";; targets 1, 2\n(deftest new-one [] nil)\n")})
+          r (targets/coverage dir {:files/test ["test/t.clj"] :property-targets (subvec eight 0 2)})]
+      (is (empty? (:uncovered r)))
+      (is (= [[1 "(deftest new-one [] nil)"] [2 "(deftest new-one [] nil)"]]
+             (mapv (juxt :target :form) (:covered r))))
+      (is (= 13 (count (:earlier r))))))
+  (testing "numbers inside this spec cover nothing of it: a Tester that added no test is caught"
+    (let [dir (based! {"test/t.clj" thirteen} {})
+          r (targets/coverage dir {:files/test ["test/t.clj"] :property-targets (subvec eight 0 2)})]
+      (is (= [1 2] (mapv :target (:uncovered r))))
+      (is (empty? (:covered r)))))
+  (testing "an earlier declaration is the earlier packet's too"
+    (let [dir (based! {"test/t.clj" ";; target 1 — not a test: gate 4 checks it\n"} {})
+          r (targets/coverage dir {:files/test ["test/t.clj"] :property-targets (subvec eight 0 1)})]
+      (is (= [1] (mapv :target (:uncovered r))))
+      (is (empty? (:exempt r))))))
+
+(deftest an-old-test-marked-anew-counts-for-this-packet
+  (let [dir (based! {"test/t.clj" ";; target 1\n(deftest old [] nil)\n"}
+                    {"test/t.clj" ";; target 1\n;; target 2\n(deftest old [] nil)\n"})
+        r (targets/coverage dir {:files/test ["test/t.clj"] :property-targets (subvec eight 0 2)})]
+    (is (= [2] (mapv :target (:covered r))))
+    (is (= [1] (mapv :target (:uncovered r)))))
+  (testing "with the number the earlier packet used: the markers are counted, not matched"
+    (let [dir (based! {"test/t.clj" ";; target 2\n(deftest foo [] nil)\n"}
+                      {"test/t.clj" ";; target 2\n;; target 2\n(deftest foo [] nil)\n"})
+          r (targets/coverage dir {:files/test ["test/t.clj"] :property-targets (subvec eight 0 2)})]
+      (is (= [2] (mapv :target (:covered r))))
+      (is (= [2] (mapv :target (:earlier r))))
+      (is (= [1] (mapv :target (:uncovered r)))))))
+
+(deftest a-wrong-number-this-tester-wrote-still-fails
+  (let [dir (based! {"test/t.clj" thirteen}
+                    {"test/t.clj" (str thirteen ";; target 9\n(deftest new-nine [] nil)\n"
+                                       ";; target 1\n(deftest new-one [] nil)\n")})
+        r (targets/coverage dir {:files/test ["test/t.clj"] :property-targets (subvec eight 0 1)})]
+    (is (= [[9 :unknown-target]] (mapv (juxt :target :violation) (:uncovered r))))))
+
+(deftest a-file-this-run-created-reads-as-before
+  (let [dir (based! {"src/seed.clj" "(ns seed)\n"}
+                    {"test/t.clj" ";; target 1\n(deftest one [] nil)\n"})
+        r (targets/coverage dir {:files/test ["test/t.clj"] :property-targets (subvec eight 0 1)})]
+    (is (empty? (:uncovered r)))
+    (is (empty? (:earlier r)))))

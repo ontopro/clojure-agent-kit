@@ -56,8 +56,25 @@
 
   The declaration is reported to the Orchestrator rather than swallowed: a
   judgement that something needs no test is exactly the kind that should be
-  seen."
+  seen.
+
+  A MARKER ALREADY IN THE FILE IS AN EARLIER PACKET'S. A fix packet may name, as
+  its `:files/test`, a file an earlier packet wrote: one project's packet of 5
+  targets edited the file of one with 13, and \"a marker names target N and the
+  spec has 5\" came eight times. That was the loud half. The quiet half was worse:
+  the earlier packet's `;; target 1` to `;; target 5` counted as this packet's
+  coverage, so its Tester could have written no test and passed. The gate
+  worktree's HEAD is the base the run was cut from until the merge commits it,
+  so the file as the earlier packet left it is `git show HEAD:<path>` there. A
+  marker that stood there over the same test (or with the same reason) is left
+  out - neither coverage nor an unknown target - and reported as `:earlier`.
+  Only what this Tester added counts: an old test marked anew counts for the
+  number it is marked with, the earlier packet's number included, since the
+  markers are counted rather than matched. A file this run created has no
+  base, and is read as before. Renumbering was the other way, and it erases the earlier
+  packet's accounting to make room for this one's."
   (:require [babashka.fs :as fs]
+            [babashka.process :as p]
             [clojure.string :as str]))
 
 (def ^:private target-line
@@ -113,7 +130,8 @@
          (form-opener? line)
          (-> acc
              (update :covered into
-                     (map (fn [n] {:target n :file path :line (inc i)}))
+                     (map (fn [n] {:target n :file path :line (inc i)
+                                   :form (str/trim line)}))
                      (:block acc))
              (assoc :block []))
 
@@ -125,6 +143,45 @@
    {:covered [] :exempt [] :block []}
    (map-indexed vector (str/split-lines text))))
 
+(defn- base-text
+  "`path` as the HEAD of `dir`'s repository has it, or nil: a file this run
+  created, or `dir` in no repository."
+  [dir path]
+  (try
+    (let [{:keys [exit out]} (p/shell {:dir dir :out :string :err :string :continue true}
+                                      "git" "show" (str "HEAD:./" path))]
+      (when (zero? exit) out))
+    (catch Exception _ nil)))
+
+(defn- marker-key
+  "What makes two markers the same one: the target, and the test it stands over
+  or the reason it gives."
+  [{:keys [target form reason]}]
+  [target (or form reason)])
+
+(defn- scan-own
+  "`scan` of `path` in `dir`, less the markers its base version already had.
+
+  COUNTED, NOT A SET: a marker the base had once and the file has twice is one
+  earlier and one this packet's - the Tester marking an old test anew with the
+  number the earlier packet used for it."
+  [dir path]
+  (let [now (scan path (slurp (str (fs/path dir path))))
+        theirs (if-let [base (base-text dir path)]
+                 (let [b (scan path base)]
+                   (frequencies (map marker-key (concat (:covered b) (:exempt b)))))
+                 {})
+        sort-one (fn [k]
+                   (fn [acc m]
+                     (let [mk (marker-key m)]
+                       (if (pos? (get-in acc [:left mk] 0))
+                         (-> acc (update-in [:left mk] dec) (update :earlier conj m))
+                         (update acc k conj m)))))
+        acc (as-> {:left theirs :covered [] :exempt [] :earlier []} acc
+              (reduce (sort-one :covered) acc (:covered now))
+              (reduce (sort-one :exempt) acc (:exempt now)))]
+    (dissoc acc :left)))
+
 (defn coverage
   "How the Tester's files account for every `:property-targets` entry.
 
@@ -134,22 +191,26 @@
       {:covered   [{:target n :file path :line n} ...]
        :exempt    [{:target n :file path :line n :reason str} ...]
        :uncovered [{:target n :violation kw :detail str} ...]
+       :earlier   [{:target n :file path :line n ...} ...]
        :total     n}
 
   `:uncovered` is the gate's view and is empty when every target is either
   covered by a test or declared exempt. A marker naming a target the spec does
   not have is `:unknown-target` — a renumbered spec or a typo, and worth saying
-  rather than ignoring. A missing test file is reported, never skipped."
+  rather than ignoring. A missing test file is reported, never skipped.
+  `:earlier` is the markers an earlier packet left in the file, counted for
+  nothing."
   [dir {:keys [files/test property-targets]}]
   (let [total (count property-targets)
         {missing false present true} (group-by #(fs/exists? (fs/path dir %)) test)
-        scans (map #(scan % (slurp (str (fs/path dir %)))) present)
+        scans (map #(scan-own dir %) present)
         covered (into [] (mapcat :covered) scans)
         exempt (into [] (mapcat :exempt) scans)
         named (into #{} (map :target) (concat covered exempt))
         in-range? (fn [n] (<= 1 n total))]
     {:covered covered
      :exempt exempt
+     :earlier (into [] (mapcat :earlier) scans)
      :total total
      :uncovered
      (cond-> []
