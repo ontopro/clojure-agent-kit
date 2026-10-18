@@ -62,6 +62,20 @@ tested" stays information for an adopter, never a block.
 
 ---
 
+## 0.6.9 — plan 6.9's boundary: a long build's second stage
+
+Plan 6.9 fixed what the first project's second stage found: a retry checks its triage file before
+it counts the round; a role can run on Google's own endpoint, `:google-direct`, with the thought
+signature Gemini needs returned on its next call, an array error read, the prices it has, and its
+spend said apart from OpenRouter's; a target names data and never carries it - method §06 rule 15,
+§0 widened to the files a task reads that no role may write, and `bb spec-from-blueprint` saying a
+spec's size; the targets gate counts only the markers this Tester added, where an earlier packet's
+markers in the same test file had failed it and, worse, covered it; and a stage's security routing
+is its own reading, not a second review. A workspace at `0.6.8` takes it with `bb upgrade` from the
+workspace folder, then re-renders each stage report with `bb stage-report <stage-plan.md>`, since a
+stage with a routing file now reads one security review and its routing apart; a role moves to
+Google's endpoint only when a person copies the `-direct` route into the profile.
+
 ## 2026-10-17 (plan 6.9)
 
 ### A stage's security routing is its own reading, not a second review (plan 6.9, item 4b, register row 146)
