@@ -80,7 +80,9 @@ the adapter had logged such a 400 as "no message"; an array is read as its first
 pin), the role schema's cache-write prices optional - Gemini charges none, and the project had
 written its input price there to satisfy the schema - a direct dispatch to Google recorded as
 "Google AI API", and `bb balance` naming every direct provider's spend, not Anthropic's alone.
-Proved against Google's API itself only at the person's word: a real call costs money.
+Proved on a real dispatch at the person's word: a Coder on `:google-direct` (Gemini 4 Argon) ran a
+project packet's dispatch through 5 completions and 4 tool calls with no 400, recorded as "Google
+AI API" at list price (~$0.05), no signature in the transcript or the run log.
 
 ### A retry checks its triage file before it counts the round (plan 6.9, item 1, register row 141)
 
