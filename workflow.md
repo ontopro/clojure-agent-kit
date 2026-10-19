@@ -112,7 +112,7 @@ of its own so a project can set it apart.
 | blueprint review, `bb blueprint-review` | plan | the stage's blueprint whole, with its stage plan | `:blueprint-reviewer` | a reading; the person's sign-off is the gate |
 | spec review, inside `bb run-loop start` | implement, per packet | one packet's contract, cold | `:spec-reviewer` | a stop if a target can be read two ways |
 | code review, inside the loop | implement, per packet | the diff and the gate report of green code | `:reviewer` | a rejection goes to triage, under the retry cap: a retry, or a stop with its owner named |
-| security review, `bb security-review` then `bb security-route` | stage's end | the merged application, with tools in a sandbox with no network; a finding is a test of its own that fails | `:security-reviewer` | a reading; a reproduced finding keeps the stage open until it is fixed or decided, and triage names who acts |
+| security review, `bb security-panel` then `bb security-route` | stage's end | the merged application, with tools in a sandbox with no network, by the next member in rotation or the members the person chooses - all of them at pre-release, a skip before it written in the gates record; a finding is a test of its own that fails | `:security-panel` (or one `:security-reviewer`) | a reading; a reproduced finding keeps the stage open until it is fixed or decided, and triage names who acts |
 
 ## Three things the diagram says that prose tends to lose
 

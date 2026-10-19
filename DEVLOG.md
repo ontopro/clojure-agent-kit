@@ -63,6 +63,20 @@ tested" stays information for an adopter, never a block.
 ---
 ## 2026-10-19 (plan 6.10)
 
+### The stage's end offers the panel; the method says it (plan 6.10, item 4, register rows 154-156)
+
+The last part of the security reviewer panel is what a person meets. The kit-stage-end skill reads
+`bb security-panel --history` and what the stage changed (`git diff --stat` since the stage before),
+then makes one offer in the person's words - the next member in rotation, another, two, all of them,
+or skip the audit - naming the option it recommends and why; a pre-release stage offers no skip,
+all of them its default, and the session says whether fewer would do. After the run it reads the
+combined table and the routing with the person and puts one decision on each row to them - fix and
+retest, the Architect, or their own review - triage's route being its proposal. The pre-release
+template's exit criteria read with the whole panel; the method's security paragraph and roster, the
+harness roster, the workflow table and the security pack's README say the panel. Row 154 is fixed;
+two things the item found and did not fix are rows of their own - a bake-off candidate takes only its
+family's route (155), and a finding naming two tests in one field is routed with none (156).
+
 ### A skipped security review is the person's, and written (plan 6.10, item 4, register row 154)
 
 At a stage before pre-release the person may skip the security reviewer panel, the session

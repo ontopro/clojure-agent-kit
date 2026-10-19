@@ -76,6 +76,10 @@
   project has one; `stage-N-security.edn` beside this plan with no failing row, and its
   dependency and secrets scans' records beside it with none either; each warn read and answered
   in §15 or a decision
+- **The security reviewer panel read the release candidate:** all of its members outside the
+  Coder's family, or fewer on the person's word with the reason - never skipped; their records,
+  `security-panel.md` and the routing in `stage-N-security-review/` beside this plan, and every row
+  decided with the person
 - **Deployed locally** still: the browser checks and the owner's walk against the local build
 - **Decision-log updates recorded**; this stage's section of `../../05-lessons.md` written; the scope
   lists and the stage map revised; the next stage named - another pre-release stage, or the release

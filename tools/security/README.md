@@ -108,7 +108,10 @@ has one; for the template, its `server_test.clj` holds it, and `bb health` runs 
 the generated application's gates.
 
 Nor the dependencies' advisories or a secret committed by mistake: those are scans over the
-source, not requests - the two below.
+source, not requests - the two below. Nor what a request cannot show - a race, a check on one
+route and not another, a value that reaches a query unchecked: the security reviewer panel reads
+the code for those at every stage's end, each finding backed by a failing test of its own (`bb
+security-panel`, in the harness).
 
 `bb health` runs this pack against the generated application, so every claim of §4 a request
 can try is tried on the day of the run; its record's row is `app security`.

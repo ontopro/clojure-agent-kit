@@ -71,14 +71,35 @@ docs/stages/stage-N/stage-N-security-deps.edn` and `secrets --from stage-<N-1> -
 docs/security-routes.edn --record docs/stages/stage-N/stage-N-security-secrets.edn` (`--all` at the first
 stage's end, which has no tag before it) - no failing row in any of the three and every warn
 read with the person; an advisory accepted or a hit allowed goes in the routes file with its
-reason, never around it, and a secret found is rotated, not only removed. Then the security review, once the person
-agrees to its cost (a real model call: $0.46 to $1.50 a reading of the KIT's small fixture, more for a larger application): from the workspace folder, on a fresh clone of the
-application's merged tip, `bb security-review <clone> --stance tracer --base stage-<N-1> --out
-<xyx>-build/docs/stages/stage-N/stage-N-security-review` (the application's first commit for `--base` at the first stage's
-end), which reads the profile's `:security-reviewer`; then `bb security-route <the record it wrote> <clone> --out
-<xyx>-build/docs/stages/stage-N/stage-N-security-review`, which asks triage about each reproduced finding. A review the
-model declined or left without an answer is said as that and is not a clean review. Go through every finding with
-the person: a `coder` route's draft in `security-fixes.md` is completed into this stage's Blueprint as a packet,
+reason, never around it, and a secret found is rotated, not only removed. Then the security reviewer panel - the
+profile's `:security-panel`, or its one `:security-reviewer`. First, from the workspace folder, `bb security-panel
+--history` (who read which stage, what each reproduced, what it cost) and, in the application, `git diff --stat
+stage-<N-1>..HEAD` (what this stage changed: code or content, and which of requests, forms, stored data and logins).
+Then one offer, the option you recommend from those two named and why, in these words:
+
+```
+Who reads this stage's security review?
+1. the next member in rotation (<the name bb security-panel would print>)
+2. another member (<the eligible names>)
+3. two of them
+4. all of them
+5. skip the audit
+```
+
+A member of the Coder's family is left out of every option and said. Each is a real model call per member (on
+the KIT's small fixture a reading cost $0.11 to $0.47 with Gemini 4 Argon and $1.19 to $1.35 with GPT-6 Astra, more
+for a larger application). On 1 to 4: on a fresh clone of the application's merged tip, `bb security-panel <clone>
+[--members <names> | --all] --stance tracer --base stage-<N-1> --out
+<xyx>-build/docs/stages/stage-N/stage-N-security-review` (no flag for the next in rotation; the application's first
+commit for `--base` at the first stage's end), then `bb security-route
+<xyx>-build/docs/stages/stage-N/stage-N-security-review/security-panel.edn <clone> --out` that folder, which asks
+triage about each row. On 5: `:security/skipped {:date :by :reason}` in the gates record, the person's name and
+their reason in a sentence - nothing runs. A pre-release stage offers 1 to 4 with all of them the default and
+never 5; say whether fewer would do, from the history and what changed since each member last read, and the person
+chooses. A member that declined or left no answer is said as that and is not a clean review; a finding counts by
+its own failing test, never by how many members found it. Read `security-panel.md` and the routing with the
+person, and put one decision on each row to them - fix and retest, the Architect, or their own review - triage's
+route being its proposal: a `coder` route's draft in `security-fixes.md` is completed into this stage's Blueprint as a packet,
 signed and run, and the stage does not close until the security reviewer's test kept beside it passes on the merged
 tip; an `architect` route is a change to the design - `docs/02-architecture.md`, the Blueprint, a decision - and
 then a packet, or a risk accepted in its words; a `human` route is a line of §15 the person accepts or declines; and
