@@ -394,6 +394,87 @@
         (swap! (:state c) assoc :events [{:event/kind :gates} {:event/kind :dispatch}])
         (is (thrown-with-msg? Exception #"disagree" (loop/record! c)))))))
 
+(def ^:private list-priced
+  "A direct provider's dispatch as a log written before the log carried its step."
+  {:event/kind :dispatch :event/step :tester-r3 :role :tester :attempt 4 :status :done
+   :model "claude-sonnet-5-5" :provider "Anthropic API" :cost-source :list-price
+   :usage {:in 8 :out 506 :cache-write 24344 :cache-read 38168 :cache-write-5m 24344 :cache-write-1h 0}
+   :pricing {:per-mtok {:in 2 :out 10 :cache-write-5m 2.5 :cache-write-1h 4 :cache-read 0.2}}})
+
+(defn- step [nm & [kind]]
+  {:step/name nm :step/kind (or kind :dispatch) :step/status :done :step/ms 1 :step/source :measured})
+
+(deftest a-state-that-lost-a-second-commands-events-is-rebuilt-from-the-log
+  ;; the shape the first project met: a hand retry while the loop ran, its triage and
+  ;; dispatch in the log, the state written over by the loop
+  (let [state {:attempts {:coder 1 :tester 3}
+               :steps [(step :tester-r2) (step :fmt :gate) (step :test :gate) (step :reviewer)]
+               :events [{:event/kind :dispatch :event/step :tester-r2}
+                        {:event/kind :gates}
+                        {:event/kind :dispatch :event/step :reviewer}]}
+        logged [{:event/kind :dispatch :event/step :tester-r2}
+                {:event/kind :triage :role :tester :attempt 4}
+                {:event/kind :gates}
+                list-priced
+                {:event/kind :dispatch :event/step :reviewer}]
+        {rebuilt :state :keys [added steps]} (loop/rebuild-from-log state logged)]
+    (testing "the lost dispatch is named by its step - kinds alone named the next one"
+      (is (= [[:triage nil] [:dispatch :tester-r3]] (mapv (juxt :event/kind :event/step) added))))
+    (is (= (mapv :event/kind logged) (mapv :event/kind (:events rebuilt))))
+    (testing "the step goes before the next logged dispatch's, after the gates the loop ran before it"
+      (is (= [:tester-r2 :fmt :test :tester-r3 :reviewer] (mapv :step/name (:steps rebuilt)))))
+    (testing "priced from its usage at its list prices, its time not in the log"
+      (let [s (first steps)]
+        (is (< (abs (- 0.0736 (:step/cost s))) 1e-4))
+        (is (= :list-price (:step/cost-source s)))
+        (is (nil? (:step/ms s)))
+        (is (shapes/valid-step? s))))
+    (testing "the attempts raised to the highest logged triage attempt"
+      (is (= {:coder 1 :tester 4} (:attempts rebuilt))))))
+
+(deftest a-logged-step-is-taken-as-it-is-and-consecutive-ones-keep-their-order
+  (let [carried (assoc (step :coder-r1) :step/cost 0.5)
+        logged [{:event/kind :dispatch :event/step :coder-r1 :step carried}
+                (dissoc list-priced :cost-source :pricing)
+                {:event/kind :dispatch :event/step :reviewer}]
+        {rebuilt :state :keys [steps]} (loop/rebuild-from-log {:steps [(step :reviewer)]
+                                                               :events [{:event/kind :dispatch :event/step :reviewer}]}
+                                                              logged)]
+    (is (= [:coder-r1 :tester-r3 :reviewer] (mapv :step/name (:steps rebuilt))))
+    (is (= carried (first steps)) "the step the log carries, whole")
+    (testing "no list price: unpriced, never guessed"
+      (is (nil? (:step/cost (second steps)))))
+    (testing "what only the log carries stays out of the state's events"
+      (is (not-any? :step (:events rebuilt))))))
+
+(deftest no-rebuild-when-the-state-has-events-the-log-does-not
+  (is (nil? (loop/rebuild-from-log {:events [{:event/kind :gates}]} [{:event/kind :dispatch}]))))
+
+(deftest record-names-what-the-state-lost-and-rebuilds-it-when-asked
+  (let [spec {:files/impl [] :files/test []}
+        run-dir (fs/create-temp-dir)
+        ctx (record-ctx run-dir {} [{:event/kind :dispatch :event/step :coder :role :coder}] spec)]
+    (log/append! (loop/log-file ctx) list-priced)
+    (spit (str (fs/path run-dir "state.edn")) (pr-str @(:state ctx)))
+    (testing "refused, naming the events and the flag"
+      (let [e (try (loop/record! ctx) nil (catch clojure.lang.ExceptionInfo e e))]
+        (is (= :log-drift (:run-loop/error (ex-data e))))
+        (is (str/includes? (ex-message e) "The state lacks: dispatch tester-r3"))
+        (is (str/includes? (ex-message e) "--rebuild-from-log"))))
+    (testing "rebuilt and recorded, the old state kept"
+      (let [out (with-out-str (loop/record! ctx {:rebuild? true}))
+            rec (clojure.edn/read-string (slurp (str (fs/path run-dir "run.edn"))))]
+        (is (str/includes? out "step tester-r3 restored, $0.0736 at list price, its time not in the log"))
+        (is (fs/exists? (fs/path run-dir "state.before-rebuild.edn")))
+        (is (= [:coder :tester-r3] (mapv :step/name (:run/steps rec))))))))
+
+(deftest a-dispatchs-log-line-carries-its-step-and-the-state-does-not
+  (let [run-dir (fs/create-temp-dir)
+        ctx {:run-dir (str run-dir) :state (atom {:started-ms 0 :events []})}]
+    (loop/event! ctx {:event/kind :dispatch :event/step :coder} {:step (step :coder)})
+    (is (= (step :coder) (:step (first (log/read-log (loop/log-file ctx))))))
+    (is (nil? (:step (first (:events @(:state ctx))))))))
+
 (deftest record-copies-the-gated-bytes-and-keeps-what-gate-0-changed
   (let [spec {:files/impl ["src/sandbox/a.clj"] :files/test ["test/sandbox/a_test.clj"]}
         coder (fs/create-temp-dir) tester (fs/create-temp-dir) gate (fs/create-temp-dir)

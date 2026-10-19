@@ -61,6 +61,35 @@ moves a pin: a HIGH or CRITICAL that Scout finds against a pinned tool. The doct
 tested" stays information for an adopter, never a block.
 
 ---
+## 2026-10-19 (plan 6.10)
+
+### One run-loop command at a time on a run (plan 6.10, item 1, register row 147)
+
+The first project's stage 3 lost a Tester dispatch from its record. A `retry` was typed while a
+backgrounded `run` was going: the retry appended its triage and its dispatch to `events.log` and
+wrote `state.edn`, then the loop, which had read the state once and kept it in memory, wrote its
+own over it. The log kept both events; the state lost them, and with them the dispatch's step,
+which was in the state alone. `record` refused the drift, as it should, and no command could
+repair the run: a hand repair restored the events, and the step's cost stayed lost.
+
+Two changes. Every `bb run-loop` command now holds a lock on the run directory,
+`run-loop.lock`, from `orchestrate/-main` - at the command, not at each write, since the loss
+was between two whole commands. A second command is refused with what to do (a `run` stops by
+itself for a decision, and a hand `retry` is for after it stops); a lock whose process is gone,
+or whose pid a later process reuses, is taken over and said. And the log can now rebuild what
+the state loses: a dispatch's log line carries its report step, and `record` on drift names the
+events the state lacks and offers `--rebuild-from-log`, which rebuilds the events, every
+missing dispatch step - placed before the next logged dispatch's step, so the gates the loop
+ran before it stay before it - and the attempts, keeping the old state as
+`state.before-rebuild.edn`. A log from before this has no step: a direct provider's dispatch is
+priced from its logged usage at its logged list prices, anything else is left unpriced and
+said. On the first project's run that prices the lost Tester round at $0.0736.
+
+Fable 5.1 read the scope first: the placement, building the step through `report/dispatch-step`
+rather than a second constructor, the refusal saying what to do, and the lock's docstring saying
+where it is and is not.
+
+---
 
 ## 0.6.9 — plan 6.9's boundary: a long build's second stage
 

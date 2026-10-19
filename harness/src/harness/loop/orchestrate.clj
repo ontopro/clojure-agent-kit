@@ -38,10 +38,12 @@
   no nREPL and no budget, and these two seams are what let the rest of the
   loop be exercised without either."
   (:require
+   [babashka.fs :as fs]
    [clojure.string :as str]
    [harness.contract.shapes :as shapes]
    [harness.loop.driver :as driver]
    [harness.loop.log :as log]
+   [harness.loop.run-lock :as run-lock]
    [harness.loop.triage :as triage]
    [harness.models.profile :as profile]
    [harness.money.balance :as balance]
@@ -551,8 +553,24 @@
                {:status :not-started :stop/kind :spec-review-limit :owner :person :reviews (:reviews (ex-data e))})
            (throw e)))))
 
+(declare main*)
+
 (defn -main
-  "`bb run-loop`'s entry point: `run` is the loop, everything else is a step."
+  "`bb run-loop`'s entry point: `run` is the loop, everything else is a step.
+
+  ONE COMMAND AT A TIME ON A RUN, whichever: each holds `run-lock` for as long as it
+  runs, and a second is refused before it reads the state (`harness.loop.run-lock`)."
+  [& [cmd run-dir :as args]]
+  (if (and cmd run-dir (fs/directory? run-dir))
+    (try
+      (run-lock/with-lock run-dir cmd #(apply main* args))
+      (catch clojure.lang.ExceptionInfo e
+        (if (= :locked (:run-loop/error (ex-data e)))
+          (do (println "run-loop:" (ex-message e)) (System/exit 1))
+          (throw e))))
+    (apply main* args)))
+
+(defn- main*
   [& [cmd run-dir :as args]]
   (if-not (= "run" cmd)
     (apply driver/-main args)

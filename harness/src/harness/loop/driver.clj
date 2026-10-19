@@ -97,6 +97,7 @@
    [harness.loop.log :as log]
    [harness.loop.provision :as prov]
    [harness.models.profile :as profile]
+   [harness.models.provenance :as provenance]
    [harness.models.runner :as runner]
    [harness.money.balance :as balance]
    [harness.money.report :as report]
@@ -731,17 +732,22 @@
 
   BOTH, because `state.edn` is rewritten on every command and the log is only
   ever appended to. `record!` refuses when they disagree, which is the same
-  treatment this repository gives every other pair of generated artifacts."
-  [ctx m]
+  treatment this repository gives every other pair of generated artifacts.
+
+  `log-only` is merged onto the log's line and not the state's event: what the log
+  needs to rebuild the state from (a dispatch's report step), which the state
+  already holds elsewhere."
+  ([ctx m] (event! ctx m nil))
+  ([ctx m log-only]
   ;; `:at` IS AN ABSOLUTE CLOCK READING, kept in the state as well as the log line,
   ;; so the record can derive the run's total and waiting time from timestamps.
   ;; `:event/at-ms` is an offset from a counter that accumulates across
   ;; invocations, and a wall time computed from it once came out below the sum
   ;; of the steps; the report trusts `:at` where it is present.
-  (let [e (assoc m :event/at-ms (- (now) (:started-ms @(:state ctx))) :at (java.util.Date.))]
-    (swap! (:state ctx) update :events conj e)
-    (log/append! (log-file ctx) (dissoc e :at)))
-  (persist! ctx))
+   (let [e (assoc m :event/at-ms (- (now) (:started-ms @(:state ctx))) :at (java.util.Date.))]
+     (swap! (:state ctx) update :events conj e)
+     (log/append! (log-file ctx) (merge (dissoc e :at) log-only)))
+   (persist! ctx)))
 
 (defn spec-of
   "The effective spec, read fresh each command: an Architect's amendment is
@@ -811,8 +817,11 @@
         m (:runner/meta r)]
     (when-let [t (:transcript m)]
       (spit (run-file ctx (str (name step-name) ".transcript.edn")) (with-out-str (pp/pprint t))))
-    (step! ctx (report/dispatch-step step-name r ms))
-    (event! ctx (dispatch-event step-name role pkt r))
+    ;; THE STEP IN THE LOG TOO, so the log alone can rebuild a state that lost it
+    ;; (`rebuild-from-log`): the state is rewritten whole by every command.
+    (let [step (report/dispatch-step step-name r ms)]
+      (step! ctx step)
+      (event! ctx (dispatch-event step-name role pkt r) {:step step}))
     (println (format "  %-12s %ss  %s  iters=%s capped?=%s files=%s notes=%d cost=%s%s"
                      (name step-name) (quot ms 1000) (:model m) (:iterations m) (:capped? m)
                      (pr-str (:files r)) (count (:notes r)) (:cost r)
@@ -1476,6 +1485,127 @@
   (fs/create-dirs (fs/parent to))
   (fs/copy from to {:replace-existing true}))
 
+(defn- event-key
+  "What makes a state event and a log line the same event: its kind, and the step it names
+  where it names one - two dispatches are told apart by their step."
+  [e]
+  [(:event/kind e) (:event/step e)])
+
+(defn missing-from-state
+  "The log's entries the state's events lack, in order: `[]` when they agree, nil when
+  the state has events the log does not - then no rebuild is offered, since the log is
+  the one that is only appended to."
+  [state-events logged]
+  (loop [s (seq state-events) l (seq logged) missing []]
+    (cond
+      (nil? l) (when (nil? s) missing)
+      (and s (= (event-key (first s)) (event-key (first l)))) (recur (next s) (next l) missing)
+      :else (recur s (next l) (conj missing (first l))))))
+
+(defn step-from-log
+  "The report step of a logged dispatch: the one the log carries, or - a log written
+  before it carried one - built by `report/dispatch-step` from the event, priced from
+  its usage at its list prices where it has both (`provenance/list-price`), otherwise
+  unpriced. Such a log has neither the step's time nor its token total: both nil."
+  [e]
+  (or (:step e)
+      (let [cost (when (= :list-price (:cost-source e))
+                   (provenance/list-price (:usage e) (get-in e [:pricing :per-mtok])))]
+        (report/dispatch-step (:event/step e)
+                              {:status (:status e)
+                               :cost cost
+                               :runner/meta (cond-> (select-keys e [:model :provider :service-tier :iterations])
+                                              cost (assoc :cost-source :list-price)
+                                              (:error e) (assoc :error (:error e)))}
+                              nil))))
+
+(defn- insert-step
+  "`steps` with `step` before the step named `before`, or at the end."
+  [steps before step]
+  (let [i (when before (some (fn [[i s]] (when (= before (:step/name s)) i)) (map-indexed vector steps)))]
+    (if i
+      (vec (concat (subvec steps 0 i) [step] (subvec steps i)))
+      (conj steps step))))
+
+(defn rebuild-from-log
+  "The state with what the log has and it lacks: `:events` the log's (less what only the
+  log carries), a dispatch step for every logged dispatch no step names, placed before the
+  step of the next logged dispatch that has one (the gates the loop ran before it stay
+  before it), else at the end, and `:attempts` raised to each role's
+  highest logged triage attempt. Returns `{:state :added :steps}`; nil when the state has
+  events the log does not.
+
+  WHY THE LOG. A second command on a running run wrote its events to both and its state
+  was then written over; the log is the copy that is only ever appended to. Nothing
+  else in the state is rebuilt: the files are on disk, the gates are run again."
+  [state logged]
+  (when-let [missing (missing-from-state (:events state) logged)]
+    (let [named (set (map :step/name (:steps state)))
+          dispatches (filter #(= :dispatch (:event/kind %)) logged)
+          ;; walked from the end: each missing step goes before the next one that has a step
+          [steps added] (reduce (fn [[steps added next-named] e]
+                                  (if (named (:event/step e))
+                                    [steps added (:event/step e)]
+                                    (let [s (step-from-log e)]
+                                      [(insert-step steps next-named s) (conj added s) (:event/step e)])))
+                                [(vec (:steps state)) [] nil]
+                                (reverse dispatches))
+          added (vec (reverse added))
+          attempts (reduce (fn [m {:keys [role attempt]}] (update m role (fnil max 1) attempt))
+                           (or (:attempts state) {})
+                           (filter #(and (= :triage (:event/kind %)) (:role %) (:attempt %)) logged))]
+      {:state (assoc state :events (mapv #(dissoc % :step) logged) :steps steps :attempts attempts)
+       :added missing
+       :steps added})))
+
+(defn- event-label [e]
+  (str (name (:event/kind e)) (when-let [s (:event/step e)] (str " " (name s)))))
+
+(defn- reconcile!
+  "Hold `state.edn` to `events.log` before a record is written. They agree, or with
+  `rebuild?` the state is rebuilt from the log (the old one kept as
+  `state.before-rebuild.edn`), or the record is refused with what the log has that the
+  state lacks."
+  [ctx rebuild?]
+  (let [state @(:state ctx)
+        logged (log/read-log (log-file ctx))]
+    (when-not (= (mapv :event/kind (:events state)) (mapv :event/kind logged))
+      ;; THE DRIFT GATE, APPLIED TO THE RUN ITSELF. `state.edn` is rewritten on every
+      ;; command and `events.log` is only appended to, so they disagree only if one of
+      ;; them lost something. Writing a record from whichever was read first is how a
+      ;; run's history becomes unverifiable, which is the one thing this repository is
+      ;; most against.
+      (let [missing (missing-from-state (:events state) logged)
+            head (str "state.edn and events.log disagree — " (count (:events state)) " events in the state, "
+                      (count logged) " in the log.")]
+        (cond
+          (nil? missing)
+          (throw (ex-info (str head " The state has events the log does not, so the log cannot rebuild it;"
+                               " read both before trusting either.")
+                          {:run-loop/error :log-drift :state-events (count (:events state)) :logged-events (count logged)}))
+
+          (not rebuild?)
+          (throw (ex-info (str head " The state lacks: " (str/join ", " (map event-label missing))
+                               ". The log is append-only: `record " (:run-dir ctx) " --rebuild-from-log` rebuilds"
+                               " the state from it, keeping the old one beside it.")
+                          {:run-loop/error :log-drift :state-events (count (:events state)) :logged-events (count logged)
+                           :missing (mapv event-label missing)}))
+
+          :else
+          (let [{:keys [state steps]} (rebuild-from-log state logged)]
+            (when (fs/exists? (state-file ctx))
+              (fs/copy (state-file ctx) (run-file ctx "state.before-rebuild.edn") {:replace-existing true}))
+            (reset! (:state ctx) state)
+            (persist! ctx)
+            (println (str "  rebuilt from events.log: " (str/join ", " (map event-label missing))
+                          "; the old state kept as state.before-rebuild.edn"))
+            (doseq [s steps]
+              (println (str "  step " (name (:step/name s)) " restored, "
+                            (if-let [c (:step/cost s)]
+                              (format "$%.4f%s" (double c) (if (= :list-price (:step/cost-source s)) " at list price" ""))
+                              "unpriced - the log has no cost for it")
+                            (when-not (:step/ms s) ", its time not in the log"))))))))))
+
 (defn record!
   "Copy the run's files into `final/` while the worktrees exist, then write
   `run.edn` with those files in it. Read back from `final/`, not the worktrees,
@@ -1487,89 +1617,79 @@
   the run had passed, and five committed records held a file their format gate
   had never seen. So `final/<path>` is the gate worktree's copy
   whenever that copy is current, and `final/as-written/<path>` keeps the role's
-  own bytes for each file gate 0 changed."
-  [ctx]
-  (let [spec (spec-of ctx)
-        state @(:state ctx)
-        logged (mapv :event/kind (log/read-log (log-file ctx)))
-        _ (when-not (= (mapv :event/kind (:events state)) logged)
-            ;; THE DRIFT GATE, APPLIED TO THE RUN ITSELF. `state.edn` is
-            ;; rewritten on every command and `events.log` is only appended to,
-            ;; so they disagree only if one of them lost something. Writing a
-            ;; record from whichever was read first is how a run's history
-            ;; becomes unverifiable, which is the one thing this repository is
-            ;; most against.
-            (throw (ex-info (str "state.edn and events.log disagree — "
-                                 (count (:events state)) " events in the state, "
-                                 (count logged) " in the log. The log is append-only;"
-                                 " read it before trusting the state.")
-                            {:run-loop/error :log-drift
-                             :state-events (count (:events state))
-                             :logged-events (count logged)})))
-        final-dir (run-file ctx "final")
-        gate-wt (some-> (get (sessions ctx) :gate) :worktree/path)
-        gated? (boolean (and gate-wt (fs/exists? gate-wt) (gated-current? (:events state))))]
-    (fs/create-dirs final-dir)
-    (doseq [[role paths] [[:coder (:files/impl spec)] [:tester (:files/test spec)]]
-            path paths
-            :let [existing (fn [p] (when (and p (fs/exists? p)) p))
-                  written (existing (some-> (get (sessions ctx) role) :worktree/path (fs/path path)))
-                  gated (when gated? (existing (fs/path gate-wt path)))
-                  as-written (fs/path final-dir "as-written" path)]
-            :when (or gated written)]
-      (copy-into! (or gated written) (fs/path final-dir path))
-      (if (and gated written (not= (slurp (str gated)) (slurp (str written))))
-        (copy-into! written as-written)
-        (fs/delete-if-exists as-written)))
-    (balance-event! ctx :record)
-    (let [state @(:state ctx)
-          cfg (:config state)
-          out (run-record (assoc state :spec spec
-                                 :final-files (final-files spec final-dir)
-                                 :files-as-written (files-as-written spec final-dir)
+  own bytes for each file gate 0 changed.
+
+  `:rebuild?` (`--rebuild-from-log`) rebuilds a state that lost events from the log
+  first (`reconcile!`)."
+  ([ctx] (record! ctx nil))
+  ([ctx {:keys [rebuild?]}]
+   (reconcile! ctx rebuild?)
+   (let [spec (spec-of ctx)
+         state @(:state ctx)
+         final-dir (run-file ctx "final")
+         gate-wt (some-> (get (sessions ctx) :gate) :worktree/path)
+         gated? (boolean (and gate-wt (fs/exists? gate-wt) (gated-current? (:events state))))]
+     (fs/create-dirs final-dir)
+     (doseq [[role paths] [[:coder (:files/impl spec)] [:tester (:files/test spec)]]
+             path paths
+             :let [existing (fn [p] (when (and p (fs/exists? p)) p))
+                   written (existing (some-> (get (sessions ctx) role) :worktree/path (fs/path path)))
+                   gated (when gated? (existing (fs/path gate-wt path)))
+                   as-written (fs/path final-dir "as-written" path)]
+             :when (or gated written)]
+       (copy-into! (or gated written) (fs/path final-dir path))
+       (if (and gated written (not= (slurp (str gated)) (slurp (str written))))
+         (copy-into! written as-written)
+         (fs/delete-if-exists as-written)))
+     (balance-event! ctx :record)
+     (let [state @(:state ctx)
+           cfg (:config state)
+           out (run-record (assoc state :spec spec
+                                  :final-files (final-files spec final-dir)
+                                  :files-as-written (files-as-written spec final-dir)
                                  ;; THREE HASHES, READ NOW: the record is what a document
                                  ;; cites, and "which commit was this against" was answered
                                  ;; by memory on every build before this
-                                 :commits {:kit (head-commit (:kit/root cfg))
-                                           :app (head-commit (:repo/root cfg))
-                                           :plan (head-commit (:plan/root cfg))}))
+                                  :commits {:kit (head-commit (:kit/root cfg))
+                                            :app (head-commit (:repo/root cfg))
+                                            :plan (head-commit (:plan/root cfg))}))
           ;; THE LATE COSTS, FETCHED NOW. Every dispatch of the first real project's runs
           ;; was recorded at cost nil - the generation records had lagged past the
           ;; dispatch's wait - and `bb reprice` by hand filled them minutes later. At
           ;; `record` those minutes have passed: one request per id, no waiting, and a
           ;; step whose record is still not there stays unpriced for the command.
-          once {:attempts 1 :interval-ms 0 :timeout-ms 5000}
-          out (if (empty? (reprice/unpriced out))
-                out
-                (let [{:keys [record lines changed]} (reprice/reprice out {:fetch-opts once})]
-                  (when (pos? changed)
-                    (println (str "  priced at record (" changed " step" (when (not= 1 changed) "s") "):"))
-                    (doseq [l lines] (println (str "  " l))))
-                  record))
+           once {:attempts 1 :interval-ms 0 :timeout-ms 5000}
+           out (if (empty? (reprice/unpriced out))
+                 out
+                 (let [{:keys [record lines changed]} (reprice/reprice out {:fetch-opts once})]
+                   (when (pos? changed)
+                     (println (str "  priced at record (" changed " step" (when (not= 1 changed) "s") "):"))
+                     (doseq [l lines] (println (str "  " l))))
+                   record))
           ;; THE DESK STEP'S COST TOO: the spec review's event carries its ids since the
           ;; readings kept them, and its cost lagged the same way.
-          out (update out :run/events
-                      (fn [events]
-                        (mapv (fn [e]
-                                (if (and (= :spec-review (:event/kind e))
-                                         (or (nil? (:cost e)) (some (comp nil? :cost) (:reviews e))))
-                                  (let [{:keys [record changed]} (reprice/reprice-review e {:fetch-opts once})]
-                                    (when (pos? changed) (println "  spec review priced at record"))
-                                    record)
-                                  e))
-                              events)))
+           out (update out :run/events
+                       (fn [events]
+                         (mapv (fn [e]
+                                 (if (and (= :spec-review (:event/kind e))
+                                          (or (nil? (:cost e)) (some (comp nil? :cost) (:reviews e))))
+                                   (let [{:keys [record changed]} (reprice/reprice-review e {:fetch-opts once})]
+                                     (when (pos? changed) (println "  spec review priced at record"))
+                                     record)
+                                   e))
+                               events)))
           ;; THE COPY IS THE RECORD'S HOME. Two builds copied run.edn into the build repository by
           ;; hand, by the convention this now keeps; the run directory is scratch.
-          kept (when-let [dir (:records/dir cfg)]
-                 (str (fs/path dir (str (:run/id out) ".edn"))))]
-      (assert (shapes/valid-run? out) (pr-str (shapes/explain-run out)))
-      (spit (run-file ctx "run.edn") (pr-str out))
-      (when kept
-        (fs/create-dirs (fs/parent kept))
-        (spit kept (pr-str out)))
-      (println "wrote run.edn —" (name (:run/status out)) "— wall"
-               (quot (:run/wall-ms out) 1000) "s"
-               (if kept (str "— copied to " kept) "")))))
+           kept (when-let [dir (:records/dir cfg)]
+                  (str (fs/path dir (str (:run/id out) ".edn"))))]
+       (assert (shapes/valid-run? out) (pr-str (shapes/explain-run out)))
+       (spit (run-file ctx "run.edn") (pr-str out))
+       (when kept
+         (fs/create-dirs (fs/parent kept))
+         (spit kept (pr-str out)))
+       (println "wrote run.edn —" (name (:run/status out)) "— wall"
+                (quot (:run/wall-ms out) 1000) "s"
+                (if kept (str "— copied to " kept) ""))))))
 
 (defn- delete-branch!
   "Delete a task branch, if it exists. Called for a run that dispatched nothing,
@@ -1797,23 +1917,19 @@
 (defn- upgrade-record!
   "A template upgrade's `run.edn`: the state as it stands, with the merge in it - no task
   record, since no task ran; `events.log` and the state are still held to each other."
-  [ctx]
+  [ctx rebuild?]
+  (reconcile! ctx rebuild?)
   (let [state @(:state ctx)
-        logged (mapv :event/kind (log/read-log (log-file ctx)))]
-    (when-not (= (mapv :event/kind (:events state)) logged)
-      (throw (ex-info (str "state.edn and events.log disagree — " (count (:events state)) " events in the state, "
-                           (count logged) " in the log. The log is append-only; read it before trusting the state.")
-                      {:run-loop/error :log-drift :state-events (count (:events state)) :logged-events (count logged)})))
-    (let [out {:run/kind :template-upgrade
-               :run/id (:run/id (:config state))
-               :run/status (run-status state)
-               :run/started-at (java.util.Date. (:started-ms state))
-               :template (:template state)
-               :base (:base state)
-               :run/steps (:steps state)
-               :run/events (:events state)}]
-      (spit (run-file ctx "run.edn") (pr-str out))
-      (println "wrote run.edn —" (name (:run/status out)) "— the template upgrade's record"))))
+        out {:run/kind :template-upgrade
+             :run/id (:run/id (:config state))
+             :run/status (run-status state)
+             :run/started-at (java.util.Date. (:started-ms state))
+             :template (:template state)
+             :base (:base state)
+             :run/steps (:steps state)
+             :run/events (:events state)}]
+    (spit (run-file ctx "run.edn") (pr-str out))
+    (println "wrote run.edn —" (name (:run/status out)) "— the template upgrade's record")))
 
 (defn- upgrade-teardown!
   "A template upgrade's teardown: its one worktree removed, and its branch once the run is
@@ -1894,7 +2010,7 @@
                    :decision decision})
       (println (str "  merged. " decision))
       (if (template-upgrade? state)
-        (do (upgrade-record! ctx) (upgrade-teardown! ctx))
+        (do (upgrade-record! ctx false) (upgrade-teardown! ctx))
         (do (record! ctx) (teardown! ctx))))))
 
 ;; ---------------------------------------------------------------------------
@@ -1902,7 +2018,9 @@
 (def usage
   "usage: bb run-loop spec-review <run-dir>                    the contract, read cold by the code reviewer's model — before start
        bb run-loop run <run-dir>                            the loop, to its next stop
-       bb run-loop <start|check|record> <run-dir>
+       bb run-loop <start|check> <run-dir>
+       bb run-loop record <run-dir> [--rebuild-from-log]       the record; a state that lost events rebuilt from the log first
+       one command at a time on a run: a second is refused while the first holds run-loop.lock
        bb run-loop teardown <run-dir> [--keep-branches|--discard]  the worktrees, and a recorded run's branches; record first
        bb run-loop continue <run-dir> [<decision.edn>]
        bb run-loop merge <run-dir> <decision.edn>              {:decision \"why this merges\"}
@@ -1960,7 +2078,11 @@
         "amend" (do (need-state) (apply amend! ctx args))
         "mutation" (do (need-state) (apply mutation! ctx args))
         "continue" (do (need-state) (apply continue! ctx args))
-        "record" (do (need-state) (if (template-upgrade? @(:state ctx)) (upgrade-record! ctx) (record! ctx)))
+        "record" (do (need-state)
+                     (let [rebuild? (boolean (some #{"--rebuild-from-log"} args))]
+                       (if (template-upgrade? @(:state ctx))
+                         (upgrade-record! ctx rebuild?)
+                         (record! ctx {:rebuild? rebuild?}))))
         "merge" (do (need-state) (apply merge! ctx args))
         "teardown" (do (need-state) (if (template-upgrade? @(:state ctx))
                                       (upgrade-teardown! ctx)
