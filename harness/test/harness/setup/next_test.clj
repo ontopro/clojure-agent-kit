@@ -210,6 +210,34 @@
       (is (= 12 (:step (next/next-action (assoc-in signed [:stage :runs] {"t-01" :running}))))))
     (is (= [] (next/preconditions "# A blueprint with no §0\n")))))
 
+(deftest a-blocks-cell-may-name-a-packet-by-its-short-id
+  ;; the template defines a packet's ID as t-NN; `t-01` against `t-01-crop-map` read as blocking
+  ;; nothing, and `bb next` offered the packet's run with its row open
+  (is (next/blocks? "t-01" "t-01-crop-map"))
+  (is (next/blocks? "t-02, t-01" "t-01-crop-map"))
+  (is (next/blocks? "t-01-crop-map" "t-01-crop-map"))
+  (is (not (next/blocks? "t-010" "t-01-crop-map")) "still a word")
+  (is (not (next/blocks? "t-01" "t-011-other")))
+  (let [rows [{:id "HP-1" :prep "a key" :blocks "t-01" :status ""}]
+        s (with-stage {:blueprint "stage-1/stage-1-blueprint.md" :reviewed? true :packets ["t-01-crop-map"]
+                       :gates {:stage/id "1" :stage/approved {:date "d" :cap 20 :by "Ada"} :blueprint/signed {:date "d" :by "Ada"}}
+                       :preconditions rows})]
+    (is (= "HP-1 is open in docs/stages/stage-1/stage-1-blueprint.md §0 and blocks t-01-crop-map" (:because (next/next-action s))))))
+
+(deftest a-prep-row-that-blocks-no-packet-is-said
+  (let [rows [{:id "HP-1" :prep "a key" :blocks "t-01" :status "done"}
+              {:id "HP-2" :prep "the data" :blocks "t-9" :status ""}
+              {:id "HP-3" :prep "the balance" :blocks "every task" :status "per run"}
+              {:id "HP-4" :prep "the walk" :blocks "the stage's end" :status "open"}]
+        s (with-stage {:blueprint "stage-1/stage-1-blueprint.md" :reviewed? true :packets ["t-01-crop-map"]
+                       :gates {:stage/id "1" :stage/approved {:date "d" :cap 20 :by "Ada"} :blueprint/signed {:date "d" :by "Ada"}}
+                       :preconditions rows})]
+    (is (= ["HP-2"] (mapv :id (next/blocking-nothing rows ["t-01-crop-map"]))) "done rows, every task and a row that names no packet at all aside")
+    (is (str/includes? (str (:also (next/next-action s)))
+                       "§0 HP-2's Blocks (t-9) names no packet of docs/stages/stage-1/stage-1-blueprint.md - it holds nothing back"))
+    (testing "nothing said when every open row names a packet"
+      (is (nil? (:also (next/next-action (assoc-in s [:stage :preconditions 1 :blocks] "t-01"))))))))
+
 (deftest a-stage-plans-kind-is-its-kind-line
   (is (= "pre-release" (next/stage-kind "# Stage 5\n\n**Status:** PLANNED\n**Kind:** pre-release  \n**Version:** 0.1\n")))
   (is (= "walking skeleton" (next/stage-kind "**Kind:** walking skeleton\n")))

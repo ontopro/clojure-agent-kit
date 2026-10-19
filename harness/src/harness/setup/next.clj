@@ -110,10 +110,36 @@
           :else :open)))
 
 (defn blocks?
-  "Does a §0 row's Blocks name the packet `task-id` - the id as a word, or `every task`?"
+  "Does a §0 row's Blocks name the packet `task-id` - the id as a word, its `t-NN` as a word,
+  or `every task`?
+
+  THE SHORT ID TOO. The blueprint template defines a packet's ID as t-NN, NN unique, and its
+  §0 example names one that way; a cell of `t-01` against the packet `t-01-crop-map` was read
+  as blocking nothing, and `bb next` offered the packet's run with its row still open."
   [blocks task-id]
-  (or (boolean (re-find #"(?i)\bevery task\b" blocks))
-      (boolean (re-find (re-pattern (str "(?<![\\w-])" (java.util.regex.Pattern/quote task-id) "(?![\\w-])")) blocks))))
+  (let [word? (fn [id] (boolean (re-find (re-pattern (str "(?<![\\w-])" (java.util.regex.Pattern/quote id) "(?![\\w-])")) blocks)))
+        short-id (second (re-find #"^(t-\d+)-" (str task-id)))]
+    (or (boolean (re-find #"(?i)\bevery task\b" blocks))
+        (word? task-id)
+        (boolean (and short-id (word? short-id))))))
+
+(defn blocking-nothing
+  "The §0 rows not yet done whose Blocks names a packet - a `t-NN` - that is none of
+  `packets`: a mistyped id holds nothing back, which is said rather than read as blocking
+  nothing. A Blocks naming no packet at all (`the stage's end`) is a row of another kind, and
+  is left alone."
+  [preconditions packets]
+  (when (seq packets)
+    (filter (fn [{:keys [blocks status]}]
+              (and (not= :done (precondition-state status))
+                   (re-find #"(?<![\w-])t-\d+" blocks)
+                   (not-any? #(blocks? blocks %) packets)))
+            preconditions)))
+
+(defn- blocking-nothing-line [rows blueprint]
+  (str/join "; " (for [{:keys [id blocks]} rows]
+                   (str "§0 " id "'s Blocks (" (str/trim blocks) ") names no packet of docs/stages/" blueprint
+                        " - it holds nothing back; name a packet by its id or its t-NN"))))
 
 (defn- prep-line [{:keys [id prep]}]
   (let [p (str/replace prep #"\s+" " ")]
@@ -280,9 +306,12 @@
     (action 5 person (str (pull 0) " and set :stage/approved with the cap")
             "the plan passes its check and docs/stages/ has no stage yet")
 
-    :else (let [left (when upgrade (upgrade/upgrade-lines upgrade))]
+    :else (let [left (when upgrade (upgrade/upgrade-lines upgrade))
+                nothing (seq (blocking-nothing (:preconditions stage) (:packets stage)))]
             (cond-> (stage-action stage)
               (seq plan-problems) (assoc :also (plan-beside stage plan-problems))
+              ;; A §0 ROW THAT HOLDS NOTHING BACK: a Blocks naming no packet, said beside the step
+              nothing (update :also #(str/join "\n           " (remove nil? [% (blocking-nothing-line nothing (:blueprint stage))])))
               ;; WHAT THE LAST UPGRADE LEFT - the branch to merge, hunks and .new files to take by hand -
               ;; said beside the step, the Architect's, until it is resolved
               (seq left) (update :also #(str/join "\n           " (remove nil? (cons % left))))))))

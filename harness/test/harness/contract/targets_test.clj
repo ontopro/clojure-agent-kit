@@ -185,6 +185,21 @@
       (is (= [2] (mapv :target (:earlier r))))
       (is (= [1] (mapv :target (:uncovered r)))))))
 
+(deftest a-target-named-only-by-an-earlier-marker-says-so
+  ;; "named by no test" sent the Architect and the triage to the comment's formatting first
+  (testing "over a test"
+    (let [dir (based! {"test/t.clj" thirteen} {})
+          r (targets/coverage dir {:files/test ["test/t.clj"] :property-targets (subvec eight 0 1)})]
+      (is (re-find #"property target 1 of 1 is named only by a marker the base file already had, over \(deftest old-1 \[\] nil\) \(an earlier packet's\): mark it over a test this packet adds, or mark that test anew"
+                   (:detail (first (:uncovered r)))))))
+  (testing "as a declaration"
+    (let [dir (based! {"test/t.clj" ";; target 1 — not a test: gate 4 checks it\n"} {})
+          r (targets/coverage dir {:files/test ["test/t.clj"] :property-targets (subvec eight 0 1)})]
+      (is (re-find #"declaring it no test's job \(gate 4 checks it\)" (:detail (first (:uncovered r)))))))
+  (testing "no marker at all: as before"
+    (let [r (cover "(deftest one [] nil)\n" 1)]
+      (is (re-find #"is named by no test and declared by no" (:detail (first (:uncovered r))))))))
+
 (deftest a-wrong-number-this-tester-wrote-still-fails
   (let [dir (based! {"test/t.clj" thirteen}
                     {"test/t.clj" (str thirteen ";; target 9\n(deftest new-nine [] nil)\n"

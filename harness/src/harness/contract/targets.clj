@@ -209,10 +209,12 @@
         covered (into [] (mapcat :covered) scans)
         exempt (into [] (mapcat :exempt) scans)
         named (into #{} (map :target) (concat covered exempt))
+        earlier (into [] (mapcat :earlier) scans)
+        earlier-of (group-by :target earlier)
         in-range? (fn [n] (<= 1 n total))]
     {:covered covered
      :exempt exempt
-     :earlier (into [] (mapcat :earlier) scans)
+     :earlier earlier
      :total total
      :uncovered
      (cond-> []
@@ -228,8 +230,16 @@
        (into (comp (remove named) (map (fn [n]
                                          {:target n :violation :uncovered-target
                                           :detail (str "property target " n " of " total
-                                                       " is named by no test and declared by no"
-                                                       " `;; target " n " — not a test: …`: "
+                                                       (if-let [{:keys [form reason]} (first (earlier-of n))]
+                                                         ;; THE EARLIER MARKER SAID, or the Architect and the
+                                                         ;; triage read "named by no test" and look at the
+                                                         ;; comment's formatting first
+                                                         (str " is named only by a marker the base file already had, "
+                                                              (if form (str "over " form) (str "declaring it no test's job (" reason ")"))
+                                                              " (an earlier packet's): mark it over a test this packet adds,"
+                                                              " or mark that test anew: ")
+                                                         (str " is named by no test and declared by no"
+                                                              " `;; target " n " — not a test: …`: "))
                                                        (pr-str (nth property-targets (dec n))))})))
              (range 1 (inc total)))
 

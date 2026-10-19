@@ -63,6 +63,22 @@ tested" stays information for an adopter, never a block.
 ---
 ## 2026-10-19 (plan 6.10)
 
+### Four small ones from the first project's stage 3 (plan 6.10, item 2, register rows 148-151)
+
+`bb self-check` in a workspace's clone ended with `next bb init`, a fresh clone's advice; it now
+names the workspace's next step when a `workspace.edn` sits above the clone. kit-where-am-i offered
+the fuller account first and listed the roadmap page last of eight lines to open, never saying it
+was HTML, and the person asked whether the skill made a page at all: one offer now follows the
+block, three choices in the person's words, the roadmap page the third. A §0 row whose Blocks named
+a packet by its short id - `t-01`, the ID the blueprint template defines - was read as blocking
+nothing against `t-01-crop-map`, and `bb next` offered the packet's run with the row open;
+`blocks?` matches the `t-NN` too, and a row naming a `t-NN` that is no packet is said beside the
+step. The first design said every row naming no packet, and the project's next blueprint showed
+why not: three rows block "the stage's end", a row of another kind, so only a `t-NN` that matches
+nothing is said. And the targets gate, which since row 145 counts an earlier packet's marker for
+nothing, now says the marker is there - the test it stands over - instead of "named by no test",
+which had sent the Architect and the triage to the comment's formatting.
+
 ### One run-loop command at a time on a run (plan 6.10, item 1, register row 147)
 
 The first project's stage 3 lost a Tester dispatch from its record. A `retry` was typed while a

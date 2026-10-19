@@ -59,6 +59,17 @@
                 (update :workspace/rule-mirrors #(mapv abs %))))
           (recur (fs/parent dir)))))))
 
+(defn self-check-next
+  "The line `bb self-check` ends with, in the clone at `clone-dir`: `bb init` for a fresh
+  clone; for a clone that is already a workspace's KIT, the workspace's own next step - its
+  `bb init` advice had to be ignored by hand at every upgrade."
+  [clone-dir]
+  (if-let [ws (find-workspace clone-dir)]
+    (let [up (str (fs/relativize (fs/normalize (fs/absolutize clone-dir)) (:workspace/dir ws)))]
+      (str "    next       cd " (if (str/blank? up) "." up) " && bb next - this clone is the workspace's KIT; "
+           "bb init is for a fresh clone"))
+    "    next       bb init - the workspace, named after this clone's folder - then cd .."))
+
 ;; ---------------------------------------------------------------------------
 ;; the workspace a COMMAND runs in: pointed at, or walked up to
 ;; ---------------------------------------------------------------------------

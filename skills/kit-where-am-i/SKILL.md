@@ -1,6 +1,6 @@
 ---
 name: kit-where-am-i
-description: Any time - where the project stands. The block first; then, offered, the fuller account - the whole road, what each stage has cost and taken, what waits on the person, what changed since they last looked, what is open - and the roadmap page, the road drawn; then a guided reading into whichever line the person picks. Use when the person asks "where are we", "where am I", "what is next", "what is open", "what does FR-8 mean", or opens a session cold.
+description: Any time - where the project stands. The block first; then one offer of three - a line of the block to read into, guided; the fuller account - the whole road, what each stage has cost and taken, what waits on the person, what changed since they last looked, what is open; or the roadmap page, the road drawn as an HTML page opened in the browser. Use when the person asks "where are we", "where am I", "what is next", "what is open", "what does FR-8 mean", or opens a session cold.
 ---
 
 # kit-where-am-i - where the project stands, then the details
@@ -37,10 +37,21 @@ Nothing. Outside a workspace the block says setup is next, as `bb next` does; sh
 ## Asks
 
 1. Run `bb next --where` from the workspace folder and show its block exactly as printed.
-2. Offer the fuller account: "The fuller account - the whole road, what it has cost, what waits on
-   you, what changed since you last looked - or a line of the block to read into?" On yes, run
-   `bb next --where --full` and show it exactly as printed; restate nothing, add no figure.
-3. Then one question - which line to open:
+2. Right after the block, one offer, in these words:
+
+   ```
+   Do you want:
+   1. one line of the block to read into (the stage goal, what's done, next, open, an ID, the stage map)
+   2. the fuller account (the whole road, what it has cost, what waits on you, what changed since you last looked)
+   3. roadmap page (HTML, opens in your browser)
+   ```
+
+   - **2**: run `bb next --where --full` and show it exactly as printed; restate nothing, add no
+     figure. Then the offer again, without it.
+   - **3**: run `bb roadmap-page`, say the path it printed, and offer to open it
+     (`open work/where/roadmap.html`).
+   - **1**: step 3.
+3. Which line to open:
    - **the stage's goal**: its plan's §1 read, and its exit-criteria section - the heading that
      starts `Exit criteria`, whose number differs by the stage's kind - each criterion with
      whether it is met yet, as the plan says;
@@ -55,9 +66,7 @@ Nothing. Outside a workspace the block says setup is next, as `bb next` does; sh
    - **a phase, a step or the project plan**: the heading the `read more` lines name - the phase
      map in the KIT's `method.md`, the step's row in its `workflow.md`, the overview's section that
      lists the plan's documents;
-   - **the stage map**: every row, with its kind and status;
-   - **the roadmap page**: run `bb roadmap-page`, say the path it printed, and offer to open it
-     (`open work/where/roadmap.html`).
+   - **the stage map**: every row, with its kind and status.
 4. Answer from the file named, pointing at the heading, every ID cited with the file and section
    that define it; then offer the next level down, or another line.
 

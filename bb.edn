@@ -97,6 +97,7 @@
   ;; Setup's one check: the doctor's loop verdict (a JVM included - what a project needs), and
   ;; only on a yes the health check, which takes minutes and starts JVMs. Exit: the first no.
   self-check {:doc "Is this KIT ready on this machine? `bb doctor`, then - when it says yes - `bb health` (flags passed on: --keep, --selfcheck-only); minutes, starts JVMs. Run from the clone, before `bb init`. Never --record: the health records are the KIT's own (`bb health --record` in harness/, by whoever certifies a machine for the KIT)"
+              :requires ([harness.setup.workspace :as workspace])
               :task (let [_ (when (some #{"--record"} *command-line-args*)
                               (println (str "self-check does not record: the health records are the KIT's own evidence, written by "
                                             "`bb health --record` in harness/ by whoever certifies a machine for the KIT, never by a "
@@ -109,7 +110,7 @@
                         (System/exit exit))
                       (let [{:keys [exit]} (apply shell {:dir "harness" :continue true} "bb" "health" *command-line-args*)]
                         (when (zero? exit)
-                          (println "    next       bb init - the workspace, named after this clone's folder - then cd .."))
+                          (println (workspace/self-check-next ".")))
                         (System/exit exit)))}
 
   doctor {:doc "Is this machine ready? The toolchain: tool, version, status, what it is for (--edn for a pins map); in a workspace, what a pulled KIT expects that the workspace lacks"

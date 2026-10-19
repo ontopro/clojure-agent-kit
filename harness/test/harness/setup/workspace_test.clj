@@ -57,3 +57,13 @@
         (let [found (workspace/current ["--workspace" elsewhere] elsewhere)]
           (is (= ws (:workspace/dir found)))
           (is (= :run (:workspace/from found))))))))
+
+(deftest self-check-names-the-workspaces-next-in-a-workspaces-clone
+  (let [{:keys [ws elsewhere]} (workspace!)
+        kit (str (fs/path ws "KIT"))]
+    (fs/create-dirs kit)
+    (testing "a workspace's KIT: its next step, never a second bb init"
+      (is (= "    next       cd .. && bb next - this clone is the workspace's KIT; bb init is for a fresh clone"
+             (workspace/self-check-next kit))))
+    (testing "a fresh clone: bb init"
+      (is (re-find #"next       bb init - the workspace" (workspace/self-check-next elsewhere))))))
