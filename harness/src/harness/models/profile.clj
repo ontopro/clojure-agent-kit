@@ -158,8 +158,10 @@
     (let [m (or (first (:eligible (panel-split profile))) (first (security-panel profile)))]
       (assoc-in profile [:roles :security-reviewer] (dissoc m :name)))))
 
-(defn- role-blocks
-  "Every role block the profile configures, `[label block]`: the eight roles and each panel member."
+(defn role-blocks
+  "Every role block the profile configures, `[label block]`: the eight roles and each panel member.
+  What reads every block - the key and endpoint checks, the balance - reads this, so a panel
+  member is never missed."
   [profile]
   (concat (dissoc (:roles profile) :security-reviewer)
           (for [m (security-panel profile)] [(str "security reviewer " (:name m)) (dissoc m :name)])))

@@ -63,6 +63,27 @@ tested" stays information for an adopter, never a block.
 ---
 ## 2026-10-19 (plan 6.10)
 
+### The security reviewer panel's run and its combined table (plan 6.10, item 4, register row 154)
+
+`bb security-panel <clone>` runs one, some or all of the panel's members, each reviewing its own copy
+of the merged application as `bb security-review` does, two at a time, each record written into the
+stage's security review folder under the member's name and carrying it (`:member`). With neither
+`--members` nor `--all` it reads with the next member in rotation, which it says before anything
+runs: the member after the one that read the latest stage, read from the stage folders' records - no
+file of its own to drift from them, and a skipped stage moves nothing. A member of the Coder's family
+is said and never run; naming one is refused with the reason. Then the combined table,
+`security-panel.edn` and `.md`, from every record in the folder: each reproduced finding keyed by the
+place it names - the files its `where` names and the functions after each file's colon - so two
+members' findings of one place are one row, saying who reproduced it and who ran and did not; the
+hypotheses apart; a member that refused or gave no answer counts for nothing. Agreement decides
+nothing - one member's failing test is a finding - and the key's limit is said in the table (one
+flaw named at two places is two rows). `bb security-route` takes the table as it takes one record:
+one triage call per row, its test read from the record that carried it. The stage report leaves the
+table out of the security review reading, as it does the routing file. Two things from Fable 5.1's
+reads ride with it: a review record says how its cost was got (`:cost-source`), a computed cost
+marked ~ in the table; and `bb balance` reads every role block a profile configures, a panel's
+members among them, where it read the eight roles only.
+
 ### The security reviewer panel, in the profile (plan 6.10, item 4, register row 154)
 
 The person's decision: in place of one security reviewer at every stage's end, a panel of them, run

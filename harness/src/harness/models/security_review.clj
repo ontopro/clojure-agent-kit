@@ -233,9 +233,18 @@
                (agent/call-record r role)))
       (finally (when-not sandbox ((:stop! sb)))))))
 
+(defn cost-source
+  "How a review's money was got: `:list-price` when any step's cost was computed from list prices
+  (a provider's own API, which reports usage and no cost), `:reported` when the steps' costs were
+  the endpoint's; nil when none has a cost. A report marks a computed cost with ~."
+  [steps]
+  (cond (some #(= :list-price (:cost-source %)) steps) :list-price
+        (some :cost steps) :reported))
+
 (defn write-record!
   "Write the review under `out`: `<id>.edn` (everything but the tests' text) and the tests it
-  wrote under `<id>-tests/`. Returns the record's path."
+  wrote under `<id>-tests/`, the record saying how its cost was got (`cost-source`). Returns the
+  record's path."
   [out id review]
   (fs/create-dirs out)
   (let [edn-file (str (fs/path out (str id ".edn")))
@@ -243,7 +252,8 @@
     (doseq [[rel text] (:tests review)]
       (fs/create-dirs (fs/parent (fs/path tests-dir rel)))
       (spit (str (fs/path tests-dir rel)) text))
-    (spit edn-file (with-out-str (pp/pprint (update review :tests #(vec (keys %))))))
+    (spit edn-file (with-out-str (pp/pprint (cond-> (update review :tests #(vec (keys %)))
+                                              (nil? (:cost-source review)) (assoc :cost-source (cost-source (:steps review)))))))
     edn-file))
 
 ;; ---------------------------------------------------------------------------

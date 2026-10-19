@@ -299,12 +299,13 @@
 
 (defn- folder-reading
   "`[label cost n]` over the record files directly in `dir`, each one reading -
-  a stage's security review writes one per review, its `-tests` folder beside
-  them, the routing file not one of them; nil when there is none."
+  a stage's security review writes one per review - one per member of a security reviewer
+  panel - its `-tests` folder beside them; the routing file and the panel's combined table
+  (`security-panel.edn`) not among them; nil when there is none."
   [label dir]
   (let [ms (when (fs/directory? dir)
              (->> (fs/glob dir "*.edn")
-                  (remove #(= routing-file (str (fs/file-name %))))
+                  (remove #(#{routing-file "security-panel.edn"} (str (fs/file-name %))))
                   sort
                   (keep read-edn)))]
     (when (seq ms)

@@ -202,6 +202,8 @@
     (spit (str (fs/path s1 "stage-1-security-review" "m-2.edn")) (pr-str {:cost 1.0 :model "m"}))
     (spit (str (fs/path s1 "stage-1-security-review" "m-3.edn")) (pr-str {:cost 0.25 :model "m"}))
     (spit (str (fs/path s1 "stage-1-security-review" "m-2-tests" "t.edn")) (pr-str {:cost 9.0}))
+    ;; a panel's combined table is no review either
+    (spit (str (fs/path s1 "stage-1-security-review" "security-panel.edn")) (pr-str {:rows [] :members [] :cost 7.0}))
     (spit (str (fs/path s1 "stage-1-security-review" "security-routing.edn"))
           (pr-str {:review "m-2.edn" :routed [{:verdict {:route :coder :cost 0.125}} {:verdict {:route :architect :cost 0.125}}]
                    :hypotheses []}))

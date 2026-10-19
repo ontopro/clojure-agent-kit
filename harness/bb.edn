@@ -62,6 +62,10 @@
                    :requires ([harness.models.security-review :as security-review])
                    :task (apply security-review/-main *command-line-args*)}
 
+  security-panel {:doc "bb security-panel <clone> [--members <name>,<name> | --all] [--stance tracer|diff] [--base <rev>] [--out <dir>] [--parallel N] [--rounds N] [--profile <profile.edn>]: a run of the security reviewer panel the profile names (:security-panel, or its one :security-reviewer) - one, some or all members, each reviewing its own copy of the merged application as bb security-review does, their records in --out (the stage's security review folder); with neither --members nor --all, the next member in rotation, read from the stage folders; a member of the Coder's family left out and said; then the combined table, security-panel.edn and .md: each reproduced finding, which members reproduced it, keyed by the files and functions it names. --table <dir> writes the table again from a folder's records; --history says which members read which stage. REAL MODEL CALLS for each member. Never in `bb gates`"
+                  :requires ([harness.models.security-panel :as security-panel])
+                  :task (apply security-panel/-main *command-line-args*)}
+
   security-score {:doc "bb security-score <review.edn> <fixture-dir>: score a security review against the fixture's answer key - each test the security reviewer wrote is run alone in the sandbox on the faulted branch, the careful one, and the variants with one fault reverted; a test that fails on the faulted branch only detects the fault whose revert makes it pass. Which planted faults were found, what is for you to mark, what was claimed and not reproduced. No model reads anything. Never in `bb gates`"
                   :requires ([harness.models.security-score :as security-score])
                   :task (apply security-score/-main *command-line-args*)}

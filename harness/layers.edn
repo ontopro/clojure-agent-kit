@@ -86,6 +86,8 @@
 
  ;; the roots - nothing requires them
  harness.loop.security-routing #{harness.loop.triage harness.models.profile harness.setup.workspace}
+ harness.models.security-panel #{harness.loop.security-routing harness.models.profile harness.models.security-review harness.setup.stages
+                                 harness.setup.workspace}
  harness.setup.init #{harness.contract.shapes harness.models.profile harness.rules harness.setup.app harness.setup.doctor
                       harness.setup.front-door harness.setup.init-args harness.setup.skills harness.setup.template harness.setup.workspace}
  harness.setup.upgrade #{harness.models.profile harness.rules harness.setup.doctor harness.setup.front-door harness.setup.skills harness.setup.template harness.setup.workspace}

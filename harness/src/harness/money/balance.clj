@@ -60,9 +60,9 @@
                                             (- (:total_credits c) (:total_usage c)))}))))))))
 
 (defn openrouter-role
-  "The first role in `profile` served by OpenRouter, or nil."
+  "The first role in `profile` served by OpenRouter - a security reviewer panel's members among them - or nil."
   [profile]
-  (->> (vals (:roles profile))
+  (->> (map second (profile/role-blocks profile))
        (filter #(some-> (:endpoint %) (str/includes? "openrouter")))
        first))
 
@@ -92,7 +92,7 @@
         ;; (`provenance/provider-of-endpoint`): none has a balance endpoint, so the run's own spend
         ;; is what can be said. Anthropic alone was named once, and a project's direct Gemini
         ;; role spent with nothing saying so.
-        direct (sort (distinct (keep #(provenance/provider-of-endpoint (:endpoint %)) (vals (:roles profile)))))]
+        direct (sort (distinct (keep #(provenance/provider-of-endpoint (:endpoint %)) (map second (profile/role-blocks profile)))))]
     (str "balance: OpenRouter "
          (cond (nil? or-role) "not in this profile"
                (:unavailable status) (str "unavailable (" (:unavailable status) ")")

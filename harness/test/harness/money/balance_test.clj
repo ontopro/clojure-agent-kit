@@ -28,6 +28,11 @@
                                    :reviewer {:endpoint "https://api.anthropic.com"}}}
                           [{:step/provider "Google AI API" :step/cost 0.4} {:step/provider "Anthropic API" :step/cost 0.1}])]
       (is (str/includes? l "direct spend this run: Anthropic API $0.10, Google AI API $0.40"))))
+  (testing "a security reviewer panel's member is a block like any role's"
+    (let [l (balance/line {:roles {:coder {:endpoint "https://api.anthropic.com"}}
+                           :security-panel [{:model "g" :endpoint "https://generativelanguage.googleapis.com/v1beta/openai"}]}
+                          [{:step/provider "Google AI API" :step/cost 0.4}])]
+      (is (str/includes? l "Google AI API $0.40"))))
   (testing "every role through OpenRouter: an Anthropic model's serving provider is not Anthropic API spend"
     ;; The line once summed every provider containing "Anthropic" and called it Anthropic
     ;; spend, on a project whose direct Anthropic spend was $0.00.

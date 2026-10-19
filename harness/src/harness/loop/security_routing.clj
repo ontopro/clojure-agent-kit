@@ -108,6 +108,9 @@
 (defn route!
   "Route every reproduced finding of the security review recorded at `review-file` (its tests in
   `<id>-tests/` beside it), reading the files it names from `clone`, the merged application.
+  `review-file` may be a security reviewer panel's combined table (`security-panel.edn`): then
+  one call per row, its test read from the member's record that carried the row, and each routed
+  entry carries the members that reproduced it (`:by`).
   `triage-fn` is `(fn [trigger])` -> a verdict, `architecture` the text of the architecture's
   security sections. Writes `security-routing.edn` and, when a finding was routed `coder`,
   `security-fixes.md` into `out`. Returns `{:routed [{:finding :verdict}] :hypotheses [finding]
@@ -115,18 +118,28 @@
   [{:keys [review-file clone architecture triage-fn out]}]
   (let [review-file (str (fs/normalize (fs/absolutize review-file)))
         review (edn/read-string (slurp review-file))
-        tests-dir (fs/path (fs/parent review-file) (str (fs/strip-ext (fs/file-name review-file)) "-tests"))
-        findings (:findings review)
-        routed (vec (for [f findings
-                          :when (= :reproduced (:kind f))
+        dir (fs/parent review-file)
+        tests-of (fn [record-name] (fs/path dir (str (fs/strip-ext record-name) "-tests")))
+        ;; ONE REVIEW'S RECORD, OR A PANEL'S TABLE: either way, what to route and where its test is
+        panel? (contains? review :rows)
+        items (if panel?
+                (for [{:keys [finding record by]} (:rows review)]
+                  {:finding finding :tests-dir (tests-of record) :by by})
+                (for [f (:findings review) :when (= :reproduced (:kind f))]
+                  {:finding f :tests-dir (tests-of (fs/file-name review-file))}))
+        routed (vec (for [{f :finding :keys [tests-dir by]} items
                           :let [files (vec (for [rel (named-files (:where f))]
                                              [rel (read-text (fs/path clone rel))]))
                                 v (triage-fn (trigger-for f (read-text (some->> (:test f) (fs/path tests-dir))) files architecture))]]
-                      {:finding f
-                       :verdict (assoc (select-keys v [:route :reason :guidance :impl :target :triage/fallback :refused? :prompt :answer])
-                                       :cost (get-in v [:result :cost])
-                                       :generation-ids (get-in v [:result :runner/meta :generation-ids]))}))
-        hypotheses (vec (remove #(= :reproduced (:kind %)) findings))
+                      (cond-> {:finding f
+                               :tests-dir (str tests-dir)
+                               :verdict (assoc (select-keys v [:route :reason :guidance :impl :target :triage/fallback :refused? :prompt :answer])
+                                               :cost (get-in v [:result :cost])
+                                               :generation-ids (get-in v [:result :runner/meta :generation-ids]))}
+                        by (assoc :by by))))
+        hypotheses (if panel?
+                     (mapv :finding (:hypotheses review))
+                     (vec (remove #(= :reproduced (:kind %)) (:findings review))))
         coders (filter #(= :coder (get-in % [:verdict :route])) routed)
         routing-file (str (fs/path out "security-routing.edn"))
         fixes-file (str (fs/path out "security-fixes.md"))]
@@ -139,7 +152,7 @@
             (str "# Fix packets drafted from the security review\n\n"
                  "Drafted by triage from `" (fs/file-name review-file) "`. Each is a packet for this stage's "
                  "Blueprint once the Architect has filled what is marked and signed it.\n\n"
-                 (str/join "\n" (map-indexed (fn [i {:keys [finding verdict]}]
+                 (str/join "\n" (map-indexed (fn [i {:keys [finding verdict tests-dir]}]
                                                (fix-draft (inc i) finding verdict (str (fs/path tests-dir (:test finding)))))
                                              coders)))))
     {:routed routed
@@ -152,7 +165,7 @@
 
 (def usage
   (str "bb security-route <review.edn> <clone> [--profile <profile.edn>] [--architecture <02-architecture.md>] [--out <dir>]\n"
-       "  <review.edn>  a record `bb security-review` wrote, its tests beside it\n"
+       "  <review.edn>  a record `bb security-review` wrote, its tests beside it, or a panel's security-panel.edn\n"
        "  <clone>       the merged application the review read\n"
        "One triage call per reproduced finding, to the profile's :orchestrator: it spends money.\n"
        "Defaults: the workspace's profile and docs/02-architecture.md; --out the review's folder."))
