@@ -181,6 +181,15 @@
         (is (= ["2026-10-14" "your last look, by Ada" [1] 0] ((juxt :from :why :approved :runs) s)))))
     (is (= [8 "the Architect's session"] ((juxt :step :owner) (:next d))) "the next step is next-action's: stage 1's blueprint")))
 
+(deftest a-money-total-is-rounded-once
+  ;; four stages of 0.2925 each are $1.17, where the sum of their rounded cells said $1.16
+  (let [rows [{:role :security-reviewer :model "m" :maker "OpenAI" :channel "OpenRouter" :cost 0.2925}]
+        stages (for [id [1 2 3 4]] (assoc (where/breakdown rows) :id id :money 0.29))
+        mb (where/money-by stages)]
+    (is (= 1.17 (get (:totals mb) "OpenAI")))
+    (is (= 1.17 (:total (first (:roles mb)))))
+    (is (= 1.17 (:all mb)))))
+
 (deftest the-fuller-account-says-the-map-in-seven-parts
   (let [ws (workspace-on-disk)
         d (where/where-data (workspace/find-workspace ws) {:at "2026-10-17T12:00:00Z" :plan-commit "abc1234"})

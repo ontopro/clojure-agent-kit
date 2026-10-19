@@ -85,6 +85,14 @@ security routing now records the model that routed each finding; an older routin
 recorded". Two ways of reading a security review folder became one, `security-review-records`, so
 the reading, the money by role, the panel and the progress section all count the same files.
 
+Fable 5.1's read, checked against the person's mock-up cell by cell, found two small things, fixed
+after: a total over stages is rounded once, from the unrounded figures, as a stage's own total is (a
+sum of rounded cells said $5.28 as $5.29); and a run's maker and channel come from its record's own
+word first - each role's family and endpoint, `:run/roles` - the model's name the fallback, and a
+call with neither provider nor endpoint recorded says "not recorded", never OpenRouter by default.
+The tables keep the model's ID, not the name people say it by: one model, one name, checkable with
+`bb models`.
+
 ### A stage plan's progress, written from its records (plan 6.10, item 6, register row 158)
 
 The first project ended every stage plan with a checklist - a line per step of the task list and the

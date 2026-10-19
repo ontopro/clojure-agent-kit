@@ -88,6 +88,10 @@
   (is (= "direct" (sr/channel {:provider "Anthropic API"})))
   (is (= "direct" (sr/channel {:endpoint "https://api.anthropic.com"})))
   (is (= "OpenRouter" (sr/channel {:provider "Anthropic" :endpoint "https://openrouter.ai/api/v1"})))
+  (is (= "not recorded" (sr/channel {})) "never OpenRouter by default")
+  (testing "a run's own family is the maker before its model's name"
+    (is (= "Google" (sr/family-maker :google)))
+    (is (= "deepseek" (sr/family-maker :deepseek))))
   (testing "one model, one name, whichever way it was reached"
     (is (= ["claude-sonnet-5.5" "claude-sonnet-5.5" "gpt-6.1-sol" "gemini-4-argon" "gpt-6-astra"]
            (map sr/model-name ["anthropic/claude-sonnet-5.5" "claude-sonnet-5-5" "openai/gpt-6.1-sol-20260929"

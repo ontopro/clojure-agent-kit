@@ -404,14 +404,23 @@
                 [["claude" "Anthropic"] ["gemini" "Google"] ["gpt" "OpenAI"] ["glm" "Z.ai"] ["grok" "xAI"]])
           prefix))))
 
+(def ^:private family-makers
+  {:anthropic "Anthropic" :google "Google" :openai "OpenAI" :z-ai "Z.ai" :x-ai "xAI"})
+
+(defn family-maker
+  "The maker a profile's `:family` names, or nil."
+  [family]
+  (when family (or (family-makers (keyword family)) (name family))))
+
 (defn channel
   "How a call was reached: `direct` at a provider's own API (a step's recorded provider is one, or
-  a reading's endpoint is not OpenRouter's), else OpenRouter."
+  the endpoint is not OpenRouter's), `OpenRouter` through it, `not recorded` when neither the
+  provider nor the endpoint was."
   [{:keys [provider endpoint]}]
-  (if (or (provenance/direct-provider? provider)
-          (and endpoint (not (str/includes? endpoint "openrouter"))))
-    "direct"
-    "OpenRouter"))
+  (cond (provenance/direct-provider? provider) "direct"
+        endpoint (if (str/includes? endpoint "openrouter") "OpenRouter" "direct")
+        provider "OpenRouter"
+        :else "not recorded"))
 
 (defn model-name
   "A model as a table shows it: the slug's last part, a date suffix dropped and a version written
@@ -433,15 +442,20 @@
   [build records-dir id]
   (let [f (stage-facts build records-dir id)
         runs (mapv run-summary (:records f))
-        row (fn [role {:keys [model provider endpoint cost]}]
-              (when cost {:role role :model (model-name model) :maker (or (maker model) "not recorded")
+        row (fn [role {:keys [model provider endpoint cost family]}]
+              (when cost {:role role :model (model-name model)
+                          ;; THE RECORD'S OWN WORD FIRST: a run carries each role's family and endpoint
+                          ;; (`:run/roles`); a reading has its endpoint; the model's name is the fallback
+                          :maker (or (family-maker family) (maker model) "not recorded")
                           :channel (channel {:provider provider :endpoint endpoint}) :cost cost}))
         reviews (stages/reviews-dir build id)
         sec (stages/document build id "-security-review")]
     (vec (keep identity
                (concat
-                (for [r (:records f), {:step/keys [name cost model provider]} (:run/steps r) :when cost]
-                  (row (or (role-of name) :other) {:model model :provider provider :cost cost}))
+                (for [r (:records f), {:step/keys [name cost model provider]} (:run/steps r) :when cost
+                      :let [role (or (role-of name) :other)
+                            {:keys [family endpoint]} (get-in r [:run/roles role])]]
+                  (row role {:model model :provider provider :cost cost :family family :endpoint endpoint}))
                 (for [x (distinct-readings runs)] (row :spec-reviewer x))
                 (for [x (concat (when (= 0 id) (readings-of (read-edn (stages/project-plan-review build))))
                                 (readings-of (read-edn (fs/path reviews "plan-review.edn"))))]

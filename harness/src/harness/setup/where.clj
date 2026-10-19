@@ -152,11 +152,15 @@
   money), the money in cents as `:money` is."
   [rows]
   (when (seq rows)
-    (let [total #(cents (reduce + 0 (map :cost %)))]
-      {:by-maker (into (sorted-map) (for [[m rs] (group-by :maker rows)] [m (total rs)]))
+    (let [exact #(reduce + 0 (map :cost %))]
+      {:by-maker (into (sorted-map) (for [[m rs] (group-by :maker rows)] [m (cents (exact rs))]))
        :channels (into (sorted-map) (for [[m rs] (group-by :maker rows)] [m (vec (sort (distinct (map :channel rs))))]))
        :by-role (into {} (for [[r rs] (group-by :role rows)]
-                           [r {:models (vec (sort (distinct (keep :model rs)))) :money (total rs)}]))})))
+                           [r {:models (vec (sort (distinct (keep :model rs)))) :money (cents (exact rs))}]))
+       ;; THE UNROUNDED FIGURES, so a total over stages is rounded once, as a stage's own is: a sum of
+       ;; rounded cells said $5.29 where the money was $5.28
+       :exact {:by-maker (into {} (for [[m rs] (group-by :maker rows)] [m (exact rs)]))
+               :by-role (into {} (for [[r rs] (group-by :role rows)] [r (exact rs)]))}})))
 
 (def role-order
   "The roles in the order a build meets them, each with the name a table gives it."
@@ -172,17 +176,18 @@
   (let [with (filter :by-maker stages)]
     (when (seq with)
       (let [makers (vec (sort (distinct (mapcat (comp keys :by-maker) with))))
-            sum #(cents (reduce + 0 (keep identity %)))]
+            sum #(cents (reduce + 0 (keep identity %)))
+            exact (fn [k x] (map #(get-in % [:exact k x]) with))]
         {:makers makers
          ;; a stage's total is its own money, as its stage report has it - not the sum of rounded cells
          :stages (vec (for [s with] {:id (:id s) :by-maker (:by-maker s) :total (:money s)}))
-         :totals (into {} (for [m makers] [m (sum (map #(get-in % [:by-maker m]) with))]))
-         :all (sum (map :money with))
+         :totals (into {} (for [m makers] [m (sum (exact :by-maker m))]))
+         :all (sum (mapcat (comp vals :by-maker :exact) with))
          :channels (vec (for [m makers] [m (vec (for [s with :let [c (get-in s [:channels m])] :when c] [(:id s) c]))]))
          :roles (vec (for [[r label] role-order
                            :let [by (into (sorted-map) (for [s with :let [x (get-in s [:by-role r])] :when x] [(:id s) x]))]
                            :when (seq by)]
-                       {:role r :label label :by-stage by :total (sum (map :money (vals by)))}))}))))
+                       {:role r :label label :by-stage by :total (sum (exact :by-role r))}))}))))
 
 (defn stage-row
   "One stage of the road, from its stage map row `row`, its extra cells `extra`, its files
