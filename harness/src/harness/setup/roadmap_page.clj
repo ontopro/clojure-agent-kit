@@ -37,6 +37,37 @@
 
 (defn- dollars [x] (if (== x (Math/floor x)) (str "$" (long x)) (usd x)))
 
+(defn money-by-html
+  "The two money tables after \"Money and time\" - by provider (the models' makers) and by role -
+  from `where/money-by`, the same data the fuller account prints; nothing when no stage has any."
+  [{:keys [makers stages totals all roles] :as mb}]
+  (when mb
+    (let [ids (mapv :id stages)
+          cell #(str "<td class=\"num\">" (if % (usd %) "-") "</td>")]
+      (concat
+       ["" "<h2>Money by provider</h2>" "<table>"
+        (str "  <thead><tr><th>Stage</th>" (str/join (for [m makers] (str "<th class=\"num\">" (esc m) "</th>")))
+             "<th class=\"num\">Total</th></tr></thead>")
+        "  <tbody>"]
+       (for [{:keys [id by-maker total]} stages]
+         (str "    <tr><td>" id "</td>" (str/join (map #(cell (get by-maker %)) makers)) (cell total) "</tr>"))
+       [(str "    <tr><th>All</th>" (str/join (for [m makers] (str "<th class=\"num\">" (usd (get totals m)) " (" (where/share (get totals m) all) "%)</th>")))
+             "<th class=\"num\">" (usd all) "</th></tr>")
+        "  </tbody>" "</table>"
+        (str "<p class=\"note\">" (esc (where/channels-sentence mb)) "</p>")
+        "" "<h2>Money by role</h2>" "<table>"
+        (str "  <thead><tr><th>Role</th><th>Models, by stage</th>" (str/join (for [id ids] (str "<th class=\"num\">S" id "</th>")))
+             "<th class=\"num\">Total</th></tr></thead>")
+        "  <tbody>"]
+       (for [{:keys [label by-stage total]} roles]
+         (str "    <tr><td>" (esc label) "</td><td>"
+              (esc (str/join "; " (for [[id {:keys [models]}] by-stage] (str "S" id " " (str/join " + " models)))))
+              "</td>" (str/join (map #(cell (get-in by-stage [% :money])) ids)) (cell total) "</tr>"))
+       [(str "    <tr><th>All</th><th></th>" (str/join (for [s stages] (str "<th class=\"num\">" (usd (:total s)) "</th>")))
+             "<th class=\"num\">" (usd all) "</th></tr>")
+        "  </tbody>" "</table>"
+        (str "<p class=\"note\">" (esc where/not-counted) "</p>")]))))
+
 (defn phase-letter
   "The letter of the phase a stage of kind `kind` belongs to, `next/phase`'s, or nil."
   [kind]
@@ -271,8 +302,9 @@
             "<th class=\"num\">" (reduce + 0 (map :rounds stages)) "</th>"
             "<th class=\"num\">" (reduce + 0 (map #(or (:run-minutes %) 0) stages)) "</th><th></th></tr>")
        "  </tbody>" "</table>"
-       "<p class=\"note\">Spent counts a stage's runs and its readings, its security review among them. Run minutes are the loop's wall time over the stage's runs; the days are calendar days, approval to close, both counted.</p>"
-       ""
+       "<p class=\"note\">Spent counts a stage's runs and its readings, its security review among them. Run minutes are the loop's wall time over the stage's runs; the days are calendar days, approval to close, both counted.</p>"]
+      (money-by-html (where/money-by stages))
+      [""
        "<h2>Since you last looked</h2>"]
       (if-not (:from since)
         [(str "<p>No date to count from: " (esc (:why since)) ".</p>")]

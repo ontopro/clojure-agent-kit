@@ -187,10 +187,10 @@
         lines (str/split-lines (where/render-full d))
         after (fn [heading n] (take n (rest (drop-while #(not= heading %) lines))))]
     (is (= ["# Where the project stands - xyx-build" "Generated 2026-10-17 from xyx-build at abc1234, KIT 0.6.8."] (take 2 lines)))
-    (is (= ["## Where" "## The road" "## Waits on you (2)" "## Since you last looked: 2026-10-13 (stage 0 approved)"
+    (is (= ["## Where" "## The road" "## Money by provider" "## Money by role" "## Waits on you (2)" "## Since you last looked: 2026-10-13 (stage 0 approved)"
             "## Open" "## Next" "## Read more"]
            (filter #(str/starts-with? % "## ") lines))
-        "the seven parts, in order")
+        "the seven parts in order, the money by provider and by role after the road")
     (is (= ["" (:headline d) ""
             "- A SETUP - done" "- B PROVE - done: stage 0 closed 2026-10-13"
             "- C BUILD - **you are here**: stage 1 running" "- D PRE-RELEASE - ahead: stage 2" "- E RELEASE - ahead"]

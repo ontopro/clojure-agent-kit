@@ -26,6 +26,7 @@
    [clojure.string :as str]
    [harness.contract.blueprint :as blueprint]
    [harness.loop.log :as log]
+   [harness.models.provenance :as provenance]
    [harness.setup.stages :as stages]
    [harness.setup.workspace :as workspace]))
 
@@ -81,7 +82,7 @@
      :stop-kinds (frequencies (keep :stop/kind stops))
      :spec-reviews (count reviews)
      :spec-review-cost (reduce + 0 (keep :cost reviews))
-     :spec-readings (mapv #(select-keys % [:cost :generation-ids :at :model]) reviews)}))
+     :spec-readings (mapv #(select-keys % [:cost :generation-ids :at :model :endpoint]) reviews)}))
 
 (defn- reading-key
   "What makes two records' spec readings one reading: its completions' ids, else when and by
@@ -302,17 +303,13 @@
   Counted as one, it made one review read as two."
   "security-routing.edn")
 
+(declare security-review-records)
+
 (defn- folder-reading
-  "`[label cost n]` over the record files directly in `dir`, each one reading -
-  a stage's security review writes one per review - one per member of a security reviewer
-  panel - its `-tests` folder beside them; the routing file and the panel's combined table
-  (`security-panel.edn`) not among them; nil when there is none."
+  "`[label cost n]` over the security reviewers' records in `dir` (`security-review-records`), each
+  one reading; nil when there is none."
   [label dir]
-  (let [ms (when (fs/directory? dir)
-             (->> (fs/glob dir "*.edn")
-                  (remove #(#{routing-file "security-panel.edn"} (str (fs/file-name %))))
-                  sort
-                  (keep read-edn)))]
+  (let [ms (map :record (security-review-records dir))]
     (when (seq ms)
       [label (reduce + 0 (keep :cost ms)) (count ms)])))
 
@@ -324,15 +321,17 @@
 
 (defn security-review-records
   "The security reviewers' records directly in a stage's security review folder `dir`, `[{:file
-  :record}]` sorted by file name: each `.edn` carrying `:findings`, never the routing file or a
-  panel's combined table. The panel's run, its rotation and a stage plan's progress all read them."
+  :record}]` sorted by file name: each `.edn` there - one per review, one per member of a panel,
+  its tests in a folder beside it - never the routing file or a panel's combined table. ONE
+  DEFINITION: the stage report's reading, its money by role, the panel's run, its rotation and a
+  stage plan's progress all read it, so none counts a record another does not."
   [dir]
   (if (fs/directory? dir)
     (vec (for [f (sort (map str (fs/glob dir "*.edn")))
                :let [nm (str (fs/file-name f))]
                :when (not (#{routing-file "security-panel.edn"} nm))
                :let [rec (try (edn/read-string {:default tagged-literal} (slurp f)) (catch Exception _ nil))]
-               :when (and rec (contains? rec :findings))]
+               :when (map? rec)]
            {:file nm :record rec}))
     []))
 
@@ -392,6 +391,65 @@
          :checks (read-edn (doc "-security.edn"))
          :scans {:deps (read-edn (doc "-security-deps.edn"))
                  :secrets (read-edn (doc "-security-secrets.edn"))}}))))
+
+(defn maker
+  "Who made a model, from its name: `anthropic/…` or `claude-…` is Anthropic, `google/…` or
+  `gemini-…` Google, `openai/…` or `gpt-…` OpenAI, `z-ai/…` or `glm-…` Z.ai, `x-ai/…` or `grok-…`
+  xAI; another slug its prefix; nil when no model was recorded."
+  [model]
+  (when-let [m (some-> model str str/lower-case not-empty)]
+    (let [[prefix nm] (if (str/includes? m "/") (str/split m #"/" 2) [nil m])]
+      (or ({"anthropic" "Anthropic" "google" "Google" "openai" "OpenAI" "z-ai" "Z.ai" "x-ai" "xAI"} prefix)
+          (some (fn [[p who]] (when (str/starts-with? nm p) who))
+                [["claude" "Anthropic"] ["gemini" "Google"] ["gpt" "OpenAI"] ["glm" "Z.ai"] ["grok" "xAI"]])
+          prefix))))
+
+(defn channel
+  "How a call was reached: `direct` at a provider's own API (a step's recorded provider is one, or
+  a reading's endpoint is not OpenRouter's), else OpenRouter."
+  [{:keys [provider endpoint]}]
+  (if (or (provenance/direct-provider? provider)
+          (and endpoint (not (str/includes? endpoint "openrouter"))))
+    "direct"
+    "OpenRouter"))
+
+(defn model-name
+  "A model as a table shows it: the slug's last part, a date suffix dropped and a version written
+  with its dot - `openai/gpt-6.1-sol-20260929` is `gpt-6.1-sol`, and `claude-sonnet-5-5` (the name
+  Anthropic's own API takes) is `claude-sonnet-5.5`, as OpenRouter's slug has it, so one model is
+  one name whichever way it was reached."
+  [model]
+  (some-> model str (str/split #"/") last (str/replace #"-\d{8}$" "")
+          (str/replace #"-(\d+)-(\d+)(?=$|-)" "-$1.$2")))
+
+(defn- readings-of [m] (or (seq (:reviews m)) (when m [m])))
+
+(defn cost-rows
+  "Every priced item of stage `id` as `{:role :model :maker :channel :cost}` - the same items, from
+  the same records, that the stage report's money adds up: each run's priced steps (a step's role
+  from its name, triage the orchestrator's), its spec readings each once, the stage plan review, the
+  blueprint review, stage 0's project plan review, each security reviewer's record and the security
+  routing's triage calls. Their sum is the stage's money."
+  [build records-dir id]
+  (let [f (stage-facts build records-dir id)
+        runs (mapv run-summary (:records f))
+        row (fn [role {:keys [model provider endpoint cost]}]
+              (when cost {:role role :model (model-name model) :maker (or (maker model) "not recorded")
+                          :channel (channel {:provider provider :endpoint endpoint}) :cost cost}))
+        reviews (stages/reviews-dir build id)
+        sec (stages/document build id "-security-review")]
+    (vec (keep identity
+               (concat
+                (for [r (:records f), {:step/keys [name cost model provider]} (:run/steps r) :when cost]
+                  (row (or (role-of name) :other) {:model model :provider provider :cost cost}))
+                (for [x (distinct-readings runs)] (row :spec-reviewer x))
+                (for [x (concat (when (= 0 id) (readings-of (read-edn (stages/project-plan-review build))))
+                                (readings-of (read-edn (fs/path reviews "plan-review.edn"))))]
+                  (row :plan-reviewer x))
+                (for [x (readings-of (read-edn (fs/path reviews "blueprint-review.edn")))] (row :blueprint-reviewer x))
+                (for [{:keys [record]} (security-review-records sec)] (row :security-reviewer record))
+                (for [{:keys [verdict]} (:routed (read-edn (fs/path sec routing-file)))]
+                  (row :security-routing verdict)))))))
 
 (defn summary-for
   "The stage's summary with the stage before it folded in, or nil when the

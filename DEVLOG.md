@@ -63,6 +63,28 @@ tested" stays information for an adopter, never a block.
 ---
 ## 2026-10-19 (plan 6.10)
 
+### The money by provider and by role (plan 6.10, item 7, register row 159)
+
+The person asked where a project's money went - to which makers' models, through which channel,
+by which role, with the model each ran on - on the roadmap page and in the fuller account. The first
+project built its own table from the records and it disagreed with the stage reports three times:
+the stage report counted a spec reading two records carried twice (fixed, row 152), the project's
+own table counted a continued run's triage call twice, and a run had lost a step from its record
+(row 147, now recoverable). So the breakdown is the stage report's own items: `cost-rows` lists
+every priced item of a stage - each run's priced steps, its spec readings once each, the stage plan
+and blueprint reviews, stage 0's project plan review, each security reviewer's record, the
+security routing's triage calls - as role, model, maker and channel, from the same records its
+money adds, and a test holds that the rows sum to the stage's money. On the project's records,
+read without writing, every stage's rows sum to its stage report to the cent. The maker is read
+from the model's name, the channel from the step's provider or the reading's endpoint (a provider's
+own API is "direct"), and a model has one name whichever route reached it (`claude-sonnet-5-5` and
+`anthropic/claude-sonnet-5.5` are both `claude-sonnet-5.5`). `bb next --where --edn` carries each
+stage's `:by-maker`, `:channels` and `:by-role`; the fuller account and the roadmap page show the two
+tables after the road and after "Money and time", each stage's total its stage report's. The
+security routing now records the model that routed each finding; an older routing says "not
+recorded". Two ways of reading a security review folder became one, `security-review-records`, so
+the reading, the money by role, the panel and the progress section all count the same files.
+
 ### A stage plan's progress, written from its records (plan 6.10, item 6, register row 158)
 
 The first project ended every stage plan with a checklist - a line per step of the task list and the

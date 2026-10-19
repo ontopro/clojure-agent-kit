@@ -81,6 +81,18 @@
     (is (= 1.125 (:money s)))
     (is (= {:coder 1.0 :orchestrator 0.125} (:by-role s)))))
 
+(deftest who-made-a-model-and-how-it-was-reached
+  (is (= ["Anthropic" "Anthropic" "Google" "Google" "OpenAI" "OpenAI" "Z.ai" "xAI" "deepseek" nil]
+         (map sr/maker ["claude-opus-5-5" "anthropic/claude-fable-5.1" "gemini-4-argon" "google/gemini-3.8-flash"
+                        "openai/gpt-6-astra" "gpt-6.1-sol" "z-ai/glm-5.3-prime" "x-ai/grok-4.7" "deepseek/v5" nil])))
+  (is (= "direct" (sr/channel {:provider "Anthropic API"})))
+  (is (= "direct" (sr/channel {:endpoint "https://api.anthropic.com"})))
+  (is (= "OpenRouter" (sr/channel {:provider "Anthropic" :endpoint "https://openrouter.ai/api/v1"})))
+  (testing "one model, one name, whichever way it was reached"
+    (is (= ["claude-sonnet-5.5" "claude-sonnet-5.5" "gpt-6.1-sol" "gemini-4-argon" "gpt-6-astra"]
+           (map sr/model-name ["anthropic/claude-sonnet-5.5" "claude-sonnet-5-5" "openai/gpt-6.1-sol-20260929"
+                               "google/gemini-4-argon" "openai/gpt-6-astra"])))))
+
 (deftest the-roll-up-and-its-block
   (let [s (sr/stage-summary facts)]
     (is (= [["t1" :merged] ["t2" :escalated] ["t3" :no-record]] (:packets s)) "in the blueprint's order, a packet without a record said")
@@ -229,6 +241,11 @@
           "the history's readings; no plan review for this stage; two security reviews, the -tests folder's file
            none and the routing file its own reading: two findings triaged")
       (is (= "$20" (:cap s)))
+      (testing "the money by role is the same items: its rows add up to the stage's money"
+        (is (== (:money s) (reduce + (map :cost (sr/cost-rows build records 1)))))
+        (is (== (:money (sr/summary-for build records 0)) (reduce + (map :cost (sr/cost-rows build records 0)))))
+        (is (= #{:coder :tester :orchestrator :reviewer :spec-reviewer :blueprint-reviewer :security-reviewer :security-routing}
+               (set (map :role (sr/cost-rows build records 1))))))
       (is (= "increment" (:kind s)) "the plan's kind line")
       (is (= {:id 0 :cost 5.375 :runs 1 :rounds 2 :stops 1} (:before s)) "stage 0: its run, its spec review, the project plan review, its stage plan review and its security review")
       (is (= {:counts {:ok 9 :warn 2 :fail 0 :skipped 3} :date "2026-10-08"} (:security-checks s))

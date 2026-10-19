@@ -146,6 +146,44 @@
         (= id here) :next
         :else :ahead))
 
+(defn breakdown
+  "A stage's money two ways, from its cost rows (`stage-report/cost-rows`): `:by-maker` (the
+  models' makers), `:channels` (how each maker was reached) and `:by-role` (each role's models and
+  money), the money in cents as `:money` is."
+  [rows]
+  (when (seq rows)
+    (let [total #(cents (reduce + 0 (map :cost %)))]
+      {:by-maker (into (sorted-map) (for [[m rs] (group-by :maker rows)] [m (total rs)]))
+       :channels (into (sorted-map) (for [[m rs] (group-by :maker rows)] [m (vec (sort (distinct (map :channel rs))))]))
+       :by-role (into {} (for [[r rs] (group-by :role rows)]
+                           [r {:models (vec (sort (distinct (keep :model rs)))) :money (total rs)}]))})))
+
+(def role-order
+  "The roles in the order a build meets them, each with the name a table gives it."
+  [[:coder "coder"] [:tester "tester"] [:reviewer "code reviewer"] [:orchestrator "orchestrator"]
+   [:spec-reviewer "spec reviewer"] [:plan-reviewer "plan reviewer"] [:blueprint-reviewer "blueprint reviewer"]
+   [:security-reviewer "security reviewer"] [:security-routing "security routing"] [:other "other"]])
+
+(defn money-by
+  "The two tables' data over `stages` (the road's rows): `{:makers [..] :stages [{:id :by-maker
+  :total}] :totals {maker cents} :all cents :channels [[maker [[id [channel ..]] ..]] ..] :roles
+  [{:role :label :by-stage {id {:models :money}} :total}]}`, or nil when no stage has money rows."
+  [stages]
+  (let [with (filter :by-maker stages)]
+    (when (seq with)
+      (let [makers (vec (sort (distinct (mapcat (comp keys :by-maker) with))))
+            sum #(cents (reduce + 0 (keep identity %)))]
+        {:makers makers
+         ;; a stage's total is its own money, as its stage report has it - not the sum of rounded cells
+         :stages (vec (for [s with] {:id (:id s) :by-maker (:by-maker s) :total (:money s)}))
+         :totals (into {} (for [m makers] [m (sum (map #(get-in % [:by-maker m]) with))]))
+         :all (sum (map :money with))
+         :channels (vec (for [m makers] [m (vec (for [s with :let [c (get-in s [:channels m])] :when c] [(:id s) c]))]))
+         :roles (vec (for [[r label] role-order
+                           :let [by (into (sorted-map) (for [s with :let [x (get-in s [:by-role r])] :when x] [(:id s) x]))]
+                           :when (seq by)]
+                       {:role r :label label :by-stage by :total (sum (map :money (vals by)))}))}))))
+
 (defn stage-row
   "One stage of the road, from its stage map row `row`, its extra cells `extra`, its files
   `files` (`next/stage-files`), its figures `figures` (`{:summary :readings :minutes}`), and the
@@ -155,7 +193,7 @@
         approved (gate-date (:stage/approved gates))
         closed (gate-date (:stage/closed gates))
         c (if-let [gc (:cap (:stage/approved gates))] (cap gc) (cap (:cap-cell extra)))
-        {:keys [summary readings minutes]} figures]
+        {:keys [summary readings minutes costs]} figures]
     (merge {:id id :kind (or (not-empty (:kind row)) (:kind files)) :name (:name row) :delivers (:delivers row)
             :map-status (:status row) :state (state id files here)
             :plan (some->> plan (str build "/docs/stages/")) :blueprint (some->> blueprint (str build "/docs/stages/"))
@@ -168,7 +206,8 @@
               :money (cents (:money summary)) :run-minutes minutes}
              (cond-> {:runs 0 :merged 0 :rounds 0 :run-minutes 0
                       :money (when (seq readings) (cents (reduce + 0 (map second readings))))}
-               (seq readings) (assoc :money-note "readings only, no blueprint yet"))))))
+               (seq readings) (assoc :money-note "readings only, no blueprint yet")))
+           (breakdown costs))))
 
 (defn phase-rows
   "The five phases, each `{:letter :word :status :stages}`: SETUP done once there is a workspace;
@@ -253,6 +292,49 @@
 (defn- money-cell [{:keys [money money-note]}]
   (cond (nil? money) "-" money-note (str (format "$%.2f" (double money)) " (readings only)") :else (format "$%.2f" (double money))))
 
+(defn- usd [x] (if x (format "$%.2f" (double x)) "-"))
+
+(defn share
+  "`part` of `whole` as a whole percent, or nil."
+  [part whole]
+  (when (and part whole (pos? whole)) (Math/round (* 100.0 (/ part whole)))))
+
+(defn channels-sentence
+  "How each maker was reached, stage by stage, as one sentence."
+  [{:keys [channels]}]
+  (str "The maker is the model's. How each was reached - "
+       (str/join "; " (for [[m per] channels]
+                        (str m ": " (str/join ", " (for [[id cs] per] (str "stage " id " " (str/join " and " cs)))))))
+       "."))
+
+(def not-counted
+  "What the money tables say they leave out."
+  (str "From the run records' priced steps and spec reviews and the stage folders' readings, as the stage "
+       "reports count them. Not counted: the interactive sessions - the Architect's and any other - which no record holds."))
+
+(defn- money-by-md
+  "The fuller account's two tables, `## Money by provider` and `## Money by role`, from `money-by`."
+  [{:keys [makers stages totals all roles] :as mb}]
+  (when mb
+    (let [ids (mapv :id stages)]
+      (concat
+       ["" "## Money by provider" ""
+        (str "| Stage | " (str/join " | " makers) " | Total |")
+        (str "|---|" (str/join "" (repeat (inc (count makers)) "---|")))]
+       (for [{:keys [id by-maker total]} stages]
+         (str "| " id " | " (str/join " | " (map #(usd (get by-maker %)) makers)) " | " (usd total) " |"))
+       [(str "| All | " (str/join " | " (for [m makers] (str (usd (get totals m)) " (" (share (get totals m) all) "%)")))
+             " | " (usd all) " |")
+        "" (channels-sentence mb)
+        "" "## Money by role" ""
+        (str "| Role | Models, by stage | " (str/join " | " (map #(str "S" %) ids)) " | Total |")
+        (str "|---|---|" (str/join "" (repeat (inc (count ids)) "---|")))]
+       (for [{:keys [label by-stage total]} roles]
+         (str "| " label " | " (str/join "; " (for [[id {:keys [models]}] by-stage] (str "S" id " " (str/join " + " models))))
+              " | " (str/join " | " (map #(usd (get-in by-stage [% :money])) ids)) " | " (usd total) " |"))
+       [(str "| All | | " (str/join " | " (map #(usd (:total %)) stages)) " | " (usd all) " |")
+        "" not-counted]))))
+
 (defn- cap-cell [{:keys [cap cap-note]}]
   (cond cap (str (dollars cap) (when cap-note (str " " cap-note))) cap-note (str "(cap " cap-note ")") :else "-"))
 
@@ -314,8 +396,9 @@
              " | " (money-cell s) " | " (or days "-") " | " (if (pos? (or runs 0)) (str runs ", " merged " merged") "-") " |"))
       [""
        (str "Spent " (format "$%.2f" (double (:spent money))) " against " (dollars (:caps-approved money)) " of caps approved"
-            (when (pos? (:caps-proposed money)) (str "; " (dollars (:caps-proposed money)) " proposed")) ".")
-       ""
+            (when (pos? (:caps-proposed money)) (str "; " (dollars (:caps-proposed money)) " proposed")) ".")]
+      (money-by-md (money-by stages))
+      [""
        (str "## Waits on you (" (count waits) ")")
        ""]
       (if (seq waits)
@@ -378,6 +461,7 @@
   (let [f (stage-report/stage-facts build records id)]
     {:summary (some-> f stage-report/stage-summary)
      :readings (stage-report/stage-readings build id)
+     :costs (stage-report/cost-rows build records id)
      :minutes (when f (Math/round (/ (reduce + 0 (keep :run/wall-ms (:records f))) 60000.0)))}))
 
 (defn- runs

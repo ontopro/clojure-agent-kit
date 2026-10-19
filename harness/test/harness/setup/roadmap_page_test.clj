@@ -63,7 +63,7 @@
           (is (str/starts-with? h "../../") h)
           (is (fs/exists? (fs/path dir h)) h))))
     (testing "the page's sections, from the map"
-      (is (= ["Waits on you (2)" "Money and time" "Since you last looked" "Open" "Next"]
+      (is (= ["Waits on you (2)" "Money and time" "Money by provider" "Money by role" "Since you last looked" "Open" "Next"]
              (map second (re-seq #"<h2>([^<]+)</h2>" html))))
       (is (str/includes? html "<td class=\"num\">$0.25 (readings only)</td>"))
       (is (str/includes? html "Generated 2026-10-17T12:00:00Z from <code>xyx-build</code> at <code>abc1234</code>")))))

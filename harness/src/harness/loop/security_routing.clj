@@ -135,7 +135,9 @@
                                :tests-dir (str tests-dir)
                                :verdict (assoc (select-keys v [:route :reason :guidance :impl :target :triage/fallback :refused? :prompt :answer])
                                                :cost (get-in v [:result :cost])
-                                               :generation-ids (get-in v [:result :runner/meta :generation-ids]))}
+                                               :generation-ids (get-in v [:result :runner/meta :generation-ids])
+                                               ;; the model that routed it, so the money by role says it
+                                               :model (get-in v [:result :runner/meta :model]))}
                         by (assoc :by by))))
         hypotheses (if panel?
                      (mapv :finding (:hypotheses review))
