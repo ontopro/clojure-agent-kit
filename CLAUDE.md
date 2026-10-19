@@ -112,7 +112,8 @@ benefit. It is also a product artifact, and also not addressed to you.
     the project plan), **the gates** and a stage's **gates record**, the KIT's `bb gates` and the
     **workspace gates**, the **code reviewer** and the **security reviewer**, the **application
     template** (`ontopro/clojure-stack-lite`) and the **build-docs templates**, a **run** of the
-    loop and `bb run-loop run`, the **project's name** and a repository's **folder name**. A new
+    loop and `bb run-loop run`, the **project's name** and a repository's **folder name**, the **decision log** and
+    **the application's log**. A new
     identifier reusing a word carries the qualifier (`:security-reviewer`, `stage-report`). A
     project's defined term - an ALL-CAPS heading of its data conventions - is a phrase of two words
     or more, an article aside: guidance naming a term is sent its definition, and a one-word term

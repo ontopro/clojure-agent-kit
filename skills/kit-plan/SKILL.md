@@ -24,6 +24,7 @@ skill's.
 | `method.md` | `Rank risks, then order the stages by them` |
 | `method.md` | `The document set` |
 | `method.md` | `Security is a decision in stage 0 and a signature before release, not a gate` |
+| `method.md` | `What a visitor submits: what a feature that takes it keeps is decided before it is built` |
 | `method.md` | `The plan-review pass — the cheapest gate in the whole method` |
 | `build-docs/source.md` | `2. What was read from it` |
 | `build-docs/00-overview.md` | `4. Stage map` |

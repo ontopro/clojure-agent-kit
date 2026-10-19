@@ -23,6 +23,7 @@ before the blueprint is cut.
 | `method.md` | `A report to the person opens with where we are` |
 | `method.md` | `Spike gates: how a PROVISIONAL decision gets settled` |
 | `method.md` | `Pre-release and release` |
+| `method.md` | `What a visitor submits: what a feature that takes it keeps is decided before it is built` |
 | `build-docs/05-lessons.md` | `Stage <N>` |
 | `build-docs/stages/stage-N-template.md` | `2. Requirements this stage adds` |
 | `build-docs/stages/stage-N-template.md` | `11. Exit criteria (the stage's gate), and the cap` |
@@ -68,6 +69,14 @@ A stage that changes what the application holds or who reaches it - a form, an e
 accounts - says so, and the architecture's §8 decision and §15's lines are amended with it, and
 the routes the security pack tries (`docs/security-routes.edn`) gain the stage's forms and the
 routes that need a login.
+A stage that adds a feature taking what a visitor submits - search, a contact form, feedback, a
+box to be checked - answers the method's questions for it in this plan (what it takes, matching
+and order as a contract, the interface, the submission as a request value) and decides what it
+keeps, and in what shape, with the person, as a decision in the decision log, before the
+blueprint; the method's defaults are a search's words counted by day and never who, and an
+attestation kept on purpose as a record with its retention - never in the application's log
+(`method.md`, `What a visitor submits: what a feature that takes it keeps is decided before it is
+built`).
 The exit criteria are things a person can check, "deployed locally" among them from stage 1
 on, and the cap is proposed to the person. Then run the stage plan review, `bb plan-review
 <xyx>-build/docs/stages/stage-N/stage-N-plan.md`, and read the findings cold with the person, resolving each in

@@ -63,6 +63,30 @@ tested" stays information for an adopter, never a block.
 ---
 ## 2026-10-19 (plan 6.10)
 
+### What a visitor submits: what a feature that takes it keeps is decided before it is built (plan 6.10, item 5, register row 157)
+
+The first project's stage that added search settled with the person what search keeps - the words
+counted by day, never who; never in the application's log; kept as typed; a command for the report -
+and its plan review caught five things the plan had not amended. Then the person asked about a box
+the law needs kept, "I am 18 or older", and that is the opposite case: who confirmed, and when, kept
+on purpose. One principle covers both, and it is the method's new section beside security: what is
+kept of what a visitor submits, and in what shape, is the plan's decision, and the application's
+log is never the store - a confirmation "kept" in a line of it is rotated away, and a search query
+in it sits beside an address and a time. The section asks the questions in writing, gives the two
+worked examples with their opposite defaults, and lists what the plan review otherwise finds. The
+stage-plan skill asks it of any stage taking what a visitor submits, and the plan and stage-plan
+skills read it.
+
+And a rule, because the slip is the code-writing roles' and only the rule source reaches every
+family: what a visitor submits - words typed, a box checked, an answer given - reaches no line of the
+application's log, and what the project must keep of it is a record its plan decides. The rule names
+the record so a Coder does not read it as "never record this". The architecture template says the
+pin's exception line never carries the query string - checked on the template at `kit-v1.3`, which
+logs no request at all and whose exception line carries the method and the path - and its *what it
+holds* row names what a visitor submits. "The application's log" is said in full: a bare "log" is the
+decision log's word, now in CLAUDE.md's vocabulary. Fable 5.1 drafted the section and the rule; the
+person widened the rule from a visitor's words to all a visitor submits, and added the attestation.
+
 ### The stage's end offers the panel; the method says it (plan 6.10, item 4, register rows 154-156)
 
 The last part of the security reviewer panel is what a person meets. The kit-stage-end skill reads

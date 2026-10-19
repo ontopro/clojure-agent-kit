@@ -70,7 +70,7 @@ of it matters, and §15 where each threat is answered.
 | The session secret | Under `:prod`, read from `SESSION_SECRET_KEY`, and without it the application refuses to start; the other profiles use a fixed test key | `config.edn` `:session-secret-key`; `server.clj` `ig/assert-key` |
 | CSRF | Every request but GET, HEAD and OPTIONS carries the anti-forgery token - a form's `__anti-forgery-token` field or an `X-CSRF-Token` header - or is refused with 403; `reitit-extras.core/csrf-token-html` and `csrf-token-json` write it into a page | `server.clj` `ring-handler` (`wrap-anti-forgery`) |
 | Headers | On every response the application makes, a page not found, a static file and an error page included: `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Strict-Transport-Security` (a year, subdomains), `X-XSS-Protection: 0`, `Referrer-Policy: strict-origin-when-cross-origin` | `server.clj` `ring-handler` (the handler-wide `:middleware`), `wrap-referrer-policy` |
-| Errors | A handler that throws, a response that fails its coercion and a request body that fails to decode answer the error page (500, 400) and nothing of the error; the log has the exception with the request's method and path | `server.clj` `exception-middleware`, first of the route middleware |
+| Errors | A handler that throws, a response that fails its coercion and a request body that fails to decode answer the error page (500, 400) and nothing of the error; the application's log has the exception with the request's method and path, and never its query string | `server.clj` `exception-middleware`, first of the route middleware |
 | SQL | Queries are HoneySQL data, formatted with every value a parameter and every identifier quoted; a raw SQL string or `[:raw …]` is outside that, and so is a map where a value belongs (below). Migrations are Ragtime's SQL files | `db.clj` `exec!`, `exec-one!`; `resources/migrations/` |
 | Static files | Served from `resources/public/` under `/assets/`, with no directory listing and no path out of the folder; `no-cache` outside production, cached for a year under `:prod` (whose build hashes every address), and a missing asset a 404 in every profile - never an empty 200 cached for a year | `server.clj` `asset-handler` (the header set only on a file that is there); `config.edn` `:cache-assets?` |
 | HTML | Hiccup 2 escapes every string it renders; `hiccup2.core/raw` is the way past it | `handlers.clj`, through `reitit-extras.core/render-html` |
@@ -165,7 +165,7 @@ migrations: <Ragtime as shipped | optional under XTDB>
 
 | Question | This project | Decision |
 |---|---|---|
-| What it holds | <public content · personal data · health data · money - each kind it holds, and none it does not> | D-n |
+| What it holds | <public content · personal data · health data · money - each kind it holds, and none it does not · what a visitor submits that a feature keeps - words counted, a confirmation recorded> | D-n |
 | Who reaches it | <the public, read-only · an owner · staff - and who writes> | D-n |
 | The auth model | <none · a shared secret · accounts: who creates them, how long a session lasts> | D-n |
 | Where it is deployed | <the host, and where TLS ends - the application or a proxy in front of it> | D-n |

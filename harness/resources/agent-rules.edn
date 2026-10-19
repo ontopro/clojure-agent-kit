@@ -113,6 +113,18 @@
   :title "A request value is checked before it is used."
   :text "A value from a request - a form field, a query parameter, a path segment, a header - is checked to be the type its use expects (a string, a number) before it reaches a query, a file path or a page, and one that is not is refused as a bad request. A request can send more than strings: Ring's nested parameters make `name[x]=...` a map, and HoneySQL formats a map where a value belongs as SQL, not as a parameter. So a request value of the wrong type is never outside the domain: it can arrive."}
 
+ ;; Set by a person, 2026-10-19, from the first project's stage that added search and from their
+ ;; question about a box the law needs kept ("I am 18 or older"): the plan decides what of a
+ ;; visitor's submission is kept - search's words counted and never who; a confirmation kept as a
+ ;; record, who and when - and the roles that write and review the code had read nothing saying
+ ;; so. A request log, a debug line or an exception's request map would have kept the words with
+ ;; an address and a time; a confirmation logged and not recorded is rotated away.
+ {:id :visitor-submissions-never-in-the-application-log
+  :group :non-negotiable
+  :audience #{:coder :tester :reviewer :human}
+  :title "What a visitor submits is never written to the application's log."
+  :text "What a visitor submits - the words typed, a box checked, an answer given - reaches no line of the application's log: not a request log (the path, never its query string or body), not an exception's line (the method and the path, never the request map), not a debug print left behind. What the project must keep of it - an age or consent confirmation, a message sent, search counts - is a record its plan decides, written as that record, with the retention the plan gives it; the application's log is never the store."}
+
  {:id :note-the-contract
   :group :non-negotiable
   :audience #{:coder :tester :reviewer}
