@@ -91,14 +91,17 @@
          path (lock-path run-dir)]
      (if (link! run-dir me)
        {:path path :me me}
-       (let [h (holder run-dir)]
+       (let [h (holder run-dir)
+             ;; the holder finished between the two reads: nothing was left behind
+             released? (and (nil? h) (not (fs/exists? path)))]
          (when (and h (alive-fn h))
            (throw (ex-info (held-sentence h) {:run-loop/error :locked :holder h})))
          ;; left behind: taken over only if it is still the lock just read, so two
          ;; commands finding the same stale lock do not both take it
-         (when (= h (holder run-dir)) (fs/delete-if-exists path))
+         (when (and (not released?) (= h (holder run-dir))) (fs/delete-if-exists path))
          (if (link! run-dir me)
-           {:path path :me me :stale (or h {:unreadable true})}
+           (cond-> {:path path :me me}
+             (not released?) (assoc :stale (or h {:unreadable true})))
            (throw (ex-info (held-sentence (holder run-dir)) {:run-loop/error :locked :holder (holder run-dir)}))))))))
 
 (defn release!

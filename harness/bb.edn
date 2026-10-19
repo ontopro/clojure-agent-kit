@@ -251,7 +251,7 @@
                  ["bake-off-check" (fn [] (shell "bb" "bake-off-check"))]
                  ["test" (fn [] (run 'test))]])}
 
-  run-loop {:doc "Drive one task: run <run-dir>, or a single step — <start|check|retry|amend|mutation|continue|record|merge|teardown> <run-dir> ..."
+  run-loop {:doc "Drive one task: run <run-dir>, or a single step — <start|check|retry|amend|mutation|continue|record|merge|teardown> <run-dir> ...; record --rebuild-from-log rebuilds a state that lost events from events.log first. One command at a time on a run: each holds run-loop.lock in the run directory, a second is refused"
             :requires ([harness.loop.orchestrate])
             :task (apply harness.loop.orchestrate/-main *command-line-args*)}
 

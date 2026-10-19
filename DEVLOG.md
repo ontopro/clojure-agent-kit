@@ -87,7 +87,9 @@ said. On the first project's run that prices the lost Tester round at $0.0736.
 
 Fable 5.1 read the scope first: the placement, building the step through `report/dispatch-step`
 rather than a second constructor, the refusal saying what to do, and the lock's docstring saying
-where it is and is not.
+where it is and is not. Its read of the diff found two small things, fixed after: a holder that
+finished between the failed take and the read no longer reads as a lock left behind, and the
+`run-loop` task's line, which a workspace's `bb tasks` shows, names the lock and the rebuild.
 
 ---
 
