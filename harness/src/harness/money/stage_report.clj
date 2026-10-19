@@ -149,6 +149,7 @@
      :approved (:date (:stage/approved gates))
      :kind kind
      :security (:security/signed gates)
+     :security-skipped (:security/skipped gates)
      :security-checks (when checks {:counts (:counts checks) :date (some-> (:security/at checks) str (subs 0 10))})
      :security-scans (into {} (for [[k rec] scans :when rec]
                                 [k {:counts (:counts rec) :date (some-> (:security/at rec) str (subs 0 10))}]))
@@ -167,7 +168,7 @@
   stage, which says when it has none; and the two scans' lines the same way."
   [{:keys [id run-count merged money cap approved before by-role readings reading-money
            rounds retry-cost dispatch-money rejections stops stop-kinds packets kind security
-           security-checks security-scans]}]
+           security-checks security-scans security-skipped]}]
   (->> [(str "Stage " id " report · " run-count " run" (when (not= 1 run-count) "s") ", " merged " merged · "
              (dollars money) (if cap (str " of cap " cap (when approved (str " (approved " approved ")")))
                                  " · cap: not recorded (no :stage/approved in the gates record)")
@@ -208,6 +209,10 @@
                  (if-let [{:keys [ok warn fail skipped]} (:counts (get security-scans k))]
                    (str ok " ok, " warn " warn, " fail " fail, " skipped " skipped (" (:date (get security-scans k)) ")")
                    (str "no record (the kit-stage-end skill runs the security pack's " cmd " with --record docs/stages/stage-N/stage-N-security-" cmd ".edn)")))))
+        ;; a skip is the person's, and said where the review's money would have been
+        (when security-skipped
+          (str "  Security review: skipped (" (:by security-skipped) ", " (:date security-skipped) "): "
+               (:reason security-skipped)))
         (when (or security (= "pre-release" kind))
           (str "  Threat model: "
                (if security

@@ -63,6 +63,17 @@ tested" stays information for an adopter, never a block.
 ---
 ## 2026-10-19 (plan 6.10)
 
+### A skipped security review is the person's, and written (plan 6.10, item 4, register row 154)
+
+At a stage before pre-release the person may skip the security reviewer panel, the session
+recommending from what the stage changed. A skip is a decision, so it is written where the stage's
+other decisions are: the gates record's `:security/skipped`, `{:date :by :reason}`, a key the
+gates template now carries with a comment and no mark - a workspace takes it as a build-docs hunk at
+its next upgrade. `bb next` holds it to a name as it holds a sign-off, and refuses it at a
+pre-release stage, which reads with every member: remove the key and run `bb security-panel --all`.
+The stage report says it where the review's money would have been: "Security review: skipped (who,
+date): why".
+
 ### The security reviewer panel's run and its combined table (plan 6.10, item 4, register row 154)
 
 `bb security-panel <clone>` runs one, some or all of the panel's members, each reviewing its own copy

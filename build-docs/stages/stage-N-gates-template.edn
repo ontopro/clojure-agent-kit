@@ -16,5 +16,9 @@
  ;; answered, each with its evidence (the stage plan's §7): {:date "YYYY-MM-DD" :by "NAME OF WHO SIGNED"}.
  ;; Another kind leaves it nil; `bb next` asks for it of a pre-release stage, before it closes
  :security/signed nil
+ ;; A STAGE BEFORE PRE-RELEASE ONLY, when the person skips the security reviewer panel at its end -
+ ;; the session recommending from what the stage changed: {:date "YYYY-MM-DD" :by "NAME OF WHO DECIDED"
+ ;; :reason "why, in a sentence"}. A pre-release stage never skips it; `bb next` says so if one does
+ :security/skipped nil
  ;; the exit criteria met, deployed locally and walked (the exit criteria section): {:date "YYYY-MM-DD" :mvp? false}
  :stage/closed nil}

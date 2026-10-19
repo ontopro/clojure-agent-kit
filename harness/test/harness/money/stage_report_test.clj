@@ -110,6 +110,11 @@
     (is (str/ends-with? (sr/render (sr/stage-summary (-> facts (assoc :kind "pre-release")
                                                          (assoc-in [:gates :security/signed] {:date "2026-10-07" :by "Ada"}))))
                         "\n  Threat model: signed 2026-10-07 by Ada")))
+  (testing "a skipped security review is said, with who decided and why"
+    (is (str/includes? (sr/render (sr/stage-summary (assoc-in facts [:gates :security/skipped]
+                                                              {:date "2026-10-19" :by "Ada" :reason "only the content changed"})))
+                       "\n  Security review: skipped (Ada, 2026-10-19): only the content changed"))
+    (is (not (str/includes? (sr/render (sr/stage-summary facts)) "Security review:"))))
   (testing "the security checks' line: a stage with the pack's record, or a pre-release stage, and no other"
     (let [checks {:security/at "2026-10-08T00:05:12.3" :counts {:ok 10 :warn 5 :fail 0 :skipped 3} :ok? true}]
       (is (not (str/includes? (sr/render (sr/stage-summary (assoc facts :kind "increment"))) "Security checks"))

@@ -127,6 +127,15 @@
           (is (str/includes? (:run (next/next-action closed)) "stage-2-gates.edn"))
           (is (= "stage 1 is closed" (:because (next/next-action closed)))))))))
 
+(deftest a-skipped-security-review-names-who-decided
+  (let [s (-> (with-stage {:kind "increment" :blueprint "stage-1/stage-1-blueprint.md" :reviewed? true
+                           :packets ["t1"] :merged #{"t1"}})
+              (gate :stage/approved {:date "d" :by "Ada"})
+              (gate :blueprint/signed {:date "d" :by "Ada"}))]
+    (is (= [14 "the person"] (step (gate s :security/skipped {:date "d" :reason "only content changed"}))) "no :by")
+    (is (= "/kit-stage-end" (:run (next/next-action (gate s :security/skipped {:date "d" :by "Ada" :reason "r"}))))
+        "named: the stage's end goes on")))
+
 (deftest a-pre-release-stage-has-a-fourth-gate-its-threat-model-signed
   (let [all (-> (with-stage {:kind "pre-release" :blueprint "stage-1/stage-1-blueprint.md" :reviewed? true
                              :packets ["t1"] :merged #{"t1"}})
@@ -140,6 +149,10 @@
       (is (= [14 "the person"] (step closed)) "closed without it: the person signs before the next stage is pulled")
       (is (= "stage 1 is pre-release and closed without its threat model signed" (:because (next/next-action closed))))
       (is (= [7 "the person"] (step (gate closed :security/signed {:date "d" :by "Ada"}))) "signed: the next stage"))
+    (testing "a pre-release stage's security review is never skipped"
+      (let [a (next/next-action (gate all :security/skipped {:date "d" :by "Ada" :reason "r"}))]
+        (is (= [14 "the person"] ((juxt :step :owner) a)))
+        (is (str/includes? (:run a) "bb security-panel <clone> --all"))))
     (testing "another kind is not asked, and a plan with no kind line is another kind"
       (is (= "/kit-stage-end" (:run (next/next-action (assoc-in all [:stage :kind] "increment")))))
       (is (= [7 "the person"] (step (-> all (assoc-in [:stage :kind] nil) (gate :stage/closed {:date "d"}))))))))

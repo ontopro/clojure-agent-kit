@@ -146,8 +146,9 @@
     (str id " (" (if (> (count p) 90) (str (subs p 0 90) "…") p) ")")))
 
 (def ^:private signed-gates
-  "The gates that are a sign-off, in the order they are passed; `:stage/closed` names no signer."
-  [:stage/approved :blueprint/signed :security/signed])
+  "The gates that are a sign-off, in the order they are passed; `:stage/closed` names no signer. A
+  skipped security review is the person's decision, and names who decided as a sign-off does."
+  [:stage/approved :blueprint/signed :security/signed :security/skipped])
 
 (defn- stage-action
   "The next action inside the stage `s` in progress: `{:id :plan :kind :gates
@@ -185,7 +186,7 @@
 
       unnamed-gate
       (let [by (:by (get gates unnamed-gate))]
-        (action ({:stage/approved (if spike? 5 7) :blueprint/signed 10 :security/signed 14} unnamed-gate) person
+        (action ({:stage/approved (if spike? 5 7) :blueprint/signed 10 :security/signed 14 :security/skipped 14} unnamed-gate) person
                 (str "set :by in " unnamed-gate " to the name of who signed, in " (gates-file id))
                 (str "stage " id "'s " unnamed-gate
                      (if (and (string? by) (not (str/blank? by))) (str " has :by " (pr-str by)) " has no :by")
@@ -243,6 +244,12 @@
           nil (start-packet t (str t " has no run record; " (count merged) " of " (count packets) " packets merged"))
           (action 12 architect (str "bb run-loop run <run-dir> for " t)
                   (str "the run for " t " is " status))))
+
+      ;; THE FULL PANEL AT PRE-RELEASE, never a skip: the person's rule
+      (and (= "pre-release" kind) (:security/skipped gates))
+      (action 14 person (str "remove :security/skipped from " (gates-file id) " and run the security reviewer panel, "
+                             "all of them: bb security-panel <clone> --all")
+              (str "stage " id " is pre-release, and its security review is never skipped"))
 
       (nil? closed)
       (action 14 architect (if unsigned-threat-model?
