@@ -235,9 +235,12 @@
                                                          ;; triage read "named by no test" and look at the
                                                          ;; comment's formatting first
                                                          (str " is named only by a marker the base file already had, "
-                                                              (if form (str "over " form) (str "declaring it no test's job (" reason ")"))
-                                                              " (an earlier packet's): mark it over a test this packet adds,"
-                                                              " or mark that test anew: ")
+                                                              (if form
+                                                                (str "over " form " (an earlier packet's): mark it over a test"
+                                                                     " this packet adds, or mark that test anew: ")
+                                                                (str "declaring it no test's job (" reason ") (an earlier"
+                                                                     " packet's): declare it anew in this packet's words, or mark"
+                                                                     " a test this packet adds: ")))
                                                          (str " is named by no test and declared by no"
                                                               " `;; target " n " — not a test: …`: "))
                                                        (pr-str (nth property-targets (dec n))))})))

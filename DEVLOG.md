@@ -77,7 +77,10 @@ step. The first design said every row naming no packet, and the project's next b
 why not: three rows block "the stage's end", a row of another kind, so only a `t-NN` that matches
 nothing is said. And the targets gate, which since row 145 counts an earlier packet's marker for
 nothing, now says the marker is there - the test it stands over - instead of "named by no test",
-which had sent the Architect and the triage to the comment's formatting.
+which had sent the Architect and the triage to the comment's formatting. Fable 5.1's read of the
+diff found two small things, fixed after: an earlier declaration's detail says to declare it anew
+(there is no test to mark anew), and row 150 says the mistyped-id line is `bb next`'s alone - it
+reads a blueprint's §0 and its packets on every look, and `bb plan-check` reads neither.
 
 ### One run-loop command at a time on a run (plan 6.10, item 1, register row 147)
 

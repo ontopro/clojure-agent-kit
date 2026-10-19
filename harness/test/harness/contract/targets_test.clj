@@ -195,7 +195,8 @@
   (testing "as a declaration"
     (let [dir (based! {"test/t.clj" ";; target 1 — not a test: gate 4 checks it\n"} {})
           r (targets/coverage dir {:files/test ["test/t.clj"] :property-targets (subvec eight 0 1)})]
-      (is (re-find #"declaring it no test's job \(gate 4 checks it\)" (:detail (first (:uncovered r)))))))
+      (is (re-find #"declaring it no test's job \(gate 4 checks it\) \(an earlier packet's\): declare it anew in this packet's words, or mark a test this packet adds"
+                   (:detail (first (:uncovered r)))))))
   (testing "no marker at all: as before"
     (let [r (cover "(deftest one [] nil)\n" 1)]
       (is (re-find #"is named by no test and declared by no" (:detail (first (:uncovered r))))))))
