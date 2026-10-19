@@ -30,7 +30,7 @@
       (let [r (first rows)]
         (is (= ["astra" "argon"] (:by r)))
         (is (= ["glm"] (:not-by r)) "ran, answered and did not")
-        (is (= {"astra" "logout keeps the session" "argon" "session outlives logout"} (:titles r)))
+        (is (= [["astra" "logout keeps the session"] ["argon" "session outlives logout"]] (:titles r)))
         (is (= "a.edn" (:record r)))))
     (testing "another place is another row, though the same member found the first"
       (is (= ["argon"] (:by (second rows))))
@@ -96,3 +96,33 @@
         (is (= "(ns x) ;; astra's" (get-in (first @calls) [:payload :test-text])))
         (is (= ["astra" "glm"] (:by (first (:routed r)))))
         (is (str/ends-with? (:review (edn/read-string (slurp (str (fs/path dir "security-routing.edn"))))) "security-panel.edn"))))))
+
+(deftest one-members-two-findings-at-one-place-keep-both-titles
+  (let [{:keys [rows]} (panel/combine [{:file "a.edn" :record (rec "astra" (finding "one" "src/app/web.clj: h")
+                                                                   (finding "two" "src/app/web.clj: h"))}])]
+    (is (= [["astra" "one"] ["astra" "two"]] (:titles (first rows))))))
+
+(deftest the-same-files-and-no-function-are-two-rows
+  ;; an insecure direct object reference and an SQL injection named at one file pair were one row,
+  ;; the second's title in no table a person read
+  (let [{:keys [rows]} (panel/combine [{:file "a.edn" :record (rec "argon" (finding "IDOR in note retrieval" "src/notes/web.clj, src/notes/notebook.clj"))}
+                                       {:file "b.edn" :record (rec "glm" (finding "SQL in note search" "src/notes/notebook.clj and src/notes/web.clj"))}])]
+    (is (= 2 (count rows)))))
+
+(deftest the-table-shows-every-title-and-a-member-that-said-nothing
+  (let [members [{:name "astra" :status :answered} {:name "argon" :status :answered} {:name "fable" :status :refused}]
+        md (panel/render {:members members
+                          :rows [{:title "a" :by ["astra" "argon"] :not-by [] :titles [["astra" "a"] ["argon" "b"]]
+                                  :finding {:test "t"} :record "r.edn"}]})]
+    (is (str/includes? md "a (astra) / b (argon)"))
+    (is (str/includes? md "| ✓ | ✓ | refused |"))))
+
+(deftest a-re-rendered-table-keeps-the-runs-facts
+  (let [dir (str (fs/create-temp-dir))]
+    (write-rec! dir "astra-tracer-1" (rec "astra" (finding "f" "src/app/web.clj: h")) {})
+    (panel/table! dir [{:name "astra"}] [] {:stance :tracer :clone-tip "abc123"})
+    (let [t (panel/table! dir [{:name "astra"}] [] {})]
+      (is (= [:tracer "abc123"] [(:stance t) (:clone-tip t)])))))
+
+(deftest members-without-names-is-said
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"--members needs names" (panel/parse-args ["x" "--members"]))))

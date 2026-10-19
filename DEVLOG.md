@@ -95,6 +95,17 @@ reads ride with it: a review record says how its cost was got (`:cost-source`), 
 marked ~ in the table; and `bb balance` reads every role block a profile configures, a panel's
 members among them, where it read the eight roles only.
 
+Fable 5.1 read the commit against the design and re-rendered the table from real records - the
+KIT's bake-off readings and the first project's security review folders - and found the key doing
+what the design forbids: a finding naming files and no function keyed by its files alone, so an
+insecure direct object reference and an SQL injection at one file pair were one row, and the table
+printed only the first title. A row now merges only on its files AND a function they name; any other
+finding is its own row, since splitting never hides a finding. A merged row prints every title, a
+member's two at one place included; a member that refused says so in its column; a re-rendered table
+keeps its stance and the clone's commit; the exit says whether this run's members answered, not the
+folder's; `--history` gives each stage's members, reproduced findings and cost. On the bake-off
+readings: 18 reproduced findings, 17 rows, every title shown.
+
 ### The security reviewer panel, in the profile (plan 6.10, item 4, register row 154)
 
 The person's decision: in place of one security reviewer at every stage's end, a panel of them, run

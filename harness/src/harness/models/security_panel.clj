@@ -28,6 +28,7 @@
   triage call per row."
   (:require
    [babashka.fs :as fs]
+   [babashka.process :as p]
    [clojure.edn :as edn]
    [clojure.pprint :as pp]
    [clojure.string :as str]
@@ -64,11 +65,15 @@
        vec))
 
 (defn row-key
-  "What makes two members' reproduced findings one row: the files and functions their `where`
-  names. A finding naming no file is its own row (`unplaced`, unique per finding)."
-  [finding unplaced]
-  (let [files (vec (sort (routing/named-files (:where finding))))]
-    (if (seq files) [files (functions-in (:where finding))] [:unplaced unplaced])))
+  "What makes two members' reproduced findings one row: the files AND the functions their `where`
+  names. A finding that names no function - or no file - is its own row (`own`, unique per
+  finding): splitting never hides a finding, and merging two flaws at the same files did - an
+  insecure direct object reference and an SQL injection in one file pair read as one row, the
+  second's title in no table a person read."
+  [finding own]
+  (let [files (vec (sort (routing/named-files (:where finding))))
+        fns (functions-in (:where finding))]
+    (if (and (seq files) (seq fns)) [files fns] [:own own])))
 
 (defn record-member
   "The member a review record was run under: its `:member`, else - a record from before the panel -
@@ -84,7 +89,7 @@
 (defn combine
   "The combined table from `records` - `[{:file :record}]`, in panel order: `{:rows [...] :hypotheses
   [...]}`. A row: `:key`, `:by` (the members that reproduced it), `:not-by` (members that ran,
-  answered and did not), `:titles` per member, the first member's `:finding` and its `:record`."
+  answered and did not), `:titles` every finding's `[member title]`, the first member's `:finding` and its `:record`."
   [records]
   (let [answered (remove (comp said-nothing? :record) records)
         names (mapv (comp record-member :record) answered)
@@ -99,7 +104,8 @@
                    :title (:title (:finding (first rs)))
                    :by by
                    :not-by (vec (remove (set by) names))
-                   :titles (into {} (map (juxt :member (comp :title :finding)) rs))
+                   ;; every finding's title, a member's two at one place included
+                   :titles (mapv (fn [r] [(:member r) (:title (:finding r))]) rs)
                    :finding (:finding (first rs))
                    :record (:file (first rs))}))
      :hypotheses (vec (for [{:keys [record]} answered
@@ -128,7 +134,14 @@
   "The combined table as `security-panel.md`."
   [{:keys [members left-out rows hypotheses]}]
   (let [names (mapv :name members)
-        cell (fn [row n] (cond (some #{n} (:by row)) "✓" (some #{n} (:not-by row)) "–" :else "not run"))
+        status (into {} (map (juxt :name :status) members))
+        cell (fn [row n] (cond (some #{n} (:by row)) "✓"
+                               (some #{n} (:not-by row)) "–"
+                               (#{:refused :no-answer :failed} (status n)) (str/replace (name (status n)) "-" " ")
+                               :else "not run"))
+        title (fn [r] (if (> (count (:titles r)) 1)
+                        (str/join " / " (for [[m t] (:titles r)] (str t " (" m ")")))
+                        (:title r)))
         money (fn [{:keys [cost cost-source]}]
                 (if cost (str (when (= :list-price cost-source) "~") (format "$%.2f" (double cost))) "not reported"))]
     (str "# Security reviewer panel\n\n"
@@ -137,7 +150,7 @@
          (if (seq rows)
            (str "| Finding | " (str/join " | " names) " | Test |\n|---|" (str/join "" (repeat (count names) "---|")) "---|\n"
                 (str/join "\n" (for [r rows]
-                                 (str "| " (:title r) " | " (str/join " | " (map #(cell r %) names)) " | `"
+                                 (str "| " (title r) " | " (str/join " | " (map #(cell r %) names)) " | `"
                                       (:test (:finding r)) "` (" (:record r) ") |")))
                 "\n")
            "No member reproduced a finding.\n")
@@ -187,8 +200,10 @@
                                       (= :failed (:status record)) :failed :else :answered)
                         :cost (cost-of record) :cost-source (:cost-source record) :ms (:ms record)
                         :reproduced (count (filter #(= :reproduced (:kind %)) (:findings record)))}))
-        t (merge extra {:at (str (java.time.Instant/now)) :members members :left-out left-out
-                        :rows rows :hypotheses hypotheses})]
+        old (read-edn (fs/path dir panel-file))
+        t (merge (select-keys old [:stance :clone-tip]) extra
+                 {:at (str (java.time.Instant/now)) :members members :left-out left-out
+                  :rows rows :hypotheses hypotheses})]
     (spit (str (fs/path dir panel-file)) (with-out-str (pp/pprint t)))
     (spit (str (fs/path dir table-file)) (render t))
     t))
@@ -200,6 +215,20 @@
   (vec (for [[id _] (stages/folders (stages/stages-dir build))]
          [id (into #{} (map (comp record-member :record))
                    (folder-records (stages/document build id "-security-review")))])))
+
+(defn history-lines
+  "Per stage of the build at `build`: which members read it, what they reproduced and what it cost -
+  `--history`, which the stage-end skill reads before it recommends who reads next. What changed since
+  a member last read is git's to say (`git diff --stat <that stage's tag>..HEAD`), not this one's."
+  [build]
+  (vec (for [[id _] (stages/folders (stages/stages-dir build))
+             :let [recs (map :record (folder-records (stages/document build id "-security-review")))
+                   cost (reduce + 0 (keep :cost recs))]]
+         (if (seq recs)
+           (str "  stage " id ": " (str/join ", " (sort (distinct (map record-member recs))))
+                " - " (count (filter #(= :reproduced (:kind %)) (mapcat :findings recs))) " reproduced, "
+                (format "$%.2f" (double cost)))
+           (str "  stage " id ": no review")))))
 
 (defn choose
   "The members a run reads with: `--all` every eligible one, `--members` those named (a left-out or
@@ -222,9 +251,14 @@
          :why (str "the next in rotation"
                    (when prev (str " - " (str/join ", " (sort (second prev))) " read stage " (first prev))))}))))
 
+(defn- head-of [dir]
+  (let [r (p/shell {:dir (str dir) :out :string :err :string :continue true} "git" "rev-parse" "HEAD")]
+    (when (zero? (:exit r)) (str/trim (:out r)))))
+
 (defn run-panel!
   "Each of `members` reviews its own copy of `clone` in the stance `stance`, `parallel` at a time,
-  each record written into `out` under the member's name; then the combined table. Returns the table."
+  each record written into `out` under the member's name; then the combined table, with this run's
+  own outcomes as `:ran` (the table reads every record in the folder). Returns the table."
   [{:keys [kit clone stance base rounds parallel out panel left-out]} members]
   (fs/create-dirs out)
   (let [stamp (.format (java.time.LocalDateTime/now) (java.time.format.DateTimeFormatter/ofPattern "yyyyMMdd-HHmmss"))
@@ -240,10 +274,11 @@
                     (println (str "  " (:name m) ": " (cond (:refused? r) "REFUSED" (:no-block? r) "no answer" :else "answered")
                                   ", " (count (filter #(= :reproduced (:kind %)) (:findings r))) " reproduced - " f))
                     r)
-                  (finally (fs/delete-tree scratch)))))]
-    (doseq [batch (partition-all (max 1 (or parallel 2)) members)]
-      (mapv deref (mapv #(future (one %)) batch)))
-    (table! out panel left-out {:stance stance :clone (str clone)})))
+                  (finally (fs/delete-tree scratch)))))
+        ran (vec (mapcat (fn [batch] (mapv deref (mapv #(future (one %)) batch)))
+                         (partition-all (max 1 (or parallel 2)) members)))]
+    (assoc (table! out panel left-out {:stance stance :clone-tip (head-of clone)})
+           :ran (mapv #(if (said-nothing? %) :said-nothing :answered) ran))))
 
 (def usage
   (str "bb security-panel <clone> [--members <name>,<name> | --all] [--stance tracer|diff] [--base <rev>]\n"
@@ -259,7 +294,9 @@
     (cond (nil? a) m
           (= a "--all") (recur more (assoc m :all true))
           (= a "--history") (recur more (assoc m :history true))
-          (= a "--members") (recur (rest more) (assoc m :members (str/split (first more) #",")))
+          (= a "--members") (if (first more)
+                              (recur (rest more) (assoc m :members (str/split (first more) #",")))
+                              (throw (ex-info (str "--members needs names, comma-separated\n" usage) {})))
           (= a "--stance") (recur (rest more) (assoc m :stance (keyword (first more))))
           (#{"--base" "--out" "--profile" "--table"} a) (recur (rest more) (assoc m (keyword (subs a 2)) (first more)))
           (#{"--parallel" "--rounds"} a) (recur (rest more) (assoc m (keyword (subs a 2)) (parse-long (first more))))
@@ -276,8 +313,7 @@
           hist (if-let [b (:workspace/build ws)] (history b) [])]
       (cond
         (:history opts)
-        (doseq [[id names] hist]
-          (println (str "  stage " id ": " (if (seq names) (str/join ", " (sort names)) "no review"))))
+        (doseq [l (if-let [b (:workspace/build ws)] (history-lines b) [])] (println l))
 
         (:table opts)
         (let [t (table! (:table opts) (profile/security-panel p) (:left-out split) {})]
@@ -304,7 +340,7 @@
                               members)]
             (println (str "  " (count (:rows t)) " reproduced finding row(s), " (count (:hypotheses t)) " hypothesis(es); "
                           "wrote " (fs/path out table-file)))
-            (when (every? #(not= :answered (:status %)) (:members t)) (System/exit 1))))))
+            (when (every? #(not= :answered %) (:ran t)) (System/exit 1))))))
     (catch clojure.lang.ExceptionInfo e
       (println "security-panel:" (ex-message e))
       (System/exit 1))))
