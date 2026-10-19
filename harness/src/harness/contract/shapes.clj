@@ -274,6 +274,13 @@
      [:source [:string {:min 1}]]
      [:as-of [:string {:min 1}]]]]])
 
+(def PanelMember
+  "One security reviewer of a security reviewer panel: a role block, and the name the panel
+  knows it by. The name defaults to the model slug's last segment
+  (`harness.models.profile/member-name`); it is given when the same model is reached two ways,
+  so a route moved from OpenRouter to a provider's own API keeps the member's history."
+  (mu/merge RoleProfile [:map {:closed true} [:name {:optional true} [:string {:min 1}]]]))
+
 (def Profile
   "One seat, and one model per dispatched role.
 
@@ -293,6 +300,10 @@
   reviewer before the human signs it off; and every stage's end sends the
   merged application to the security reviewer (`bb security-review`). A profile
   that omits one describes a build that cannot run.
+
+  THE SECURITY REVIEWER MAY BE A PANEL (2026-10-19): `:security-panel`, a list of security
+  reviewers in rotation order, in place of `:roles :security-reviewer` - one or the other, never
+  both, which `harness.models.profile` checks. A profile with the one role reads as a panel of one.
 
   THE SECURITY REVIEWER IS A ROLE from 2026-10-08, required as the plan reviewer
   was: a profile without it is refused, and `bb doctor` in a workspace made
@@ -329,8 +340,9 @@
             [:spec-reviewer RoleProfile]
             [:plan-reviewer RoleProfile]
             [:blueprint-reviewer RoleProfile]
-            [:security-reviewer RoleProfile]
-            [:orchestrator RoleProfile]]]])
+            [:security-reviewer {:optional true} RoleProfile]
+            [:orchestrator RoleProfile]]]
+   [:security-panel {:optional true} [:vector {:min 1} PanelMember]]])
 
 ;; ---------------------------------------------------------------------------
 ;; What a runner returns

@@ -203,8 +203,10 @@
   (is (= [:plan-reviewer :blueprint-reviewer :spec-reviewer :coder :tester :reviewer :orchestrator :security-reviewer] profile/roles)
       "eight: the plan reviewer meets a build first, in stage 0's plan step; the Blueprint reviewer once per stage; the spec reviewer before every start; the security reviewer last, at every stage's end")
   (doseq [r profile/roles]
-    (is (= [:invalid] (errors (update base :roles dissoc r)))
-        (str "a profile without a " (name r) " describes a build that cannot run"))))
+    (is (= (if (= :security-reviewer r) [:no-security-reviewer] [:invalid])
+           (errors (update base :roles dissoc r)))
+        (str "a profile without a " (name r) " describes a build that cannot run"
+             " - the security reviewer's absence said by name, since a panel may stand in for it"))))
 
 (deftest the-blueprint-reviewer-may-share-the-seats-family-by-decision
   ;; The rule reaches it - it reads the seat's Blueprint as the spec reviewer
@@ -330,3 +332,46 @@
              (profile/plan-profile (workspace/current ["--workspace" ws] elsewhere)))
           "pointed at the workspace, the plan's profile is found from anywhere"))
     (is (= base (profile/read-profile (profile/project-profile ws))))))
+
+;; ---------------------------------------------------------------------------
+;; the security reviewer panel
+;; ---------------------------------------------------------------------------
+
+(def ^:private astra {:family :openai :model "openai/gpt-6-astra" :shape :openai :endpoint "https://example.test"})
+(def ^:private sonnet {:family :anthropic :model "claude-sonnet-5-5" :shape :anthropic :endpoint "https://example.test"})
+
+(defn- panel [& members]
+  (-> base (update :roles dissoc :security-reviewer) (assoc :security-panel (vec members))))
+
+(deftest a-profile-with-one-security-reviewer-reads-as-a-panel-of-one
+  (is (= ["m"] (mapv :name (profile/security-panel base))))
+  (is (empty? (errors base))))
+
+(deftest a-panel-names-its-members-and-says-who-is-left-out
+  (let [p (panel astra sonnet)]
+    (is (empty? (errors p)) "a member of the Coder's family is not a violation")
+    (is (= ["gpt-6-astra" "claude-sonnet-5-5"] (mapv :name (profile/security-panel p))))
+    (is (= ["gpt-6-astra"] (mapv :name (:eligible (profile/panel-split p)))))
+    (is (= [{:name "claude-sonnet-5-5" :family :anthropic :reason "the Coder's family (anthropic)"}]
+           (:left-out (profile/panel-split p))))
+    (testing "the summary has a line per member, the left-out said in place of its endpoint"
+      (let [lines (filter #(str/starts-with? % "security panel") (profile/summary p))]
+        (is (= 2 (count lines)))
+        (is (str/includes? (second lines) "left out: the Coder's family"))))
+    (testing "a reader of the eight roles reads the first eligible member"
+      (is (= "openai/gpt-6-astra" (get-in (profile/as-roles p) [:roles :security-reviewer :model]))))
+    (testing "an explicit name is the member's name"
+      (is (= "fable-direct" (profile/member-name (assoc astra :name "fable-direct")))))))
+
+(deftest a-panel-is-one-list-and-needs-a-member-outside-the-coders-family
+  (is (= [:panel-and-security-reviewer]
+         (errors (assoc base :security-panel [astra]))) "a panel and a lone reviewer are two lists")
+  (is (= [:no-security-reviewer] (errors (update base :roles dissoc :security-reviewer))))
+  (is (= [:panel-duplicate-name] (errors (panel astra astra))))
+  (is (= [:panel-all-coder-family] (errors (panel sonnet)))))
+
+(deftest the-shipped-examples-carry-a-panel
+  (doseq [[nm p] (profile/examples)]
+    (is (empty? (profile/violations p)) nm)
+    (is (= ["gpt-6-astra" "gemini-4-argon"] (mapv :name (profile/security-panel p))) nm)
+    (is (= ["gemini-4-argon"] (mapv :name (:left-out (profile/panel-split p)))) (str nm ": the Coder is Argon"))))

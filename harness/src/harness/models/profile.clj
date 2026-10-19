@@ -122,6 +122,48 @@
   every stage's end."
   [:plan-reviewer :blueprint-reviewer :spec-reviewer :coder :tester :reviewer :orchestrator :security-reviewer])
 
+(defn member-name
+  "What a security reviewer panel knows a member by: its `:name`, else its model slug's last
+  segment (`openai/gpt-6-astra` is `gpt-6-astra`), as the review records' file names carry it."
+  [member]
+  (or (:name member) (last (str/split (:model member) #"/"))))
+
+(defn security-panel
+  "The profile's security reviewers in rotation order, each with its `:name`: `:security-panel`,
+  or the one `:roles :security-reviewer` as a panel of one - a profile written before the panel
+  reads unchanged."
+  [profile]
+  (mapv #(assoc % :name (member-name %))
+        (or (:security-panel profile)
+            (some-> (get-in profile [:roles :security-reviewer]) vector))))
+
+(defn panel-split
+  "`{:eligible [members] :left-out [{:name :family :reason}]}`. A member of the Coder's family
+  reads nothing while the Coder is of it - it would share the blind spots it is there to look
+  past (`verifiers`). Left out, and said; not a violation, since the panel outlives the Coder."
+  [profile]
+  (let [coder (get-in profile [:roles :coder :family])
+        {out true in false} (group-by #(boolean (and coder (= coder (:family %)))) (security-panel profile))]
+    {:eligible (vec in)
+     :left-out (mapv (fn [m] {:name (:name m) :family (:family m)
+                              :reason (str "the Coder's family (" (name coder) ")")})
+                     out)}))
+
+(defn as-roles
+  "`profile` with `:roles :security-reviewer` filled from its panel - the first member eligible,
+  else the first - so a reader of the eight roles reads a panel's profile as it read one before."
+  [profile]
+  (if (or (get-in profile [:roles :security-reviewer]) (empty? (:security-panel profile)))
+    profile
+    (let [m (or (first (:eligible (panel-split profile))) (first (security-panel profile)))]
+      (assoc-in profile [:roles :security-reviewer] (dissoc m :name)))))
+
+(defn- role-blocks
+  "Every role block the profile configures, `[label block]`: the eight roles and each panel member."
+  [profile]
+  (concat (dissoc (:roles profile) :security-reviewer)
+          (for [m (security-panel profile)] [(str "security reviewer " (:name m)) (dissoc m :name)])))
+
 (defn read-profile
   "The profile at `path`, or a throw naming the file.
 
@@ -150,14 +192,36 @@
     [{:profile/error :invalid
       :detail "does not match the Profile schema"
       :errors errs}]
-    (let [coder (get-in roles [:coder :family])]
-      (vec (for [r verifiers
-                 :when (= coder (get-in roles [r :family]))]
-             {:profile/error :verifier-shares-coder-family
-              :role r
-              :detail (str (name r) " is " coder ", the same family as the coder"
-                           " — method §05 and decision log P0-3: a verifier that"
-                           " shares the Coder's family shares its blind spots")})))))
+    (let [coder (get-in roles [:coder :family])
+          panel (:security-panel profile)
+          names (map member-name panel)]
+      (cond-> (vec (for [r verifiers
+                         :when (= coder (get-in roles [r :family]))]
+                     {:profile/error :verifier-shares-coder-family
+                      :role r
+                      :detail (str (name r) " is " coder ", the same family as the coder"
+                                   " — method §05 and decision log P0-3: a verifier that"
+                                   " shares the Coder's family shares its blind spots")}))
+        ;; ONE LIST, NOT TWO: a panel and a lone security reviewer would say two things
+        (and panel (:security-reviewer roles))
+        (conj {:profile/error :panel-and-security-reviewer
+               :detail (str "the profile has a :security-panel and a :roles :security-reviewer - two lists;"
+                            " keep the panel, with the reviewer as one of its members")})
+
+        (and (nil? panel) (nil? (:security-reviewer roles)))
+        (conj {:profile/error :no-security-reviewer
+               :detail "neither :roles :security-reviewer nor :security-panel - every stage's end needs one"})
+
+        (not= (count names) (count (distinct names)))
+        (conj {:profile/error :panel-duplicate-name
+               :detail (str "two members of the security panel have the name "
+                            (str/join ", " (for [[n c] (frequencies names) :when (> c 1)] n))
+                            " - give one a :name; the folders and the rotation tell members apart by it")})
+
+        (and (seq panel) (empty? (:eligible (panel-split profile))))
+        (conj {:profile/error :panel-all-coder-family
+               :detail (str "every member of the security panel is " coder ", the Coder's family -"
+                            " none may read the Coder's work; add a member of another family")})))))
 
 ;; ---------------------------------------------------------------------------
 ;; environment — true or false depending on whose machine this is
@@ -235,11 +299,10 @@
    (let [structure (structural profile)]
      (if (seq structure)
        structure
-       (let [roles (:roles profile)]
-         (cond-> []
-           env? (into (seat-violations (:seat profile) (or probe-tool* probe-tool)))
-           env? (into (key-violations roles))
-           probe? (into (endpoint-violations roles))))))))
+       (cond-> []
+         env? (into (seat-violations (:seat profile) (or probe-tool* probe-tool)))
+         env? (into (key-violations (role-blocks profile)))
+         probe? (into (endpoint-violations (role-blocks profile))))))))
 
 (defn verify!
   "`violations`, but throwing — the same shape as `sigs/verify!` and
@@ -256,11 +319,22 @@
   "The profile as lines a human can check at a glance: the seat, then each
   role's family, model and endpoint. Independence is the thing being eyeballed,
   so family comes before model."
-  [{:keys [seat] role-map :roles}]
-  (into [(str "seat  " (name seat))]
-        (for [r roles
-              :let [{:keys [family model endpoint]} (get role-map r)]]
-          (format "%-19s %-11s %-34s %s" (name r) (name family) model endpoint))))
+  [{:keys [seat] :as profile}]
+  (let [role-map (:roles (as-roles profile))
+        line (fn [label {:keys [family model endpoint]}]
+               (format "%-19s %-11s %-34s %s" label (name family) model endpoint))
+        out (set (map :name (:left-out (panel-split profile))))]
+    (into [(str "seat  " (name seat))]
+          (mapcat (fn [r]
+                    (if (and (= r :security-reviewer) (:security-panel profile))
+                      ;; a line per member, in rotation order, the left-out said in place of its endpoint
+                      (for [m (security-panel profile)]
+                        (if (out (:name m))
+                          (format "%-19s %-11s %-34s %s" "security panel" (name (:family m)) (:model m)
+                                  "left out: the Coder's family")
+                          (line "security panel" m)))
+                      [(line (name r) (get role-map r))]))
+                  roles))))
 
 (defn newer-models
   "Per role of `profile`, what `listing` (the catalogue's `:data`) carries in
@@ -270,7 +344,7 @@
   same listing."
   [profile listing]
   (vec (for [r roles
-             :let [m (get-in profile [:roles r :model])
+             :let [m (get-in (as-roles profile) [:roles r :model])
                    newer (catalogue/newer-in-line listing m)]
              :when (seq newer)]
          {:role r :model m :newer newer})))
@@ -377,7 +451,7 @@
           (println (format "  %-9s %-6s %s"
                            nm (if (bad nm) "FAILS" "ok")
                            (str/join "  " (for [r roles]
-                                            (str (name r) " " (name (get-in p [:roles r :family]))))))))
+                                            (str (name r) " " (name (get-in (as-roles p) [:roles r :family]))))))))
         (when (seq bad)
           (println)
           (doseq [[nm vs] bad, {:keys [profile/error detail]} vs]

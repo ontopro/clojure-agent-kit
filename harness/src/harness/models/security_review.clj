@@ -255,7 +255,7 @@
        "                          [--base <rev>] [--rounds N] [--max-tokens N] [--out <dir>]\n"
        "  <clone>    a git clone of the application, with the revision its change is from (default: base)\n"
        "  --model    as bb models names it and the bake-off takes it, e.g. \"openai/gpt-6-astra high\"\n"
-       "  --profile  the profile whose :security-reviewer reads; without --model or --profile, the workspace's\n"
+       "  --profile  the profile whose first security reviewer outside the Coder's family reads (its panel's, or its one :security-reviewer); without --model or --profile, the workspace's\n"
        "A real model call: it spends money (up to --rounds completions, default " default-rounds ")."))
 
 (defn parse-args [args]
@@ -287,18 +287,22 @@
   (println (str "  tests it wrote: " (if (seq (:tests r)) (str/join ", " (keys (:tests r))) "none"))))
 
 (defn role-from-profile
-  "The `:security-reviewer` of the profile at `path`, as a candidate: `{:profile role :id _ :model _
-  :effort _}`. Throws naming the file when the profile has no such role - one written before the
-  role existed; `bb doctor` in its workspace says so too."
+  "The first eligible member of the profile's security reviewer panel at `path` - its one
+  `:security-reviewer` in a profile written before the panel - as a candidate: `{:profile role
+  :id _ :model _ :effort _}`, `:id` the member's name. Throws naming the file when the profile has
+  none, or none outside the Coder's family. `bb security-panel` chooses among several."
   [path]
-  (let [role (get-in (profile/read-profile path) [:roles :security-reviewer])]
-    (when-not role
-      (throw (ex-info (str path " has no :security-reviewer - add one (the shipped examples have it), or pass --model")
+  (let [p (profile/read-profile path)
+        m (first (:eligible (profile/panel-split p)))]
+    (when-not m
+      (throw (ex-info (str path (if (seq (profile/security-panel p))
+                                  " has no security reviewer outside the Coder's family - add one, or pass --model"
+                                  " has no :security-reviewer or :security-panel - add one (the shipped examples have it), or pass --model"))
                       {:profile (str path)})))
-    {:profile role
-     :id (last (str/split (:model role) #"/"))
-     :model (:model role)
-     :effort (get-in role [:params :reasoning_effort])}))
+    {:profile (dissoc m :name)
+     :id (:name m)
+     :model (:model m)
+     :effort (get-in m [:params :reasoning_effort])}))
 
 (defn -main [& args]
   (let [{:keys [positional stance model base rounds max-tokens out] :as opts} (parse-args args)

@@ -317,7 +317,9 @@
   "The roles the KIT's profile names that the project's profile lacks."
   [profile-path]
   (when profile-path
-    (let [have (set (keys (:roles (edn/read-string (slurp profile-path)))))]
+    (let [p (edn/read-string (slurp profile-path))
+          ;; a security reviewer panel is the security reviewer's role
+          have (cond-> (set (keys (:roles p))) (seq (:security-panel p)) (conj :security-reviewer))]
       (vec (remove have profile/roles)))))
 
 (defn facts

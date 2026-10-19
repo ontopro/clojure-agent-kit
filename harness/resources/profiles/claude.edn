@@ -88,16 +88,6 @@
                                  :source "https://platform.claude.com/docs/en/about-claude/pricing"
                                  :as-of "2026-10-16"}}
 
-  ;; SECURITY REVIEWER - once per stage, reads the merged application with its tools in a sandbox
-  ;; with no network; a finding counts only when a test of its own fails (`bb security-review`).
-  :security-reviewer {:family :openai
-                      :model "openai/gpt-6-astra"
-                      :shape :openai
-                      :endpoint "https://openrouter.ai/api/v1"
-                      :key-env "OPENROUTER_API_KEY"
-                      :params {:reasoning_effort "high"
-                               :provider {:only ["openai"] :allow_fallbacks false}}}
-
   ;; ORCHESTRATOR - triage only: one call on a red gate, a note or a rejection, routing it to the
   ;; Coder, the Tester, the Architect or a person. Not a verifier, so any family.
   :orchestrator {:family :anthropic
@@ -112,4 +102,27 @@
                                       :cache-write-5m 5 :cache-write-1h 8
                                       :cache-read 0.4}
                            :source "https://platform.claude.com/docs/en/about-claude/pricing"
-                           :as-of "2026-10-16"}}}}
+                           :as-of "2026-10-16"}}}
+
+ ;; SECURITY REVIEWER PANEL - at every stage's end one or more members read the merged application
+ ;; with their tools in a sandbox with no network; a finding counts only when a test of its own
+ ;; fails (`bb security-panel`). In rotation order: a stage's default is the member after the one
+ ;; that read the stage before; the pre-release stage, all of them. A member of the Coder's family
+ ;; reads nothing while the Coder is of it - here Gemini 4 Argon, which is the Coder: the rule
+ ;; shown, not a mistake. Both found 6 of 6 planted faults on the KIT's fixture (2026-10-16). Fable
+ ;; 5.1 declined the review through OpenRouter and at Anthropic's API, and is not a member. A member
+ ;; is added here, never in code.
+ :security-panel [{:family :openai
+                   :model "openai/gpt-6-astra"
+                   :shape :openai
+                   :endpoint "https://openrouter.ai/api/v1"
+                   :key-env "OPENROUTER_API_KEY"
+                   :params {:reasoning_effort "high"
+                            :provider {:only ["openai"] :allow_fallbacks false}}}
+                  {:family :google
+                   :model "google/gemini-4-argon"
+                   :shape :openai
+                   :endpoint "https://openrouter.ai/api/v1"
+                   :key-env "OPENROUTER_API_KEY"
+                   :params {:reasoning_effort "high"
+                            :provider {:only ["google-vertex"] :allow_fallbacks false}}}]}

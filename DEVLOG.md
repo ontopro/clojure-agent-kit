@@ -63,6 +63,23 @@ tested" stays information for an adopter, never a block.
 ---
 ## 2026-10-19 (plan 6.10)
 
+### The security reviewer panel, in the profile (plan 6.10, item 4, register row 154)
+
+The person's decision: in place of one security reviewer at every stage's end, a panel of them, run
+one, some or all at a time, rotated by default. Its first part is the profile. `:security-panel`, a
+list of security reviewers in rotation order, stands in place of `:roles :security-reviewer` - one
+or the other, never both - so a member is added by configuration and never in code; a profile with
+its one `:security-reviewer` reads as a panel of one, so every profile written before reads
+unchanged. A member is known by its `:name`, its model slug's last segment unless given, so a member
+whose route moves keeps its history. A member of the Coder's family is left out of every choice and
+said, not refused - the panel outlives the Coder; a panel with no member outside the Coder's family
+is refused, as a lone reviewer of that family always was. Every reader of the eight roles sees the
+first eligible member as the security reviewer (`profile/as-roles`), `bb doctor`'s missing-role line
+counts a panel as the role, and `bb security-review --profile` takes the first eligible member. The
+two shipped examples carry GPT-6 Astra and Gemini 4 Argon, Argon left out since it is their Coder -
+the rule shown, said in their comment. Fable 5.1 is not a member: it declined the review on both
+routes (below).
+
 ### Fable 5.1 declines the security review at Anthropic's own API too; a refusal there is said as one (plan 6.10, item 4, register row 153)
 
 The security reviewer panel's design put Fable 5.1 beside GPT-6 Astra and Gemini 4 Argon, and it had
