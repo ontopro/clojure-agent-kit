@@ -13,12 +13,13 @@
   line art) is upsampled, blurred once and thresholded into a mask; Zhang-Suen thinning leaves its
   skeleton; the skeleton is cut at its junctions into chains; each chain is fitted. The result is
   fitted to the 24-unit grid with a margin and drawn at the stroke asked for, with only `path` and
-  `circle` elements, `fill=\"none\"`, `stroke=\"currentColor\"` and round caps and joins - the icon
-  contract the project's icons kept.
+  `circle` elements, `stroke=\"currentColor\"`, round caps and joins, and `fill=\"none\"` on the `svg` -
+  the icon contract. An element may carry `fill=\"currentColor\"`: a dot, and any shape the picture
+  fills, which tracing cannot follow (it thins a filled area to a line) and an icon's `:add` draws.
 
   THE PARAMETERS ARE PER ICON, and a picture's fills are not strokes: where tracing cannot follow
   a shape, the icon's entry names regions to leave out (`:exclude`) and elements to add (`:add`),
-  in the picture's own pixels. Lengths and tolerances are in units of the region drawn 600 wide,
+  in the picture's own pixels. Lengths and tolerances are in units of the picture drawn 600 wide,
   so one setting means the same at any crop size."
   (:require [clojure.string :as str]))
 
@@ -232,14 +233,15 @@
 (defn fit-chain
   "One chain (points in the 600 frame) as the simplest element that holds: nil when it is too short
   (a dot, with `dots?`, when it stands free), a circle when it closes on one, a line, an arc, else a
-  smoothed and simplified spline (or a polyline, with `polyline?`). An element is `{:t :circle :c :r}`
-  or `{:t :path :cmds [..]}`, with `:bound` points for an arc."
+  smoothed and simplified spline (or a polyline, with `polyline?`). An element is `{:t :circle :c :r}`,
+  `{:t :path :cmds [..]}` (with `:bound` points for an arc) or `{:t :dot :c}`, drawn filled at the
+  stroke's width."
   [{:keys [pts j0 j1]} {:keys [epsilon min-length dots? polyline? k] :or {epsilon 2.6 min-length 10 k 1}}]
   (let [len (path-length pts)]
     (cond
-      (< (count pts) 2) nil
-      (< len min-length) (when (and dots? (nil? j0) (nil? j1))
-                           {:t :path :cmds [["M" (:c (fit-circle pts))] ["h" 0.01]]})
+      ;; a dot: a short stroke standing alone, a small blob whose skeleton is one point included
+      (and (< len min-length) dots? (nil? j0) (nil? j1) (seq pts)) {:t :dot :c (:c (fit-circle pts))}
+      (or (< (count pts) 2) (< len min-length)) nil
       :else
       (let [closed (< (Math/hypot (- (get-in pts [0 0]) (get-in (peek pts) [0])) (- (get-in pts [0 1]) (get-in (peek pts) [1]))) (* 1.6 k))
             cf (when closed (fit-circle pts))]
@@ -272,20 +274,22 @@
 
 (defn- scale-element
   "An element given in the picture's pixels, in the 600 frame (`k` the factor)."
-  [k {:keys [path circle]}]
-  (cond
-    circle (let [[x y r] circle] {:t :circle :c [(* k x) (* k y)] :r (* k r)})
-    path {:t :path :cmds (vec (for [[c & args] path]
-                                (case c
-                                  "A" (let [[r large sweep p] args] ["A" (* k r) large sweep (mapv #(* k %) p)])
-                                  "Z" ["Z"]
-                                  (into [c] (map (fn [p] (mapv #(* k %) p)) args)))))}))
+  [k {:keys [path circle fill]}]
+  (cond-> (cond
+            circle (let [[x y r] circle] {:t :circle :c [(* k x) (* k y)] :r (* k r)})
+            path {:t :path :cmds (vec (for [[c & args] path]
+                                        (case c
+                                          "A" (let [[r large sweep p] args] ["A" (* k r) large sweep (mapv #(* k %) p)])
+                                          "Z" ["Z"]
+                                          (into [c] (map (fn [p] (mapv #(* k %) p)) args)))))})
+    fill (assoc :fill true)))
 
 (defn trace-elements
   "The icon's elements in the 600 frame from `grid` (`ink-grid`'s) and its entry: `:region` `[x0 y0
   x1 y1]` in the picture's pixels, `:threshold`, `:epsilon`, `:min-length`, `:dots?`, `:polyline?`,
   `:exclude` (regions whose chains are dropped) and `:add` (elements in the picture's pixels:
-  `{:path [[\"M\" [x y]] [\"L\" [x y]] ..]}` or `{:circle [x y r]}`). Returns `{:elements :chains :k}`."
+  `{:path [[\"M\" [x y]] [\"L\" [x y]] ..]}` or `{:circle [x y r]}`, either with `:fill true` for a
+  shape the picture fills). Returns `{:elements :chains :k}`."
   [grid {:keys [region threshold exclude add] :or {threshold 70} :as entry}]
   (let [up 3
         [x0 y0] region
@@ -305,7 +309,8 @@
 (defn- points-of [e]
   (case (:t e)
     :circle (let [[x y] (:c e) r (:r e)] [[(- x r) (- y r)] [(+ x r) (+ y r)]])
-    :path (concat (:bound e) (mapcat (fn [[c & a]] (when (#{"M" "L" "C"} c) a)) (:cmds e)))))
+    :dot [(:c e)]
+    :path (concat (:bound e) (mapcat (fn [[c & a]] (cond (#{"M" "L" "C"} c) a (= "A" c) [(last a)])) (:cmds e)))))
 
 (defn grid-transform
   "How the elements are fitted to the 24 grid with a 1-unit margin: `{:s :tp}`, `tp` a point's
@@ -330,11 +335,14 @@
     "A" (let [[r large sweep p] args [x y] (tp p)] (str "A" (n2 (* s r)) " " (n2 (* s r)) " 0 " large " " sweep " " (n2 x) " " (n2 y)))))
 
 (defn element-str
-  "One element as SVG, through `tp` at scale `s`: only `path` and `circle`."
-  [tp s e]
-  (case (:t e)
-    :path (str "<path d=\"" (str/join "" (map #(cmd-str tp s %) (:cmds e))) "\" />")
-    :circle (let [[x y] (tp (:c e))] (str "<circle cx=\"" (n2 x) "\" cy=\"" (n2 y) "\" r=\"" (n2 (* s (:r e))) "\" />"))))
+  "One element as SVG, through `tp` at scale `s`, `dot-r` a dot's radius: only `path` and `circle`,
+  `fill=\"currentColor\"` on a filled one."
+  [tp s dot-r e]
+  (let [fill (when (:fill e) " fill=\"currentColor\"")]
+    (case (:t e)
+      :path (str "<path d=\"" (str/join "" (map #(cmd-str tp s %) (:cmds e))) "\"" fill " />")
+      :circle (let [[x y] (tp (:c e))] (str "<circle cx=\"" (n2 x) "\" cy=\"" (n2 y) "\" r=\"" (n2 (* s (:r e))) "\"" fill " />"))
+      :dot (let [[x y] (tp (:c e))] (str "<circle cx=\"" (n2 x) "\" cy=\"" (n2 y) "\" r=\"" (n2 dot-r) "\" fill=\"currentColor\" stroke=\"none\" />")))))
 
 (defn icon-svg
   "The icon: a 24 by 24 `viewBox`, no fill, `currentColor` at `stroke`, round caps and joins, its
@@ -343,7 +351,7 @@
   (let [{:keys [s tp]} (grid-transform elements bbox)]
     (str "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\""
          " stroke=\"currentColor\" stroke-width=\"" (n2 stroke) "\" stroke-linecap=\"round\" stroke-linejoin=\"round\">\n"
-         (str/join "\n" (map #(str "  " (element-str tp s %)) elements))
+         (str/join "\n" (map #(str "  " (element-str tp s (/ stroke 2.0) %)) elements))
          "\n</svg>\n")))
 
 (defn overlay-svg
@@ -351,10 +359,10 @@
   600 frame and the elements over it in green at the icon's stroke, scaled back."
   [elements png-base64 picture-h-in-frame stroke bbox]
   (let [{:keys [s]} (grid-transform elements bbox)]
-    (str "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"300\" height=\"" (n2 (/ picture-h-in-frame 2)) "\" viewBox=\"0 0 600 "
-         (n2 picture-h-in-frame) "\"><image width=\"600\" height=\"" (n2 picture-h-in-frame) "\" href=\"data:image/png;base64," png-base64 "\"/>"
-         "<g fill=\"none\" stroke=\"#00b050\" stroke-opacity=\".8\" stroke-width=\"" (n2 (/ stroke s)) "\" stroke-linecap=\"round\" stroke-linejoin=\"round\">"
-         (str/join "" (map #(element-str identity 1 %) elements))
+    (str "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" width=\"300\" height=\"" (n2 (/ picture-h-in-frame 2)) "\" viewBox=\"0 0 600 "
+         (n2 picture-h-in-frame) "\"><image width=\"600\" height=\"" (n2 picture-h-in-frame) "\" xlink:href=\"data:image/png;base64," png-base64 "\"/>"
+         "<g fill=\"none\" color=\"#00b050\" stroke=\"#00b050\" stroke-opacity=\".8\" stroke-width=\"" (n2 (/ stroke s)) "\" stroke-linecap=\"round\" stroke-linejoin=\"round\">"
+         (str/join "" (map #(element-str identity 1 (/ stroke s 2.0) %) elements))
          "</g></svg>")))
 
 (defn icon

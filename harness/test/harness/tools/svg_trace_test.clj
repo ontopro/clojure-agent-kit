@@ -34,7 +34,21 @@
       (is (= [:circle] (map :t (:elements (t/icon grid {:region [10 10 105 95] :exclude [[65 70 105 90]]} 1.5))))))
     (testing "an element added in the picture's pixels joins the trace"
       (let [{:keys [elements]} (t/icon grid {:region [10 10 105 95] :add [{:circle [90 30 4]} {:path [["M" [70 20]] ["L" [70 40]]]}]} 1.5)]
-        (is (= 4 (count elements)))))))
+        (is (= 4 (count elements)))))
+    (testing "a shape the picture fills is added filled, as the icon's own element"
+      (let [{:keys [svg]} (t/icon grid {:region [10 10 105 95] :add [{:circle [90 30 4] :fill true}]} 1.5)]
+        (is (re-find #"<circle [^>]*fill=\"currentColor\" />" svg))
+        (is (str/includes? svg "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\"")
+            "the svg itself has none")))
+    (testing "an added arc's end is inside the fitted box"
+      (let [{:keys [svg]} (t/icon (picture ring [200 30 30]) {:region [10 10 70 70] :add [{:path [["M" [40 60]] ["A" 30 0 1 [100 60]]]}]} 1.5)
+            xs (map #(parse-double (second %)) (re-seq #"A[\d.]+ [\d.]+ 0 \d \d ([\d.]+)" svg))]
+        (is (every? #(<= % 23.01) xs))))))
+
+(deftest a-dot-standing-alone-is-a-filled-circle-at-the-strokes-width
+  (let [dot? (fn [x y] (<= (Math/hypot (- x 30) (- y 30)) 1.5))
+        {:keys [svg]} (t/icon (picture #(or (ring %1 %2) (dot? %1 %2)) [200 30 30]) {:region [10 10 70 70] :dots? true} 1.5)]
+    (is (re-find #"<circle [^>]*r=\"0.75\" fill=\"currentColor\" stroke=\"none\" />" svg))))
 
 (deftest an-arc-is-an-arc
   ;; a band of the circle between two angles, with round ends, as a pen draws it

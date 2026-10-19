@@ -17,6 +17,6 @@
          :task (apply shell "clojure" "-Sdeps" (pr-str {:deps {'kit/svg-check {:local/root pack-dir}}})
                       "-M" "-m" "svg-check" *command-line-args*)}
 
-  trace {:doc "Trace each icon an EDN file names from its picture (PNG): the picture's strokes found, thinned and fitted as lines, circles, arcs and splines into a 24-grid SVG at the file's stroke - only path and circle, no fill, currentColor, round caps and joins - with an overlay of the trace over the picture and a contact sheet, index.html"
+  trace {:doc "Trace each icon an EDN file names from its picture (PNG): the picture's strokes found, thinned and fitted as lines, circles, arcs and splines into a 24-grid SVG at the file's stroke - only path and circle, currentColor, round caps and joins, no fill on the svg and currentColor on a dot or a filled shape added - with an overlay of the trace over the picture and a contact sheet, index.html"
          :task (apply shell "clojure" "-Sdeps" (pr-str {:deps {'kit/svg-check {:local/root pack-dir}}})
                       "-M" "-m" "svg-trace-command" *command-line-args*)}}}

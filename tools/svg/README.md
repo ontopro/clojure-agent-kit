@@ -42,20 +42,22 @@ in the same way every time: proportions drift and strokes wander. `trace` follow
 own strokes instead. The region's ink is found (colour on white, or `:ink :darkness` for black
 line art), thinned to its centre line, cut at its junctions, and each line fitted as the simplest
 shape that holds - a straight line, a circle, an arc, else a smoothed spline - then fitted to the
-24-unit grid at the file's stroke: only `path` and `circle`, `fill="none"`,
-`stroke="currentColor"`, round caps and joins.
+24-unit grid at the file's stroke: only `path` and `circle`, `stroke="currentColor"`, round caps
+and joins, and `fill="none"` on the `svg` - an element may carry `fill="currentColor"`. A short
+stroke standing alone is a dot (`:dots? true`), drawn filled at the stroke's width; and a shape the
+picture fills, which tracing thins to a line, is drawn by hand with `:add` and `:fill true`.
 
 ```clojure
 {:stroke 1.5
  :icons {"phone" {:png "crops/phone.png" :region [26 29 84 82] :threshold 55 :epsilon 2.8 :min-length 12}
          "badge" {:png "crops/badge.png" :region [45 38 142 128] :dots? true
                  :exclude [[50 57 72 76]]                 ;; a fill, not a stroke
-                 :add [{:circle [74.5 92.5 8.5]}          ;; what tracing cannot follow
+                 :add [{:circle [74.5 92.5 8.5] :fill true} ;; a filled disc, which tracing cannot follow
                        {:path [["M" [44 46]] ["L" [80 46]]]}]}}}
 ```
 
 Every position is in the picture's own pixels; `:epsilon` and `:min-length` are in units of the
-region drawn 600 wide, so a setting means the same at any crop size. It writes `<name>.svg`,
+picture drawn 600 wide, so a setting means the same at any crop size. It writes `<name>.svg`,
 `overlay-<name>.svg` - the trace in green over the picture - and `index.html`, a contact sheet of
 every icon at 48 and 24 pixels beside its overlay, under `--out` (else `traced/` beside the file).
 

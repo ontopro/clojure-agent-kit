@@ -83,6 +83,15 @@ contact sheet of them all to judge before any is used. Checked end to end on a P
 a circle, an arc and a line found as such - and the result held by the pack's own `check`. The
 first project's own check, its sixteen icons byte for byte, is that project's to run.
 
+The person asked why no fill, and the first project's icons answer it: 18 of its 99 carry
+`fill="currentColor"` on an element - dots and discs - with `fill="none"` on the `svg` alone. So an
+element may be filled: a short stroke standing alone is a dot (`:dots?`), drawn as a circle filled at
+the stroke's width, a small blob whose skeleton is one point included; and a shape the picture
+fills, which tracing thins to a line, is added by hand with `:fill true`. Fable 5.1's read found three
+small things, fixed with it: the overlay names its picture with `xlink:href`, which the pack's own
+`check` (Batik) reads as browsers do - it had said the overlay did not render; an added arc's end is
+inside the fitted box; and lengths are in units of the picture drawn 600 wide, not the region.
+
 ### The money by provider and by role (plan 6.10, item 7, register row 159)
 
 The person asked where a project's money went - to which makers' models, through which channel,
