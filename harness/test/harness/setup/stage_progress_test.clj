@@ -50,6 +50,15 @@
                      "- [x] Security review: skipped - Ada, 2026-10-20: content only"))
   (is (str/includes? (sp/render (assoc facts :kind "pre-release")) "- [ ] Threat model signed")))
 
+(deftest a-per-run-row-has-no-box-and-a-refusal-ticks-nothing
+  (let [lines (str/split-lines (sp/render facts))]
+    (is (some #(str/starts-with? % "- HP-2 - the balance (every task; per run)") lines) "never closes, so no box"))
+  (is (str/includes? (sp/render (assoc facts :review-records [{:member "fable" :refused? true :findings []}]))
+                     "- [ ] Security review: no reviewer answered; fable refused or left no answer"))
+  (is (str/includes? (sp/render (assoc facts :review-records [{:member "astra" :findings [{:kind :reproduced}]}
+                                                              {:member "fable" :no-block? true :findings []}]))
+                     "- [x] Security review: astra - 1 reproduced; fable refused or left no answer")))
+
 (deftest the-section-is-placed-and-the-persons-lines-kept
   (let [r (sp/render facts)]
     (testing "a plan with no section gains it, the hand lines with it"

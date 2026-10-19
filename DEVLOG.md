@@ -85,6 +85,11 @@ which are left for the person to prune. On the first project's stage 4, read wit
 rendered packet lines carry the same money as its hand-written ones; its rounds read higher, since
 the KIT counts one plus each triage event, as `bb report` does.
 
+Fable 5.1's read found three small things, fixed after: a per-run §0 row is done again before every
+run and never closes, so it is printed with no box; a security review that was declined or left no
+answer ticks nothing and is said as that, as the stage-end skill holds; and the section says what a
+round is, so the reader of a stage plan does not file the KIT's count as a defect.
+
 ### What a visitor submits: what a feature that takes it keeps is decided before it is built (plan 6.10, item 5, register row 157)
 
 The first project's stage that added search settled with the person what search keeps - the words

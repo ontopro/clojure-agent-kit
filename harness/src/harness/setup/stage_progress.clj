@@ -61,9 +61,12 @@
 (defn- signed [label g extra]
   (str (box g) label (when g (str " - " (:by g) ", " (:date g))) extra))
 
-(defn prep-line [{:keys [id prep blocks status]}]
+(defn prep-line
+  "A §0 row's line. A `per run` row is done again before every run and never closes, so it has no
+  box - a box nothing can tick left the section looking unfinished for good."
+  [{:keys [id prep blocks status]}]
   (let [st (next/precondition-state status)]
-    (str (box (= :done st)) id " - " (cut prep 90) " (" (str/trim blocks) "; "
+    (str (if (= :per-run st) "- " (box (= :done st))) id " - " (cut prep 90) " (" (str/trim blocks) "; "
          (case st :done (cut status 60) :per-run "per run" "open") ")")))
 
 (defn packet-line
@@ -88,13 +91,21 @@
     (str (box (and rec (zero? (or fail 0)))) label
          (if rec (str ": " ok " ok, " warn " warn, " fail " fail (" (day (:security/at rec)) ")") ": no record"))))
 
+(defn- said-nothing? [r] (boolean (or (:refused? r) (:no-block? r) (= :failed (:status r)))))
+
 (defn review-line
-  "The security review's line: who read (from the folder's records), what they reproduced, or the skip."
+  "The security review's line: who read (from the folder's records), what they reproduced, or the
+  skip. Ticked only when a reviewer answered: a review declined or left without an answer is not a
+  clean one, and is said as that."
   [recs skipped]
   (cond
-    (seq recs) (str (box true) "Security review: "
-                    (str/join ", " (sort (distinct (map sr/record-member recs))))
-                    " - " (count (filter #(= :reproduced (:kind %)) (mapcat :findings recs))) " reproduced")
+    (seq recs) (let [{quiet true answered false} (group-by said-nothing? recs)
+                     names #(str/join ", " (sort (distinct (map sr/record-member %))))]
+                 (str (box (seq answered)) "Security review: "
+                      (if (seq answered)
+                        (str (names answered) " - " (count (filter #(= :reproduced (:kind %)) (mapcat :findings answered))) " reproduced")
+                        "no reviewer answered")
+                      (when (seq quiet) (str "; " (names quiet) " refused or left no answer"))))
     skipped (str (box true) "Security review: skipped - " (:by skipped) ", " (:date skipped) ": " (:reason skipped))
     :else (str (box false) "Security review")))
 
@@ -118,7 +129,7 @@
                         (when-let [c (:cap (:stage/approved gates))] (str " (cap " c ")")))
                 (str (box reviewed?) "Blueprint reviewed")
                 (signed "Blueprint signed off" (:blueprint/signed gates) nil)
-                "" "**Prep and packets** (the blueprint's §0 and §4)" ""]
+                "" "**Prep and packets** (the blueprint's §0 and §4; a packet's rounds are its first dispatch and each triage after it, as `bb report` counts them)" ""]
                (map prep-line every)
                (if (seq lines) lines ["- [ ] No packet in the blueprint yet"])
                ["" "**The stage's end**" ""
