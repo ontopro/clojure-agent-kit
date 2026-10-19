@@ -30,3 +30,40 @@ from a source can add that as a script of its own; `check-file` in `src/svg_chec
 the rendered bytes. And it does not say whether an icon looks right: the person's walk at the
 stage's end still does that, over the PNGs this writes, one page of them instead of ninety
 files.
+
+## Tracing an icon from its picture
+
+```
+bb --config <kit>/tools/svg/bb.edn trace <icons.edn> [--out <dir>] [--only <name>,<name>]
+```
+
+When a site's icons come from pictures - a poster, a scan, a mock-up - drawing each by hand fails
+in the same way every time: proportions drift and strokes wander. `trace` follows the picture's
+own strokes instead. The region's ink is found (colour on white, or `:ink :darkness` for black
+line art), thinned to its centre line, cut at its junctions, and each line fitted as the simplest
+shape that holds - a straight line, a circle, an arc, else a smoothed spline - then fitted to the
+24-unit grid at the file's stroke: only `path` and `circle`, `fill="none"`,
+`stroke="currentColor"`, round caps and joins.
+
+```clojure
+{:stroke 1.5
+ :icons {"phone" {:png "crops/phone.png" :region [26 29 84 82] :threshold 55 :epsilon 2.8 :min-length 12}
+         "badge" {:png "crops/badge.png" :region [45 38 142 128] :dots? true
+                 :exclude [[50 57 72 76]]                 ;; a fill, not a stroke
+                 :add [{:circle [74.5 92.5 8.5]}          ;; what tracing cannot follow
+                       {:path [["M" [44 46]] ["L" [80 46]]]}]}}}
+```
+
+Every position is in the picture's own pixels; `:epsilon` and `:min-length` are in units of the
+region drawn 600 wide, so a setting means the same at any crop size. It writes `<name>.svg`,
+`overlay-<name>.svg` - the trace in green over the picture - and `index.html`, a contact sheet of
+every icon at 48 and 24 pixels beside its overlay, under `--out` (else `traced/` beside the file).
+
+> [!IMPORTANT]
+> Judge every traced icon on the contact sheet before it is used: a trace is the picture's strokes
+> fitted, not a drawing anyone checked.
+
+Each icon needs its own settings, found by eye on the overlay, and a fill the picture has is not a
+stroke - leave it out with `:exclude` and draw it with `:add`. The fitting is pure and tested in
+the KIT's gates (`src/svg_trace.clj`); the command, which reads the PNGs, runs on the JVM like the
+check (`src/svg_trace_command.clj`). `check` then holds the result to rendering.

@@ -15,4 +15,8 @@
 
   check {:doc "Rasterise each SVG named (files, or folders searched for *.svg): renders, not empty, the colour share when --color is given; PNGs and a report under the output folder"
          :task (apply shell "clojure" "-Sdeps" (pr-str {:deps {'kit/svg-check {:local/root pack-dir}}})
-                      "-M" "-m" "svg-check" *command-line-args*)}}}
+                      "-M" "-m" "svg-check" *command-line-args*)}
+
+  trace {:doc "Trace each icon an EDN file names from its picture (PNG): the picture's strokes found, thinned and fitted as lines, circles, arcs and splines into a 24-grid SVG at the file's stroke - only path and circle, no fill, currentColor, round caps and joins - with an overlay of the trace over the picture and a contact sheet, index.html"
+         :task (apply shell "clojure" "-Sdeps" (pr-str {:deps {'kit/svg-check {:local/root pack-dir}}})
+                      "-M" "-m" "svg-trace-command" *command-line-args*)}}}

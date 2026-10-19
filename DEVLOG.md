@@ -63,6 +63,26 @@ tested" stays information for an adopter, never a block.
 ---
 ## 2026-10-19 (plan 6.10)
 
+### An icon traced from its picture, the SVG pack's `trace` (plan 6.10, item 8, register row 160)
+
+The first project drew a set of icons from its pictures freehand three times, and each round failed
+on proportion and stroke; then it wrote a tracer that follows the picture's own strokes, and its
+owner approved the sixteen icons it traced. The script was that project's: each icon's settings and
+some hand-measured geometry in its code, absolute paths, BMP input made by a macOS tool. It is now
+the SVG pack's `trace`, a rewrite that keeps the fitting. `svg-trace` is pure: a picture's ink (colour
+on white, or darkness for black line art) upsampled, blurred once and thresholded; Zhang-Suen
+thinning to the centre line; the skeleton cut at its junctions into chains; each chain fitted as the
+simplest shape that holds - a line, a circle, a Kåsa arc, else a smoothed, simplified spline; the
+whole fitted to the 24-unit grid with only `path` and `circle`, no fill, `currentColor`, round caps
+and joins. It runs under bb, so its tests are in the KIT's gates, on pictures drawn in the test - a
+ring a circle, a bar a line, a pen's arc an arc, black line art read by its darkness and not as
+colour, a region left out and an element added. `svg-trace-command` is the JVM's edge: PNGs read
+with `javax.imageio` from an EDN file of icons, each with its settings, `:exclude` regions and `:add`
+elements in the picture's own pixels, and written as each icon, its trace over its picture, and a
+contact sheet of them all to judge before any is used. Checked end to end on a PNG drawn on the JVM -
+a circle, an arc and a line found as such - and the result held by the pack's own `check`. The
+first project's own check, its sixteen icons byte for byte, is that project's to run.
+
 ### The money by provider and by role (plan 6.10, item 7, register row 159)
 
 The person asked where a project's money went - to which makers' models, through which channel,
