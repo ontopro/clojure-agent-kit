@@ -76,6 +76,11 @@ template's exit criteria read with the whole panel; the method's security paragr
 harness roster, the workflow table and the security pack's README say the panel. Row 154 is fixed;
 two things the item found and did not fix are rows of their own - a bake-off candidate takes only its
 family's route (155), and a finding naming two tests in one field is routed with none (156).
+Fable 5.1's read of the documents found four small things, fixed after: `bb profile` on a profile with
+its one `:security-reviewer` says a `:security-panel` adds members - the only hint an adopter has
+before the upgrade hand-off; `--history` marks a computed cost ~; `bb next` refuses a pre-release
+stage's skip before it would ask the skip for a name; and the skill's per-reading costs are the ones
+this log carries. The offer keeps the person's own words, "skip the audit", for the security review.
 
 ### A skipped security review is the person's, and written (plan 6.10, item 4, register row 154)
 
@@ -151,7 +156,7 @@ the refusal was recorded as no answer: at Anthropic's own API a refusal is the r
 triage asks it before calling a failed call failed - a triage refusal there had been said as a failed
 call. The same bake-off filled bake-off-3's empty money from the generation records - the night it ran,
 OpenRouter's generation endpoint answered nothing (row 129) - with `bb reprice` and the report
-re-rendered: Argon $0.58, Astra $2.54 for the two readings.
+re-rendered: Argon $0.58, Astra $2.54 for the two readings - by reading, Argon $0.11 on the careful branch and $0.47 on the faulted, Astra $1.35 and $1.19, the figures the stage-end skill quotes.
 
 ### A spec reading two records carry is counted once (plan 6.10, item 3, register row 152)
 

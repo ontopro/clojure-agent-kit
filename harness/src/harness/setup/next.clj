@@ -167,7 +167,10 @@
         unsigned-threat-model? (and (= "pre-release" kind) (nil? (:security/signed gates)))
         sign-threat-model (str "every line of docs/02-architecture.md §15 answered with its evidence, then "
                                ":security/signed {:date :by <name>} in " (gates-file id))
-        unnamed-gate (first (filter #(unnamed? (get gates %)) signed-gates))
+        ;; a pre-release stage's skip is refused outright below, never first asked for a name
+        unnamed-gate (first (filter #(and (unnamed? (get gates %))
+                                          (not (and (= "pre-release" kind) (= :security/skipped %))))
+                                    signed-gates))
         next-packet (first (remove merged packets))
         prep-for (fn [state] (filter #(and (= state (precondition-state (:status %))) (blocks? (:blocks %) next-packet))
                                      preconditions))

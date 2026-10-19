@@ -411,6 +411,10 @@
                  (println (str "  " label))
                  (doseq [l (summary profile)] (println (str "  " l)))
                  (println)
+                 (when (and (nil? (:security-panel profile)) (get-in profile [:roles :security-reviewer]))
+                   (println "  the security reviewer panel is its one :security-reviewer; a :security-panel adds members")
+                   (println "  (the shipped examples show one)")
+                   (println))
                  (let [v (violations profile opts)]
                    (doseq [{:keys [profile/error detail]} v]
                      (println (str "  " (name error) " — " detail)))

@@ -152,7 +152,9 @@
     (testing "a pre-release stage's security review is never skipped"
       (let [a (next/next-action (gate all :security/skipped {:date "d" :by "Ada" :reason "r"}))]
         (is (= [14 "the person"] ((juxt :step :owner) a)))
-        (is (str/includes? (:run a) "bb security-panel <clone> --all"))))
+        (is (str/includes? (:run a) "bb security-panel <clone> --all")))
+      (is (str/includes? (:run (next/next-action (gate all :security/skipped {:date "d" :reason "r"})))
+                         "remove :security/skipped") "refused first, never asked for a name"))
     (testing "another kind is not asked, and a plan with no kind line is another kind"
       (is (= "/kit-stage-end" (:run (next/next-action (assoc-in all [:stage :kind] "increment")))))
       (is (= [7 "the person"] (step (-> all (assoc-in [:stage :kind] nil) (gate :stage/closed {:date "d"}))))))))
