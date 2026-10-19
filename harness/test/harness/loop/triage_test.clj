@@ -480,3 +480,18 @@
     (is (true? (:refused? r)))
     (is (str/includes? (:triage/fallback r) "declined to answer"))
     (is (= cut (:answer r)) "what it wrote before it stopped is kept")))
+
+(deftest a-refusal-at-anthropics-own-api-is-said-as-one-not-as-a-failed-call
+  ;; there the refusal is the response's stop_reason, which the adapter makes the call's error
+  (let [[r _] (with-stub 200 {:id "msg_1" :type "message" :role "assistant" :model "m" :content []
+                              :stop_reason "refusal" :stop_details {:category "cyber"}
+                              :usage {:input_tokens 5 :output_tokens 0}}
+                (fn [endpoint]
+                  ((triage/model-triage {:seat :claude
+                                         :roles {:orchestrator {:family :stub :model "m" :shape :anthropic
+                                                                :endpoint endpoint :params {:max_tokens 100}}}}
+                                        no-retry)
+                   (security-finding))))]
+    (is (= :human (:route r)))
+    (is (true? (:refused? r)))
+    (is (str/includes? (:triage/fallback r) "declined to answer"))))

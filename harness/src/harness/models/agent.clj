@@ -42,9 +42,16 @@
   "Whether the model declined: a completion in `steps` whose host finish reason is
   `content_filter` or whose native one is `refusal` (Anthropic's word). That is the model's own
   safeguard speaking, not a failure of the call - and it can stop an answer halfway, so a reply
-  cut off by it reads like one with no verdict in it unless this is asked."
-  [steps]
-  (boolean (some #(or (= "refusal" (:native-finish-reason %)) (= "content_filter" (:finish-reason %))) steps)))
+  cut off by it reads like one with no verdict in it unless this is asked.
+
+  OR THE CALL'S ERROR SAYS SO. Through OpenRouter a refusal is a completion's finish reason; at
+  Anthropic's own API it is the response's `stop_reason`, which the adapter turns into the call's
+  error (`:stop-reason \"refusal\"`) and no step - so a security review refused there was
+  recorded as no answer, and its bake-off row said so."
+  ([steps] (refused? steps nil))
+  ([steps error]
+   (boolean (or (= "refusal" (:stop-reason error))
+                (some #(or (= "refusal" (:native-finish-reason %)) (= "content_filter" (:finish-reason %))) steps)))))
 
 (defn last-json-block
   "The LAST fenced ```json block in `text`, parsed with keyword keys; nil when

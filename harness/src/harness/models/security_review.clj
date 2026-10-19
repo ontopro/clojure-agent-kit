@@ -106,9 +106,10 @@
   "Whether the model declined to do the review: a completion whose host finish reason is
   `content_filter` or whose native one is `refusal` (Anthropic's word). That is the model's own
   safeguard speaking, not a failure of the call, and a review in which it happened has said
-  nothing - it is reported as a refusal, never as a clean review or an empty answer."
-  [steps]
-  (agent/refused? steps))
+  nothing - it is reported as a refusal, never as a clean review or an empty answer. `error` is
+  the call's: at Anthropic's own API the refusal is there (`agent/refused?`)."
+  ([steps] (refused? steps nil))
+  ([steps error] (agent/refused? steps error)))
 
 (defn parse-findings
   "The findings in the security reviewer's final text, from its last ```json block: the vector (empty for
@@ -219,7 +220,7 @@
                 :no-block? (nil? findings)
                 :tests (reproductions clone)
                 :text (:text r)
-                :refused? (refused? (:steps r))
+                :refused? (refused? (:steps r) (:error r))
                 :empty-answer? (and (= :done (:status r)) (str/blank? (:text r)))
                 :turns (compact-turns (:turns r))
                 :steps (:steps r)

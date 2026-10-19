@@ -155,7 +155,11 @@
   (is (true? (sr/refused? [{:native-finish-reason "refusal"}])))
   (is (true? (sr/refused? [{:finish-reason "content_filter"}])))
   (is (false? (sr/refused? [{:finish-reason "stop"} {:finish-reason "length"} {}])))
-  (is (false? (sr/refused? []))))
+  (is (false? (sr/refused? [])))
+  (testing "at Anthropic's own API the refusal is the call's error, with no step to read it from"
+    (is (true? (sr/refused? [] {:harness/error :api-error :status 200 :stop-reason "refusal"
+                                :message "the model refused (cyber)"})))
+    (is (false? (sr/refused? [] {:harness/error :api-error :status 200 :stop-reason "max_tokens"})))))
 
 (deftest the-security-reviewer-can-come-from-a-profile
   (let [dir (fs/create-temp-dir {:prefix "kit-sr-profile"})

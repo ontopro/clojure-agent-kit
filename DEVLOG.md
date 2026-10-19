@@ -63,6 +63,22 @@ tested" stays information for an adopter, never a block.
 ---
 ## 2026-10-19 (plan 6.10)
 
+### Fable 5.1 declines the security review at Anthropic's own API too; a refusal there is said as one (plan 6.10, item 4, register row 153)
+
+The security reviewer panel's design put Fable 5.1 beside GPT-6 Astra and Gemini 4 Argon, and it had
+declined the review three times through OpenRouter (row 121). So its bake-off ran first, on the
+planted-fault fixture, at Anthropic's own API: it declined both readings, the response's stop reason
+`refusal`, category cyber, after 4 and 14 completions - $1.12. No prompt was reworded. It is not a
+panel member. Two KIT faults came out of it. `bb security-bake-off` builds a candidate from the
+family's route only, so the direct route was run from a script over the bake-off's own reading. And
+the refusal was recorded as no answer: at Anthropic's own API a refusal is the response's
+`stop_reason`, which the adapter makes the call's error, with no completion step whose finish reason
+`refused?` reads. `agent/refused?` now reads the call's error too; the security review passes it, and
+triage asks it before calling a failed call failed - a triage refusal there had been said as a failed
+call. The same bake-off filled bake-off-3's empty money from the generation records - the night it ran,
+OpenRouter's generation endpoint answered nothing (row 129) - with `bb reprice` and the report
+re-rendered: Argon $0.58, Astra $2.54 for the two readings.
+
 ### A spec reading two records carry is counted once (plan 6.10, item 3, register row 152)
 
 The first project, building its own cost tables from the records, found its stage 2 report counting
