@@ -60,3 +60,15 @@
   lists and the stage map revised; the next increment pulled
 
 ## 7. Residual risks / feeds into the next increment
+
+## Progress — checked off as the stage runs
+
+<!-- progress: written by bb stage-progress from the stage's records; your own lines go below the end marker -->
+_`bb stage-progress` writes this part from the stage's records - the gates record, the blueprint, the run records, the security records - once the blueprint is signed, and again whenever it is behind._
+<!-- progress: end -->
+
+- [ ] Interaction checks
+- [ ] The browser pack
+- [ ] The owner's walk, every note done or written down
+- [ ] The records: the exit criteria's evidence, the residual risks, the lessons, the decisions, the stage map
+- [ ] The stage's tag

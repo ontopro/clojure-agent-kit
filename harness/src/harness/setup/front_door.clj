@@ -49,7 +49,7 @@
   ["next" "roadmap-page" "last-look" "brief" "doctor" "plan-check" "plan-review" "blueprint-review" "spec-from-blueprint" "sigs"
    "run-loop" "stage-report" "profile" "models" "balance" "bake-off" "rules-sync" "rules-check"
    "rules-prompt" "skills-sync" "boundary" "report" "report-check" "reprice"
-   "security-review" "security-route" "security-panel" "front-door-sync" "workspace-gates" "template-upgrade" "upgrade"])
+   "security-review" "security-route" "security-panel" "stage-progress" "front-door-sync" "workspace-gates" "template-upgrade" "upgrade"])
 
 (def door-names
   "A harness task the front door offers under another name: the workspace's gates are `bb gates`

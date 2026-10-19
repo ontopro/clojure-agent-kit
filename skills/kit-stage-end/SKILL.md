@@ -121,7 +121,11 @@ boundary where "could we ship after this one?" is yes, the MVP named. Finally th
 the stage cost against what was approved: run `bb stage-report <xyx>-build/docs/stages/stage-N/stage-N-plan.md`, which renders the
 stage's figures into the exit-criteria section from the run records and its security checks and scans from the pack's records,
 and read it with the person; the lessons section's
-cost and runs are its first line.
+cost and runs are its first line. Then the plan's progress section: `bb stage-progress
+<xyx>-build/docs/stages/stage-N/stage-N-plan.md` writes its upper part from the records again - the
+packets, the security pack and scans, the security review or its skip, the stage closed - and the
+lines below its end marker are ticked with the person, each with its date and the commit or note
+that shows it.
 
 ## Writes
 

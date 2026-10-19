@@ -28,6 +28,8 @@
    {:name "front-door-sync" :task "front-door-sync" :args ["--check"]}
    {:name "plan-check" :task "plan-check" :args [] :info? (boolean plan-step?)}
    {:name "stage-report" :task "stage-report" :args ["--check"]}
+   ;; information only: a progress section behind its records is late, never wrong
+   {:name "stage-progress" :task "stage-progress" :args ["--check"] :info? true}
    {:name "report-check" :task "report-check" :args []}])
 
 (defn run-steps

@@ -63,6 +63,28 @@ tested" stays information for an adopter, never a block.
 ---
 ## 2026-10-19 (plan 6.10)
 
+### A stage plan's progress, written from its records (plan 6.10, item 6, register row 158)
+
+The first project ended every stage plan with a checklist - a line per step of the task list and the
+exit criteria, ticked with its date and the commit or record that proves it - and the person wanted
+it as the project's standard. Ticked by hand, most of those lines repeat what the gates record and
+the run records already hold, and a hand tick can disagree with them. So every stage plan template
+now ends with the section, "Progress — checked off as the stage runs", in two parts. `bb
+stage-progress <stage-plan.md>` writes the upper one from the records, between two marker comments:
+the approval with its cap, the blueprint reviewed and signed, each §0 prep row before the first
+packet it blocks (`every task` rows first, rows that block the stage's end at its end), each packet
+in the blueprint's order with its merged run, the run's whole money, its rounds and the application's
+commit, the security pack and its two scans, the security review's members or its recorded skip, the
+threat model at pre-release, the stage closed. Below the end marker are the person's own lines - the
+interaction checks, the browser pack, the owner's walk, the written records, the tag - ticked by hand
+and kept across every render. A rendered line is ticked only by a record, so the section is never
+wrong, only behind: `--check` names the plans behind their records, and the workspace gates run it
+as information, never as a failure, since a gate would go red after every merge. A plan whose
+section was written by hand, with no markers, gets the rendered part placed above its own lines,
+which are left for the person to prune. On the first project's stage 4, read without writing, the
+rendered packet lines carry the same money as its hand-written ones; its rounds read higher, since
+the KIT counts one plus each triage event, as `bb report` does.
+
 ### What a visitor submits: what a feature that takes it keeps is decided before it is built (plan 6.10, item 5, register row 157)
 
 The first project's stage that added search settled with the person what search keeps - the words

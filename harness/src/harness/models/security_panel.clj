@@ -35,6 +35,7 @@
    [harness.loop.security-routing :as routing]
    [harness.models.profile :as profile]
    [harness.models.security-review :as review]
+   [harness.money.stage-report :as sr]
    [harness.setup.stages :as stages]
    [harness.setup.workspace :as workspace]))
 
@@ -43,10 +44,6 @@
   "security-panel.edn")
 
 (def table-file "security-panel.md")
-
-(def not-records
-  "The files in a security review folder that are not a member's review."
-  #{panel-file "security-routing.edn"})
 
 ;; ---------------------------------------------------------------------------
 ;; pure
@@ -75,11 +72,9 @@
         fns (functions-in (:where finding))]
     (if (and (seq files) (seq fns)) [files fns] [:own own])))
 
-(defn record-member
-  "The member a review record was run under: its `:member`, else - a record from before the panel -
-  its model slug's last segment."
-  [record]
-  (or (:member record) (some-> (:model record) (str/split #"/") last)))
+(def record-member
+  "The member a review record was run under (`stage-report/record-member`)."
+  sr/record-member)
 
 (defn said-nothing?
   "A review that refused or gave no findings block said nothing, and counts for nothing."
@@ -175,17 +170,9 @@
 
 (defn- read-edn [f] (try (edn/read-string {:default tagged-literal} (slurp (str f))) (catch Exception _ nil)))
 
-(defn folder-records
-  "The members' review records directly in `dir`, `[{:file :record}]` sorted by file name."
-  [dir]
-  (if (fs/directory? dir)
-    (vec (for [f (sort (map str (fs/glob dir "*.edn")))
-               :let [nm (str (fs/file-name f))]
-               :when (not (not-records nm))
-               :let [r (read-edn f)]
-               :when (and r (contains? r :findings))]
-           {:file nm :record r}))
-    []))
+(def folder-records
+  "The members' review records directly in a security review folder (`stage-report/security-review-records`)."
+  sr/security-review-records)
 
 (defn table!
   "Write the combined table of the records in `dir` - `security-panel.edn` and `.md` - in the panel's

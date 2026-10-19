@@ -316,6 +316,26 @@
     (when (seq ms)
       [label (reduce + 0 (keep :cost ms)) (count ms)])))
 
+(defn record-member
+  "The security reviewer a review record was run under: its `:member`, else - a record from before
+  the panel - its model slug's last segment."
+  [record]
+  (or (:member record) (some-> (:model record) (str/split #"/") last)))
+
+(defn security-review-records
+  "The security reviewers' records directly in a stage's security review folder `dir`, `[{:file
+  :record}]` sorted by file name: each `.edn` carrying `:findings`, never the routing file or a
+  panel's combined table. The panel's run, its rotation and a stage plan's progress all read them."
+  [dir]
+  (if (fs/directory? dir)
+    (vec (for [f (sort (map str (fs/glob dir "*.edn")))
+               :let [nm (str (fs/file-name f))]
+               :when (not (#{routing-file "security-panel.edn"} nm))
+               :let [rec (try (edn/read-string {:default tagged-literal} (slurp f)) (catch Exception _ nil))]
+               :when (and rec (contains? rec :findings))]
+           {:file nm :record rec}))
+    []))
+
 (defn- routing-reading
   "`[label cost n]` for the routing file in `dir`: a triage call per finding routed,
   each verdict carrying its cost; nil when there is no routing file. Its money was in

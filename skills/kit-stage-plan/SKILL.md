@@ -86,7 +86,10 @@ the overview's findings table and the stage plan; then `bb plan-check`.
 
 `docs/stages/stage-N/stage-N-plan.md` from the template for its kind, every mark replaced and every
 instruction deleted, in the stage's folder; `docs/stages/stage-N/stage-N-gates.edn` copied from the gates template; the
-overview's stage map with this stage's cap; the review's findings resolved. Then say the next
+overview's stage map with this stage's cap; the review's findings resolved. The plan's last section,
+its progress, stays as the template has it: `bb stage-progress <the stage plan>` writes its upper part
+from the records once the blueprint is signed, and the lines below its end marker are ticked by hand
+as the stage runs. Then say the next
 step: the person's approval with the cap written into the gates record, and `bb next`. An
 approval names who gave it - the cap line, the status line and the gates record's `:by` - by
 the name the brief gives for who signs off, or asked for; never "the person".

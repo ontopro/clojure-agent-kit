@@ -1,0 +1,223 @@
+;; seed — see PROVENANCE.md; this is a fork of thub-harness, not a mirror.
+;; Not extracted: written for the seed.
+(ns harness.setup.stage-progress
+  "A stage plan's last section, its progress: `bb stage-progress <stage-plan.md>`.
+
+  WHY. The first project ended every stage plan with a checklist, a line per step of the plan's
+  task list and exit criteria, ticked with its date and the commit or record that proves it, so a
+  person sees at a glance where the stage stands. Ticked by hand, most of its lines repeat what the
+  gates record and the run records already hold, and a hand tick can disagree with them - the drift
+  this repository gates against everywhere else.
+
+  SO THE LINES A RECORD PROVES ARE RENDERED FROM IT: the plan approved and the blueprint signed
+  (the gates record), the blueprint reviewed (its review file), each §0 prep row (its Status in the
+  blueprint), each packet in the blueprint's order (its run records), the security pack, its two
+  scans and the security review (their records, or the skip in the gates record), a pre-release
+  stage's threat model, the stage closed. They are written between two marker comments; the
+  person's own lines below the end marker - the interaction checks, the browser pack, the owner's
+  walk, the written records, the tag - are ticked by hand and kept across every re-render.
+
+  NOT A GATE. A rendered line is ticked only by a record, so the section is never wrong, only
+  behind: a merge since the last render leaves a line unticked that could be. `--check` says which
+  stage plans are behind, as information; a gate would go red after every merge."
+  (:require
+   [babashka.fs :as fs]
+   [clojure.edn :as edn]
+   [clojure.string :as str]
+   [harness.contract.blueprint :as blueprint]
+   [harness.money.stage-report :as sr]
+   [harness.setup.next :as next]
+   [harness.setup.stages :as stages]
+   [harness.setup.workspace :as workspace]))
+
+(def heading "## Progress — checked off as the stage runs")
+(def start-marker "<!-- progress: written by bb stage-progress from the stage's records; your own lines go below the end marker -->")
+(def end-marker "<!-- progress: end -->")
+
+(def hand-lines
+  "What no record shows, ticked by hand below the end marker: a new section starts with them."
+  ["- [ ] Interaction checks"
+   "- [ ] The browser pack"
+   "- [ ] The owner's walk, every note done or written down"
+   "- [ ] The records: the exit criteria's evidence, the residual risks, the lessons, the decisions, the stage map"
+   "- [ ] The stage's tag"])
+
+;; ---------------------------------------------------------------------------
+;; pure
+;; ---------------------------------------------------------------------------
+
+(defn- box [done?] (if done? "- [x] " "- [ ] "))
+
+(defn- cut [s n] (let [s (str/replace (str s) #"\s+" " ")] (if (> (count s) n) (str (subs s 0 n) "…") s)))
+
+(defn- day
+  "`YYYY-MM-DD` of an instant (a record's `#inst`) or of a string that starts with one."
+  [d]
+  (cond (instance? java.util.Date d) (.format (java.text.SimpleDateFormat. "yyyy-MM-dd") ^java.util.Date d)
+        d (let [s (str d)] (subs s 0 (min 10 (count s))))))
+
+(defn- short-sha [s] (some-> s str (subs 0 (min 7 (count (str s))))))
+
+(defn- signed [label g extra]
+  (str (box g) label (when g (str " - " (:by g) ", " (:date g))) extra))
+
+(defn prep-line [{:keys [id prep blocks status]}]
+  (let [st (next/precondition-state status)]
+    (str (box (= :done st)) id " - " (cut prep 90) " (" (str/trim blocks) "; "
+         (case st :done (cut status 60) :per-run "per run" "open") ")")))
+
+(defn packet-line
+  "A packet's line from its records - `summaries` the stage report's run summaries of its task, in
+  run order - the merged one's when there is one."
+  [task records]
+  (let [merged (last (filter #(= :merged (:run/status %)) records))
+        r (or merged (last records))
+        s (when r (sr/run-summary r))]
+    (str (box merged) task
+         (cond
+           merged (str " - merged, run `" (:run/id merged) "` " (day (:run/started-at merged))
+                       ;; the run's whole money, its spec readings with it, as `bb report` gives it
+                       (format ", $%.2f, %d round%s" (double (+ (:cost s) (:spec-review-cost s))) (:rounds s) (if (= 1 (:rounds s)) "" "s"))
+                       (when-let [c (short-sha (:run/app-commit merged))] (str ", app `" c "`"))
+                       (when (> (count records) 1) (str "; " (count records) " runs")))
+           r (str " - " (name (:run/status r)) ", run `" (:run/id r) "`")
+           :else " - not run"))))
+
+(defn- scan-line [label rec]
+  (let [{:keys [ok warn fail]} (:counts rec)]
+    (str (box (and rec (zero? (or fail 0)))) label
+         (if rec (str ": " ok " ok, " warn " warn, " fail " fail (" (day (:security/at rec)) ")") ": no record"))))
+
+(defn review-line
+  "The security review's line: who read (from the folder's records), what they reproduced, or the skip."
+  [recs skipped]
+  (cond
+    (seq recs) (str (box true) "Security review: "
+                    (str/join ", " (sort (distinct (map sr/record-member recs))))
+                    " - " (count (filter #(= :reproduced (:kind %)) (mapcat :findings recs))) " reproduced")
+    skipped (str (box true) "Security review: skipped - " (:by skipped) ", " (:date skipped) ": " (:reason skipped))
+    :else (str (box false) "Security review")))
+
+(defn render
+  "The rendered part of the section, between the markers, from `facts`: `{:kind :gates :reviewed?
+  :preconditions :packets :records :checks :scans :review-records}`."
+  [{:keys [kind gates reviewed? preconditions packets records checks scans review-records]}]
+  (let [by-task (group-by :task/id records)
+        ;; each §0 row before the first packet it blocks; `every task` rows first; the rest at the end
+        every (filter #(re-find #"(?i)\bevery task\b" (:blocks %)) preconditions)
+        rest-rows (remove (set every) preconditions)
+        [placed lines] (reduce (fn [[placed acc] t]
+                                 (let [rows (remove placed (filter #(next/blocks? (:blocks %) t) rest-rows))]
+                                   [(into placed rows) (-> acc (into (map prep-line rows)) (conj (packet-line t (by-task t))))]))
+                               [#{} []] packets)
+        tail (remove placed rest-rows)]
+    (str/join "\n"
+              (concat
+               ["**Plan and blueprint**" ""
+                (signed "Stage plan approved" (:stage/approved gates)
+                        (when-let [c (:cap (:stage/approved gates))] (str " (cap " c ")")))
+                (str (box reviewed?) "Blueprint reviewed")
+                (signed "Blueprint signed off" (:blueprint/signed gates) nil)
+                "" "**Prep and packets** (the blueprint's §0 and §4)" ""]
+               (map prep-line every)
+               (if (seq lines) lines ["- [ ] No packet in the blueprint yet"])
+               ["" "**The stage's end**" ""
+                (scan-line "Security pack" checks)
+                (scan-line "Dependency scan" (:deps scans))
+                (scan-line "Secrets scan" (:secrets scans))
+                (review-line review-records (:security/skipped gates))]
+               (map prep-line tail)
+               (when (= "pre-release" kind) [(signed "Threat model signed" (:security/signed gates) nil)])
+               [(str (box (:stage/closed gates)) "Stage closed" (when-let [c (:stage/closed gates)] (str " - " (:date c))))]))))
+
+(defn place
+  "`text` with `rendered` between the markers: replaced where the markers are; under the section's
+  heading where the heading is and the markers are not (the person's lines there kept, below);
+  else the whole section appended, the hand lines with it."
+  [text rendered]
+  (let [region (str start-marker "\n" rendered "\n" end-marker)
+        q #(java.util.regex.Pattern/quote %)]
+    (cond
+      (and (str/includes? text start-marker) (str/includes? text end-marker))
+      (str/replace text (re-pattern (str "(?s)" (q start-marker) ".*?" (q end-marker)))
+                   (java.util.regex.Matcher/quoteReplacement region))
+
+      (str/includes? text heading)
+      (str/replace-first text heading (str heading "\n\n" region))
+
+      :else
+      (str (str/trimr text) "\n\n" heading "\n\n" region "\n\n" (str/join "\n" hand-lines) "\n"))))
+
+(defn rendered-in
+  "What is between the markers in `text`, or nil."
+  [text]
+  (some->> (re-find (re-pattern (str "(?s)" (java.util.regex.Pattern/quote start-marker) "\n(.*?)\n"
+                                     (java.util.regex.Pattern/quote end-marker)))
+                    text)
+           second))
+
+;; ---------------------------------------------------------------------------
+;; the edge
+;; ---------------------------------------------------------------------------
+
+(defn- read-edn [path] (when (fs/exists? path) (try (edn/read-string (slurp (str path))) (catch Exception _ nil))))
+
+(defn facts
+  "What `render` needs for stage `id` of the build at `build`, the run records under `records-dir`."
+  [build records-dir id]
+  (let [doc #(stages/document build id %)
+        bp (doc "-blueprint.md")
+        bp-text (when (fs/exists? bp) (slurp (str bp)))
+        f (sr/stage-facts build records-dir id)
+        plan (some-> (stages/plan-file (stages/stage-dir build id)) (#(fs/path (stages/stage-dir build id) %)))]
+    {:kind (or (:kind f) (some-> plan slurp next/stage-kind))
+     :gates (read-edn (doc "-gates.edn"))
+     :reviewed? (fs/exists? (fs/path (stages/reviews-dir build id) "blueprint-review.edn"))
+     :preconditions (if bp-text (next/preconditions bp-text) [])
+     :packets (if bp-text (mapv :task/id (blueprint/packets bp-text)) [])
+     :records (:records f)
+     :checks (read-edn (doc "-security.edn"))
+     :scans {:deps (read-edn (doc "-security-deps.edn")) :secrets (read-edn (doc "-security-secrets.edn"))}
+     :review-records (mapv :record (sr/security-review-records (doc "-security-review")))}))
+
+(defn- stage-id-of [build plan]
+  (some (fn [[id p]] (when (= (str (fs/canonicalize p)) (str (fs/canonicalize plan))) id))
+        (sr/stage-plans (stages/stages-dir build))))
+
+(defn behind
+  "The stage plans of the build whose rendered progress is not what the records say now: their
+  file names. A plan with no section is none of them."
+  [build records-dir]
+  (vec (for [[id path] (sr/stage-plans (stages/stages-dir build))
+             :let [now (rendered-in (slurp path))]
+             :when (and now (not= now (render (facts build records-dir id))))]
+         (str (fs/file-name path)))))
+
+(defn -main
+  "bb stage-progress <stage-plan.md> | --check [--workspace <dir>]"
+  [& args]
+  (let [ws (workspace/current-or-exit args)
+        {:keys [args]} (workspace/split-args args)
+        build (:workspace/build ws)]
+    (cond
+      (nil? build)
+      (println "stage-progress: no workspace here, nothing to do")
+
+      (some #{"--check"} args)
+      (let [b (behind build (:workspace/records ws))]
+        (if (seq b)
+          (println (str "stage-progress: behind its records - " (str/join ", " b)
+                        "; bb stage-progress <stage-plan.md> writes it again (information, never a failure)"))
+          (println "stage-progress: every progress section matches its records")))
+
+      (first args)
+      (let [plan (str (fs/absolutize (first args)))
+            id (stage-id-of build plan)]
+        (if-not id
+          (do (println (str "stage-progress: " plan " is no stage plan of this workspace's build")) (System/exit 1))
+          (let [text (slurp plan)]
+            (spit plan (place text (render (facts build (:workspace/records ws) id))))
+            (println (str "stage-progress: wrote the progress section of " (fs/file-name plan))))))
+
+      :else
+      (do (println "usage: bb stage-progress <stage-plan.md> | --check") (System/exit 2)))))
