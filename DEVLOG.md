@@ -63,6 +63,21 @@ tested" stays information for an adopter, never a block.
 ---
 ## 2026-10-19 (plan 6.10)
 
+### A spec reading two records carry is counted once (plan 6.10, item 3, register row 152)
+
+The first project, building its own cost tables from the records, found its stage 2 report counting
+16 spec readings where 14 were taken: a task's later run starts from the spec the earlier one
+reviewed, and its record carries that review's history again, so the stage report - summing each
+run's readings - counted the shared ones per record. A stage's readings are now taken once, by their
+completions' ids, or by their time and model where a reading has no ids; one with neither is its own,
+as it was. On the project's stage 2 records: 14 readings, $1.04, where the report said 16, $1.20.
+
+The same report said a `:continued` event's cost - an orchestrator's call - was in no stage total.
+It is: that cost is the loop's triage call, which is the run's `:triage` step, priced and counted
+with the orchestrator's money; the event carries a copy of the verdict. A table that added the event
+too counted the call twice. A test now holds a continued run's triage call to one count, so a later
+"fix" cannot add it again.
+
 ### Four small ones from the first project's stage 3 (plan 6.10, item 2, register rows 148-151)
 
 `bb self-check` in a workspace's clone ended with `next bb init`, a fresh clone's advice; it now

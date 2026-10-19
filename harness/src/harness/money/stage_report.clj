@@ -80,7 +80,23 @@
      :stops (frequencies (map log/owner stops))
      :stop-kinds (frequencies (keep :stop/kind stops))
      :spec-reviews (count reviews)
-     :spec-review-cost (reduce + 0 (keep :cost reviews))}))
+     :spec-review-cost (reduce + 0 (keep :cost reviews))
+     :spec-readings (mapv #(select-keys % [:cost :generation-ids :at :model]) reviews)}))
+
+(defn- reading-key
+  "What makes two records' spec readings one reading: its completions' ids, else when and by
+  which model it was taken; a reading with neither is its own."
+  [r]
+  (or (seq (:generation-ids r))
+      (when (:at r) [(:at r) (:model r)])
+      (Object.)))
+
+(defn distinct-readings
+  "A stage's spec readings, each once. A task's later run (a -b run) starts from the spec the
+  earlier one reviewed, and its record carries that review's history again: one stage read
+  sixteen readings where fourteen were taken."
+  [runs]
+  (vals (into {} (map (juxt reading-key identity)) (mapcat :spec-readings runs))))
 
 ;; ---------------------------------------------------------------------------
 ;; pure: one stage
@@ -108,8 +124,9 @@
   (let [runs (mapv run-summary records)
         by-task (into {} (map (juxt :task/id identity)) runs)
         dispatch-money (sum :cost runs)
-        spec-n (sum :spec-reviews runs)
-        spec-cost (sum :spec-review-cost runs)
+        spec-readings (distinct-readings runs)
+        spec-n (count spec-readings)
+        spec-cost (reduce + 0 (keep :cost spec-readings))
         readings (cond-> (vec readings)
                    (pos? spec-n) (conj ["spec reviews" spec-cost spec-n]))
         reading-money (reduce + 0 (map second readings))]

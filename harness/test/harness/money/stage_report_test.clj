@@ -58,6 +58,29 @@
    :gates {:stage/id "1" :stage/approved {:date "2026-10-02" :cap "$20"}}
    :before {:id 0 :cost 3.25 :runs 2 :rounds 3 :stops 1}})
 
+(deftest a-spec-reading-two-records-carry-is-counted-once
+  ;; a task's later run starts from the spec the earlier one reviewed, and its record carries that
+  ;; review again: one stage read sixteen readings where fourteen were taken
+  (let [shared {:count 0 :cost 0.25 :generation-ids ["gen-a"] :at "2026-10-17T20:23:12Z" :model "m"}
+        own {:count 1 :cost 0.5 :generation-ids ["gen-b"] :at "2026-10-17T21:00:00Z" :model "m"}
+        run (fn [id reviews] {:run/id id :task/id "t3" :run/status :abandoned :run/steps []
+                              :run/events [{:event/kind :spec-review :cost (:cost (last reviews)) :reviews reviews}]})
+        s (sr/stage-summary {:id 2 :packets ["t3"] :records [(run "t3" [shared]) (run "t3-b" [shared own])]
+                             :gates {:stage/id "2"}})]
+    (is (= [["spec reviews" 0.75 2]] (:readings s)))
+    (testing "a reading with no ids and no time is its own, as before"
+      (is (= 2 (count (sr/distinct-readings [{:spec-readings [{:cost 0.25} {:cost 0.25}]}])))))))
+
+(deftest a-continued-runs-triage-call-is-counted-once
+  ;; the loop's triage call is a step; its verdict, cost included, also rides the :continued event.
+  ;; The step is the money: the event's copy is not counted again
+  (let [r {:run/id "t4" :task/id "t4" :run/status :merged
+           :run/steps [(step :coder :dispatch 1.0) (step :triage :dispatch 0.125)]
+           :run/events [{:event/kind :continued :by :model :route :continue :cost 0.125}]}
+        s (sr/stage-summary {:id 1 :packets ["t4"] :records [r] :gates {:stage/id "1"}})]
+    (is (= 1.125 (:money s)))
+    (is (= {:coder 1.0 :orchestrator 0.125} (:by-role s)))))
+
 (deftest the-roll-up-and-its-block
   (let [s (sr/stage-summary facts)]
     (is (= [["t1" :merged] ["t2" :escalated] ["t3" :no-record]] (:packets s)) "in the blueprint's order, a packet without a record said")
