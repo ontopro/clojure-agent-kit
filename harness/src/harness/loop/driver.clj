@@ -1606,6 +1606,15 @@
                               "unpriced - the log has no cost for it")
                             (when-not (:step/ms s) ", its time not in the log"))))))))))
 
+(defn record-commits
+  "The three commits an earlier record at `file` names, as `record!` takes them; nil when there
+  is no earlier record or it is from before records named them."
+  [file]
+  (when (fs/exists? file)
+    (let [r (try (edn/read-string (slurp (str file))) (catch Exception _ nil))]
+      (when (some #(contains? r %) [:run/kit-commit :run/app-commit :run/plan-commit])
+        {:kit (:run/kit-commit r) :app (:run/app-commit r) :plan (:run/plan-commit r)}))))
+
 (defn record!
   "Copy the run's files into `final/` while the worktrees exist, then write
   `run.edn` with those files in it. Read back from `final/`, not the worktrees,
@@ -1620,7 +1629,8 @@
   own bytes for each file gate 0 changed.
 
   `:rebuild?` (`--rebuild-from-log`) rebuilds a state that lost events from the log
-  first (`reconcile!`)."
+  first (`reconcile!`). The balance at record and the three commits are the first record's:
+  taken again, a record keeps them (`record-commits`)."
   ([ctx] (record! ctx nil))
   ([ctx {:keys [rebuild?]}]
    (reconcile! ctx rebuild?)
@@ -1641,18 +1651,25 @@
        (if (and gated written (not= (slurp (str gated)) (slurp (str written))))
          (copy-into! written as-written)
          (fs/delete-if-exists as-written)))
-     (balance-event! ctx :record)
+     ;; A RECORD TAKEN AGAIN IS THE SAME RECORD. The balance at record and the three commits
+     ;; are what the run was recorded at; a second `record` - a rebuild from the log days
+     ;; later - read both again, and its table said the run lasted 38 hours and was made
+     ;; against the heads of the day it was re-recorded.
+     (when-not (some #(and (= :balance (:event/kind %)) (= :record (:when %))) (:events @(:state ctx)))
+       (balance-event! ctx :record))
      (let [state @(:state ctx)
            cfg (:config state)
+           earlier (record-commits (run-file ctx "run.edn"))
            out (run-record (assoc state :spec spec
                                   :final-files (final-files spec final-dir)
                                   :files-as-written (files-as-written spec final-dir)
-                                 ;; THREE HASHES, READ NOW: the record is what a document
-                                 ;; cites, and "which commit was this against" was answered
-                                 ;; by memory on every build before this
-                                  :commits {:kit (head-commit (:kit/root cfg))
-                                            :app (head-commit (:repo/root cfg))
-                                            :plan (head-commit (:plan/root cfg))}))
+                                 ;; THREE HASHES, READ AT THE FIRST RECORD: the record is what a
+                                 ;; document cites, and "which commit was this against" was
+                                 ;; answered by memory on every build before this
+                                  :commits (or earlier
+                                               {:kit (head-commit (:kit/root cfg))
+                                                :app (head-commit (:repo/root cfg))
+                                                :plan (head-commit (:plan/root cfg))})))
           ;; THE LATE COSTS, FETCHED NOW. Every dispatch of the first real project's runs
           ;; was recorded at cost nil - the generation records had lagged past the
           ;; dispatch's wait - and `bb reprice` by hand filled them minutes later. At

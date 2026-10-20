@@ -1249,7 +1249,7 @@
   (let [ws (workspace!)
         plan (git-repo! (fs/path ws "xyx-build"))
         commit! (fn [dir]
-                  (spit (str (fs/path dir "f")) "x")
+                  (spit (str (fs/path dir "f")) "x" :append true)
                   (p/shell {:dir dir :out :string :err :string} "git" "add" "-A")
                   (p/shell {:dir dir :out :string :err :string} "git" "commit" "-q" "-m" "c")
                   (str/trim (:out (p/shell {:dir dir :out :string :err :string} "git" "rev-parse" "HEAD"))))
@@ -1269,7 +1269,16 @@
              (select-keys r [:run/kit-commit :run/app-commit :run/plan-commit])))
       (is (fs/exists? kept) "the plan's copy, by run id")
       (is (= r (clojure.edn/read-string (slurp (str kept)))) "the same record, byte for byte in meaning")
-      (is (str/includes? out (str "copied to " kept))))
+      (is (str/includes? out (str "copied to " kept)))
+      (testing "taken again after the heads moved: the first record's commits and one balance at record"
+        (commit! (str (fs/path ws "xyx-app")))
+        (commit! plan)
+        (with-out-str (loop/record! ctx))
+        (let [r2 (clojure.edn/read-string (slurp (str (fs/path run-dir "run.edn"))))]
+          (is (= (select-keys r [:run/kit-commit :run/app-commit :run/plan-commit])
+                 (select-keys r2 [:run/kit-commit :run/app-commit :run/plan-commit])))
+          (is (= 1 (count (filter #(and (= :balance (:event/kind %)) (= :record (:when %))) (:run/events r2)))))
+          (is (= r2 (clojure.edn/read-string (slurp (str kept)))) "and the copy is the same"))))
     (testing "outside a workspace: no copy, a commit for what is a repository, nil for what is not"
       (let [rd (fs/create-temp-dir)
             ctx2 (record-ctx rd {} [{:event/kind :dispatch :role :coder}] spec)]
@@ -1277,7 +1286,7 @@
                                             :kit/root (str (fs/path rd "nowhere"))})
         (with-out-str (loop/record! ctx2))
         (let [r2 (clojure.edn/read-string (slurp (str (fs/path rd "run.edn"))))]
-          (is (= app-sha (:run/app-commit r2)))
+          (is (= (loop/head-commit (str (fs/path ws "xyx-app"))) (:run/app-commit r2)))
           (is (nil? (:run/kit-commit r2)) "a folder that is not there")
           (is (contains? r2 :run/plan-commit))
           (is (nil? (:run/plan-commit r2)) "no plan: nil, written, so the report says — and not 'not recorded'")

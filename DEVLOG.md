@@ -63,6 +63,17 @@ tested" stays information for an adopter, never a block.
 ---
 ## 2026-10-20 (plan 6.10)
 
+### A record taken again is the same record (plan 6.10, item 9a, register row 166)
+
+The fourth sandbox run of the upgrade, on the first project's latest build, found what the first
+three had shown and nobody read: the rebuilt run's table said "Time: 2314m22s total" for a run of
+11 minutes, and its commits were the heads of the day it was re-recorded. Only the total had been
+checked, and the total was right. A second `record` took a second balance at record, timestamped
+then, and the time runs to the last event; and it read the three heads again. `record!`'s
+docstring said a record replayed writes the same record. Now it does: the balance at record is
+taken once, and the commits come from the run directory's earlier `run.edn` (`record-commits`),
+the heads read only for a first record or one from before records named them.
+
 ### Never the original's build; `bb sigs` from the workspace; the routing's channel; the roadmap page's date and name (plan 6.10, item 9, register rows 161, 163-165)
 
 The code review of row 161's fix found its failure mode silent: a copy whose build folder was
