@@ -61,7 +61,7 @@
         "  <tbody>"]
        (for [{:keys [label by-stage total]} roles]
          (str "    <tr><td>" (esc label) "</td><td>"
-              (esc (str/join "; " (for [[id {:keys [models]}] by-stage] (str "S" id " " (str/join " + " models)))))
+              (esc (where/models-by-stage by-stage))
               "</td>" (str/join (map #(cell (get-in by-stage [% :money])) ids)) (cell total) "</tr>"))
        [(str "    <tr><th>All</th><th></th>" (str/join (for [s stages] (str "<th class=\"num\">" (usd (:total s)) "</th>")))
              "<th class=\"num\">" (usd all) "</th></tr>")

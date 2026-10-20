@@ -2028,14 +2028,42 @@
        bb run-loop amend <run-dir> <spec-before.edn> <reason>
        bb run-loop mutation <run-dir> <mutation.edn>")
 
+(defn rebased-state
+  "`state` read in the workspace `ws` it now sits in: when the build its config names
+  (`:plan/root`) is another folder of the same name, the run was made in another
+  workspace - a copy, or this one before it moved - and every path under that
+  workspace's folder, wherever a string names it (a gate's command too), is rewritten
+  under `ws`'s. `{:state :from :to}`, or nil when
+  the state is already the workspace's own (or there is no workspace to read it in).
+
+  A COPY WROTE INTO ITS ORIGINAL. `start` keeps its config with absolute paths, so
+  `record` in a copied workspace copied its run.edn into the ORIGINAL's build, and
+  `teardown` there would have removed the original's worktrees."
+  [state ws]
+  (let [old-build (get-in state [:config :plan/root])
+        new-build (:workspace/build ws)]
+    (when (and old-build new-build (not= (str (fs/normalize old-build)) (str (fs/normalize new-build)))
+               (= (str (fs/file-name old-build)) (str (fs/file-name new-build))))
+      (let [from (str (fs/parent old-build) "/")
+            to (str (fs/parent new-build) "/")]
+        {:from (subs from 0 (dec (count from)))
+         :to (subs to 0 (dec (count to)))
+         :state (walk/postwalk #(if (string? %) (str/replace % from to) %)
+                               state)}))))
+
 (defn context
   "Everything a command needs. `start` resolves loop.edn; every later command
   uses the config `start` kept in state.edn, so editing loop.edn mid-run changes
-  nothing."
+  nothing - but read in the workspace the run now sits in (`rebased-state`)."
   [run-dir]
   (let [run-dir (str (fs/absolutize run-dir))
         sf (str (fs/path run-dir "state.edn"))
-        state (when (fs/exists? sf) (edn/read-string (slurp sf)))
+        state (when (fs/exists? sf)
+                (let [state (edn/read-string (slurp sf))]
+                  (if-let [{:keys [from to] moved :state} (some->> (workspace/find-workspace run-dir) (rebased-state state))]
+                    (do (println (str "  this run was made in " from "; its paths read in " to ", the workspace it is in now"))
+                        moved)
+                    state)))
         ;; ONLY WHEN THERE IS NO STATE YET. Asking git on every command made a
         ;; run directory copied out of the repository unreadable, found
         ;; replaying an older run's state through `record`.

@@ -37,6 +37,24 @@
            (second (second (:gates (loop/resolve-config run-dir "/repo" {:run/id "r" :profile "p" :gates gates})))))
         "outside a workspace, the clone the harness runs from")))
 
+(deftest a-run-in-a-copied-workspace-reads-its-paths-in-the-copy
+  (let [state {:config {:plan/root "/real/ws/xyz-build" :records/dir "/real/ws/xyz-build/runs"
+                        :repo/root "/real/ws/xyz-app" :kit/root "/real/ws/KIT" :profile "/real/ws/xyz-build/profile.edn"
+                        :gates [[:deps "bb --config /real/ws/KIT/harness/bb.edn boundary"]]}
+               :sessions {:gate {:worktree/path "/real/ws/work/worktrees/r/gate"}}
+               :events [{:event/kind :start :note "/real/ws-other stays"}]}
+        copy {:workspace/dir "/sandbox/c1" :workspace/build "/sandbox/c1/xyz-build"}
+        {:keys [from to] moved :state} (loop/rebased-state state copy)]
+    (is (= ["/real/ws" "/sandbox/c1"] [from to]))
+    (is (= "/sandbox/c1/xyz-build/runs" (get-in moved [:config :records/dir])) "record copies into the copy's build")
+    (is (= "/sandbox/c1/work/worktrees/r/gate" (get-in moved [:sessions :gate :worktree/path])) "teardown removes the copy's worktrees")
+    (is (= "bb --config /sandbox/c1/KIT/harness/bb.edn boundary" (get-in moved [:config :gates 0 1]))
+        "a gate's command runs the copy's KIT")
+    (is (= "/real/ws-other stays" (get-in moved [:events 0 :note])) "a sibling folder with the same prefix is not the workspace")
+    (is (nil? (loop/rebased-state state {:workspace/build "/real/ws/xyz-build"})) "the workspace it was made in: nothing to do")
+    (is (nil? (loop/rebased-state state {:workspace/build "/sandbox/c1/other-build"})) "another build's name: not a copy of this one")
+    (is (nil? (loop/rebased-state state nil)) "no workspace to read it in")))
+
 (deftest config-fills-defaults-and-refuses-to-guess
   (let [run-dir (str (fs/create-temp-dir))
         cfg (loop/resolve-config run-dir "/repo" {:run/id "d10" :profile "resources/profiles/claude.edn"

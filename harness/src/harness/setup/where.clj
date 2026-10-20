@@ -317,6 +317,13 @@
   (str "From the run records' priced steps and spec reviews and the stage folders' readings, as the stage "
        "reports count them. Not counted: the interactive sessions - the Architect's and any other - which no record holds."))
 
+(defn models-by-stage
+  "A role's models, stage by stage: `S2 gemini-3.8-flash + gemini-4-argon; S3 ...`. A stage whose
+  records name no model - a reading written before readings kept theirs - says so."
+  [by-stage]
+  (str/join "; " (for [[id {:keys [models]}] by-stage]
+                   (str "S" id " " (if (seq models) (str/join " + " models) "not recorded")))))
+
 (defn- money-by-md
   "The fuller account's two tables, `## Money by provider` and `## Money by role`, from `money-by`."
   [{:keys [makers stages totals all roles] :as mb}]
@@ -335,7 +342,7 @@
         (str "| Role | Models, by stage | " (str/join " | " (map #(str "S" %) ids)) " | Total |")
         (str "|---|---|" (str/join "" (repeat (inc (count ids)) "---|")))]
        (for [{:keys [label by-stage total]} roles]
-         (str "| " label " | " (str/join "; " (for [[id {:keys [models]}] by-stage] (str "S" id " " (str/join " + " models))))
+         (str "| " label " | " (models-by-stage by-stage)
               " | " (str/join " | " (map #(usd (get-in by-stage [% :money])) ids)) " | " (usd total) " |"))
        [(str "| All | | " (str/join " | " (map #(usd (:total %)) stages)) " | " (usd all) " |")
         "" not-counted]))))

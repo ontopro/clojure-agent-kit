@@ -232,3 +232,7 @@
       (let [s (where/render-full (assoc d :waits-on-the-person [] :since {:from nil :why "no stage closed and no last look recorded"}))]
         (is (str/includes? s "## Waits on you (0)\n\nNothing: no step, gate, prep row, decision or risk is the person's now."))
         (is (str/includes? s "## Since you last looked\n\nNo date to count from: no stage closed and no last look recorded."))))))
+
+(deftest a-stage-whose-records-name-no-model-says-so
+  (is (= "S3 gemini-4-argon; S4 not recorded"
+         (where/models-by-stage [[3 {:models ["gemini-4-argon"]}] [4 {:models []}]]))))

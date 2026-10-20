@@ -61,6 +61,26 @@ moves a pin: a HIGH or CRITICAL that Scout finds against a pinned tool. The doct
 tested" stays information for an adopter, never a block.
 
 ---
+## 2026-10-20 (plan 6.10)
+
+### A copied workspace's run reads its own paths; a role's unrecorded model said (plan 6.10, item 9, register rows 161-162)
+
+The first sandbox run of the upgrade to this release, on a copy of the first project's workspace,
+rebuilt a run's record from its log - and the record was copied into the ORIGINAL workspace's
+build. `start` keeps the run's config in `state.edn` with absolute paths, and every later command
+reads that config, so in a copy `record` wrote to the original and `teardown` would have removed
+its worktrees. One uncommitted file; the person undid it.
+
+`driver/rebased-state` reads the state in the workspace the run now sits in: when the build its
+config names is another folder of the same name, every path under that workspace's folder - a
+gate's command too - is rewritten under the current one's, and the command says so. A workspace
+that moved is read the same way. Tried on the copy: the record landed in the copy's build, the
+original untouched. A test holds the rewrite, a sibling folder sharing the prefix left alone.
+
+The same run's fuller account printed `S4 ` with nothing after it for the stage 4 security
+routing, a record written before routings kept their model. `where/models-by-stage` says "not
+recorded" there, on the roadmap page too, as the provider table already does. Test.
+
 ## 2026-10-19 (plan 6.10)
 
 ### An icon traced from its picture, the SVG pack's `trace` (plan 6.10, item 8, register row 160)
