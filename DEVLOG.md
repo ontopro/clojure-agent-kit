@@ -80,6 +80,11 @@ under its title when it was generated - the local time, with the project's own z
 title. Both keys are the person's and optional; `init/workspace-edn` writes them when present, so
 an upgrade's rewrite of the file keeps them.
 
+The page's title is now "<name> - Roadmap Report" (the person): it shows where the project stands
+on its roadmap at the time it was generated - a report, as a stage report is, rendered from the
+records and dated. The drawing alone keeps "<name> - the roadmap", and the command and its files
+keep their names. `bb sigs` with a `--workspace` that names no workspace says so and exits 1, as
+every other task does (the code review's nit).
 
 ### A copied workspace's run reads its own paths; a role's unrecorded model said (plan 6.10, item 9, register rows 161-162)
 

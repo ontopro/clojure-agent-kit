@@ -77,4 +77,6 @@
              (map second (re-seq #"<h2>([^<]+)</h2>" html))))
       (is (str/includes? html "<td class=\"num\">$0.25 (readings only)</td>"))
       (is (str/includes? html "Generated 2026-10-17T12:00:00Z from <code>xyx-build</code> at <code>abc1234</code>"))
+      (is (str/includes? html "<h1>xyx - Roadmap Report</h1>") "the page is the report on the roadmap, dated")
+      (is (str/includes? svg "<title>xyx - the roadmap: five phases") "the drawing alone is the roadmap")
       (is (str/includes? html "<p class=\"generated\">Generated 17 October 2026, 12:00 UTC</p>") "under the title"))))

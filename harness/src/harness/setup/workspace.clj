@@ -140,17 +140,6 @@
        (named (:dir p) (:from p))
        (some-> (find-workspace dir) (assoc :workspace/from :walk-up))))))
 
-(defn sigs-args
-  "`bb sigs`'s arguments with the folder its context files are read from: the `--dir` given, else
-  the application of the workspace the command runs in (`current`), else as given - `sigs` reads
-  `.`. A spec's `:files/context` is relative to the application, and the front door runs a KIT
-  task from the KIT's `harness/`: without this, every context file was \"not in the worktree\"."
-  [args]
-  (if (some #{"--dir"} args)
-    (vec args)
-    (let [{:keys [workspace/app]} (current args)]
-      (cond-> (vec args) app (into ["--dir" app])))))
-
 (defn current-or-exit
   "`current` for a command line: a pointed-at workspace that is not there is
   printed and exits 1, not a stack trace."
@@ -161,3 +150,14 @@
            (do (println (str "workspace: " (ex-message e)))
                (System/exit 1))
            (throw e)))))
+
+(defn sigs-args
+  "`bb sigs`'s arguments with the folder its context files are read from: the `--dir` given, else
+  the application of the workspace the command runs in (`current-or-exit`), else as given - `sigs` reads
+  `.`. A spec's `:files/context` is relative to the application, and the front door runs a KIT
+  task from the KIT's `harness/`: without this, every context file was \"not in the worktree\"."
+  [args]
+  (if (some #{"--dir"} args)
+    (vec args)
+    (let [{:keys [workspace/app]} (current-or-exit args)]
+      (cond-> (vec args) app (into ["--dir" app])))))

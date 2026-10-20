@@ -289,9 +289,9 @@
      (concat
       ["<!doctype html>" "<html lang=\"en\">" "<head>" "<meta charset=\"utf-8\">"
        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
-       (str "<title>" (esc project) " - the roadmap</title>")
+       (str "<title>" (esc project) " - Roadmap Report</title>")
        "<style>" style "</style>" "</head>" "<body>" "<main>"
-       (str "<h1>" (esc project) " - the roadmap</h1>")
+       (str "<h1>" (esc project) " - Roadmap Report</h1>")
        (when-let [g (generated-line (:at generated) (or (:zone generated) (str (java.time.ZoneId/systemDefault))) (:time-zone workspace))]
          (str "<p class=\"generated\">" (esc g) "</p>"))
        (str "<p class=\"where\">" (esc (str/replace-first (str headline) #"^where: " "")) "</p>")
