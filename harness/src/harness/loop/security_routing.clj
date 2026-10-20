@@ -111,11 +111,12 @@
   `review-file` may be a security reviewer panel's combined table (`security-panel.edn`): then
   one call per row, its test read from the member's record that carried the row, and each routed
   entry carries the members that reproduced it (`:by`).
-  `triage-fn` is `(fn [trigger])` -> a verdict, `architecture` the text of the architecture's
-  security sections. Writes `security-routing.edn` and, when a finding was routed `coder`,
+  `triage-fn` is `(fn [trigger])` -> a verdict, `triage-role` the profile's role it calls (its
+  `:family` and `:endpoint` recorded on each verdict, with the provider that answered, so a cost
+  table can place the call), `architecture` the text of the architecture's security sections. Writes `security-routing.edn` and, when a finding was routed `coder`,
   `security-fixes.md` into `out`. Returns `{:routed [{:finding :verdict}] :hypotheses [finding]
   :files [written]}`."
-  [{:keys [review-file clone architecture triage-fn out]}]
+  [{:keys [review-file clone architecture triage-fn triage-role out]}]
   (let [review-file (str (fs/normalize (fs/absolutize review-file)))
         review (edn/read-string (slurp review-file))
         dir (fs/parent review-file)
@@ -136,8 +137,12 @@
                                :verdict (assoc (select-keys v [:route :reason :guidance :impl :target :triage/fallback :refused? :prompt :answer])
                                                :cost (get-in v [:result :cost])
                                                :generation-ids (get-in v [:result :runner/meta :generation-ids])
-                                               ;; the model that routed it, so the money by role says it
-                                               :model (get-in v [:result :runner/meta :model]))}
+                                               ;; the model that routed it, its maker and channel, so the money
+                                               ;; by provider and by role place it
+                                               :model (get-in v [:result :runner/meta :model])
+                                               :provider (get-in v [:result :runner/meta :provider])
+                                               :family (:family triage-role)
+                                               :endpoint (:endpoint triage-role))}
                         by (assoc :by by))))
         hypotheses (if panel?
                      (mapv :finding (:hypotheses review))
@@ -204,9 +209,11 @@
       (when-not profile-path
         (println "security-route: no profile - pass --profile, or run it in a workspace")
         (System/exit 2))
-      (let [r (route! {:review-file (str (fs/absolutize review-file))
+      (let [prof (profile/read-profile profile-path)
+            r (route! {:review-file (str (fs/absolutize review-file))
                        :clone (str (fs/absolutize clone))
                        :architecture (some-> (read-text arch-path) (sections security-sections))
-                       :triage-fn (triage/model-triage (profile/read-profile profile-path))
+                       :triage-fn (triage/model-triage prof)
+                       :triage-role (get-in prof [:roles :orchestrator])
                        :out (or (:out opts) (str (fs/parent (fs/absolutize review-file))))})]
         (print-result r)))))

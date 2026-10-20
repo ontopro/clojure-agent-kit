@@ -58,6 +58,12 @@
           (is (= ws (:workspace/dir found)))
           (is (= :run (:workspace/from found))))))))
 
+(deftest bb-sigs-reads-context-files-from-the-workspaces-application
+  (let [{:keys [ws]} (workspace!)]
+    (is (= ["--workspace" ws "--dir" (str (fs/path ws "xyx-app"))] (workspace/sigs-args ["--workspace" ws])))
+    (is (= ["--dir" "/mine"] (workspace/sigs-args ["--dir" "/mine"])) "a --dir given is kept")
+    (is (= [] (with-redefs [workspace/current (constantly nil)] (workspace/sigs-args []))) "in no workspace, . as before")))
+
 (deftest self-check-names-the-workspaces-next-in-a-workspaces-clone
   (let [{:keys [ws elsewhere]} (workspace!)
         kit (str (fs/path ws "KIT"))]

@@ -2051,25 +2051,44 @@
          :state (walk/postwalk #(if (string? %) (str/replace % from to) %)
                                state)}))))
 
+(defn foreign-build
+  "The build `state` names when it is not the build of `ws`, the workspace the run sits in - after
+  `rebased-state` had its chance - else nil. A run made outside a workspace, or in one naming no
+  build, names none to compare.
+
+  EITHER REWRITTEN OR REFUSED, NEVER THE ORIGINAL: a copy whose build folder was renamed is no copy
+  `rebased-state` recognises, and read as it stands it acted on the original's build again."
+  [state ws]
+  (let [named (get-in state [:config :plan/root])
+        own (:workspace/build ws)]
+    (when (and named own (not= (str (fs/normalize named)) (str (fs/normalize own))))
+      named)))
+
 (defn context
   "Everything a command needs. `start` resolves loop.edn; every later command
   uses the config `start` kept in state.edn, so editing loop.edn mid-run changes
-  nothing - but read in the workspace the run now sits in (`rebased-state`)."
+  nothing - but read in the workspace the run now sits in (`rebased-state`), and
+  refused when it names another workspace's build that cannot be (`foreign-build`)."
   [run-dir]
   (let [run-dir (str (fs/absolutize run-dir))
         sf (str (fs/path run-dir "state.edn"))
+        ws (workspace/find-workspace run-dir)
         state (when (fs/exists? sf)
-                (let [state (edn/read-string (slurp sf))]
-                  (if-let [{:keys [from to] moved :state} (some->> (workspace/find-workspace run-dir) (rebased-state state))]
-                    (do (println (str "  this run was made in " from "; its paths read in " to ", the workspace it is in now"))
-                        moved)
-                    state)))
+                (let [state (edn/read-string (slurp sf))
+                      state (if-let [{:keys [from to] moved :state} (some->> ws (rebased-state state))]
+                              (do (println (str "  this run was made in " from "; its paths read in " to ", the workspace it is in now"))
+                                  moved)
+                              state)]
+                  (when-let [other (foreign-build state ws)]
+                    (throw (ex-info (str "this run's state names a build outside this workspace (" other "), not " (:workspace/build ws)
+                                         ": a copied or moved run reads its paths here only when its build keeps its folder's name")
+                                    {:run-loop/error :foreign-build :build other :workspace (:workspace/dir ws)})))
+                  state))
         ;; ONLY WHEN THERE IS NO STATE YET. Asking git on every command made a
         ;; run directory copied out of the repository unreadable, found
         ;; replaying an older run's state through `record`.
         cfg (or (:config state)
-                (let [raw (edn/read-string (slurp (str (fs/path run-dir "loop.edn"))))
-                      ws (workspace/find-workspace run-dir)]
+                (let [raw (edn/read-string (slurp (str (fs/path run-dir "loop.edn"))))]
                   (resolve-config run-dir (:repo/root (project-root run-dir raw ws)) raw ws)))]
     {:run-dir run-dir :config cfg :state (atom state)}))
 

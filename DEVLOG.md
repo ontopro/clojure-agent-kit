@@ -63,6 +63,24 @@ tested" stays information for an adopter, never a block.
 ---
 ## 2026-10-20 (plan 6.10)
 
+### Never the original's build; `bb sigs` from the workspace; the routing's channel; the roadmap page's date and name (plan 6.10, item 9, register rows 161, 163-165)
+
+The code review of row 161's fix found its failure mode silent: a copy whose build folder was
+renamed is no copy `rebased-state` recognises, and read as it stands it acted on the original
+again. `driver/foreign-build` closes it - a state naming a build other than the workspace's own
+is refused by name, so a command is rewritten or refused, never the original's.
+
+The first project's stage 4 end sent three more. `bb sigs` read a spec's context files from the
+KIT's `harness/`, where the front door runs it, so the README's pre-flight reported every file
+missing; with no `--dir` it now reads the workspace's application (`workspace/sigs-args`). A
+security routing's verdict records the provider that answered and the triage role's family and
+endpoint beside its model, so the money by provider places the call. And the roadmap page says
+under its title when it was generated - the local time, with the project's own zone beside it when
+`workspace.edn` names one (`:workspace/time-zone`) - and takes `:workspace/display-name` for its
+title. Both keys are the person's and optional; `init/workspace-edn` writes them when present, so
+an upgrade's rewrite of the file keeps them.
+
+
 ### A copied workspace's run reads its own paths; a role's unrecorded model said (plan 6.10, item 9, register rows 161-162)
 
 The first sandbox run of the upgrade to this release, on a copy of the first project's workspace,

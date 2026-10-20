@@ -229,9 +229,10 @@
            :requires ([harness.models.profile :as profile])
            :task (apply profile/-main *command-line-args*)}
 
-  sigs {:doc "Check a task spec's :deps-sigs against its :files/context (EDN on stdin)"
-        :requires ([harness.contract.sigs :as sigs])
-        :task (apply sigs/-main *command-line-args*)}
+  sigs {:doc "Check a task spec's :deps-sigs against its :files/context (EDN on stdin), read from the workspace's application ([--dir <app>] for another)"
+        :requires ([harness.contract.sigs :as sigs]
+                   [harness.setup.workspace :as workspace])
+        :task (apply sigs/-main (workspace/sigs-args *command-line-args*))}
 
   ;; Where a spec.edn comes from: the Blueprint's packet, its named shapes inlined from §1.
   spec-from-blueprint {:doc "bb spec-from-blueprint <blueprint.md> <task-id> [<out.edn>]: the task's packet out of a Blueprint written to the template, every shape it names inlined from §1, validated and written as the spec.edn a run starts from; without <out.edn> the spec goes to stdout (pipe into bb sigs) and the report to stderr"

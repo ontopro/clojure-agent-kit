@@ -53,7 +53,13 @@
     (is (= "/real/ws-other stays" (get-in moved [:events 0 :note])) "a sibling folder with the same prefix is not the workspace")
     (is (nil? (loop/rebased-state state {:workspace/build "/real/ws/xyz-build"})) "the workspace it was made in: nothing to do")
     (is (nil? (loop/rebased-state state {:workspace/build "/sandbox/c1/other-build"})) "another build's name: not a copy of this one")
-    (is (nil? (loop/rebased-state state nil)) "no workspace to read it in")))
+    (is (nil? (loop/rebased-state state nil)) "no workspace to read it in")
+    (testing "what is not rewritten is refused, never acted on"
+      (is (nil? (loop/foreign-build moved copy)) "rewritten: the copy's own")
+      (is (= "/real/ws/xyz-build" (loop/foreign-build state {:workspace/build "/sandbox/c1/other-build"}))
+          "a copy whose build was renamed names the original's")
+      (is (nil? (loop/foreign-build state nil)) "a run in no workspace")
+      (is (nil? (loop/foreign-build {:config {}} copy)) "a state that names no build"))))
 
 (deftest config-fills-defaults-and-refuses-to-guess
   (let [run-dir (str (fs/create-temp-dir))

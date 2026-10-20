@@ -64,9 +64,10 @@
                     (swap! seen conj t)
                     (if (= "A" (get-in t [:payload :finding :title]))
                       {:route :coder :reason "ra" :impl "src/app/web.clj" :target "ta" :prompt "p" :answer "a"
-                       :result {:cost 0.012 :runner/meta {:generation-ids ["gen-a"]}}}
+                       :result {:cost 0.012 :runner/meta {:generation-ids ["gen-a"] :model "claude-opus-5-5" :provider "Anthropic API"}}}
                       {:route :architect :reason "rb" :guidance "gb"}))
-        r (routing/route! {:review-file record :clone clone :architecture "## 4. arch" :triage-fn triage-fn :out dir})]
+        r (routing/route! {:review-file record :clone clone :architecture "## 4. arch" :triage-fn triage-fn :out dir
+                           :triage-role {:family :anthropic :endpoint "https://api.anthropic.com" :model "claude-opus-5-5"}})]
     (is (= 2 (count @seen)) "one triage call per reproduced finding, none for the hypothesis")
     (testing "the trigger carries the test, the named files as merged, and the architecture"
       (let [[a b] @seen]
@@ -79,6 +80,9 @@
     (is (= [:coder :architect] (map (comp :route :verdict) (:routed r))))
     (is (= 0.012 (get-in r [:routed 0 :verdict :cost])) "what the call cost, from the result triage returns")
     (is (= ["gen-a"] (get-in r [:routed 0 :verdict :generation-ids])) "and its ids, for a cost that lagged")
+    (is (= {:model "claude-opus-5-5" :provider "Anthropic API" :family :anthropic :endpoint "https://api.anthropic.com"}
+           (select-keys (get-in r [:routed 0 :verdict]) [:model :provider :family :endpoint]))
+        "who routed it, its maker and how it was reached: the money by provider places the call")
     (is (= ["C"] (map :title (:hypotheses r))))
     (testing "the routing is recorded, and the coder's finding drafted"
       (let [rec (edn/read-string (slurp (str (fs/path dir "security-routing.edn"))))]

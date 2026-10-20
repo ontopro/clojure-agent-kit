@@ -34,10 +34,20 @@
     (is (= 0 (page/owner-stage [(first stages)] :decisions "D1")) "only closed stages name it: the last of them")
     (is (nil? (page/owner-stage stages :decisions "D9")) "named by no stage: drawn nowhere, listed under Open")))
 
+(deftest the-page-says-when-it-was-generated-and-the-projects-name
+  (is (= "Generated 20 October 2026, 11:50 CDT (22:20 IST)"
+         (page/generated-line "2026-10-20T16:50:00Z" "America/Chicago" "Asia/Kolkata")))
+  (is (= "Generated 20 October 2026, 11:50 CDT" (page/generated-line "2026-10-20T16:50:00Z" "America/Chicago" nil)))
+  (is (= "Generated 20 October 2026, 22:20 IST" (page/generated-line "2026-10-20T16:50:00Z" "Asia/Kolkata" "Asia/Kolkata"))
+      "the project's zone said only when its clock reads otherwise")
+  (is (nil? (page/generated-line nil "UTC" nil)))
+  (is (= "XYX-ONE" (page/project-name {:build "xyx-build" :display-name "XYX-ONE"})))
+  (is (= "xyx" (page/project-name {:build "xyx-build"}))))
+
 (deftest the-page-is-the-maps-and-opens-from-its-folder
   (let [ws-dir (where-test/workspace-on-disk)
         ws (workspace/find-workspace ws-dir)
-        d (where/where-data ws {:at "2026-10-17T12:00:00Z" :plan-commit "abc1234"})
+        d (assoc-in (where/where-data ws {:at "2026-10-17T12:00:00Z" :plan-commit "abc1234"}) [:generated :zone] "UTC")
         [svg-file html-file] (page/write! ws d)
         svg (slurp svg-file)
         html (slurp html-file)
@@ -66,4 +76,5 @@
       (is (= ["Waits on you (2)" "Money and time" "Money by provider" "Money by role" "Since you last looked" "Open" "Next"]
              (map second (re-seq #"<h2>([^<]+)</h2>" html))))
       (is (str/includes? html "<td class=\"num\">$0.25 (readings only)</td>"))
-      (is (str/includes? html "Generated 2026-10-17T12:00:00Z from <code>xyx-build</code> at <code>abc1234</code>")))))
+      (is (str/includes? html "Generated 2026-10-17T12:00:00Z from <code>xyx-build</code> at <code>abc1234</code>"))
+      (is (str/includes? html "<p class=\"generated\">Generated 17 October 2026, 12:00 UTC</p>") "under the title"))))

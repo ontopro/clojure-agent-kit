@@ -78,14 +78,23 @@
 (defn workspace-edn
   "`workspace.edn` as `bb init` writes it, and as `bb upgrade` writes it again: the same text
   for the same map, the commit and version moved by an upgrade, and the last upgrade's record
-  (`:workspace/upgraded-to`) after them when there is one."
-  [{:workspace/keys [kit app build work rule-mirrors rules-overlay records run-tables kit-commit kit-version upgraded-to]}]
+  (`:workspace/upgraded-to`) after them when there is one. The person's two optional keys,
+  `:workspace/display-name` and `:workspace/time-zone`, are kept when present: an upgrade
+  rewrites this file, and a key it did not write would be lost."
+  [{:workspace/keys [kit app build work rule-mirrors rules-overlay records run-tables kit-commit kit-version upgraded-to
+                     display-name time-zone]}]
   (str ";; Which folder is which, for the KIT's harness (`harness.setup.workspace` reads it). Written by\n"
        ";; `bb init`. A relative path is relative to this file. In no repository: if it is lost, write it again.\n"
        "{:workspace/kit " (pr-str kit) "\n"
        " :workspace/app " (pr-str app) "\n"
        " :workspace/build " (pr-str build) "\n"
        " :workspace/work " (pr-str work) "\n"
+       (when display-name
+         (str " ;; the project's name as a person reads it, where a page shows it (the roadmap page's title)\n"
+              " :workspace/display-name " (pr-str display-name) "\n"))
+       (when time-zone
+         (str " ;; the project's own time zone (an IANA name), said beside the local time a page was generated at\n"
+              " :workspace/time-zone " (pr-str time-zone) "\n"))
        " ;; generated rule mirrors outside the KIT, checked by the KIT's `bb rules-check`\n"
        " :workspace/rule-mirrors " (pr-str rule-mirrors) "\n"
        " ;; this project's rules over the KIT's rule source, which every rendering reads merged\n"

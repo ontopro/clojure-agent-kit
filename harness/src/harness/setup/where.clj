@@ -520,7 +520,9 @@
                                    (:by g))))
             [from why] (since-from since (read-edn (fs/path (:workspace/work ws) "where" "last-look.edn")) rows)
             stage (:stage wf)]
-        {:workspace {:dir "." :build (:build wf) :app (rel ws :workspace/app) :kit (:kit wf) :work (rel ws :workspace/work)}
+        {:workspace (cond-> {:dir "." :build (:build wf) :app (rel ws :workspace/app) :kit (:kit wf) :work (rel ws :workspace/work)}
+                      (:workspace/display-name ws) (assoc :display-name (:workspace/display-name ws))
+                      (:workspace/time-zone ws) (assoc :time-zone (:workspace/time-zone ws)))
          :generated {:at at :plan-commit plan-commit :kit-version (:workspace/kit-version ws)}
          :phases (phase-rows rows here)
          :stages rows

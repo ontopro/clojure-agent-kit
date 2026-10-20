@@ -121,6 +121,28 @@
             "\" stroke=\"" stroke "\"/><text x=\"" (+ x (/ w 2)) "\" y=\"" (+ y 12) "\" text-anchor=\"middle\" fill=\"" ink "\">"
             (esc id) "</text></a>")]))
 
+(defn project-name
+  "The project's name as the page shows it: the workspace's `:workspace/display-name`, else the
+  build's folder less `-build`."
+  [{:keys [build display-name]}]
+  (or (not-empty display-name) (str/replace (str build) #"-build$" "")))
+
+(defn generated-line
+  "When the page was generated, for a person: `Generated 20 October 2026, 11:50 CDT`, the instant
+  `at` in the zone `local`, and the project's own zone after it when `project-zone` (an IANA name)
+  reads the clock differently - `(22:20 IST)`. Nil without `at`."
+  [at local project-zone]
+  (when at
+    (let [inst (java.time.Instant/parse at)
+          in (fn [z] (.atZone inst (java.time.ZoneId/of (str z))))
+          here (in local)
+          day (java.time.format.DateTimeFormatter/ofPattern "d MMMM yyyy, HH:mm zzz" java.util.Locale/ENGLISH)
+          clock (java.time.format.DateTimeFormatter/ofPattern "HH:mm zzz" java.util.Locale/ENGLISH)
+          there (when (not-empty project-zone) (in project-zone))]
+      (str "Generated " (.format here day)
+           (when (and there (not= (.getOffset here) (.getOffset there)))
+             (str " (" (.format there clock) ")"))))))
+
 (defn render-svg
   "The drawing, from `where-data`'s map `d`; `up` is the path from the page's folder to the
   workspace (`\"../../\"` for `work/where/`), put before every link. Pure."
@@ -149,7 +171,7 @@
       ["<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
        (str "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 " width " " height
             "\" width=\"" width "\" height=\"" height "\" font-family=\"Helvetica, Arial, sans-serif\" font-size=\"12\">")
-       (str "  <title>" (esc (str/replace (str build) #"-build$" "")) " - the roadmap: five phases, " n " stage" (when (not= 1 n) "s") "</title>")
+       (str "  <title>" (esc (project-name workspace)) " - the roadmap: five phases, " n " stage" (when (not= 1 n) "s") "</title>")
        "  <desc>Phases A to E as lanes; each stage a box in the lane of its phase; the money bar under each; open decisions and risks as badges on the stage that owns them.</desc>"
        "  <g id=\"lanes\">"]
       (for [[i _] (map-indexed vector phases)]
@@ -227,6 +249,7 @@
              "  h1 { font-size: 20px; margin: 0 0 4px; }"
              "  h2 { font-size: 16px; margin: 28px 0 8px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }"
              "  .where { color: #444; margin: 0 0 16px; }"
+             "  .generated { color: #666; font-size: 13px; margin: -8px 0 8px; }"
              "  table { border-collapse: collapse; width: 100%; font-size: 14px; }"
              "  th, td { text-align: left; vertical-align: top; padding: 5px 8px; border-bottom: 1px solid #eee; }"
              "  th { font-weight: 600; color: #555; background: #fafafa; }"
@@ -255,7 +278,7 @@
   [{:keys [workspace generated stages headline open since money terms] nxt :next :as d} up svg]
   (let [{:keys [build kit]} workspace
         kit (or kit "KIT")
-        project (str/replace (str build) #"-build$" "")
+        project (project-name workspace)
         waits (:waits-on-the-person d)
         {:keys [decisions risks]} open
         dash "—"
@@ -269,6 +292,8 @@
        (str "<title>" (esc project) " - the roadmap</title>")
        "<style>" style "</style>" "</head>" "<body>" "<main>"
        (str "<h1>" (esc project) " - the roadmap</h1>")
+       (when-let [g (generated-line (:at generated) (or (:zone generated) (str (java.time.ZoneId/systemDefault))) (:time-zone workspace))]
+         (str "<p class=\"generated\">" (esc g) "</p>"))
        (str "<p class=\"where\">" (esc (str/replace-first (str headline) #"^where: " "")) "</p>")
        "<div class=\"scroll\">"
        (svg-body svg)

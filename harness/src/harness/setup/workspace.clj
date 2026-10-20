@@ -15,8 +15,10 @@
   overlay is the project's rules over the KIT's source (`harness.rules/overlay`);
   the records folder is where `record` copies every `run.edn`, and the tables
   file the document that publishes them, held to the folder by `bb report-check`.
-  A `workspace.edn` without a key, from before it, reads as if the thing were
-  not there: the source alone, no copy, nothing to check. It is its own
+  Two keys are the person's and optional: `:workspace/display-name`, the project's name as a
+  page shows it, and `:workspace/time-zone`, the project's own zone (an IANA name, said beside
+  the local time a page was generated at). A `workspace.edn` without a key, from before it,
+  reads as if the thing were not there: the source alone, no copy, nothing to check. It is its own
   namespace because things that must not depend on each other read it: the
   driver, to find the project and the records; the rule tasks, to find the
   application's mirror and the overlay it renders from; the report's gate.
@@ -137,6 +139,17 @@
      (if-let [p (pointed-at args (System/getenv env-var))]
        (named (:dir p) (:from p))
        (some-> (find-workspace dir) (assoc :workspace/from :walk-up))))))
+
+(defn sigs-args
+  "`bb sigs`'s arguments with the folder its context files are read from: the `--dir` given, else
+  the application of the workspace the command runs in (`current`), else as given - `sigs` reads
+  `.`. A spec's `:files/context` is relative to the application, and the front door runs a KIT
+  task from the KIT's `harness/`: without this, every context file was \"not in the worktree\"."
+  [args]
+  (if (some #{"--dir"} args)
+    (vec args)
+    (let [{:keys [workspace/app]} (current args)]
+      (cond-> (vec args) app (into ["--dir" app])))))
 
 (defn current-or-exit
   "`current` for a command line: a pointed-at workspace that is not there is

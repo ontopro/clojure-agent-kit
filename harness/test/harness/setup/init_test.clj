@@ -404,3 +404,12 @@
             :let [text (or content (when copy-from (slurp copy-from)))]
             :when text]
       (is (not (re-find names-ws text)) (str path " names " ws-dir)))))
+
+(deftest workspace-edn-keeps-the-persons-optional-keys
+  (let [m {:workspace/kit "KIT" :workspace/app "x-app" :workspace/build "x-build" :workspace/work "work"
+           :workspace/rule-mirrors ["x-app/AGENTS.md"] :workspace/rules-overlay "x-build/rules.edn"
+           :workspace/records "x-build/runs" :workspace/run-tables "x-build/RUNS.md"
+           :workspace/kit-commit "abc" :workspace/kit-version "0.6.10"}
+        with (assoc m :workspace/display-name "X-ONE" :workspace/time-zone "Asia/Kolkata")]
+    (is (= with (edn/read-string (init/workspace-edn with))) "an upgrade's rewrite loses neither")
+    (is (= m (edn/read-string (init/workspace-edn m))) "and writes neither when absent")))
