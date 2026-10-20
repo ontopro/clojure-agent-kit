@@ -34,7 +34,7 @@
     build-ignore     the lines of `init/build-ignored` the build's `.gitignore` lacks added (the
                      file written when there is none), committed in the build; a file tracked
                      already is named and left tracked - untracking it is the person's
-    app             the application's upgrade branch: `bb template-upgrade` with the rule
+    app              the application's upgrade branch: `bb template-upgrade` with the rule
                      mirror re-rendered on that branch before its gates - one branch, one merge,
                      one decision; a release that leaves the pin alone still gets the branch for
                      the mirror, and a branch with nothing on it is no run
@@ -129,6 +129,15 @@
            (nil? have) (init/build-gitignore)
            :else (str have (when-not (or (str/blank? have) (str/ends-with? have "\n")) "\n") (str/join "\n" added) "\n"))
      added]))
+
+(defn ignore-refusal
+  "Why the build's `.gitignore` stops the step, from its `git status --porcelain` line, or nil
+  when it is committed: a file never committed is not one with edits, though the answer to both
+  is to commit it or set it aside."
+  [porcelain build]
+  (when-not (str/blank? porcelain)
+    (str ".gitignore " (if (str/starts-with? (str/trim porcelain) "??") "is not committed" "has uncommitted edits")
+         " in " build ": commit it or set it aside, then `bb upgrade --after-pull` again")))
 
 (defn parse-diff
   "A unified diff (`git diff`) as `[{:path rel :new? :deleted? :hunks [{:header :lines}]}]`,
@@ -383,15 +392,15 @@
         f (fs/path build ".gitignore")
         have (when (fs/exists? f) (slurp (str f)))
         [text added] (ignore-text have init/build-ignored)
+        refusal (ignore-refusal (:out (git build "status" "--porcelain" "--" ".gitignore")) build)
         tracked (filter #(= ".DS_Store" (str (fs/file-name %))) (remove str/blank? (str/split-lines (:out (git build "ls-files")))))
         note (when (seq tracked)
                (str "; tracked already, and left so - untracking is the person's (`git rm --cached`): " (str/join ", " tracked)))]
     (cond
       (empty? added) {:status :done :detail (str ".gitignore has " (str/join ", " init/build-ignored) note)}
 
-      (not (str/blank? (:out (git build "status" "--porcelain" "--" ".gitignore"))))
-      (throw (ex-info (str ".gitignore has uncommitted edits in " build ": commit or set them aside, then `bb upgrade --after-pull` again")
-                      {:upgrade/error :uncommitted :path (str f)}))
+      refusal
+      (throw (ex-info refusal {:upgrade/error :uncommitted :path (str f)}))
 
       :else
       (do (spit (str f) text)

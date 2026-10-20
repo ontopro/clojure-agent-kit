@@ -82,7 +82,8 @@ with no `.gitignore`, where the application's, from the template, and the KIT's 
 `bb init` now writes the build's `.gitignore` - `.DS_Store`, and `.local/` for working material -
 and `bb upgrade` has a step, `build-ignore`, that adds the lines a build's file lacks (the file
 written when there is none) and commits it in the build. A `.DS_Store` already tracked is named and
-left tracked: untracking a file is the person's.
+left tracked: untracking a file is the person's. A `.gitignore` never committed stops the step as
+"not committed", one with edits as "uncommitted edits" (the code review's nit).
 
 ## 0.6.10 — plan 6.10's boundary: the security reviewer panel, and a stage's progress from its records
 

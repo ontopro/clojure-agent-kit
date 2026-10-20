@@ -159,7 +159,11 @@
     (is (= ["x\n.DS_Store\n.local/\n" [".DS_Store" ".local/"]] (ur/ignore-text "x" [".DS_Store" ".local/"])) "a last line with no newline kept whole")
     (is (= ["x\n .DS_Store\n.local/\n" [".local/"]] (ur/ignore-text "x\n .DS_Store\n" [".DS_Store" ".local/"])) "a line there, spaced, counts")
     (is (= ["a\n" []] (ur/ignore-text "a\n" [])))
-    (is (= [(init/build-gitignore) [".DS_Store" ".local/"]] (ur/ignore-text nil init/build-ignored)) "no file: the one bb init writes"))
+    (is (= [(init/build-gitignore) [".DS_Store" ".local/"]] (ur/ignore-text nil init/build-ignored)) "no file: the one bb init writes")
+    (is (nil? (ur/ignore-refusal "" "b")) "committed: no refusal")
+    (is (str/starts-with? (ur/ignore-refusal "?? .gitignore" "b") ".gitignore is not committed in b: commit it")
+        "a file never committed is not one with edits")
+    (is (str/starts-with? (ur/ignore-refusal " M .gitignore" "b") ".gitignore has uncommitted edits in b")))
   (testing "a hunk's patch names the build's docs/"
     (is (str/starts-with? (ur/hunk-patch "x.md" {:header "@@ -1 +1 @@" :lines ["-a" "+b"]}) "--- a/docs/x.md\n+++ b/docs/x.md\n@@ -1 +1 @@\n-a\n+b\n"))))
 
