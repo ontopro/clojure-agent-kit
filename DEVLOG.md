@@ -61,6 +61,26 @@ moves a pin: a HIGH or CRITICAL that Scout finds against a pinned tool. The doct
 tested" stays information for an adopter, never a block.
 
 ---
+
+## 0.6.10 — plan 6.10's boundary: the security reviewer panel, and a stage's progress from its records
+
+Plan 6.10 added what the first project's third and fourth stages asked for: the security reviewer
+as a panel - `:security-panel` in the profile, `bb security-panel` running the next member, two or
+all of them, the Coder's family left out and said, a skipped review the person's and recorded, and
+all of them at pre-release; one run-loop command at a time on a run, and `record
+--rebuild-from-log` for a state that lost what a second one wrote; a rule to every role that what a
+visitor submits is the plan's to keep, never the application's log; a stage plan's progress
+section written from its records, `bb stage-progress`; the money by provider and by role, in
+`bb next --where --full` and on the roadmap page, now titled "<name> - Roadmap Report" and dated,
+with the project's display name and time zone from two optional `workspace.edn` keys; `trace` in
+the SVG pack, an icon traced from its picture; a stage report counting each cost once; a security
+routing's verdict naming its model, provider and channel; `bb sigs` reading a spec's context from
+the workspace's application; a run-loop command in a copied or moved workspace reading its own
+paths, never the original's; and a record taken again that is the same record. A workspace at
+`0.6.9` takes it with `bb upgrade` from the workspace folder, then re-renders each stage report
+with `bb stage-report <stage-plan.md>`; a profile's `:security-reviewer` still works, as a panel of
+one, until the person moves it into `:security-panel`.
+
 ## 2026-10-20 (plan 6.10)
 
 ### A record taken again is the same record (plan 6.10, item 9a, register row 166)
