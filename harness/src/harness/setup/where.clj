@@ -229,11 +229,19 @@
                           (and (seq ss) (every? #(= :closed (:state %)) ss)) :done
                           :else :ahead)}))))
 
+(defn prep-parts
+  "A blueprint §0 prep cell as its parts, split at \"; \", each trimmed: the first is the line a
+  view shows, the rest its sub-bullets. A cell of nine parts was shown whole, in bold, and read as
+  one run of words."
+  [prep]
+  (vec (remove str/blank? (map str/trim (str/split (str prep) #";\s+")))))
+
 (defn waits
   "What waits on the person, in order: the next step when it is theirs - it names the first
   gate not passed, so the gates are said there and nowhere else; the blueprint's §0 rows still
   open that the next step does not name; the open decisions whose owner names them; the open
-  risks whose spike does. Each `{:what :why :where :run}`."
+  risks whose spike does. Each `{:what :why :where :run}`; a §0 row's `:what` is its id, with
+  `:detail` its prep's first part and `:items` the rest (`prep-parts`)."
   [{nxt :next :keys [current open names kit build]}]
   (let [prep-open (filter #(= :open (next/precondition-state (:status %))) (:preconditions current))]
     (vec (concat
@@ -241,8 +249,9 @@
             [{:what (:name nxt) :why "the next step is the person's"
               :where (str (or kit "KIT") "/workflow.md step " (:step nxt)) :run (:run nxt)}])
           (for [{:keys [id prep]} prep-open
-                :when (not (str/includes? (str (:run nxt)) id))]
-            {:what (str id ": " prep) :why "the blueprint's human prep, not done"
+                :when (not (str/includes? (str (:run nxt)) id))
+                :let [[line & items] (prep-parts prep)]]
+            {:what id :detail line :items (vec items) :why "the blueprint's human prep, not done"
              :where (str build "/docs/stages/" (:blueprint current) " §0") :run nil})
           (for [{:keys [id subject owner section]} (:decisions open)
                 :when (and owner (names-the-person? names owner))]
@@ -252,6 +261,13 @@
                 :when (names-the-person? names spike)]
             {:what (str id ", " subject) :why (str "an open risk the person retires: " spike)
              :where (str build "/docs/00-overview.md §4a") :run nil})))))
+
+(defn wait-line
+  "One wait as `render-full` lists it: the id or name bold, a §0 row's first part after it, its
+  other parts as sub-bullets under the line."
+  [{:keys [what detail items why where run]}]
+  (str "- **" what "**" (when detail (str ": " detail)) " - " why (when run (str ". Run: " run)) " (" where ")"
+       (apply str (for [i items] (str "\n  - " i)))))
 
 (defn since-row
   "What changed from the date `from`: the stages closed, approved and signed on or after it, the
@@ -414,8 +430,7 @@
        (str "## Waits on you (" (count waits) ")")
        ""]
       (if (seq waits)
-        (for [{:keys [what why where run]} waits]
-          (str "- **" what "** - " why (when run (str ". Run: " run)) " (" where ")"))
+        (map wait-line waits)
         ["Nothing: no step, gate, prep row, decision or risk is the person's now."])
       [""
        (str "## Since you last looked" (if (:from since) (str ": " (:from since) " (" (:why since) ")") ""))

@@ -80,3 +80,10 @@
       (is (str/includes? html "<h1>xyx - Roadmap Report</h1>") "the page is the report on the roadmap, dated")
       (is (str/includes? svg "<title>xyx - the roadmap: five phases") "the drawing alone is the roadmap")
       (is (str/includes? html "<p class=\"generated\">Generated 17 October 2026, 12:00 UTC</p>") "under the title"))))
+
+(deftest a-prep-rows-parts-are-a-list-under-its-line
+  (is (= (str "  <li><strong>HP-2</strong>: a font - the prep. <a href=\"../../b/x.md\">b/x.md §0</a>"
+              "<ul><li>its licence</li><li>the &lt;subset&gt;</li></ul></li>")
+         (page/wait-li "../../" {:what "HP-2" :detail "a font" :items ["its licence" "the <subset>"] :why "the prep" :where "b/x.md §0"})))
+  (is (= "  <li><strong>D1, Hosting</strong> - why. <a href=\"../../d.md\">d.md §2</a></li>"
+         (page/wait-li "../../" {:what "D1, Hosting" :why "why" :where "d.md §2"}))))

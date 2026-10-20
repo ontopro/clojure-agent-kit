@@ -64,6 +64,17 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-20 (plan 6.11)
 
+### A prep row's parts as sub-bullets (plan 6.11, item 2, register row 168)
+
+The first project's stage 5 blueprint had a §0 prep row of nine parts - the rules changes, the
+data conventions, the sync and its check, two icon files, the gates, the commit, a note on
+`layers.edn` - joined by semicolons, and the roadmap page's "Waits on you" printed it whole in
+bold: the person read one run of words. Now only the row's id is bold; its first part follows, and
+each further part, split at "; " (`where/prep-parts`), is a sub-bullet under the line - on the page
+and in `bb next --where --full`, each wait rendered by one pure function (`wait-li`,
+`wait-line`). The blueprint template's §0 says a prep cell is one sentence or short parts joined by
+"; ", and a longer list goes under the table.
+
 ### The build ignores what the application does (plan 6.11, item 1, register row 167)
 
 The first project's build tracked three `.DS_Store` files: `bb init` made the build repository

@@ -75,12 +75,20 @@
 (deftest what-waits-on-the-person
   (let [w (where/waits {:next {:step 10 :name "sign-off" :owner "the person" :run "set :blueprint/signed"}
                         :current {:blueprint "stage-1/stage-1-blueprint.md"
-                                  :preconditions [{:id "HP-1" :prep "a key" :status "done"} {:id "HP-2" :prep "a font" :status "open"}]}
+                                  :preconditions [{:id "HP-1" :prep "a key" :status "done"} {:id "HP-2" :prep "a font; its licence;  the subset" :status "open"}]}
                         :open {:decisions [{:id "D1" :section "2" :subject "Hosting" :owner "the person"}
                                            {:id "D2" :section "2" :subject "Search" :owner "stage 4"}]
                                :risks [{:id "R1" :subject "The deploy" :spike "no spike: Ada's"}]}
                         :names ["Ada"] :kit "KIT" :build "xyx-build"})]
-    (is (= ["sign-off" "HP-2: a font" "D1, Hosting" "R1, The deploy"] (mapv :what w)) "the gate in the next step, then the rest")
+    (is (= ["sign-off" "HP-2" "D1, Hosting" "R1, The deploy"] (mapv :what w)) "the gate in the next step, then the rest")
+    (is (= {:what "HP-2" :detail "a font" :items ["its licence" "the subset"]} (select-keys (second w) [:what :detail :items]))
+        "a prep row: its id, its first part, the rest split at the semicolons")
+    (is (= (str "- **HP-2**: a font - the blueprint's human prep, not done (xyx-build/docs/stages/stage-1/stage-1-blueprint.md §0)"
+                "\n  - its licence\n  - the subset")
+           (where/wait-line (second w)))
+        "the id bold, the rest of the cell as sub-bullets: a cell of nine parts read as one bold run of words")
+    (is (= "- **D1, Hosting** - an open decision whose owner is the person: the person (xyx-build/docs/04-decision-log.md §2)"
+           (where/wait-line (nth w 2))) "a wait with no parts, as before")
     (is (= ["KIT/workflow.md step 10" "xyx-build/docs/stages/stage-1/stage-1-blueprint.md §0"
             "xyx-build/docs/04-decision-log.md §2" "xyx-build/docs/00-overview.md §4a"]
            (mapv :where w))))

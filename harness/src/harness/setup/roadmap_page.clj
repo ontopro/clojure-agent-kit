@@ -272,6 +272,15 @@
   (let [path (first (str/split (str where) #" " 2))]
     (str "<a href=\"" (esc (str up path)) "\">" (esc where) "</a>")))
 
+(defn wait-li
+  "One wait as the page lists it: the id or name bold, a §0 row's first part after it, its other
+  parts a list under it."
+  [up {:keys [what detail items why where run]}]
+  (str "  <li><strong>" (esc what) "</strong>" (when detail (str ": " (esc detail))) " - " (esc why) "."
+       (when run (str " Run: <code>" (esc run) "</code>.")) " " (link up where)
+       (when (seq items) (str "<ul>" (apply str (for [i items] (str "<li>" (esc i) "</li>"))) "</ul>"))
+       "</li>"))
+
 (defn render-html
   "The roadmap page, from `where-data`'s map `d`, `up` the path from the page's folder to the
   workspace, and `svg` the drawing `render-svg` gave - carried inline, the same text. Pure."
@@ -302,9 +311,7 @@
        (str "<h2>Waits on you (" (count waits) ")</h2>")]
       (if (seq waits)
         (concat ["<ul>"]
-                (for [{:keys [what why where run]} waits]
-                  (str "  <li><strong>" (esc what) "</strong> - " (esc why) "."
-                       (when run (str " Run: <code>" (esc run) "</code>.")) " " (link up where) "</li>"))
+                (map #(wait-li up %) waits)
                 ["</ul>"])
         ["<p>Nothing: no step, gate, prep row, decision or risk is the person's now.</p>"])
       ["" "<h2>Money and time</h2>" "<table>"

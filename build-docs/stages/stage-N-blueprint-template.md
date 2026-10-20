@@ -26,6 +26,10 @@
 > Status is `done` and its date once the prep is done, or `per run` when it is done again before
 > every run of what it blocks; anything else is open. Blocks names a packet's id, or `every task`:
 > `bb next` holds a packet behind a row still open that blocks it.
+>
+> A Prep cell is one sentence, or short parts joined by "; " - the roadmap page and `bb next
+> --where --full` show each part after the first as a sub-bullet. A longer list goes under the
+> table, the cell naming it.
 
 | # | Prep | Blocks | Status |
 |---|---|---|---|
