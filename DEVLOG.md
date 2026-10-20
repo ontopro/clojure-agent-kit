@@ -62,6 +62,17 @@ tested" stays information for an adopter, never a block.
 
 ---
 
+## 2026-10-20 (plan 6.11)
+
+### The build ignores what the application does (plan 6.11, item 1, register row 167)
+
+The first project's build tracked three `.DS_Store` files: `bb init` made the build repository
+with no `.gitignore`, where the application's, from the template, and the KIT's own both ignore it.
+`bb init` now writes the build's `.gitignore` - `.DS_Store`, and `.local/` for working material -
+and `bb upgrade` has a step, `build-ignore`, that adds the lines a build's file lacks (the file
+written when there is none) and commits it in the build. A `.DS_Store` already tracked is named and
+left tracked: untracking a file is the person's.
+
 ## 0.6.10 — plan 6.10's boundary: the security reviewer panel, and a stage's progress from its records
 
 Plan 6.10 added what the first project's third and fourth stages asked for: the security reviewer

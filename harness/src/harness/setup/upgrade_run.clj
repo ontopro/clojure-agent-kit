@@ -31,7 +31,10 @@
                      A document with uncommitted edits stops the step by name. The documents
                      touched are committed in the build with the release named
     loop-edn         an old `loop.edn`'s literal KIT path rewritten to `{{kit}}`
-    app              the application's upgrade branch: `bb template-upgrade` with the rule
+    build-ignore     the lines of `init/build-ignored` the build's `.gitignore` lacks added (the
+                     file written when there is none), committed in the build; a file tracked
+                     already is named and left tracked - untracking it is the person's
+    app             the application's upgrade branch: `bb template-upgrade` with the rule
                      mirror re-rendered on that branch before its gates - one branch, one merge,
                      one decision; a release that leaves the pin alone still gets the branch for
                      the mirror, and a branch with nothing on it is no run
@@ -63,7 +66,7 @@
 
 (def steps
   "The steps, in order; each is a keyword `done.edn` records."
-  [:workspace-keys :front-door :skills :orientation :stage-folders :build-docs :loop-edn :app :workspace-edn :doctor])
+  [:workspace-keys :front-door :skills :orientation :stage-folders :build-docs :loop-edn :build-ignore :app :workspace-edn :doctor])
 
 (def role-file ".claude/agents/interactive-programmer.md")
 (def role-source "harness/agents/interactive-programmer.md")
@@ -114,6 +117,18 @@
   [loop-text]
   (let [out (str/replace loop-text #"--config \S+/harness/bb\.edn" "--config {{kit}}/harness/bb.edn")]
     [out (not= out loop-text)]))
+
+(defn ignore-text
+  "`have`, the build's `.gitignore` (nil when there is none), with each of `lines` it lacks
+  appended, as `[text added]`: the file `bb init` writes when there is none. A line is there when
+  a line of the file is it, trimmed."
+  [have lines]
+  (let [present (set (map str/trim (str/split-lines (str have))))
+        added (vec (remove present lines))]
+    [(cond (empty? added) have
+           (nil? have) (init/build-gitignore)
+           :else (str have (when-not (or (str/blank? have) (str/ends-with? have "\n")) "\n") (str/join "\n" added) "\n"))
+     added]))
 
 (defn parse-diff
   "A unified diff (`git diff`) as `[{:path rel :new? :deleted? :hunks [{:header :lines}]}]`,
@@ -363,6 +378,29 @@
                     "--" "loop.edn")
               {:status :done :detail "the literal KIT path rewritten to {{kit}}, committed in the build"}))))))
 
+(defn- step-build-ignore! [{:keys [ws head version]}]
+  (let [build (:workspace/build ws)
+        f (fs/path build ".gitignore")
+        have (when (fs/exists? f) (slurp (str f)))
+        [text added] (ignore-text have init/build-ignored)
+        tracked (filter #(= ".DS_Store" (str (fs/file-name %))) (remove str/blank? (str/split-lines (:out (git build "ls-files")))))
+        note (when (seq tracked)
+               (str "; tracked already, and left so - untracking is the person's (`git rm --cached`): " (str/join ", " tracked)))]
+    (cond
+      (empty? added) {:status :done :detail (str ".gitignore has " (str/join ", " init/build-ignored) note)}
+
+      (not (str/blank? (:out (git build "status" "--porcelain" "--" ".gitignore"))))
+      (throw (ex-info (str ".gitignore has uncommitted edits in " build ": commit or set them aside, then `bb upgrade --after-pull` again")
+                      {:upgrade/error :uncommitted :path (str f)}))
+
+      :else
+      (do (spit (str f) text)
+          (git! build "add" "--" ".gitignore")
+          (git! build "commit" "-q" "-m" (str "KIT " (or version (subs head 0 7)) ": the build ignores " (str/join ", " added))
+                "--" ".gitignore")
+          {:status :done :detail (str (if have "added to .gitignore: " ".gitignore written: ") (str/join ", " added)
+                                      ", committed in the build" note)}))))
+
 (defn- step-app! [{:keys [ws release generate gates]}]
   (let [id (str "upgrade-" release)
         ;; THE HOOK BY NAME, recorded in the run: `bb template-upgrade` resuming this run after a
@@ -407,7 +445,7 @@
 (def step-fns
   {:workspace-keys step-workspace-keys! :front-door step-front-door! :skills step-skills!
    :orientation step-orientation! :stage-folders step-stage-folders! :build-docs step-build-docs! :loop-edn step-loop-edn!
-   :app step-app! :workspace-edn step-workspace-edn! :doctor step-doctor!})
+   :build-ignore step-build-ignore! :app step-app! :workspace-edn step-workspace-edn! :doctor step-doctor!})
 
 (defn after-pull!
   "Phase 2 over the workspace `ws` from the KIT at `kit`. Opts: `:generate` and `:gates` for
@@ -483,6 +521,9 @@
                                    "nothing flat to move")))
         (say "build-docs: " (count files) " file" (when (not= 1 (count files)) "s") " changed: " (str/join ", " (map #(subs (:path %) (count "build-docs/")) files)))
         (say "loop-edn: " (if (second (rewrite-kit-path (slurp (str (fs/path (:workspace/build ws) "loop.edn"))))) "a literal KIT path to rewrite" "nothing to rewrite"))
+        (say "build-ignore: " (let [f (fs/path (:workspace/build ws) ".gitignore")
+                                    [_ added] (ignore-text (when (fs/exists? f) (slurp (str f))) init/build-ignored)]
+                                (if (seq added) (str "would add " (str/join ", " added)) "nothing to add")))
         (say "app: " (if moved (str "the template pin moved " (:git/tag (:from moved)) " -> " (:git/tag (:to moved)) ": template-upgrade, the mirror on its branch") "the pin as it was: a branch for the mirror if it changed"))
         (println "bb upgrade --dry-run: nothing was written.")))))
 

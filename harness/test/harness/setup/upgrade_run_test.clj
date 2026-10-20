@@ -155,6 +155,11 @@
       (is (= :conflict (ur/hunk-class {:lines ["-| Retry cap | <n> |" "+| Retry cap, per role | <n> |"]} "| Retry cap | 3 |\n"))
           "a filled row is content")
       (is (= :conflict (ur/hunk-class {:lines ["+only additions"]} doc)))))
+  (testing "the build's .gitignore gains only the lines it lacks"
+    (is (= ["x\n.DS_Store\n.local/\n" [".DS_Store" ".local/"]] (ur/ignore-text "x" [".DS_Store" ".local/"])) "a last line with no newline kept whole")
+    (is (= ["x\n .DS_Store\n.local/\n" [".local/"]] (ur/ignore-text "x\n .DS_Store\n" [".DS_Store" ".local/"])) "a line there, spaced, counts")
+    (is (= ["a\n" []] (ur/ignore-text "a\n" [])))
+    (is (= [(init/build-gitignore) [".DS_Store" ".local/"]] (ur/ignore-text nil init/build-ignored)) "no file: the one bb init writes"))
   (testing "a hunk's patch names the build's docs/"
     (is (str/starts-with? (ur/hunk-patch "x.md" {:header "@@ -1 +1 @@" :lines ["-a" "+b"]}) "--- a/docs/x.md\n+++ b/docs/x.md\n@@ -1 +1 @@\n-a\n+b\n"))))
 
@@ -176,6 +181,11 @@
         ;; the project's own rule: the mirror must re-render on the upgrade branch
         _ (spit (str (fs/path build "rules.edn")) (pr-str [{:id :layer-boundaries :text "Respect the boundaries of layer {{layer}}. FILLED."}]))
         _ (git-out build "commit" "-q" "-am" "the rules filled")
+        ;; a build from before init wrote its .gitignore, a .DS_Store tracked in it
+        _ (git-out build "rm" "-q" ".gitignore")
+        _ (spit (str (fs/path build "docs" ".DS_Store")) "x")
+        _ (git-out build "add" "-A")
+        _ (git-out build "commit" "-q" "-m" "an older build")
         to (release! kit)
         sw (java.io.StringWriter.)
         r (binding [*out* sw] (ur/after-pull! ws kit {:gates [[:fmt "true"]] :generate (fn [_] (throw (ex-info "no generation: the pin is as it was" {})))}))
@@ -213,6 +223,12 @@
     (testing "loop.edn's literal path is {{kit}} again, committed"
       (is (str/includes? (slurp (str (fs/path build "loop.edn"))) "{{kit}}/harness/bb.edn"))
       (is (not (str/includes? (slurp (str (fs/path build "loop.edn"))) "/old/place"))))
+    (testing "the build's .gitignore written and committed; the tracked .DS_Store named, left tracked"
+      (is (= (init/build-gitignore) (slurp (str (fs/path build ".gitignore")))))
+      (is (str/includes? (git-out build "log" "-1" "--format=%s" "--" ".gitignore") "the build ignores .DS_Store, .local/"))
+      (is (str/includes? (:detail (:build-ignore records)) "untracking is the person's"))
+      (is (str/includes? (:detail (:build-ignore records)) "docs/.DS_Store"))
+      (is (str/includes? (git-out build "ls-files") "docs/.DS_Store") "still tracked"))
     (testing "the application: the pin as it was, so no template commit - a branch for the mirror alone, gated, awaiting its merge"
       (let [a (:app (:app records))]
         (is (= "upgrade-0.6.5" (:branch a)))

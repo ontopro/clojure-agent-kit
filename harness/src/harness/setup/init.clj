@@ -242,6 +242,17 @@
        "`" kit "/harness/README.md` and are run from HERE - this folder's `bb.edn` hands each on; the application's own, such as `bb serve`, in its folder; Clojure written by hand, outside "
        "the loop, is the role in `.claude/agents/interactive-programmer.md`.\n"))
 
+(def build-ignored
+  "What the build repository never tracks: macOS's folder files, and working material (`.local/`,
+  by the convention). `bb upgrade` adds a line here to a build that lacks it."
+  [".DS_Store" ".local/"])
+
+(defn build-gitignore
+  "The build's `.gitignore` as `bb init` writes it."
+  []
+  (str "# What the build never tracks. Written by `bb init`; `bb upgrade` adds a line the KIT adds here.\n"
+       (str/join "\n" build-ignored) "\n"))
+
 (defn- plan-readme [project {:workspace/keys [kit build]}]
   (str "# " project " - the build\n\n"
        "The reasoning, the contracts and the money for `" project "`, in its own repository so that it can\n"
@@ -464,6 +475,11 @@
              :content (profile-edn ws kit-dir seat)}
             {:path (str build "/loop.edn") :what "this project's defaults for a run"
              :content (loop-edn defaults)}
+            ;; THE BUILD IGNORES WHAT THE APPLICATION DOES. The template's `.gitignore` covers the
+            ;; application; the build had none, and the first project's build tracked three
+            ;; `.DS_Store` files before the person noticed.
+            {:path (str build "/.gitignore") :what "what the build repository never tracks"
+             :content (build-gitignore)}
             ;; THE RECORDS' HOME AND THEIR DOCUMENT, so the build holds what four documents
             ;; said it held. `record` made the folder on its first copy and nobody made the
             ;; document: the fifth project wrote RUNS.md by hand before `bb report-check`
