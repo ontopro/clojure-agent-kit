@@ -61,7 +61,7 @@
  harness.models.runner-check #{harness.contract.shapes harness.models.runner}
  harness.models.security-review-tools #{harness.contained-path harness.models.tools}
  harness.models.security-review-sandbox #{}
- harness.models.security-score #{harness.models.security-review-sandbox harness.models.security-review-tools}
+ harness.models.security-score #{harness.contained-path harness.models.security-review-sandbox harness.models.security-review-tools}
  harness.models.security-bake-off #{harness.models.catalogue harness.models.security-review harness.models.security-score}
  harness.models.security-review #{harness.models.agent harness.models.catalogue harness.models.profile
                                   harness.models.security-review-sandbox harness.models.security-review-tools}

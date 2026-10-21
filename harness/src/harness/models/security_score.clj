@@ -25,6 +25,7 @@
    [clojure.edn :as edn]
    [clojure.pprint :as pp]
    [clojure.string :as str]
+   [harness.contained-path :as contained-path]
    [harness.models.security-review-sandbox :as sandbox]
    [harness.models.security-review-tools :as security-review-tools]))
 
@@ -218,9 +219,13 @@
   [kit review-file fixture-dir]
   (let [review (edn/read-string (slurp review-file))
         tests-dir (fs/path (str/replace review-file #"\.edn$" "-tests"))
+        ;; a record's test paths are the security reviewer's words: a test file's path, read inside its
+        ;; folder - one outside, or one whose namespace a command could not carry, is not scored
         files (into (sorted-map)
-                    (for [rel (:tests review)]
-                      [rel (slurp (str (fs/path tests-dir rel)))]))
+                    (for [rel (:tests review)
+                          :let [p (contained-path/inside tests-dir rel)]
+                          :when (and p (security-review-tools/test-path? rel) (fs/regular-file? p))]
+                      [rel (slurp (str p))]))
         cases (edn/read-string (slurp (str (fs/path fixture-dir "cases.edn"))))
         t0 (System/currentTimeMillis)
         out (outcomes! kit (str (fs/path fixture-dir "notes")) cases files)

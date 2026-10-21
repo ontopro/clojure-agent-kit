@@ -91,7 +91,8 @@
 (defn tests-argv
   "The application's tests in the container, in a pristine copy of it: all of them as its own `test`
   task runs them, or one namespace through `clojure.test`, exiting non-zero when it fails. The
-  namespace is a name `security-review-tools` has already checked, which is why it can go in a command."
+  namespace is a name `security-review-tools` has already checked (`run_tests`' name, `test-path?` for a
+  file the security reviewer wrote), which is why it can go in a command."
   [name ns-name]
   (exec-argv name "bash" "-c"
              (str pristine-copy

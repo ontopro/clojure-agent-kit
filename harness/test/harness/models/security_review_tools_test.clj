@@ -260,3 +260,19 @@
         (is (:error? w) "a folder under test/ linked elsewhere is not written through")
         (is (not (fs/exists? (fs/path outer "clone-other" "escape_test.clj")))))
       (finally (fs/delete-tree outer)))))
+
+;; From the KIT's own security review (Gemini 4 Argon, 2026-10-21): a test's namespace goes into a
+;; command, so its path is held to a namespace's characters
+(deftest a-test-path-carries-only-a-namespace-s-characters
+  (is (rt/test-path? "test/app/review_notes_test.clj"))
+  (is (rt/test-path? "test/a1/b2_test.clj"))
+  (doseq [p ["test/app/a\"$(id)\"_test.clj" "test/app/a b_test.clj" "test/app/a;b_test.clj" "test/1app/x_test.clj"
+             "/abs/test/app/x_test.clj" "test/../test/app/x_test.clj" "src/app/x_test.clj"]]
+    (is (not (rt/test-path? p)) p))
+  (let [dir (str (fs/create-temp-dir {:prefix "kit-review-ns-path"}))]
+    (try
+      (let [r (tools/invoke rt/specs {:dir dir :written (atom #{})}
+                            {:id "c" :name "write_test" :args {:path "test/app/a\"$(id)\"_test.clj" :content "(ns app.x-test)"}})]
+        (is (:error? r))
+        (is (str/includes? (:content r) "is not a test namespace's path")))
+      (finally (fs/delete-tree dir)))))

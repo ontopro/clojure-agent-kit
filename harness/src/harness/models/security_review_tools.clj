@@ -90,6 +90,18 @@
 
 (def max-test-bytes (* 50 1024))
 
+(def test-path-pattern
+  "A test file's path as the security reviewer names it: `test/`, then parts of letters, digits and
+  `_`, each starting with a letter, ending `_test.clj`. Its namespace goes into a command (the
+  sandbox's `tests-argv`, the scorer's runs), so it is held to a namespace's own characters - a
+  path with `\"$(id)\"` in it had reached a `bash -c`."
+  #"test/(?:[A-Za-z][A-Za-z0-9_]*/)*[A-Za-z][A-Za-z0-9_]*_test\.clj")
+
+(defn test-path?
+  "Whether `path` is a test file's path by `test-path-pattern`: relative, no `..`, a namespace's characters."
+  [path]
+  (boolean (re-matches test-path-pattern (str path))))
+
 (defn- test-path-problem
   "Why `path` is not a place a security reviewer may write, or nil: a `*_test.clj` file below `test/` that
   is either new or one this review wrote itself (`written`, an atom of the paths it has
@@ -110,6 +122,8 @@
       (str/blank? path) "path is required"
       (not under-test?) (str path " is not below test/ - a test is the only thing you may write")
       (not (str/ends-with? (str p) "_test.clj")) (str path " does not end in _test.clj")
+      ;; the path as it resolves, so `test/app/../app/x_test.clj` is the file it names
+      (not (test-path? rel)) (str path " is not a test namespace's path - test/ then parts of letters, digits and _, each starting with a letter")
       (and (fs/exists? p) (not (and written (contains? @written rel))))
       (str path " already exists and is not one you wrote - write a new file; the application's tests are not changed"))))
 

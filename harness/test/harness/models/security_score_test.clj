@@ -2,6 +2,7 @@
   "The scorer's classification, on canned outcomes: what a test run on each branch means. Running
   a reviewer's tests in the sandbox is `bb security-score`, never in the gates."
   (:require
+   [babashka.fs :as fs]
    [clojure.test :refer [deftest is testing]]
    [harness.models.security-score :as score]))
 
@@ -102,3 +103,23 @@
     (is (= {"a" :fails "b" :fails "c" :fails} (score/unit-statuses :fails vars "Execution error at the top"))
         "a failure no test is named in fails them all: nothing says which held")
     (is (= {} (score/unit-statuses :no-tests [] "Ran 0 tests")))))
+
+;; From the KIT's own security review (Gemini 4 Argon, 2026-10-21)
+(deftest a-record-s-test-paths-are-read-only-inside-its-test-folder
+  (let [dir (fs/create-temp-dir {:prefix "kit-score-outside"})
+        record (fs/path dir "rev.edn")
+        tests (fs/path dir "rev-tests")
+        fixture (fs/path dir "fixture")
+        seen (atom nil)]
+    (try
+      (fs/create-dirs (fs/path tests "test" "app"))
+      (fs/create-dirs (fs/path fixture "notes"))
+      (spit (str (fs/path dir "outside.txt")) "OUTSIDE THE TEST FOLDER")
+      (spit (str (fs/path tests "test" "app" "ok_test.clj")) "(ns app.ok-test)")
+      (spit (str (fs/path fixture "cases.edn")) (pr-str {:faulted "f" :clean "c" :faults [] :variants {}}))
+      (spit (str record) (pr-str {:model "m" :findings []
+                                  :tests ["../outside.txt" "test/app/ok_test.clj" "test/app/a\"$(id)\"_test.clj"]}))
+      (with-redefs [score/outcomes! (fn [_ _ _ files] (reset! seen files) {})]
+        (try (score/score! "." (str record) (str fixture)) (catch Exception _ nil)))
+      (is (= ["test/app/ok_test.clj"] (keys @seen)) "only a test file's path, inside the folder, is scored")
+      (finally (fs/delete-tree dir)))))

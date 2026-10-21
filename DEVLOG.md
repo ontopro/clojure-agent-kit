@@ -64,6 +64,14 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### A security reviewer's test path carries only a namespace's characters (plan 6.11, item 8, register row 177)
+
+The review's last finding, LOW: `write_test` took a path with `"$(id)"` in it, and its namespace went
+into the `bash -c` of `sandbox/tests-argv`, inside the no-network sandbox; `score!` read a record's
+`:tests` with no bound. `security-review-tools/test-path?` holds a test file's path, as it resolves, to
+`test/` and parts of letters, digits and `_` - `test/app/../app/x_test.clj` is still the file it
+names - and `score!` scores only the paths that pass it, read inside the test folder.
+
 ### Two readings read only inside the project (plan 6.11, item 8, register row 176)
 
 The review's fifth finding, the reads half of the stub's: the spec review read each `:files/context`
