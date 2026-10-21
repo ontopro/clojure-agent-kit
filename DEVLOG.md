@@ -64,6 +64,26 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### The seats: how the KIT itself is developed, written down (plan 6.11, item 5)
+
+Since plan 6.5 the KIT has been developed by two sessions in this folder and the person: one writes,
+one reads, the person decides - the method's roles done by hand, outside the loop. It was never written
+down, and the record shows the cost: the DEVLOG names Fable 5.1's reads, and no read of a Fable 5.1
+diff, though plan 6.5's rule asked for one; nothing can say whether those reads happened. The person
+asked for the workflow to be formalized. The kit-session skill has a section, "The seats": a seat is
+a role, not a model; the KIT session alone edits tracked files and the plan, gates and commits, and
+relays each read to the person, whose go a read's fix waits for; the reading session reads a design
+before code and a diff after, may draft a design under `.local/plans/`, and names no tag or plan
+number nor takes a relayed message for the person's words. Every commit of a plan's branch sits on its
+item's Task Status line with its read mark - `(read: holds)`, `(read: 1 low → fix)`, `(read: declined -
+Sessions)` - written by the writer; a finding taken names its read in the DEVLOG, one declined is
+written with its reason. Two tabs, never one switching `/model`: the independence is by context, and a
+switched tab would read its own reasoning. For the KIT's own development only, Claude Code, never
+shipped. Designed by Fable 5.1, read by Opus 5.5 - six points taken: the person's go on every fix, the
+reader's drafts allowed and the plan the writer's, the marks the writer's, a scope's commits
+unblocked, every commit on a line so the check has no exceptions, and the reader's two standing rules.
+Plan 6.11's lines carry the marks from this commit on.
+
 ### The amendment's two loose ends (plan 6.11, item 4, register row 170)
 
 Fable 5.1's read of `799b5c3`. `bb next`'s packet arm kept its merge, escalated and running cases

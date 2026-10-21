@@ -130,7 +130,9 @@ benefit. It is also a product artifact, and also not addressed to you.
 ## Before changing anything
 
 The `kit-session` skill (`.claude/skills/kit-session/`, never shipped) is these rules in the
-order a session applies them: the start, an item, an item's end, a tag.
+order a session applies them: the start, an item, an item's end, a tag. Its section "The seats" is
+how the KIT itself is developed: two Claude Code sessions, one writing and one reading, and the
+person, who decides.
 
 `NOTES.md` — known limitations and what is deliberately deferred.
 `harness/PROVENANCE.md` — what came from where, and why each divergence exists.

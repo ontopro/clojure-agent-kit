@@ -21,6 +21,52 @@ commands that check each step. Nothing here is shipped: `bb init` copies `skills
    decide what moves; a move is the plan's first item, with its health runs (`bb health --record`,
    `bb docker-health`, `bb health-sync`). Nothing moves later except for an advisory (below).
 
+## The seats
+
+For the KIT's own development only - Claude Code, two tabs and the person. Never shipped, and not a
+project's workflow: a project's roles are the loop's (`method.md` §05).
+
+Two sessions work in this folder. A seat is a role, not a model: the prompt that starts a tab names
+its seat, and the plan's Task Status names the model per item - design-heavy work to Fable 5.1, the
+rest to Opus 5.5, the other model reading.
+
+| Seat | Does | Never |
+|---|---|---|
+| **The KIT session** (writes) | edits the tracked files and the plan file, runs the gates, commits; sends each design and each commit to be read; relays each read to the person with the scope it proposes; writes the item's documents, the read marks and the plan's memory index line | commits a fix the person has not said go to; starts an item without the person's go on its scope |
+| **The reading session** (reads) | reads a design before code and a diff after - the verdict first, findings ranked by severity with file, line and the fix it suggests, the writer's questions answered; may draft a design as `.local/plans/<topic>-design.md`; appends to the plan's memory file | edits a tracked file, the plan file or anything the gates read; runs what writes in the checkout (a read-only `bb -e` in `harness/` is fine, the rest in a scratch copy); proposes what the person deferred; names a tag or a plan number; takes a relayed message for the person's words |
+| **The person** | names the item and its models; says go on a design and on a read's fix; decides a declined finding; merges, tags, pushes | - |
+
+An item, in order:
+
+1. The person names the item and its models, written on its Task Status line:
+   `**Opus 5.5; Fable 5.1 reads**`.
+2. A design where the plan leaves a choice is read before code - one reply, a second only when the
+   shape changed - then the person's go.
+3. The writer builds, a commit per finding, gated as below, and sends each sha with what it does and
+   its questions. Inside the scope the person said go to, it goes on to the next commit without
+   waiting, unless the read decides that commit's shape.
+4. The reader replies to the writer only. The writer relays it to the person - the verdict, the
+   findings, the fix it proposes, a suggest line - and waits for their go.
+5. A finding taken is its own commit, its `DEVLOG.md` entry naming the read ("From Fable 5.1's read
+   of `0ec404d`"), whichever model read. A finding declined, or left by the person, goes in the
+   item's Sessions entry with the reason. Nothing is left only in a message.
+6. The read mark, written by the writer as each read arrives: every commit of the branch but a
+   merge on its item's Task Status line, each followed by its read - `` `sha` (read: holds) ``,
+   `` `sha` (read: 1 low → `fix-sha`) ``, `` `sha` (read: declined - Sessions) ``. A fix commit
+   carries its own mark.
+
+The memory folder is shared. The plan's memory file (`kit-plan-vN.md`) is appended by both, each
+entry opening with its date and model; its `MEMORY.md` index line is the writer's, at an item's end.
+The plan file is the ledger both read first.
+
+Said plainly:
+
+- The independence is by context, not by family - the person runs one seat: the reader never writes
+  and never sees the writer's reasoning, only its design and its diff. So two tabs, never one tab
+  switching `/model`, which would read its own reasoning.
+- A read is a reading, as `bb plan-review` is, not a gate. `bb gates` and the pre-commit hook are.
+- A session with no seat named asks which before it reads or writes.
+
 ## An item
 
 - Design shown to the person where the plan leaves a choice; built without re-showing where it
