@@ -151,6 +151,13 @@
   (let [p (str p)]
     (or (str/blank? p) (fs/absolute? (fs/path p)) (some #{".."} (map str (fs/components (fs/path p)))))))
 
+(def source-path
+  "The shape of a file the loop writes or a namespace is read from - `:files/impl` and `:files/test`:
+  `src/`, `test/` or `dev/`, then parts of letters, digits and `_`, each starting with a letter,
+  ending `.clj` or `.cljc`. The path becomes a namespace in the stub's `(ns …)` (`ns-for`), and a file
+  name with `) (def x (spit …)) ;` in it had loaded as code in the Tester's REPL and the gates."
+  #"(?:src|test|dev)/(?:[A-Za-z][A-Za-z0-9_]*/)*[A-Za-z][A-Za-z0-9_]*\.cljc?")
+
 (defn check-files
   "The file entries of a task spec the loop cannot take, as data in `check-slice`'s shape -
   `[{:key :files/impl :entry paths :reason str}]` - and nil when it can take them all.
@@ -180,7 +187,13 @@
                :let [bad (filterv outside-path? paths)]
                :when (seq bad)]
            {:key k :entry (if (= k :files/impl) (vec impl) bad)
-            :reason "is not a path inside the worktree - a relative path with no `..` part"})))))
+            :reason "is not a path inside the worktree - a relative path with no `..` part"})
+         (for [[k paths] [[:files/impl impl] [:files/test test]]
+               :let [bad (filterv #(and (not (outside-path? %)) (not (re-matches source-path (str %)))) paths)]
+               :when (seq bad)]
+           {:key k :entry bad
+            :reason (str "is not a source file's path - src/, test/ or dev/, then parts of letters, digits and _, "
+                         "each starting with a letter, ending .clj or .cljc")})))))
 
 (defn- escaped
   "`s` as the inside of a Clojure string literal. Whatever reaches the

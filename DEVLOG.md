@@ -64,6 +64,13 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### A spec's file has a source file's shape (plan 6.11, item 10, register row 191)
+
+The contract flow's second finding: the `:files/impl` path became the stub's namespace, held only to
+relative with no `..`, so a file name carrying forms loaded as code. `stub/source-path` now holds the
+impl and test paths to `src/`, `test/` or `dev/` and a namespace's characters, at every place
+`check-files` runs.
+
 ### A dangling link is judged where it points (plan 6.11, item 10, register row 190)
 
 The contract flow's first finding, with the setup flow's front door folded in: `inside` asked

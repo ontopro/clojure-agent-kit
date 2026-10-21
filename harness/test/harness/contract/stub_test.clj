@@ -245,3 +245,16 @@
                             (stub/write! (str dir) ["src/app/core.clj"] '{:interfaces [(f [x])]})))
       (is (not (fs/exists? (fs/path outer "made-outside.clj"))))
       (finally (fs/delete-tree outer)))))
+
+;; From the KIT's own security review (GPT-6 Astra, the contract flow, 2026-10-21): the impl path becomes
+;; the stub's namespace, and a file name carrying forms had loaded as code
+(deftest a-file-the-loop-writes-has-a-source-file-s-shape
+  (is (nil? (stub/check-files {:files/impl ["src/app/core.clj"] :files/test ["test/app/core_test.clj"]
+                               :files/context ["resources/x.edn" "src/app/db.cljc"]})))
+  (doseq [p ["src/a/b) (def x (spit \"/tmp/p\" 1)) ;.clj" "src/a/b c.clj" "lib/a/b.clj" "src/a/1b.clj" "src/a/b.txt"]]
+    (let [bad (stub/check-files {:files/impl [p] :files/test ["test/a/b_test.clj"]})]
+      (is (= [:files/impl] (mapv :key bad)) p)
+      (is (re-find #"not a source file's path" (:reason (first bad))) p)))
+  (is (= [:files/test] (mapv :key (stub/check-files {:files/impl ["src/a/b.clj"] :files/test ["test/a/b)_test.clj"]}))))
+  (is (thrown-with-msg? Exception #"not a source file's path"
+                        (stub/write! (str (fs/create-temp-dir)) ["src/a/b) (def x 1) ;.clj"] '{:interfaces [(f [x])]}))))
