@@ -64,6 +64,13 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### A killed review's container is cleared by the next (plan 6.11, item 8, register row 178)
+
+From the review's own run: two `kit-review-*` containers, exited two days earlier, held the dependency
+cache's volume - a review removes its container in a `finally`, and a killed run reaches none.
+`security-review-sandbox/start!` now removes the exited ones first and names them; a running review
+beside it, a panel member's, is left alone.
+
 ### A security reviewer's test path carries only a namespace's characters (plan 6.11, item 8, register row 177)
 
 The review's last finding, LOW: `write_test` took a path with `"$(id)"` in it, and its namespace went

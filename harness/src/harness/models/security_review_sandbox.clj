@@ -139,8 +139,25 @@
   ([name] (stop! name default-run))
   ([name run] (run ["docker" "rm" "-f" name] {})))
 
+(def stale-argv
+  "The containers earlier reviews left exited. A review removes its own in a `finally`, but a run
+  that is killed reaches no `finally`: two were found two days on, holding the dependency cache's
+  volume. Exited only - a review running beside this one, a panel member's, is left alone."
+  ["docker" "ps" "-a" "--filter" "name=^kit-review-" "--filter" "status=exited" "--format" "{{.Names}}"])
+
+(defn clear-stale!
+  "Remove the exited containers earlier reviews left (`stale-argv`), saying which; the names removed."
+  ([] (clear-stale! default-run))
+  ([run]
+   (let [names (vec (remove str/blank? (str/split-lines (str (:out (run stale-argv {}))))))]
+     (doseq [n names] (stop! n run))
+     (when (seq names)
+       (println (str "the review sandbox: removed " (count names) " exited container(s) an earlier review left: " (str/join ", " names))))
+     names)))
+
 (defn start!
-  "Warm the cache, start the isolated container, start the application in it and wait until
+  "Remove the containers earlier reviews left exited (`clear-stale!`), warm the cache, start the
+  isolated container, start the application in it and wait until
   `/health` answers. Returns the sandbox the review tools are handed:
   `{:name _ :request (fn [req]) :run-tests (fn [ns-or-nil]) :stop! (fn [])}`. Throws, with the
   container removed, when a step fails or the application does not come up in `timeout-ms`.
@@ -159,6 +176,7 @@
                     (throw (ex-info (str "the review sandbox: " what " failed: " (tail r)) {:step what :argv argv})))
                   r))
         ask (fn [req] (parse-answer (:out (run (request-argv name req) {}))))]
+    (clear-stale! run)
     (step! "warming the dependency cache" (warm-argv spec) {})
     (step! "starting the container" (run-argv spec) {})
     (step! "starting the application" (serve-argv name) {})

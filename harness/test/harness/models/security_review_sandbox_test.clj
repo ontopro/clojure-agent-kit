@@ -74,13 +74,15 @@
                                    :else {:exit 0 :out "" :err ""})))
         slept (atom [])
         s (sb/start! {:kit kit :clone "/c" :image "img" :run run :sleep #(swap! slept conj %)})
-        steps (mapv #(vec (take 3 %)) @seen)]
+        _ (is (= sb/stale-argv (first @seen)) "what earlier reviews left exited is looked for first")
+        seen' (rest @seen)
+        steps (mapv #(vec (take 3 %)) seen')]
     (is (= ["docker" "run" "--rm"] (first steps)) "warm first, with a network")
     (is (= ["docker" "run" "-d"] (second steps)) "then the isolated container")
     (is (= ["docker" "exec" "-d"] (nth steps 2)) "then the application")
-    (is (= 3 (count (filter #(some #{"bb"} %) (drop 3 @seen)))) "polled /health until it answered")
+    (is (= 3 (count (filter #(some #{"bb"} %) (drop 3 seen')))) "polled /health until it answered")
     (is (= [2000 2000] @slept) "two waits before the third poll answered")
-    (is (= (:name s) (nth (second @seen) 4)) "the container's name is the one every later command uses")
+    (is (= (:name s) (nth (second seen') 4)) "the container's name is the one every later command uses")
     (testing "the tools' two functions"
       (is (= {:status 200 :headers [] :body "OK"} ((:request s) {:method "GET" :path "/health"})))
       (is (= {:exit 0 :out ""} ((:run-tests s) nil))))
@@ -110,3 +112,16 @@
     (is (= "waiting for the application" (:step (ex-data e))))
     (is (str/includes? (ex-message e) "did not answer /health in 4s: status 503"))
     (is (= "rm" (second (last @seen))))))
+
+(deftest containers-an-earlier-review-left-exited-are-removed-and-said
+  ;; A killed review reaches no `finally`: two were found two days on, holding the cache's volume
+  (let [seen (atom [])
+        run (recorder seen (fn [argv] (if (= sb/stale-argv argv)
+                                        {:exit 0 :out "kit-review-aaaa1111\nkit-review-bbbb2222\n" :err ""}
+                                        {:exit 0 :out "" :err ""})))
+        out (with-out-str (is (= ["kit-review-aaaa1111" "kit-review-bbbb2222"] (sb/clear-stale! run))))]
+    (is (= [["docker" "rm" "-f" "kit-review-aaaa1111"] ["docker" "rm" "-f" "kit-review-bbbb2222"]] (vec (rest @seen))))
+    (is (str/includes? out "removed 2 exited container(s) an earlier review left"))
+    (is (some #{"status=exited"} sb/stale-argv) "a review running beside this one is left alone")
+    (reset! seen [])
+    (is (= [] (sb/clear-stale! (recorder seen (fn [_] {:exit 0 :out "" :err ""})))) "none, nothing said")))
