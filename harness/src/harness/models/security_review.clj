@@ -167,18 +167,28 @@
   configuration, where `core.fsmonitor` (or `hooksPath`, `sshCommand`, `pager`) runs a command on the
   host; a link left in `test/` had put a host file's text into the record. So the tracked set is taken
   before, the folder is walked after, and a link - or a file whose real path leaves the clone - is
-  passed over."
+  passed over.
+
+  AND ONLY A TEST FILE IS COLLECTED: a path `security-review-tools/test-path?` holds, from the folder
+  above `dir` - the shape `write_test` held the writer to - and no larger than `max-test-bytes`. A
+  test running as root can write anything under `test/`: an editor's swap file, a `.DS_Store`, ten
+  gigabytes the host would load. A file over the size is named once and left."
   [clone dir tracked]
   (let [root (fs/path clone dir)
-        tracked (set tracked)]
-    (into (sorted-map)
-          (for [f (when (fs/directory? root {:nofollow-links true}) (fs/glob root "**" {:hidden true}))
-                :let [rel (str (fs/relativize clone f))]
-                :when (and (not (fs/sym-link? f))
-                           (fs/regular-file? f {:nofollow-links true})
-                           (contained-path/inside clone rel)
-                           (not (contains? tracked rel)))]
-            [rel (slurp (str f))]))))
+        above (or (fs/parent (fs/path dir)) "")
+        tracked (set tracked)
+        found (for [f (when (fs/directory? root {:nofollow-links true}) (fs/glob root "**" {:hidden true}))
+                    :let [rel (str (fs/relativize clone f))]
+                    :when (and (not (fs/sym-link? f))
+                               (fs/regular-file? f {:nofollow-links true})
+                               (contained-path/inside clone rel)
+                               (not (contains? tracked rel))
+                               (security-review-tools/test-path? (str (fs/relativize (fs/path clone above) f))))]
+                [rel f])
+        [big ok] ((juxt filter remove) (fn [[_ f]] (> (fs/size f) security-review-tools/max-test-bytes)) found)]
+    (doseq [[rel _] big]
+      (println (str "  " rel " is over " security-review-tools/max-test-bytes " bytes - not one test, not collected")))
+    (into (sorted-map) (for [[rel f] ok] [rel (slurp (str f))]))))
 
 (defn reproductions
   "The test files the security reviewer wrote: the clone's files below `test/` that `tracked` - its

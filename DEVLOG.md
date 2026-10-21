@@ -64,6 +64,13 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### Only a test file is collected from the sandbox (plan 6.11, item 9, register row 180)
+
+From Fable 5.1's read of `baccaeb`: a test running as root can write any file under `test/` - an editor's
+swap file, a `.DS_Store`, ten gigabytes the host would load. `security-review/written-files` collects
+only a path `test-path?` holds, the shape `write_test` held the writer to, and none over
+`max-test-bytes`, naming each such file once.
+
 ### The assembly copies only inside both folders (plan 6.11, item 9, register row 185)
 
 Astra's last finding, LOW-MEDIUM: `assemble!` joined loop.edn's `:architecture :files` paths, as written,

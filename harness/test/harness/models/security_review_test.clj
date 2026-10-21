@@ -231,3 +231,18 @@
         (collect clone ["seed.txt"])
         (is (not (fs/exists? marker)) "the clone's core.fsmonitor never runs on the host")
         (finally (fs/delete-tree outer))))))
+
+;; Fable 5.1's read of `baccaeb`: a test running as root can write any file under test/
+(deftest only-a-test-file-of-a-test-s-size-is-collected
+  (doseq [[test-dir collect] [["test" sr/reproductions] ["harness/test" sr/kit-reproductions]]]
+    (let [outer (fs/create-temp-dir {:prefix "kit-review-collect-shape"})
+          clone (fs/path outer "clone")]
+      (try
+        (fs/create-dirs (fs/path clone test-dir "app"))
+        (spit (str (fs/path clone test-dir "app" "mine_test.clj")) "(ns app.mine-test)")
+        (spit (str (fs/path clone test-dir "app" ".DS_Store")) "finder")
+        (spit (str (fs/path clone test-dir "app" "notes.txt")) "an editor's")
+        (spit (str (fs/path clone test-dir "app" "huge_test.clj")) (apply str (repeat (* 60 1024) "x")))
+        (let [out (with-out-str (is (= [(str test-dir "/app/mine_test.clj")] (keys (collect clone [])))))]
+          (is (str/includes? out "huge_test.clj is over") "the one over the size is named"))
+        (finally (fs/delete-tree outer))))))
