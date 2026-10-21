@@ -261,9 +261,11 @@
           {:status :done :detail (str "renamed: " (str/join ", " (for [[o n] upgrade/renamed-keys :when (contains? raw o)] (str o " -> " n))))}))))
 
 (defn- step-front-door! [{:keys [ws kit before]}]
-  (backup! before (:workspace/dir ws) "bb.edn")
-  (let [{:keys [existed? generated? changed? missing]} (front-door/sync! kit (:workspace/dir ws))]
+  (when-not (fs/sym-link? (fs/path (:workspace/dir ws) "bb.edn"))
+    (backup! before (:workspace/dir ws) "bb.edn"))
+  (let [{:keys [existed? generated? changed? missing link?]} (front-door/sync! kit (:workspace/dir ws))]
     (cond
+      link? {:status :done :detail "bb.edn is a link: left as it is, never written through"}
       (and existed? (not generated?)) {:status :done :detail "bb.edn is not one bb init wrote: left as it is"}
       changed? {:status :done :detail (str "written" (when (seq missing) (str "; it now offers " (str/join ", " missing))))}
       :else {:status :done :detail "already current"})))

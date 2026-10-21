@@ -64,6 +64,13 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### A dangling link is judged where it points (plan 6.11, item 10, register row 190)
+
+The contract flow's first finding, with the setup flow's front door folded in: `inside` asked
+`fs/exists?` of a path, which follows a link, so a dangling link read as a file not yet written and a
+write through it created the target outside. `inside` now walks the path part by part, following each
+link to where it points, dangling or not; the front door's sync never writes through a link.
+
 ### The flows' findings, and `bb balance` asks only OpenRouter (plan 6.11, item 10, register row 189)
 
 The six flows by Astra with the last-round notice: tool-calls and security-review refused by OpenAI's

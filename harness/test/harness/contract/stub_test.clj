@@ -233,3 +233,15 @@
                                :files/context ["/etc/hosts" "src/a/c.clj"]})]
     (is (= [[:files/test ["../../../x_test.clj"]] [:files/context ["/etc/hosts"]]] (mapv (juxt :key :entry) bad)))
     (is (every? #(re-find #"not a path inside the worktree" (:reason %)) bad))))
+
+(deftest the-stub-is-never-written-through-a-dangling-link
+  ;; the contract flow's first finding: the link's target outside would have been created
+  (let [outer (fs/create-temp-dir {:prefix "kit-stub-dangling"})
+        dir (fs/path outer "tester")]
+    (try
+      (fs/create-dirs (fs/path dir "src" "app"))
+      (fs/create-sym-link (fs/path dir "src" "app" "core.clj") (fs/path outer "made-outside.clj"))
+      (is (thrown-with-msg? Exception #"not a path inside the worktree"
+                            (stub/write! (str dir) ["src/app/core.clj"] '{:interfaces [(f [x])]})))
+      (is (not (fs/exists? (fs/path outer "made-outside.clj"))))
+      (finally (fs/delete-tree outer)))))

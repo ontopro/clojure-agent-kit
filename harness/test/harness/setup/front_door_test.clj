@@ -84,3 +84,18 @@
       (let [r (front-door/sync! kit-dir ws)]
         (is (false? (:generated? r)))
         (is (= "{:tasks {serve (shell \"bb serve\")}}" (slurp bb-edn)))))))
+
+(deftest front-door-sync-never-writes-through-a-link
+  ;; the setup-and-upgrade flow (GPT-6 Astra, 2026-10-21): a dangling bb.edn link read as no front door,
+  ;; and the write created its target outside the workspace
+  (let [outer (fs/create-temp-dir {:prefix "kit-front-door-link"})
+        ws (fs/path outer "ws")
+        kit (str (fs/parent (fs/real-path ".")))]
+    (try
+      (fs/create-dirs ws)
+      (fs/create-sym-link (fs/path ws "bb.edn") (fs/path outer "made-outside.edn"))
+      (let [r (front-door/sync! kit (str ws))]
+        (is (:link? r))
+        (is (not (:generated? r)))
+        (is (not (fs/exists? (fs/path outer "made-outside.edn")))))
+      (finally (fs/delete-tree outer)))))

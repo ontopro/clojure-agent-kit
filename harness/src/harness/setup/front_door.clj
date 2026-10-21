@@ -122,13 +122,16 @@
   "The front door at `ws-dir` against what the KIT at `kit-dir` writes now:
   `{:path :existed? :generated? :changed? :missing}`, `:missing` the tasks this
   KIT offers that the front door there lacks. Written unless `check?`, or unless
-  the file there is not one `bb init` wrote."
+  the file there is not one `bb init` wrote - or is a link (`:link? true`): a dangling `bb.edn` link had
+  read as no front door, and the write created its target outside the workspace."
   [kit-dir ws-dir & {:keys [check?]}]
   (let [path (fs/path ws-dir "bb.edn")
+        link? (fs/sym-link? path)
         want (render (harness-tasks (slurp (str (fs/path kit-dir "harness" "bb.edn")))))
-        have (when (fs/exists? path) (slurp (str path)))
-        generated? (or (nil? have) (str/starts-with? have generated-mark))
-        r {:path (str path) :existed? (some? have) :generated? generated? :changed? (not= want have)
+        have (when (and (not link?) (fs/exists? path)) (slurp (str path)))
+        generated? (and (not link?) (or (nil? have) (str/starts-with? have generated-mark)))
+        r {:path (str path) :existed? (or link? (some? have)) :generated? generated? :changed? (not= want have)
+           :link? link?
            :missing (vec (remove (or (some-> have offered) #{}) (map door-name tasks)))}]
     (when (and (:changed? r) generated? (not check?))
       (spit (str path) want))

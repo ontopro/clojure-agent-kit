@@ -41,3 +41,19 @@
       (is (nil? (contained-path/inside root "out/new_test.clj")) "a new file under a folder linked to outside")
       (is (some? (contained-path/inside root "alias.clj")) "a link that stays inside")
       (finally (fs/delete-tree outer)))))
+
+;; From the KIT's own security review (GPT-6 Astra, the contract flow, 2026-10-21): `fs/exists?` follows a
+;; link, so a dangling one had read as a file not yet written and the write created its target outside
+(deftest a-dangling-link-is-judged-where-it-points
+  (let [outer (fs/create-temp-dir {:prefix "kit-contained-dangling"})
+        root (fs/path outer "ws")]
+    (try
+      (fs/create-dirs (fs/path root "src"))
+      (fs/create-sym-link (fs/path root "src" "out.clj") (fs/path outer "made-outside.clj"))
+      (fs/create-sym-link (fs/path root "src" "in.clj") (fs/path root "src" "written-later.clj"))
+      (fs/create-sym-link (fs/path root "loop-a") (fs/path root "loop-b"))
+      (fs/create-sym-link (fs/path root "loop-b") (fs/path root "loop-a"))
+      (is (nil? (contained-path/inside root "src/out.clj")) "a dangling link pointing outside")
+      (is (some? (contained-path/inside root "src/in.clj")) "a dangling link pointing inside")
+      (is (nil? (contained-path/inside root "loop-a/x")) "a loop of links")
+      (finally (fs/delete-tree outer)))))
