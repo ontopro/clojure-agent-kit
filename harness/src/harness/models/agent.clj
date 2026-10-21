@@ -22,6 +22,7 @@
    [babashka.http-client :as http]
    [cheshire.core :as json]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [harness.models.adapter :as adapter]
    [harness.models.provenance :as provenance]
    [harness.models.tools :as tools]))
@@ -95,6 +96,16 @@
   [headers interval-ms n]
   (let [after (some-> (get headers "retry-after") str/trim parse-long)]
     (if after (* 1000 after) (* interval-ms (dec n)))))
+
+(defn redact
+  "`x` with every string's occurrence of the key `secret` replaced by `<key-env>` - the variable's
+  name, never its value. A provider's error can echo the Authorization header it was sent; the
+  error goes into the run's state, its log and the record a build commits. A key shorter than eight
+  characters is not a key, and nothing is replaced."
+  [x secret key-env]
+  (if (or (not (string? secret)) (< (count secret) 8))
+    x
+    (walk/postwalk #(if (string? %) (str/replace % secret (str "<" key-env ">")) %) x)))
 
 (defn- post!
   "One completion, sent again on a transient error up to `attempts` times in
@@ -218,6 +229,8 @@
        ;; was the model, the tools, or waiting on bookkeeping.
        (let [t0 (System/currentTimeMillis)
              [parsed err sent-again] (post! role system messages decls timeout-ms retry)
+             ;; THE KEY NEVER LEAVES IN AN ERROR: a provider had echoed it back
+             err (redact err key (:key-env role))
              ms-completion (- (System/currentTimeMillis) t0)
              retries (+ retries sent-again)]
          (cond

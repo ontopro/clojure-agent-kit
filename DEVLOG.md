@@ -64,6 +64,12 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### A key a provider echoes never leaves in the error (plan 6.11, item 9, register row 183)
+
+Astra's fourth finding: a provider's error that echoed the Authorization value went, as text, into the
+dispatch event - the run's state, its log, the committed record. `agent/redact` replaces the key's
+value by its variable's name, `<OPENROUTER_API_KEY>`, before the error leaves `converse!`.
+
 ### Only a tool the role was offered runs (plan 6.11, item 9, register row 182)
 
 Astra's third finding: `converse!`'s `:tools` set reached only the declarations, so a provider's call

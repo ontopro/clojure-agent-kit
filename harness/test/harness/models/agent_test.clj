@@ -427,3 +427,23 @@
                            "Read only" "Inspect" {:dir (str dir) :targets ["target.txt"]} {:tools #{"read_file"} :max-iterations 1}))
         (is (= "original" (slurp (str (fs/path dir "target.txt"))))))
       (finally (fs/delete-tree dir)))))
+
+;; From the KIT's own security review (GPT-6 Astra, 2026-10-21): a provider's error echoed the
+;; Authorization value, and the error went into the run's state, its log and its record
+(deftest a-key-a-provider-echoes-never-leaves-in-the-error
+  ;; PATH stands in for a key: always set, and harmless to read
+  (let [key (System/getenv "PATH")]
+    (with-redefs [babashka.http-client/post
+                  (fn [_ opts]
+                    {:status 401
+                     :body (json/generate-string {:error {:message (str "Invalid authorization: " (get-in opts [:headers "Authorization"]))}})})]
+      (let [r (agent/converse! {:model "m" :shape :openai :endpoint "https://provider.invalid" :key-env "PATH"}
+                               "s" "o" {:dir "."} {:tools #{} :max-iterations 1 :retry {:attempts 1}})]
+        (is (= :failed (:status r)))
+        (is (not (str/includes? (pr-str (:error r)) key)) "the value is gone")
+        (is (str/includes? (pr-str (:error r)) "<PATH>") "its variable's name in its place")))))
+
+(deftest redaction-replaces-only-a-key-s-value
+  (is (= {:m "Bearer <K> rejected" :n ["<K>"]} (agent/redact {:m "Bearer sk-12345678 rejected" :n ["sk-12345678"]} "sk-12345678" "K")))
+  (is (= {:m "abc"} (agent/redact {:m "abc"} "abc" "K")) "a value too short to be a key is left")
+  (is (= {:m "x"} (agent/redact {:m "x"} nil "K"))))
