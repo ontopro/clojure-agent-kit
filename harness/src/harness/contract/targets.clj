@@ -77,7 +77,8 @@
   packet's accounting to make room for this one's."
   (:require [babashka.fs :as fs]
             [babashka.process :as p]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [harness.gates.forms :as forms]))
 
 (def ^:private target-line
   "A comment line naming one or more targets: `;; target 7`, `;; targets 1, 2`."
@@ -96,7 +97,17 @@
   "Does this line start a test form? `deftest` and `defspec` only — the two the
   conventions name."
   [line]
-  (boolean (re-find #"^\s*\((deftest|defspec)\b" line)))
+  (boolean (re-find #"^\s*\((?:[\w.-]+/)?(deftest|defspec)\b" line)))
+
+(defn- test-form-rows
+  "The lines on which a TOP-LEVEL `deftest` or `defspec` starts in `text` (an alias's `t/deftest` too),
+  read as forms (`forms/table`). A line that only looks like one - inside `(comment …)`, after `#_`,
+  in a string - is not: a target marked over a test nobody can run had counted as covered. Empty for
+  a file that does not read."
+  [text]
+  (set (keep (fn [{:keys [kind from]}]
+               (when (#{"deftest" "defspec"} (last (str/split (str kind) #"/"))) from))
+             (forms/table text))))
 
 (defn- scan
   "One pass over a test file's lines.
@@ -107,43 +118,44 @@
   `defspec` are COVERED. A target line saying `not a test` is a DECLARATION and
   stands wherever it appears."
   [path text]
-  (reduce
-   (fn [acc [i line]]
-     (let [[_ tail] (re-find target-line line)
-           [_ reason] (when tail (re-find exempt-marker line))]
-       (cond
+  (let [test-rows (test-form-rows text)]
+    (reduce
+     (fn [acc [i line]]
+       (let [[_ tail] (re-find target-line line)
+             [_ reason] (when tail (re-find exempt-marker line))]
+         (cond
          ;; a declaration that no test is owed — stands wherever it appears, and
          ;; does not join the block, so it can never be read as coverage. The
          ;; reason is required: a bare "not a test:" declares nothing, and falls
          ;; through to be counted like any other target line.
-         (not (str/blank? reason))
-         (update acc :exempt into
-                 (map (fn [n] {:target n :file path :line (inc i)
-                               :reason (str/trim reason)}))
+           (not (str/blank? reason))
+           (update acc :exempt into
+                   (map (fn [n] {:target n :file path :line (inc i)
+                                 :reason (str/trim reason)}))
                  ;; ONLY the numbers before the marker. The reason is prose and
                  ;; prose has digits in it: "not a test: gate 4 checks it" read
                  ;; as target 4 until a test caught it.
-                 (numbers (str/replace tail exempt-marker "")))
+                   (numbers (str/replace tail exempt-marker "")))
 
          ;; a target line joins the block being built
-         tail (update acc :block into (numbers tail))
+           tail (update acc :block into (numbers tail))
 
          ;; a form closes the block: whatever it named is covered here
-         (form-opener? line)
-         (-> acc
-             (update :covered into
-                     (map (fn [n] {:target n :file path :line (inc i)
-                                   :form (str/trim line)}))
-                     (:block acc))
-             (assoc :block []))
+           (and (form-opener? line) (contains? test-rows (inc i)))
+           (-> acc
+               (update :covered into
+                       (map (fn [n] {:target n :file path :line (inc i)
+                                     :form (str/trim line)}))
+                       (:block acc))
+               (assoc :block []))
 
          ;; a plain comment line continues the block
-         (re-find #"^\s*;" line) acc
+           (re-find #"^\s*;" line) acc
 
          ;; anything else — a blank line, or code — breaks it
-         :else (assoc acc :block []))))
-   {:covered [] :exempt [] :block []}
-   (map-indexed vector (str/split-lines text))))
+           :else (assoc acc :block []))))
+     {:covered [] :exempt [] :block []}
+     (map-indexed vector (str/split-lines text)))))
 
 (defn- base-text
   "`path` as the HEAD of `dir`'s repository has it, or nil: a file this run

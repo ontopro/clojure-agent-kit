@@ -64,6 +64,12 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### A target is covered only by a test that runs (plan 6.11, item 10, register row 195)
+
+The contract flow's fifth finding: the targets gate read lines, so a marked `deftest` inside
+`(comment …)` counted as coverage. It now reads the file's top-level forms and counts only a test form
+that starts one; an alias's `t/deftest` counts too.
+
 ### A file is one role's (plan 6.11, item 10, register row 194)
 
 The contract flow's fourth finding: a path named under both `:files/impl` and `:files/test` let the

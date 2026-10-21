@@ -214,3 +214,13 @@
         r (targets/coverage dir {:files/test ["test/t.clj"] :property-targets (subvec eight 0 1)})]
     (is (empty? (:uncovered r)))
     (is (empty? (:earlier r)))))
+
+;; From the KIT's own security review (GPT-6 Astra, the contract flow, 2026-10-21): a target marked over a
+;; test nobody can run had counted as covered
+(deftest a-test-nobody-can-run-covers-nothing
+  (doseq [src [";; just here\n(comment\n  ;; target 1\n  (deftest one [] nil))\n"
+               ";; target 1\n#_(deftest one [] nil)\n"
+               "(def s \"\n;; target 1\n(deftest one [] nil)\n\")\n"]]
+    (is (= [1] (mapv :target (:uncovered (cover src 1)))) src))
+  (is (= [1] (mapv :target (:covered (cover ";; target 1\n(t/deftest one [] nil)\n" 1)))) "an alias's deftest is one")
+  (is (= [1] (mapv :target (:covered (cover ";; target 1\n(defspec one 10 nil)\n" 1))))))
