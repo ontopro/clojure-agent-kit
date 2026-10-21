@@ -35,15 +35,32 @@
 
 (def file-name "layers.edn")
 
+(defn- libspec-names
+  "The namespaces one libspec names: a symbol; a vector or list whose first is the namespace and the
+  rest options (`[app.secret :as s]`); or a PREFIX LIST, whose first is a prefix and the rest
+  libspecs under it (`(app [secret :as s] other)` is `app.secret` and `app.other`)."
+  [spec]
+  (cond
+    (symbol? spec) [spec]
+    (and (sequential? spec) (symbol? (first spec)))
+    (let [[p & more] spec]
+      (if (and (seq more) (not (keyword? (first more))))
+        (for [s more, n (libspec-names s)] (symbol (str p "." n)))
+        [p]))
+    :else []))
+
 (defn requires-of
-  "The namespaces `ns-form` requires, as a set of symbols."
+  "The namespaces `ns-form` requires - its `:require` and `:use` clauses - as a set of symbols.
+
+  A PREFIX LIST IS READ AS WHAT IT LOADS. `(:require (app [secret :as s]))` requires `app.secret` as
+  `[app.secret :as s]` does; it had been read as nothing, so a Coder could pass a forbidden
+  dependency through the gate by its spelling, inside its own file."
   [ns-form]
   (->> ns-form
-       (filter list?)
-       (filter #(= :require (first %)))
+       (filter seq?)
+       (filter #(#{:require :use} (first %)))
        (mapcat rest)
-       (map #(if (vector? %) (first %) %))
-       (filter symbol?)
+       (mapcat libspec-names)
        set))
 
 (defn- root-of [sym]

@@ -65,3 +65,23 @@
   (is (= '#{a.b c.d e.f}
          (boundary/requires-of '(ns x (:require [a.b :as b] c.d [e.f :refer [g]]) (:import (java.io File)))))
       "vector, bare symbol and :refer forms; :import is not a require"))
+
+;; From the KIT's own security review (GPT-6 Astra, 2026-10-21): a prefix list had been read as nothing,
+;; so a forbidden dependency passed the gate by its spelling
+(deftest a-prefix-list-is-read-as-what-it-loads
+  (let [dir (fs/create-temp-dir {:prefix "kit-boundary-prefix"})
+        src (fs/path dir "src")
+        rules '{app.api #{} app.secret #{}}
+        api (fs/path src "app" "api.clj")]
+    (try
+      (fs/create-dirs (fs/path src "app"))
+      (spit (str (fs/path src "app" "secret.clj")) "(ns app.secret)\n")
+      (doseq [spelling ["(ns app.api (:require [app.secret :as secret]))"
+                        "(ns app.api (:require (app [secret :as secret])))"
+                        "(ns app.api (:require [app [secret :as secret]]))"
+                        "(ns app.api (:use app.secret))"]]
+        (spit (str api) spelling)
+        (is (= [:forbidden-dependency] (mapv :kind (boundary/violations src rules))) spelling))
+      (is (= '#{app.secret app.other clojure.set}
+             (boundary/requires-of '(ns x (:require (app [secret :as s] other) [clojure [set :as st]])))))
+      (finally (fs/delete-tree dir)))))

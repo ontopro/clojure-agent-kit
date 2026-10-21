@@ -64,6 +64,12 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### The boundary gate reads a prefix list (plan 6.11, item 9, register row 184)
+
+Astra's fifth finding: `boundary/requires-of` dropped a list, so `(:require (app [secret :as s]))` named
+nothing and a forbidden dependency gated green by its spelling; `:use` was not read. A prefix list is
+now read as each namespace under its prefix, nested, and `:use` as `:require`.
+
 ### A key a provider echoes never leaves in the error (plan 6.11, item 9, register row 183)
 
 Astra's fourth finding: a provider's error that echoed the Authorization value went, as text, into the
