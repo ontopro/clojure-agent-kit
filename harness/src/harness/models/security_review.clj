@@ -19,6 +19,7 @@
   (:require
    [babashka.fs :as fs]
    [babashka.process :as p]
+   [clojure.edn :as edn]
    [clojure.pprint :as pp]
    [clojure.string :as str]
    [harness.models.agent :as agent]
@@ -260,18 +261,147 @@
 ;; the command
 ;; ---------------------------------------------------------------------------
 
+;; ---------------------------------------------------------------------------
+;; the KIT itself (`bb security-review --kit`)
+;; ---------------------------------------------------------------------------
+;; THE KIT IS REVIEWED AS AN APPLICATION IS, BY THE SAME TOOLS. What differs is the target: a clone
+;; of the KIT's own HEAD, tests under `harness/` run by `bb`, nothing served, and a threat model of
+;; its own - what a model returns, what a project's files say, what a provider answers. The record
+;; stays local, as the KIT's run records do; a reproduced finding comes into the register and its
+;; test into `harness/test/` (the kit-session skill, "Before a tag").
+
+(def kit-system-prompt
+  (str "You are a security reviewer for the Clojure Agent Kit (the KIT): Babashka tooling that drives AI coding models "
+       "in a loop. It sends prompts to model APIs with keys read from environment variables; it carries out the tool "
+       "calls a model asks for (reading and editing files in a git worktree, evaluating code in an nREPL, running tests "
+       "and gates); it runs git and docker; it reads EDN and JSON written by models and by people; it installs a git "
+       "pre-commit hook that holds commits to green gates. The repository is its owner's own; this review is run in a "
+       "sandbox with no network so that its weaknesses are found and fixed by the people who maintain it.\n\n"
+       "THE THREAT MODEL. What an attacker may control: (1) everything a model returns - tool-call names and arguments, "
+       "JSON answers, text - a hostile or confused model; (2) the files of a project the KIT works on - task packets, "
+       "specs, blueprints, gates records, run records, a cloned repository; (3) an HTTP answer from a model provider. "
+       "What must hold: a model's tool calls act only inside the worktree and only on what its packet allows; nothing a "
+       "model or a project file supplies is run as a shell command or evaluated as code except through the tools meant "
+       "for that; a path a model or a project file names is read or written only inside the folder it belongs to; an "
+       "API key is never written to a record, a transcript, a log or a prompt; the sandboxes keep their limits (no "
+       "network, the mounts they name); a gate a model did not pass is not recorded as passed.\n\n"
+       "HOW YOU WORK. Read the code with read_file and search. Then state a concern as a TEST: a complete Clojure test "
+       "namespace under harness/test/, calling the KIT's functions in-process with the inputs an attacker controls, "
+       "asserting the property that should hold; run it with run_tests. Read the KIT's existing tests first "
+       "(harness/test/) - they show how each part is called - and follow them.\n\n"
+       "WHAT A FINDING IS. A finding is a test of yours that FAILS on this code because the property does not hold. If "
+       "your test passes, the concern did not hold: drop it. Only if you could not state a concern as a test, call it a "
+       "hypothesis, with the reasoning. Do not report style, a missing feature, or a weakness with no path from what an "
+       "attacker controls to the effect.\n\n"
+       "BE HONEST ABOUT WHAT YOU FOUND. Finding nothing is a complete and welcome answer; an invented finding costs the "
+       "people reading it more than a missed one.\n\n"
+       "YOUR ANSWER, when you are done, is one JSON block and nothing after it:\n"
+       "```json\n"
+       "{\"findings\": [{\"title\": \"one line\", \"kind\": \"reproduced\" or \"hypothesis\", "
+       "\"test\": \"harness/test/path/of/the/failing_test.clj, for a reproduced finding\", "
+       "\"where\": \"file and function\", \"why\": \"what is wrong and what it lets an attacker do, in two or three sentences\"}]}\n"
+       "```\n"
+       "with an empty list when you found nothing."))
+
+(defn kit-scope
+  "The files a review of the KIT is pointed at, of the clone's tracked `files`: the harness's source,
+  the tool packs, the commit hook, the `bb.edn` files. The rest is there to read."
+  [files]
+  (filterv #(or (str/starts-with? % "harness/src/") (str/starts-with? % "tools/")
+                (str/starts-with? % ".githooks/") (str/ends-with? % "bb.edn"))
+           files))
+
+(defn kit-opening
+  "The first message of a review of the KIT at `head`: the scope, the rest said to be readable, and
+  - from an earlier pass's record, `after` - what was found and fixed, so this pass looks elsewhere."
+  [{:keys [head files after]}]
+  (let [scope (kit-scope files)]
+    (str "This is a review of the whole KIT at " head ". Review the source in scope (" (count scope) " files):\n"
+         (str/join "\n" scope)
+         "\n\nThe rest of the repository (" (count files) " files in all: tests, documents, templates, skills) is there to read and search."
+         (when (seq (:findings after))
+           (str "\n\nAN EARLIER PASS (" (:model after) ") FOUND THESE, AND THEY ARE FIXED - do not report them again; look "
+                "where that pass did not:\n"
+                (str/join "\n" (for [{:keys [title where]} (:findings after)]
+                                 (str "- " title (when where (str " (" where ")")))))))
+         "\n\nBegin. Give your answer as the JSON block described, when you have checked what you mean to report.")))
+
+(defn kit-clone!
+  "A clone of the KIT at `kit`'s HEAD into `dest`: no tags, no remote. Its `.local/` and anything else
+  ignored is not in it. Returns the short commit."
+  [kit dest]
+  (fs/create-dirs (fs/parent dest))
+  (git (fs/parent dest) "clone" "-q" "--no-tags" (str kit) (str dest))
+  (git dest "remote" "remove" "origin")
+  (str/trim (git dest "rev-parse" "--short" "HEAD")))
+
+(defn kit-reproductions
+  "The test files the security reviewer wrote in the KIT's clone: untracked below `harness/test/`."
+  [clone]
+  (into (sorted-map)
+        (for [rel (remove str/blank? (str/split-lines (git clone "ls-files" "--others" "--exclude-standard" "harness/test")))]
+          [rel (slurp (str (fs/path clone rel)))])))
+
+(defn review-kit!
+  "Review the KIT at `kit`'s HEAD with `role`: clone it under `work`, start the KIT's sandbox, run the
+  conversation with the KIT's tools, remove the sandbox and the clone whatever happens. `after` is an
+  earlier pass's record, or nil. Options as `review!`'s, and `:sandbox` for a test."
+  [role kit work {:keys [after rounds max-tokens sandbox]
+                  :or {rounds default-rounds max-tokens default-max-tokens}}]
+  (let [role (assoc-in role [:params :max_tokens] max-tokens)
+        clone (fs/path work (str "clone-" (subs (str (random-uuid)) 0 8)))]
+    (try
+      (let [head (kit-clone! kit clone)
+            files (vec (remove str/blank? (str/split-lines (git clone "ls-files"))))
+            t-sandbox (System/currentTimeMillis)
+            sb (or sandbox (sandbox/start-kit! {:kit kit :clone clone}))
+            t0 (System/currentTimeMillis)]
+        (try
+          (let [ctx {:dir (str clone) :sandbox sb :written (atom #{})}
+                r (agent/converse! role kit-system-prompt (kit-opening {:head head :files files :after after}) ctx
+                                   {:registry security-review-tools/kit-specs :tools (set (keys security-review-tools/kit-specs))
+                                    :max-iterations rounds :timeout-ms 600000})
+                findings (parse-findings (:text r))]
+            (merge {:stance :tracer
+                    :target (str "KIT " head)
+                    :after (some-> after :model)
+                    :status (:status r)
+                    :findings findings
+                    :no-block? (nil? findings)
+                    :tests (kit-reproductions clone)
+                    :text (:text r)
+                    :refused? (refused? (:steps r) (:error r))
+                    :empty-answer? (and (= :done (:status r)) (str/blank? (:text r)))
+                    :turns (compact-turns (:turns r))
+                    :steps (:steps r)
+                    :calls (mapv (juxt :name :ms :error?) (:calls r))
+                    :iterations (:iterations r)
+                    :capped? (:capped? r)
+                    :error (:error r)
+                    :ms (- (System/currentTimeMillis) t0)
+                    :sandbox-ms (- t0 t-sandbox)}
+                   (agent/call-record r role)))
+          (finally (when-not sandbox ((:stop! sb))))))
+      (finally (fs/delete-tree clone)))))
+
 (def usage
   (str "bb security-review <clone> --stance tracer|diff [--model \"<model> [effort]\" | --profile <profile.edn>]\n"
        "                          [--base <rev>] [--rounds N] [--max-tokens N] [--out <dir>]\n"
        "  <clone>    a git clone of the application, with the revision its change is from (default: base)\n"
        "  --model    as bb models names it and the bake-off takes it, e.g. \"openai/gpt-6-astra high\"\n"
        "  --profile  the profile whose first security reviewer outside the Coder's family reads (its panel's, or its one :security-reviewer); without --model or --profile, the workspace's\n"
+       "bb security-review --kit (--model \"<model> [effort]\" | --profile <profile.edn>) [--after <record.edn>] [--rounds N] [--max-tokens N] [--out <dir>]\n"
+       "  --kit      the KIT itself, a clone of this checkout's HEAD: its tests run by bb in the toolchain image, nothing served; the record\n"
+       "             in .local/security-review-kit/out/ by default, never committed (the kit-session skill says when it runs, and where a result lands)\n"
+       "  --after    an earlier pass's record: what it found is said to be fixed, so this pass looks elsewhere\n"
        "A real model call: it spends money (up to --rounds completions, default " default-rounds ")."))
 
 (defn parse-args [args]
   (loop [[a & more] args m {}]
     (cond (nil? a) m
           (= a "--stance") (recur (rest more) (assoc m :stance (keyword (first more))))
+          (= a "--kit") (recur more (assoc m :kit true))
+          (= a "--after") (recur (rest more) (assoc m :after (first more)))
           (= a "--model") (recur (rest more) (assoc m :model (first more)))
           (= a "--profile") (recur (rest more) (assoc m :profile (first more)))
           (= a "--base") (recur (rest more) (assoc m :base (first more)))
@@ -314,11 +444,35 @@
      :model (:model m)
      :effort (get-in m [:params :reasoning_effort])}))
 
+(defn- main-kit
+  "`--kit`: the KIT's own review, its record under `.local/security-review-kit/`."
+  [{:keys [model rounds max-tokens out after] :as opts} kit]
+  (let [profile-path (when-not model (:profile opts))]
+    (when-not (or model profile-path)
+      (println usage)
+      (System/exit 2))
+    (let [cand (if model
+                 (catalogue/expand-candidate (catalogue/fetch-listing) (catalogue/routes) model)
+                 (role-from-profile profile-path))
+          work (str (fs/path kit ".local" "security-review-kit"))
+          out (or out (str (fs/path work "out")))
+          id (str (:id cand) "-kit-" (.format (java.time.LocalDateTime/now) (java.time.format.DateTimeFormatter/ofPattern "yyyyMMdd-HHmmss")))
+          earlier (when after (edn/read-string (slurp after)))]
+      (println (str "  review of the KIT by " (:model cand) " (" (:effort cand) "), up to " (or rounds default-rounds) " completions"
+                    (when earlier (str ", after " (count (:findings earlier)) " finding(s) of " (:model earlier)))))
+      (let [r (review-kit! (:profile cand) kit work
+                           (cond-> {:after earlier} rounds (assoc :rounds rounds) max-tokens (assoc :max-tokens max-tokens)))
+            file (write-record! out id r)]
+        (print-review r)
+        (println (str "  record: " file))
+        (when (or (= :failed (:status r)) (:refused? r) (:no-block? r)) (System/exit 1))))))
+
 (defn -main [& args]
   (let [{:keys [positional stance model base rounds max-tokens out] :as opts} (parse-args args)
         [clone] positional
         kit (str (fs/normalize (fs/absolutize "..")))
         profile-path (when-not model (or (:profile opts) (profile/project-profile)))]
+    (when (:kit opts) (main-kit opts kit) (System/exit 0))
     (when-not (and clone (#{:tracer :diff} stance) (or model profile-path))
       (println usage)
       (System/exit 2))

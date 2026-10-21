@@ -64,6 +64,21 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### `bb security-review --kit`: the KIT's own security review, a command (plan 6.11, item 9)
+
+The person's decision, after item 8: the local driver that ran the KIT's own review becomes the
+command, so a `DEVLOG.md` entry cites a command, not a gitignored script. `--kit` clones this
+checkout's HEAD (no tags, no remote; `.local/` is never in it), starts the same sandbox with the KIT
+as its target - warmed once with the network, then `--network none`, `run-argv`'s limits, both caches
+read-only, the container named under `kit-review-` so a killed one is cleared by the next (row 178) -
+and runs the review with the KIT's tools: `read_file` and `search` over the clone, `write_test` and
+`run_tests` on `harness/`, no request tool. The prompt carries the KIT's threat model: what a model
+returns, what a project's files say, what a provider answers. `--after <record.edn>` names an earlier
+pass's findings as found and fixed, so the next pass looks elsewhere. The clone is removed whatever
+happens; the record goes to `.local/security-review-kit/out/`. The kit-session skill says when it runs
+and where a result lands. Tried for real without a model: a clone of HEAD, the sandbox up, one test
+namespace run in it offline, the container and the clone gone after.
+
 ### Two loose ends of the review's fixes (plan 6.11, item 8, register rows 172 and 175)
 
 From Fable 5.1's read of `34fe4ad` and `f402057`, two nits, one commit. `bb security-route` lists in its

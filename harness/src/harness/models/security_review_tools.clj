@@ -290,3 +290,32 @@
                           :body {:type "string" :description "The request body, for a POST or PUT."}}
              :required ["method" "path"]}
     :fn #'request}})
+
+(def kit-specs
+  "The tools for a review of the KIT itself (`bb security-review --kit`): `read_file` and `search` over
+  the whole clone, `write_test` and `run_tests` on `harness/`, where the KIT's tests are - the same
+  functions, the paths said from the clone's root. No `request`: the KIT serves nothing."
+  {"read_file" (get specs "read_file")
+   "search" (get specs "search")
+   "write_test"
+   (assoc (get specs "write_test")
+          :description (str "Write a test file below harness/test/ whose name ends in _test.clj - the only thing you may write. "
+                            "A concern you raise is a test that fails on this code and states the property that should hold; "
+                            "run it with run_tests. A file you wrote earlier you may write again, to fix it; the KIT's own tests "
+                            "are never changed. The file must be a complete Clojure namespace whose name matches its path below "
+                            "harness/test/ (harness/test/harness/review/x_test.clj is harness.review.x-test).")
+          :schema {:type "object"
+                   :properties {:path {:type "string" :description "Path from the repository's root, below harness/test/, ending in _test.clj."}
+                                :content {:type "string" :description "The complete contents of the new test namespace."}}
+                   :required ["path" "content"]}
+          :fn (fn [ctx {:keys [path] :as args}]
+                (let [path (str path)]
+                  (if-not (str/starts-with? path "harness/")
+                    (tools/err (str path " is not below harness/test/ - a test is the only thing you may write"))
+                    (write-test (assoc ctx :dir (str (fs/path (:dir ctx) "harness")))
+                                (assoc args :path (subs path (count "harness/"))))))))
+   "run_tests"
+   (assoc (get specs "run_tests")
+          :description (str "Run the KIT's tests in a sandbox with no network (Babashka, from harness/) and return their output: "
+                            "only the namespace you name - the one you wrote, e.g. harness.review.x-test - or every test when "
+                            "you name none, which takes minutes. A test of yours that passes is a concern that did not hold."))})

@@ -98,6 +98,31 @@ Said plainly:
    an entry in the Sessions log saying what was built, how it was proved, what is next.
 3. Run `bb kit-status` again: the log line should now say ok.
 
+## The KIT's own security review
+
+`bb security-review --kit` in `harness/`: a security reviewer reads a clone of the KIT's HEAD with the
+review's tools, its tests run by `bb` in the toolchain image with no network, the clone and the
+container removed after. The record is in `.local/security-review-kit/out/`, never committed, as the
+KIT's run records are not.
+
+- **When:** before each tag that starts a family (`0.N.0`), and before any tag when the review's
+  tools, its sandbox, the routing or the model tools changed since the last pass. The person names
+  the model; `--model` takes it as `bb models` does (an OpenRouter route), `--profile` a profile
+  whose panel names a direct route.
+- **First, the scans, from the root:** `bb --config tools/security/bb.edn secrets --all`, and `deps`
+  in `tools/svg` and `harness/health/selfcheck`. The `bb.edn` libraries' `jackson-core` is waived,
+  register row 133.
+- **A second pass** by another family, with `--after <the first's record>`, so it is told what was
+  found and fixed and looks elsewhere.
+- **The reader** reads each finding against the code, and gives its severity by its source (what an
+  attacker controls), its sink (where the effect lands) and its scope.
+- **Where the result lands:**
+  - a reproduced finding is a register row and a fix commit, with the reviewer's test adapted into
+    `harness/test/` under the KIT's names, so that the test is the committed evidence;
+  - a hypothesis is listed in the `DEVLOG.md` entry with its reasoning, and gets a row only on the
+    person's word;
+  - an empty answer is one `DEVLOG.md` line: the model, the scope, the minutes and the cost.
+
 ## Before a tag
 
 The checklist at the head of `DEVLOG.md`, with `bb tag-check` as its mechanism. In order:

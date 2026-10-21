@@ -125,3 +125,39 @@
     (is (some #{"status=exited"} sb/stale-argv) "a review running beside this one is left alone")
     (reset! seen [])
     (is (= [] (sb/clear-stale! (recorder seen (fn [_] {:exit 0 :out "" :err ""})))) "none, nothing said")))
+
+;; ---------------------------------------------------------------------------
+;; the KIT as the target
+;; ---------------------------------------------------------------------------
+
+(deftest the-kit-s-container-is-the-same-sandbox-with-both-caches-read-only
+  (let [argv (sb/kit-run-argv {:image "img" :clone "/c" :name "n" :review "/r"})
+        has (fn [& xs] (some #(= xs (take (count xs) %)) (partition (count xs) 1 argv)))]
+    (is (has "--network" "none"))
+    (is (has "-v" "kit-review-m2:/root/.m2:ro") "a test runs as root in it, and every project's review mounts this cache after")
+    (is (has "-v" "kit-review-depsclj:/root/.deps.clj:ro"))
+    (is (has "--cap-drop" "ALL"))
+    (is (has "--security-opt" "no-new-privileges"))
+    (is (has "--pids-limit" "512")))
+  (let [warm (sb/kit-warm-argv {:image "img" :clone "/c"})]
+    (is (not-any? #{"none"} warm) "the warming container alone fetches")
+    (is (some #{"kit-review-m2:/root/.m2"} warm))
+    (is (str/includes? (last warm) "bb tasks")))
+  (is (str/starts-with? (sb/kit-container-name) "kit-review-") "so a killed one is cleared as any review's is"))
+
+(deftest the-kit-s-tests-run-by-bb-the-namespace-an-argument-never-a-shell-s
+  (is (= ["docker" "exec" "-w" "/work/kit/harness" "n" "timeout" "600" "bb" "/review/run-one.clj" "harness.review.x-test"]
+         (sb/kit-tests-argv "n" "harness.review.x-test")))
+  (is (= ["bb" "test"] (take-last 2 (sb/kit-tests-argv "n" nil))))
+  (is (not-any? #{"bash"} (sb/kit-tests-argv "n" "a.b-test"))))
+
+(deftest starting-the-kit-s-sandbox-clears-warms-isolates-and-serves-nothing
+  (let [seen (atom [])
+        run (recorder seen (fn [_] {:exit 0 :out "" :err ""}))
+        s (sb/start-kit! {:kit kit :clone "/c" :image "img" :run run})]
+    (is (= sb/stale-argv (first @seen)))
+    (is (= [["docker" "run" "--rm"] ["docker" "run" "-d"] ["docker" "exec" (:name s)]]
+           (mapv #(vec (take 3 %)) (rest @seen))))
+    (is (nil? (:request s)) "nothing is served")
+    ((:stop! s))
+    (is (= ["docker" "rm" "-f" (:name s)] (last @seen)))))

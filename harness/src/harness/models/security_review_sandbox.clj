@@ -195,3 +195,80 @@
                   (let [r (run (tests-argv name ns-name) {})]
                     {:exit (:exit r) :out (str (:out r) (:err r))}))
      :stop! (fn [] (stop! name run))}))
+
+;; ---------------------------------------------------------------------------
+;; the KIT as the target (`bb security-review --kit`)
+;; ---------------------------------------------------------------------------
+;; THE KIT IS NOT AN APPLICATION. It has no `deps.edn`, nothing to serve and no `/health`; its tests
+;; run under `bb` from `harness/`. The same container otherwise: warmed once with the network, then
+;; no network, the caches read-only - a security reviewer's test runs as root in it, and
+;; `kit-review-m2` is the volume every project's review mounts after - and `run-argv`'s limits. Its
+;; name is under `kit-review-`, so a killed one is cleared by the next as any review's is.
+
+(def kit-dir "/work/kit")
+(def deps-clj-volume "kit-review-depsclj")
+
+(def kit-warm-script
+  "bb's own dependencies for `harness/`, fetched while there is a network."
+  "set -e\ncd harness\nbb tasks > /dev/null\nbb -e 1 > /dev/null\n")
+
+(defn kit-warm-argv
+  "The first container for the KIT: network on, the caches writable, the clone mounted."
+  [{:keys [image clone]}]
+  ["docker" "run" "--rm"
+   "-v" (str clone ":" kit-dir)
+   "-v" (str m2-volume ":/root/.m2")
+   "-v" (str deps-clj-volume ":/root/.deps.clj")
+   "-w" kit-dir
+   image "bash" "-c" kit-warm-script])
+
+(defn kit-run-argv
+  "The second container for the KIT: `run-argv`'s flags, both caches read-only, the clone and the
+  review folder (its test runner) mounted, nothing to do until it is told."
+  [{:keys [image clone name review]}]
+  ["docker" "run" "-d" "--name" name
+   "--network" "none"
+   "--memory" "4g" "--cpus" "2" "--pids-limit" "512"
+   "--cap-drop" "ALL" "--security-opt" "no-new-privileges"
+   "-v" (str clone ":" kit-dir)
+   "-v" (str m2-volume ":/root/.m2:ro")
+   "-v" (str deps-clj-volume ":/root/.deps.clj:ro")
+   "-v" (str review ":" review-dir ":ro")
+   "-w" kit-dir
+   image "sleep" "infinity"])
+
+(defn kit-tests-argv
+  "The KIT's tests in the container, from `harness/`: all of them as `bb test` runs them, or one
+  namespace through the review folder's runner. The namespace is one `security-review-tools` has
+  checked, and it is passed as an argument, never through a shell."
+  [name ns-name]
+  (into ["docker" "exec" "-w" (str kit-dir "/harness") name "timeout" (if ns-name "600" "900")]
+        (if ns-name ["bb" (str review-dir "/run-one.clj") ns-name] ["bb" "test"])))
+
+(defn kit-container-name [] (str "kit-review-kit-" (subs (str (random-uuid)) 0 8)))
+
+(defn start-kit!
+  "The sandbox for a review of the KIT's clone `clone`: clear what earlier reviews left exited, warm
+  the caches, start the isolated container. `{:name :run-tests :stop!}` - no `:request`, nothing is
+  served. Throws, with the container removed, when a step fails. `opts`: `:kit :clone`, and
+  optionally `:image`, `:run`."
+  [{:keys [kit clone image run] :or {run default-run}}]
+  (let [image (or image (image-tag kit))
+        name (kit-container-name)
+        spec {:image image :clone (str clone) :name name
+              :review (str (fs/path kit "harness" "resources" "security-review"))}
+        step! (fn [what argv]
+                (let [r (run argv {})]
+                  (when-not (zero? (:exit r))
+                    (stop! name run)
+                    (throw (ex-info (str "the review sandbox: " what " failed: " (tail r)) {:step what :argv argv})))
+                  r))]
+    (clear-stale! run)
+    (step! "warming the dependency caches" (kit-warm-argv spec))
+    (step! "starting the container" (kit-run-argv spec))
+    (step! "trusting the clone's git" ["docker" "exec" name "git" "config" "--global" "--add" "safe.directory" "*"])
+    {:name name
+     :run-tests (fn [ns-name]
+                  (let [r (run (kit-tests-argv name ns-name) {})]
+                    {:exit (:exit r) :out (str (:out r) (:err r))}))
+     :stop! (fn [] (stop! name run))}))

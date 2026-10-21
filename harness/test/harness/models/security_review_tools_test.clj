@@ -276,3 +276,16 @@
         (is (:error? r))
         (is (str/includes? (:content r) "is not a test namespace's path")))
       (finally (fs/delete-tree dir)))))
+
+(deftest the-kit-s-tools-write-tests-only-below-harness-test
+  (let [dir (fs/create-temp-dir {:prefix "kit-review-kit-tools"})
+        ctx {:dir (str dir) :written (atom #{})}]
+    (try
+      (fs/create-dirs (fs/path dir "harness" "test"))
+      (is (= #{"read_file" "search" "write_test" "run_tests"} (set (keys rt/kit-specs))) "no request: the KIT serves nothing")
+      (let [ok (tools/invoke rt/kit-specs ctx {:id "1" :name "write_test" :args {:path "harness/test/harness/review/x_test.clj" :content "(ns harness.review.x-test)"}})]
+        (is (not (:error? ok)) (:content ok))
+        (is (fs/exists? (fs/path dir "harness" "test" "harness" "review" "x_test.clj"))))
+      (doseq [p ["test/harness/x_test.clj" "harness/src/harness/x_test.clj" "harness/test/../../x_test.clj"]]
+        (is (:error? (tools/invoke rt/kit-specs ctx {:id "2" :name "write_test" :args {:path p :content "(ns x-test)"}})) p))
+      (finally (fs/delete-tree dir)))))

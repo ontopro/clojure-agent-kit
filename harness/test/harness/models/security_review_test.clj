@@ -176,3 +176,18 @@
       (is (= :openai (get-in c [:profile :family])) "the role block is what reads"))
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"has no :security-reviewer"
                           (sr/role-from-profile without)))))
+
+(deftest a-review-of-the-kit-is-pointed-at-its-source-and-told-what-an-earlier-pass-fixed
+  (let [files ["harness/src/harness/a.clj" "harness/test/harness/a_test.clj" "tools/security/check.bb"
+               ".githooks/pre-commit" "bb.edn" "method.md"]
+        o (sr/kit-opening {:head "abc1234" :files files
+                           :after {:model "gemini-4-argon" :findings [{:title "T one" :where "a.clj: f"} {:title "T two"}]}})]
+    (is (= ["harness/src/harness/a.clj" "tools/security/check.bb" ".githooks/pre-commit" "bb.edn"] (sr/kit-scope files)))
+    (is (str/includes? o "at abc1234"))
+    (is (str/includes? o "(4 files)"))
+    (is (str/includes? o "AN EARLIER PASS (gemini-4-argon) FOUND THESE, AND THEY ARE FIXED"))
+    (is (str/includes? o "- T one (a.clj: f)\n- T two"))
+    (is (not (str/includes? (sr/kit-opening {:head "h" :files files}) "EARLIER PASS")) "no earlier pass, nothing said"))
+  (is (str/includes? sr/kit-system-prompt "harness/test/"))
+  (is (str/includes? sr/kit-system-prompt "Finding nothing is a complete and welcome answer"))
+  (is (= {:kit true :after "r.edn" :model "m"} (sr/parse-args ["--kit" "--after" "r.edn" "--model" "m"]))))
