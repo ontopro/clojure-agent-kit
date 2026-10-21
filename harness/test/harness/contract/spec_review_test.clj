@@ -10,6 +10,7 @@
    [clojure.test :refer [deftest is testing]]
    [harness.contract.spec-review :as sr]
    [harness.loop.driver :as driver]
+   [harness.models.agent]
    [harness.money.report :as report]
    [org.httpkit.server :as srv]))
 
@@ -218,3 +219,27 @@
     (testing "a file written before the history was kept still records, without the key"
       (spit file (pr-str {:findings [] :count 0 :cost 0.05 :model "m" :at "t"}))
       (is (= {:event/kind :spec-review :findings 0 :cost 0.05 :model "m" :at "t"} (sr/recorded dir))))))
+
+;; From the KIT's own security review (Gemini 4 Argon, 2026-10-21): a context path is the spec's
+;; words, and what is read goes into a provider's prompt
+(deftest a-context-file-outside-the-project-is-never-read
+  (let [outer (fs/create-temp-dir {:prefix "kit-spec-review-outside"})
+        app (fs/path outer "app")
+        run (fs/path outer "run")
+        sent (atom nil)]
+    (try
+      (fs/create-dirs app)
+      (fs/create-dirs run)
+      (spit (str (fs/path outer "outside.edn")) "OUTSIDE THE PROJECT")
+      (spit (str (fs/path run "spec.edn"))
+            (pr-str {:task/id "t-01" :task/title "t" :blueprint/slice {:shapes [] :interfaces '[(f [x])]}
+                     :files/impl ["src/app/core.clj"] :files/test ["test/app/core_test.clj"]
+                     :files/context ["../outside.edn"] :layer/name :core}))
+      (with-redefs [harness.models.agent/converse! (fn [_ _ opening _ _]
+                                                     (reset! sent opening)
+                                                     {:status :done :text "```json\n{\"findings\": []}\n```" :steps []})]
+        (try (sr/read! {:model "m" :shape :openai :endpoint "http://localhost"} (str run) {:repo/root (str app)})
+             (catch Exception _ nil)))
+      (is (some? @sent) "the read was made")
+      (is (not (str/includes? (str @sent) "OUTSIDE THE PROJECT")))
+      (finally (fs/delete-tree outer)))))

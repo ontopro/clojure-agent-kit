@@ -64,6 +64,13 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### Two readings read only inside the project (plan 6.11, item 8, register row 176)
+
+The review's fifth finding, the reads half of the stub's: the spec review read each `:files/context`
+path, and the blueprint review the stage document its `**Input:**` header names, with no bound - a
+file from outside the project went into the reviewer's prompt at its provider. Both read through
+`contained-path/inside` now; outside reads as missing.
+
 ### `bb sigs` reads its spec as EDN (plan 6.11, item 8, register row 175)
 
 The review's fourth finding: `sigs/-main` read the spec on stdin with `read-string`, so `#=` in it ran

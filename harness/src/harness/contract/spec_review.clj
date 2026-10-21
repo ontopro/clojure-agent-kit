@@ -22,6 +22,7 @@
             [clojure.edn :as edn]
             [clojure.pprint :as pp]
             [clojure.string :as str]
+            [harness.contained-path :as contained-path]
             [harness.models.agent :as agent]
             [harness.models.profile :as profile]
             [harness.rules :as rules]))
@@ -139,9 +140,11 @@
   [role run-dir config]
   (let [spec (edn/read-string {:default tagged-literal} (slurp (str (fs/path run-dir "spec.edn"))))
         dir (project-dir config)
+        ;; a context path is the spec's words, and a model writes the blueprint the spec comes from:
+        ;; read only inside the project - outside reads as missing, never into the reviewer's prompt
         context (into {} (for [f (:files/context spec)
-                               :let [p (fs/path dir f)]]
-                           [f (when (fs/exists? p) (slurp (str p)))]))
+                               :let [p (contained-path/inside dir f)]]
+                           [f (when (and p (fs/regular-file? p)) (slurp (str p)))]))
         ;; the rules as the code reviewer reads them: the rule source has no :spec-reviewer
         ;; audience, and the review judges the contract by the rules a code reviewer will
         input (review-input spec (rules/rule-block :reviewer {}) context)

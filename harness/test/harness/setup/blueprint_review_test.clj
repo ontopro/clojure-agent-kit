@@ -7,6 +7,7 @@
    [clojure.edn :as edn]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [harness.models.agent]
    [harness.setup.blueprint-review :as br]
    [org.httpkit.server :as srv]))
 
@@ -154,3 +155,22 @@
     (spit (str (fs/path plan "no-role.edn")) (pr-str {:seat :claude :roles {:coder {:family :anthropic}}}))
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no :blueprint-reviewer role"
                           (br/review! bp (str (fs/path plan "no-role.edn")) method-path)))))
+
+;; From the KIT's own security review (Gemini 4 Argon, 2026-10-21)
+(deftest the-header-s-stage-document-is-read-only-beside-the-blueprint
+  (let [outer (fs/create-temp-dir {:prefix "kit-bp-review-outside"})
+        stage (fs/path outer "plan" "docs" "stages" "stage-1")
+        bp (fs/path stage "stage-1-blueprint.md")
+        sent (atom nil)]
+    (try
+      (fs/create-dirs stage)
+      (spit (str (fs/path outer "outside.md")) "OUTSIDE THE PLAN")
+      (spit (str bp) "**Input:** `../../../../outside.md`\n\n# Blueprint\n")
+      (with-redefs [harness.models.agent/converse! (fn [_ _ opening _ _]
+                                                     (reset! sent opening)
+                                                     {:status :done :text "```json\n{\"findings\": []}\n```" :steps []})]
+        (try (br/read! {:model "m" :shape :openai :endpoint "http://localhost"} (str bp) method-path)
+             (catch Exception _ nil)))
+      (is (some? @sent) "the read was made")
+      (is (not (str/includes? (str @sent) "OUTSIDE THE PLAN")))
+      (finally (fs/delete-tree outer)))))

@@ -27,6 +27,7 @@
    [clojure.edn :as edn]
    [clojure.pprint :as pp]
    [clojure.string :as str]
+   [harness.contained-path :as contained-path]
    [harness.models.agent :as agent]
    [harness.models.profile :as profile]
    [harness.setup.plan :as plan]
@@ -168,8 +169,9 @@
         bp-name (fs/file-name blueprint-path)
         bp-text (slurp (str blueprint-path))
         stage-name (stage-document-name bp-text)
-        stage-file (when stage-name (fs/path (fs/parent blueprint-path) stage-name))
-        stage-text (when (and stage-file (fs/exists? stage-file)) (slurp (str stage-file)))
+        ;; the header's file is read only beside the blueprint - outside reads as missing
+        stage-file (when stage-name (contained-path/inside (fs/parent blueprint-path) stage-name))
+        stage-text (when (and stage-file (fs/regular-file? stage-file)) (slurp (str stage-file)))
         req-file (fs/path plan-dir "docs" requirements-name)
         req-text (when (fs/exists? req-file) (slurp (str req-file)))
         input (review-input stage-name stage-text req-text bp-name bp-text (checklist (slurp (str method-path))))
