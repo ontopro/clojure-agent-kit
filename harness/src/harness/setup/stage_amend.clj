@@ -16,6 +16,7 @@
    [harness.setup.stages :as stages]
    [harness.setup.workspace :as workspace]
    [rewrite-clj.node :as n]
+   [rewrite-clj.parser :as p]
    [rewrite-clj.zip :as z]))
 
 (defn q-row?
@@ -49,31 +50,46 @@
       (not (q-row? (or source-text "") q))
       (str q " is not a row of docs/source.md §3 - the person's words go there first, as a Q row"))))
 
+(defn- edn-text
+  "`x` as EDN text with no commas between a map's entries - as a person types a gates record; `pr-str`
+  puts them in."
+  [x]
+  (cond (map? x) (str "{" (str/join " " (map edn-text (apply concat x))) "}")
+        (vector? x) (str "[" (str/join " " (map edn-text x)) "]")
+        :else (pr-str x)))
+
+(defn- node [x] (p/parse-string (edn-text x)))
+
 (defn with-amendment
   "The gates record's text `text` with `entry` appended to its `:stage/amendments`, every other byte
-  kept - the person's comments included. The key is added at the end when the record has none."
+  kept - the person's comments included. The key is added at the end of the map when the record has
+  none - placed by rewrite-clj on the map's node, never by splicing the text at a brace."
   [text entry]
   (let [zloc (z/of-string text {:track-position? false})
         m (if (z/map? zloc) zloc (z/find-next zloc z/next z/map?))
         v (z/get m :stage/amendments)]
     (cond
       (nil? v)
-      (let [i (str/last-index-of text "}")
-            head (str/trimr (subs text 0 i))]
-        (str head "\n ;; a stage amended after its packets ran, one pass at a time: `bb stage-amend Q-n` opens it\n"
-             " :stage/amendments [" (pr-str entry) "]" (subs text i)))
+      (-> m
+          (z/append-child* (n/newlines 1))
+          (z/append-child* (n/spaces 1))
+          (z/append-child* (n/comment-node "; a stage amended after its packets ran, one pass at a time: `bb stage-amend Q-n` opens it"))
+          (z/append-child* (n/newlines 1))
+          (z/append-child* (n/spaces 1))
+          (z/append-child* (n/keyword-node :stage/amendments))
+          (z/append-child* (n/spaces 1))
+          (z/append-child* (node [entry]))
+          z/root-string)
 
-      (and (= :token (z/tag v)) (nil? (z/sexpr v)))
-      (z/root-string (z/replace v [entry]))
-
-      (and (z/vector? v) (nil? (z/down v)))
-      (z/root-string (z/replace v [entry]))
+      (or (and (= :token (z/tag v)) (nil? (z/sexpr v)))
+          (and (z/vector? v) (nil? (z/down v))))
+      (z/root-string (z/replace v (node [entry])))
 
       :else
       (-> v
           (z/append-child* (n/newlines 1))
           (z/append-child* (n/spaces 20))
-          (z/append-child entry)
+          (z/append-child* (node entry))
           z/root-string))))
 
 (defn amend!

@@ -34,9 +34,15 @@
         once (amend/with-amendment text e1)]
     (is (str/starts-with? once ";; the stage's gates\n{:stage/id \"5\"\n ;; approved\n :stage/approved {:at \"2026-10-15T10:00-05:00\" :cap \"$20\" :by \"Ada\"}\n :stage/closed nil"))
     (is (= [e1] (:stage/amendments (edn/read-string once))))
+    (testing "a comment after the record carrying a brace is no place to insert"
+      (let [t (str (str/trimr text) " ;; closed by } the person\n")
+            out (amend/with-amendment t e1)]
+        (is (= [e1] (:stage/amendments (edn/read-string out))))
+        (is (str/ends-with? out "[{:q \"Q-26\" :opened \"2026-10-21T09:30-05:00\"}]} ;; closed by } the person\n"))))
     (testing "a second pass appends; a record whose key is nil takes the first"
       (let [e2 {:q "Q-27" :opened "2026-10-22T09:30-05:00"}]
         (is (= [e1 e2] (:stage/amendments (edn/read-string (amend/with-amendment once e2)))))
+        (is (not (str/includes? (amend/with-amendment once e2) "\", :opened")) "an entry written as a person types it, no commas")
         (is (= [e1] (:stage/amendments (edn/read-string (amend/with-amendment "{:stage/id \"5\" :stage/amendments nil}" e1)))))
         (is (= [e1] (:stage/amendments (edn/read-string (amend/with-amendment "{:stage/id \"5\" :stage/amendments []}" e1)))))))))
 

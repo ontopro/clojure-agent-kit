@@ -64,6 +64,17 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### The amendment's two loose ends (plan 6.11, item 4, register row 170)
+
+Fable 5.1's read of `799b5c3`. `bb next`'s packet arm kept its merge, escalated and running cases
+after the run under way had moved ahead of the amendment's gates: unreachable, and three copies of
+messages that would drift; the arm is one start now, its reason chosen by whether the packet has a
+run. `bb stage-amend` added the amendments key by splicing the text before its last brace, which a
+trailing comment carrying a brace would have broken; it is placed on the record's map by rewrite-clj
+now, as the other two paths already were, and an entry is written without the commas `pr-str` puts
+between a map's entries - a gates record is typed by a person. A `:workspace/time-zone` that is no zone
+name still falls to the machine's without a word; `bb doctor` could say it, on the plan's Maybe list.
+
 ### A stage amended after its packets ran (plan 6.11, item 4, register row 170)
 
 The first project's stage 5 had every packet merged when the person, walking the site, asked for

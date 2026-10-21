@@ -320,17 +320,11 @@
                      (when (seq more) (str "; open before it too: " (str/join ", " (map :id more)))))))
 
       (some #(not (merged %)) packets)
-      (let [t next-packet
-            status (get runs t)]
-        (case status
-          :awaiting-merge (action 13 person (str "bb run-loop merge <run-dir> <decision.edn> for " t)
-                                  (str "the run for " t " is stopped :awaiting-merge"))
-          :escalated (action 12 person (str "read the run for " t " and decide; then bb run-loop run <run-dir>")
-                             (str "the run for " t " is :escalated"))
-          :abandoned (start-packet t (str "the run for " t " was abandoned; no merged record"))
-          nil (start-packet t (str t " has no run record; " (count merged) " of " (count packets) " packets merged"))
-          (action 12 architect (str "bb run-loop run <run-dir> for " t)
-                  (str "the run for " t " is " status))))
+      ;; a run under way was said above (`in-flight`): what is left is a packet to start
+      (let [t next-packet]
+        (start-packet t (if (nil? (get runs t))
+                          (str t " has no run record; " (count merged) " of " (count packets) " packets merged")
+                          (str "the run for " t " was abandoned; no merged record"))))
 
       ;; THE FULL PANEL AT PRE-RELEASE, never a skip: the person's rule
       (and (= "pre-release" kind) (:security/skipped gates))
