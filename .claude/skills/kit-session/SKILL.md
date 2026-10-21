@@ -92,6 +92,8 @@ Said plainly:
    - **The Sessions log behind** - write the item's entry.
    - **A `.local/` folder or entry its README does not name** - name it.
    - **The toolchain's newer releases** - information; they wait for the next plan's start.
+   - **Commits with no read mark** - each sent to be read and its mark written as the read arrives
+     ("The seats"); a commit made since is listed until then.
 2. The plan: tick the item in `## Task Status` with its commit and move the `**Next:**` line;
    an entry in the Sessions log saying what was built, how it was proved, what is next.
 3. Run `bb kit-status` again: the log line should now say ok.

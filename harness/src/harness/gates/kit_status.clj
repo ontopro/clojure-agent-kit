@@ -9,8 +9,10 @@
   or on watch; the plan's Sessions log older than the last commit (the plan
   named by the branch: `plan-v6.2` -> `.local/plans/kit-plan-v6.2.md`); and a
   `.local/` folder without its `README.md`, or an entry in one that its README
-  never names; and the toolchain's pins with a newer release
-  (`harness.gates.toolchain-newer`). Exit 0 always. The KIT's own development only."
+  never names; the toolchain's pins with a newer release
+  (`harness.gates.toolchain-newer`); and the commits since the last tag that carry no read mark on
+  the plan's Task Status (the kit-session skill, \"The seats\"). Exit 0 always. The KIT's own
+  development only."
   (:require
    [babashka.fs :as fs]
    [babashka.process :as p]
@@ -61,6 +63,23 @@
   [records since]
   (filter #(or (nil? since) (not (neg? (compare (:failed %) since))))
           (record/flaky records)))
+
+;; THE READ MARK: every commit of a plan's branch sits on its item's Task Status line, followed by its
+;; read - `abc1234` (read: holds). A commit on no line, or on one with no mark after it, has not been
+;; read, or its read was not written down - which the record could not tell before.
+
+(defn task-status
+  "The plan text's `## Task Status` section, up to the next `## ` heading."
+  [plan-text]
+  (second (re-find #"(?s)## Task Status\n(.*?)(?=\n## |\z)" (or plan-text ""))))
+
+(defn unread
+  "The commits of `commits` (`[[full-sha subject]]`) with no read mark in `plan-text`'s Task Status: no
+  backticked sha there - seven or more of its characters - followed, before another backtick, by
+  `(read:`."
+  [plan-text commits]
+  (let [marked (map second (re-seq #"`([0-9a-f]{7,40})`[^`]*?\(read:" (or (task-status plan-text) "")))]
+    (remove (fn [[sha _]] (some #(str/starts-with? sha %) marked)) commits)))
 
 ;; ---------------------------------------------------------------- facts
 
@@ -121,5 +140,14 @@
                                                    (sort (map #(str (fs/file-name %)) (fs/list-dir d))))]
                             (str rel "/" e " is not named in " rel "/README.md")))))
                     (local-dirs root)))
+    (report (str "Commits since " (or since-tag "the start") " with no read mark on the plan's Task Status (the kit-session skill, \"The seats\"):")
+            (when (and plan (fs/exists? plan))
+              (for [[sha subject] (unread (slurp (str plan))
+                                          (for [l (str/split-lines (or (git root "log" "--no-merges" "--format=%H %s"
+                                                                            (if since-tag (str since-tag "..HEAD") "HEAD"))
+                                                                       ""))
+                                                :when (not (str/blank? l))]
+                                            (str/split l #" " 2)))]
+                (str "`" (subs sha 0 7) "` " subject))))
     (report "The toolchain's newer releases (`bb toolchain-newer`; a move is the person's, at a branch's cut):"
             (toolchain-newer/newer-lines (toolchain-newer/check root)))))

@@ -51,3 +51,14 @@
 (deftest the-plan-is-named-by-the-branch
   (is (= "/r/.local/plans/kit-plan-v6.2.md" (str (ks/plan-file "/r" "plan-v6.2"))))
   (is (nil? (ks/plan-file "/r" "main"))))
+
+(deftest a-commit-is-read-when-its-task-status-line-marks-it
+  (let [plan (str "# Plan\n\n## Task Status\n\n**Next:** Item 3\n\n"
+                  "- [x] Item 1: x - `c0b52e2` (read: 2 nits → `d8d62bf`, 1 declined - Sessions), `d8d62bf` (read: holds) (row 167)\n"
+                  "- [x] Item 2: y - `0ec404d` 3b-3c (read: 1 low → `bb24a9b`), `bb24a9b` (row 169)\n"
+                  "- [ ] Item 3: z\n\n## Sessions\n\n- `aaaaaaa` (read: holds) is the log, not the status\n")
+        commits [["c0b52e2aaaa" "one"] ["d8d62bfbbbb" "a fix, marked after its mention in another's mark"]
+                 ["0ec404dcccc" "two"] ["bb24a9bdddd" "a fix named in a mark, with none of its own"]
+                 ["aaaaaaaeeee" "marked only in the Sessions log"] ["1234567ffff" "on no line"]]]
+    (is (= ["bb24a9bdddd" "aaaaaaaeeee" "1234567ffff"] (map first (ks/unread plan commits))))
+    (is (= commits (ks/unread "no task status" commits)) "a plan with no Task Status marks nothing")))

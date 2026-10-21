@@ -64,6 +64,15 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### A commit with no read mark is listed (plan 6.11, item 5)
+
+`bb kit-status` prints one more list: the commits since the last tag, merges aside, that no line of the
+plan's Task Status marks as read - a backticked sha followed, before another backtick, by `(read:`.
+Every commit sits on a line, the tag's own and each fix with its own mark, so the check keeps no list of
+exceptions (Opus 5.5's read of the design). A sha named only inside another's mark, or only in the
+Sessions log, is not marked. Information, never a refusal, and not in `bb tag-check`: a tag is the
+person's, and a read is a reading, not a gate.
+
 ### The seats: how the KIT itself is developed, written down (plan 6.11, item 5)
 
 Since plan 6.5 the KIT has been developed by two sessions in this folder and the person: one writes,

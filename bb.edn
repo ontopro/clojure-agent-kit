@@ -144,7 +144,7 @@
                    :requires ([harness.gates.toolchain-newer :as toolchain-newer])
                    :task (toolchain-newer/-main)}
 
-  kit-status {:doc "What an item's end should look at, printed, never refused: flaky tests since the last tag, health records stale against the code they ran, register rows opened since it still open or on watch, the plan's Sessions log older than HEAD, a .local/ folder without its README.md or an entry it never names, the toolchain's newer releases"
+  kit-status {:doc "What an item's end should look at, printed, never refused: flaky tests since the last tag, health records stale against the code they ran, register rows opened since it still open or on watch, the plan's Sessions log older than HEAD, a .local/ folder without its README.md or an entry it never names, the toolchain's newer releases, the commits since the last tag with no read mark on the plan's Task Status"
               :requires ([harness.gates.kit-status :as kit-status])
               :task (kit-status/-main)}
 
