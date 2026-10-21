@@ -33,9 +33,9 @@
 
 (defn- cut [n s] (let [s (str s)] (if (> (count s) n) (str (subs s 0 (dec n)) "…") s)))
 
-(defn- usd [x] (format "$%.2f" (double x)))
+(defn- usd [x] (if (number? x) (format "$%.2f" (double x)) "-"))
 
-(defn- dollars [x] (if (== x (Math/floor x)) (str "$" (long x)) (usd x)))
+(defn- dollars [x] (if (and (number? x) (== x (Math/floor x))) (str "$" (long x)) (usd x)))
 
 (defn money-by-html
   "The two money tables after \"Money and time\" - by provider (the models' makers) and by role -

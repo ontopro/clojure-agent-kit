@@ -64,6 +64,23 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-20 (plan 6.11)
 
+### A money figure a provider leaves out never throws (plan 6.11, item 3a, register row 169)
+
+The first project's key had its limit unset between a run's start and its record, so the balance at
+record carried `:limit nil :remaining nil`, and `bb report` threw subtracting one from the other:
+report-check could not render the run's table and the workspace gates went red. The person asked for
+the KIT to take any money figure missing, from any provider, always, sometimes or at random. 3a is
+the throws. The run report's balance line (`report/balance-line`) keeps its wording when both ends
+have a remaining, so every published table re-renders byte for byte; otherwise it takes the key's
+spend from the `:usage` difference, which a key has with a limit or without, and says the end with no
+limit; with no usage either it says the spend cannot be said. An end unavailable or not taken no
+longer hides the other end. A provider's answer that is not JSON, or has no data, was a throw at
+three places - the balance (`bb balance`, a run's start and `run`) and a generation record (a
+dispatch already paid for); now it is unavailable, with the reason, and a call that failed says why
+rather than "HTTP 0". `bb balance` says a key with no limit instead of "remaining of its — limit".
+The first project's record renders: "OpenRouter key $7.70 at start → with no limit at record: $0.15
+spent by the key, from its usage".
+
 ### A prep row's parts as sub-bullets (plan 6.11, item 2, register row 168)
 
 The first project's stage 5 blueprint had a §0 prep row of nine parts - the rules changes, the

@@ -78,6 +78,13 @@
     (is (nil? result))
     (is (= 2 (count reqs)) "it gives up rather than retrying forever")))
 
+(deftest an-answer-that-is-not-a-record-yields-nil-not-a-throw
+  ;; a proxy's page, or JSON with no data map, is a record that did not arrive
+  (doseq [body ["<html>gateway</html>" "{\"error\":\"x\"}" ""]]
+    (let [[result _] (with-stub (fn [_] {:status 200 :body body})
+                       #(prov/fetch! % "gen-abc" "k" {:attempts 1}))]
+      (is (nil? result) body))))
+
 (deftest a-dead-endpoint-yields-nil-not-a-throw
   (is (nil? (prov/fetch! "http://127.0.0.1:1/api/v1" "gen-abc" "k"
                          {:attempts 1 :timeout-ms 300}))))

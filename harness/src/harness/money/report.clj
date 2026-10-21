@@ -240,6 +240,36 @@
                (when (pos? unmeasured)
                  [(format "        (%d stop%s with nothing after — the run ended there; that wait is not counted)" unmeasured (if (= 1 unmeasured) "" "s"))])))))))
 
+(defn balance-line
+  "The OpenRouter line from the key's status at start `b0` and at record `b1` (each the balance
+  event's `:openrouter` map, or nil when no event was taken at that end), beside `openrouter-cost`,
+  what this run's OpenRouter steps summed to.
+
+  A FIGURE THE PROVIDER LEAVES OUT IS NAMED, NEVER COMPUTED WITH. A key with no limit has no
+  `:remaining`, and the first project's report threw on one: its key's limit was unset between the
+  run's start and its record. Both remainings known, the line is the one it always was, so a
+  published table re-renders byte for byte; otherwise the key's spend is its `:usage` difference,
+  which a key has with a limit or without; with neither, the spend is not said."
+  [b0 b1 openrouter-cost]
+  (let [money #(if (number? %) (format "$%.2f" (double %)) "—")
+        differ #(if (> (Math/abs (- % openrouter-cost)) 0.02)
+                  " — they differ by more than two cents: other calls on the same key, or costs that arrived late" "")
+        end #(cond (nil? %) "not recorded"
+                   (:unavailable %) (str "unavailable (" (:unavailable %) ")")
+                   (number? (:remaining %)) (money (:remaining %))
+                   :else "with no limit")
+        [r0 r1 u0 u1] (map #(when (number? %) %) [(:remaining b0) (:remaining b1) (:usage b0) (:usage b1)])]
+    (cond
+      (and r0 r1)
+      (format "        OpenRouter balance %s at start → %s at record: %s spent by the key, against %s summed from this run's OpenRouter steps%s."
+              (money r0) (money r1) (money (- r0 r1)) (fmt-cost openrouter-cost) (differ (- r0 r1)))
+      (and u0 u1)
+      (format "        OpenRouter key %s at start → %s at record: %s spent by the key, from its usage (%s → %s), against %s summed from this run's OpenRouter steps%s."
+              (end b0) (end b1) (money (- u1 u0)) (money u0) (money u1) (fmt-cost openrouter-cost) (differ (- u1 u0)))
+      :else
+      (format "        OpenRouter key %s at start → %s at record: the key's spend cannot be said; %s summed from this run's OpenRouter steps."
+              (end b0) (end b1) (fmt-cost openrouter-cost)))))
+
 (defn money-lines
   "Cost by provider, by role and by model, from the steps; the OpenRouter balance
   at start and at record from the `:balance` events, with the difference beside
@@ -262,8 +292,7 @@
         direct-cost (->> priced (filter #(provenance/direct-provider? (:step/provider %)))
                          (group-by :step/provider)
                          (map (fn [[p ss]] [p (reduce + (map :step/cost ss))]))
-                         (sort-by first))
-        money (fn [x] (if x (format "$%.2f" (double x)) "—"))]
+                         (sort-by first))]
     (into [(format "  Money: %s over %d priced step%s%s."
                    (fmt-cost total) (count priced) (if (= 1 (count priced)) "" "s")
                    (if (pos? list-priced) (format ", %d of them computed from list price" list-priced) ""))
@@ -273,14 +302,10 @@
           (cond
             (empty? balances)
             ["        OpenRouter balance: not recorded (a record from before `start` and `record` wrote it)."]
-            (or (:unavailable b0) (:unavailable b1))
-            [(format "        OpenRouter balance: unavailable (%s)." (or (:unavailable b0) (:unavailable b1)))]
+            (and (:unavailable b0) (:unavailable b1))
+            [(format "        OpenRouter balance: unavailable (%s)." (:unavailable b0))]
             :else
-            (cond-> [(format "        OpenRouter balance %s at start → %s at record: %s spent by the key, against %s summed from this run's OpenRouter steps%s."
-                             (money (:remaining b0)) (money (:remaining b1))
-                             (money (- (:remaining b0) (:remaining b1))) (fmt-cost openrouter-cost)
-                             (if (> (Math/abs (- (- (:remaining b0) (:remaining b1)) openrouter-cost)) 0.02)
-                               " — they differ by more than two cents: other calls on the same key, or costs that arrived late" ""))]
+            (cond-> [(balance-line b0 b1 openrouter-cost)]
               ;; Only for a provider a step went to directly. A run with every role
               ;; through OpenRouter printed "Anthropic spend $0.00" under a provider line
               ;; that said "Anthropic $0.18" - the serving provider - and read as a contradiction.

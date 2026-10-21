@@ -62,7 +62,7 @@
   "The generation record for `id`, or nil.
 
   Returns nil rather than throwing on every failure path — a 404 that never
-  resolves, a timeout, a dead network. The dispatch already succeeded; failing
+  resolves, a timeout, a dead network, a body that is not JSON or carries no `:data` map. The dispatch already succeeded; failing
   it now because the bookkeeping call did not answer would throw away a
   completion that was paid for."
   ([endpoint id key] (fetch! endpoint id key nil))
@@ -80,7 +80,8 @@
                  (catch Exception _ {:status 0 :body nil}))]
            (cond
              (<= 200 status 299)
-             (:data (json/parse-string body true))
+             (let [d (try (:data (json/parse-string (str body) true)) (catch Exception _ nil))]
+               (when (map? d) d))
 
              (< n attempts)
              (do (Thread/sleep interval-ms) (recur (inc n)))

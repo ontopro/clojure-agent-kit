@@ -21,17 +21,34 @@
             [harness.models.profile :as profile]
             [harness.models.provenance :as provenance]))
 
+(defn read-data
+  "An answer `{:status :body}` as its parsed `:data` map, or `{:unavailable reason}`. A provider
+  that answers with a body that is not JSON, or with no `:data` map, is unavailable, said as such:
+  `bb balance`, a run's `start` and `bb run-loop run` read this, and a proxy's HTML page once
+  could have thrown through all three."
+  [{:keys [status body reason]}]
+  (let [status (or status 0)
+        data (when (<= 200 status 299)
+               (try (:data (json/parse-string (str body) true)) (catch Exception _ ::unreadable)))]
+    (cond (zero? status) {:unavailable (str "no answer" (when reason (str ": " reason)))}
+          (not (<= 200 status 299)) {:unavailable (str "HTTP " status)}
+          (= ::unreadable data) {:unavailable (str "HTTP " status ", a body that is not JSON")}
+          (not (map? data)) {:unavailable (str "HTTP " status ", no data in the answer")}
+          :else data)))
+
 (defn- get-data
   "`GET <endpoint>/<path>` with the key, as the parsed `:data` map, or
-  `{:unavailable reason}`."
+  `{:unavailable reason}` (`read-data`)."
   [endpoint key path]
-  (let [url (str (str/replace endpoint #"/+$" "") path)
-        {:keys [status body]} (try (http/get url {:headers {"Authorization" (str "Bearer " key)}
-                                                  :throw false :timeout 8000})
-                                   (catch Exception _ {:status 0}))]
-    (if (<= 200 status 299)
-      (:data (json/parse-string body true))
-      {:unavailable (str "HTTP " status)})))
+  (let [url (str (str/replace endpoint #"/+$" "") path)]
+    (read-data (try (http/get url {:headers {"Authorization" (str "Bearer " key)}
+                                   :throw false :timeout 8000})
+                    (catch Exception e {:status 0 :reason (or (ex-message e) (.getSimpleName (class e)))})))))
+
+(defn- number-or-nil
+  "`x` when it is a number, else nil: a provider's field may be absent, null or not a number."
+  [x]
+  (when (number? x) x))
 
 (defn openrouter-key-status
   "`{:limit :usage :remaining}` in dollars for the key in `key-env`, plus
@@ -44,7 +61,11 @@
   credit and its usage. A key limited to $80 on an account holding $30 stops
   at $30, and the line once showed only the key's figure and called it the
   balance. The account's is the one a cap is really checked against; the
-  key's is the one a person set."
+  key's is the one a person set.
+
+  ANY FIGURE MAY BE MISSING. A key with no limit has no limit and no remaining; a field the
+  provider leaves out, or sends as something other than a number, is nil here, and the line and
+  the report name it rather than compute with it."
   [endpoint key-env]
   (let [key (System/getenv key-env)]
     (if (str/blank? key)
@@ -53,11 +74,10 @@
         (if (:unavailable d)
           d
           (let [c (get-data endpoint key "/credits")]
-            (cond-> {:limit (:limit d) :usage (:usage d) :remaining (:limit_remaining d)}
+            (cond-> {:limit (number-or-nil (:limit d)) :usage (number-or-nil (:usage d)) :remaining (number-or-nil (:limit_remaining d))}
               (not (:unavailable c))
-              (assoc :credits {:total (:total_credits c) :usage (:total_usage c)
-                               :remaining (when (and (:total_credits c) (:total_usage c))
-                                            (- (:total_credits c) (:total_usage c)))}))))))))
+              (assoc :credits (let [t (number-or-nil (:total_credits c)) u (number-or-nil (:total_usage c))]
+                                {:total t :usage u :remaining (when (and t u) (- t u))})))))))))
 
 (defn openrouter-role
   "The first role in `profile` served by OpenRouter - a security reviewer panel's members among them - or nil."
@@ -75,7 +95,17 @@
             (if cost (update acc (or provider "unknown") (fnil + 0) cost) acc))
           {} steps))
 
-(defn- money [x] (if x (format "$%.2f" (double x)) "—"))
+(defn- money [x] (if (number? x) (format "$%.2f" (double x)) "—"))
+
+(defn key-text
+  "What the line says of a key's `status` (`openrouter-key-status`, available): what is left of
+  its limit, or that it has none - a key with no limit has no remaining - and what it has used."
+  [status]
+  (str "key "
+       (if (number? (:limit status))
+         (str (money (:remaining status)) " remaining of its " (money (:limit status)) " limit")
+         "with no limit")
+       " (" (money (:usage status)) " used)"))
 
 (defn line
   "One line for the console. `profile` finds the OpenRouter key; `steps` are
@@ -96,8 +126,7 @@
     (str "balance: OpenRouter "
          (cond (nil? or-role) "not in this profile"
                (:unavailable status) (str "unavailable (" (:unavailable status) ")")
-               :else (str "key " (money (:remaining status)) " remaining of its " (money (:limit status))
-                          " limit (" (money (:usage status)) " used)"
+               :else (str (key-text status)
                           (if-let [c (:credits status)]
                             (str "; account credit " (money (:remaining c)) " remaining of "
                                  (money (:total c)) " bought - the number a cap is really against")

@@ -97,3 +97,42 @@
     (is (= [ws-prof [rec]] (balance/split-args [rec] ws-prof)) "and with one, it is the profile")
     (is (= [nil []] (balance/split-args [] nil)))
     (is (= [ws-prof []] (balance/split-args [] ws-prof)) "`bb balance` alone, from a workspace's clone")))
+
+(deftest a-provider-figure-left-out-is-named-and-never-computed-with
+  (testing "an answer is read as its data, or as unavailable with the reason"
+    (is (= {:limit 1} (balance/read-data {:status 200 :body "{\"data\":{\"limit\":1}}"})))
+    (is (= {:unavailable "HTTP 200, a body that is not JSON"} (balance/read-data {:status 200 :body "<html>busy</html>"})))
+    (is (= {:unavailable "HTTP 200, no data in the answer"} (balance/read-data {:status 200 :body "{\"error\":\"x\"}"})))
+    (is (= {:unavailable "HTTP 200, no data in the answer"} (balance/read-data {:status 200 :body nil})))
+    (is (= {:unavailable "HTTP 503"} (balance/read-data {:status 503 :body "<html/>"})))
+    (is (= {:unavailable "no answer: request timed out"} (balance/read-data {:status 0 :reason "request timed out"})))
+    (is (= {:unavailable "no answer"} (balance/read-data {}))))
+  (testing "a key with no limit says so, never \"remaining of its — limit\""
+    (is (= "key with no limit ($142.45 used)" (balance/key-text {:limit nil :usage 142.45 :remaining nil})))
+    (is (= "key $7.70 remaining of its $150.00 limit ($142.30 used)"
+           (balance/key-text {:limit 150 :usage 142.3 :remaining 7.7})))
+    (is (= "key with no limit (— used)" (balance/key-text {}))))
+  (testing "a key that answers with no limit and figures that are not numbers"
+    (let [stop (srv/run-server (fn [req]
+                                 {:status 200 :headers {"Content-Type" "application/json" "Connection" "close"}
+                                  :body (json/generate-string
+                                         (if (str/ends-with? (:uri req) "/credits")
+                                           {:data {:total_credits "170" :total_usage 142.45}}
+                                           {:data {:limit nil :usage 142.45 :limit_remaining nil}}))})
+                               {:ip "127.0.0.1" :port 0 :legacy-return-value? false})]
+      (try
+        (let [ep (str "http://127.0.0.1:" (srv/server-port stop) "/openrouter/api/v1")]
+          (is (= {:limit nil :usage 142.45 :remaining nil :credits {:total nil :usage 142.45 :remaining nil}}
+                 (balance/openrouter-key-status ep "PATH")))
+          (is (str/includes? (balance/line {:roles {:coder {:endpoint ep :key-env "PATH"}}} [])
+                             "OpenRouter key with no limit ($142.45 used); account credit — remaining of — bought")))
+        (finally @(srv/server-stop! stop)))))
+  (testing "a key endpoint answering a page that is not JSON is unavailable, and the line still prints"
+    (let [stop (srv/run-server (fn [_] {:status 200 :headers {"Connection" "close"} :body "<html>gateway</html>"})
+                               {:ip "127.0.0.1" :port 0 :legacy-return-value? false})]
+      (try
+        (let [ep (str "http://127.0.0.1:" (srv/server-port stop) "/openrouter/api/v1")]
+          (is (= {:unavailable "HTTP 200, a body that is not JSON"} (balance/openrouter-key-status ep "PATH")))
+          (is (str/includes? (balance/line {:roles {:coder {:endpoint ep :key-env "PATH"}}} [])
+                             "OpenRouter unavailable (HTTP 200, a body that is not JSON)")))
+        (finally @(srv/server-stop! stop))))))

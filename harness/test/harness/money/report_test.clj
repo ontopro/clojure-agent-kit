@@ -557,6 +557,39 @@
     (is (str/includes? out "Roles: not recorded"))
     (is (str/includes? out "Rounds: 2 — 1 retry:") "what the record does carry is still derived")))
 
+(defn- with-balances
+  "`timed-run` with its two balance events' `:openrouter` maps replaced, nil dropping that event."
+  [b0 b1]
+  (update timed-run :run/events
+          (fn [es] (vec (keep (fn [e] (if (= :balance (:event/kind e))
+                                        (when-let [b (if (= :start (:when e)) b0 b1)] (assoc e :openrouter b))
+                                        e))
+                              es)))))
+
+(deftest a-balance-figure-the-provider-left-out-is-named-and-the-report-still-renders
+  ;; The first project's key had a limit at start and none at record, and `bb report` threw.
+  (let [line #(let [out (report/render (with-balances %1 %2))]
+                (first (filter (fn [l] (str/includes? l "OpenRouter")) (str/split-lines out))))]
+    (testing "both remainings known: the line it always was"
+      (is (= "        OpenRouter balance $30.00 at start → $29.75 at record: $0.25 spent by the key, against $0.200000 summed from this run's OpenRouter steps — they differ by more than two cents: other calls on the same key, or costs that arrived late."
+             (line {:limit 40.0 :usage 10.0 :remaining 30.0} {:limit 40.0 :usage 10.25 :remaining 29.75}))))
+    (testing "no limit at one end: the key's spend from its usage"
+      (is (= "        OpenRouter key $30.00 at start → with no limit at record: $0.20 spent by the key, from its usage ($10.00 → $10.20), against $0.200000 summed from this run's OpenRouter steps."
+             (line {:limit 40.0 :usage 10.0 :remaining 30.0} {:limit nil :usage 10.2 :remaining nil})))
+      (is (str/starts-with? (str/trim (line {:usage 10.0} {:limit 40.0 :usage 10.25 :remaining 29.75}))
+                            "OpenRouter key with no limit at start → $29.75 at record: $0.25 spent by the key")))
+    (testing "no usage either: the spend is not said"
+      (is (= "        OpenRouter key $30.00 at start → with no limit at record: the key's spend cannot be said; $0.200000 summed from this run's OpenRouter steps."
+             (line {:remaining 30.0} {:limit nil}))))
+    (testing "one end unavailable, or not taken: the other end still said"
+      (is (str/includes? (line {:remaining 30.0 :usage 10.0} {:unavailable "HTTP 503"})
+                         "OpenRouter key $30.00 at start → unavailable (HTTP 503) at record: the key's spend cannot be said"))
+      (is (str/includes? (line {:remaining 30.0 :usage 10.0} nil)
+                         "OpenRouter key $30.00 at start → not recorded at record")))
+    (testing "both unavailable: the line it always was"
+      (is (= "        OpenRouter balance: unavailable (HTTP 503)."
+             (line {:unavailable "HTTP 503"} {:unavailable "HTTP 503"}))))))
+
 (deftest a-project-that-has-published-nothing-has-nothing-to-drift
   ;; A fresh copy of the seed has no RUNS.md and no runs/ beside it, and failed `bb gates` on that.
   ;; One half without the other is still the failure the gate was written for.
