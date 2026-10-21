@@ -64,6 +64,12 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### The sandbox stops before its tests are collected (plan 6.11, item 12, register row 197)
+
+The security-review flow's lifecycle finding: the tests were collected while the container ran, so a
+process a test left could swap a checked file for a link before the read. Both reviews stop the
+sandbox they started first.
+
 ### The boundary gate reads every top-level form (plan 6.11, item 10, register row 196)
 
 The contract flow's sixth finding: the gate read a file's first form, so a second `ns` form or a

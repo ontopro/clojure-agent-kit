@@ -9,6 +9,7 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [harness.models.security-review :as sr]
+   [harness.models.security-review-sandbox]
    [org.httpkit.server :as srv]))
 
 (deftest the-prompts-ask-for-a-test-and-welcome-nothing
@@ -325,3 +326,15 @@
   (is (str/includes? (sr/kit-opening {:head "h" :files [] :rounds 20}) "You have 20 completions, tool calls included; the last one must be your answer"))
   (is (str/includes? (sr/opening :tracer {:files [] :rounds 60}) "You have 60 completions"))
   (is (str/includes? sr/final-notice "This is your last completion: answer now with the JSON block")))
+
+;; From the KIT's own security review (GPT-6 Astra, the security-review flow, 2026-10-21): the tests were
+;; collected while the container still ran, and a process a test left could swap a file for a link
+(deftest the-sandbox-is-stopped-before-its-tests-are-collected
+  (let [clone (clone!)
+        events (atom [])
+        sb {:request (fn [_] {}) :run-tests (fn [_] {:exit 0 :out ""}) :stop! (fn [] (swap! events conj :stopped))}]
+    (with-redefs [harness.models.security-review-sandbox/start! (fn [_] sb)
+                  sr/written-files (fn [& _] (swap! events conj :collected) {})]
+      (with-stub [(text-reply "```json\n{\"findings\": []}\n```")]
+        #(sr/review! {:family :stub :model "stub-1" :shape :openai :endpoint %} :diff clone {:rounds 2})))
+    (is (= [:stopped :collected] (take 2 @events)) "stopped first, then collected")))

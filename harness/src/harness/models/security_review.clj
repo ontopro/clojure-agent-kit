@@ -262,7 +262,10 @@
             r (agent/converse! role system-prompt (opening stance facts) ctx
                                {:registry security-review-tools/specs :tools (set (keys security-review-tools/specs))
                                 :max-iterations rounds :timeout-ms 600000 :final-notice final-notice})
-            findings (parse-findings (:text r))]
+            findings (parse-findings (:text r))
+            ;; THE SANDBOX STOPS BEFORE ITS TESTS ARE COLLECTED: a process a test left running could swap a
+            ;; checked file for a link between the check and the read. The `finally` stops it again, harmlessly
+            _ (when-not sandbox ((:stop! sb)))]
         (merge {:stance stance
                 :status (:status r)
                 :findings findings
@@ -434,7 +437,9 @@
                 r (agent/converse! role kit-system-prompt (kit-opening {:head head :files files :after after :flow flow :rounds rounds}) ctx
                                    {:registry security-review-tools/kit-specs :tools (set (keys security-review-tools/kit-specs))
                                     :max-iterations rounds :timeout-ms 600000 :final-notice final-notice})
-                findings (parse-findings (:text r))]
+                findings (parse-findings (:text r))
+                ;; stopped before its tests are collected, as `review!`'s
+                _ (when-not sandbox ((:stop! sb)))]
             (merge {:stance :tracer
                     :target (str "KIT " head)
                     :after (vec (distinct (keep :model after)))
