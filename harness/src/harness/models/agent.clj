@@ -203,9 +203,8 @@
    (let [{:keys [max-iterations timeout-ms retry]} (merge defaults opts)
          retry (merge (:retry defaults) retry)
          registry (:registry opts)
-         decls (tools/declarations (:shape role)
-                                   (or (:tools opts) (tools/for-role :coder))
-                                   registry)
+         offered (set (or (:tools opts) (tools/for-role :coder)))
+         decls (tools/declarations (:shape role) offered registry)
          key (some-> (:key-env role) System/getenv)]
      (loop [messages [{:role "user" :content opening}]
             calls []
@@ -238,9 +237,17 @@
            :else
            (let [pending (conj pending (fetch-later role parsed ms-completion key opts))]
              (if (= :tool-use (:stop parsed))
+               ;; THE OFFERED SET IS WHAT RUNS, NOT ONLY WHAT IS DECLARED. A provider can return a call
+               ;; for a tool it was never offered: a reading with no tools had read a project's file,
+               ;; and only a missing `:targets` kept the code reviewer from writing. Such a call is
+               ;; answered as refused and kept marked, a signal like a write outside the packet
                (let [results (mapv (fn [c]
                                      (let [t (System/currentTimeMillis)
-                                           r (if registry (tools/invoke registry ctx c) (tools/invoke ctx c))]
+                                           r (if (contains? offered (:name c))
+                                               (if registry (tools/invoke registry ctx c) (tools/invoke ctx c))
+                                               (assoc (tools/err (str (:name c) " was not offered to you - your tools are: "
+                                                                      (if (seq offered) (str/join ", " (sort offered)) "none")))
+                                                      :id (:id c) :unoffered? true))]
                                        (assoc r :ms (- (System/currentTimeMillis) t))))
                                    (:tool-calls parsed))
                      messages (-> messages
@@ -248,7 +255,7 @@
                                   (into (adapter/tool-results-message (:shape role) results)))
                      ;; the provider's :extra-content (Gemini's thought signature) travels back in the
                      ;; assistant message above, not into the transcript and the run log
-                     made (mapv (fn [c r] (merge (dissoc c :extra-content) (select-keys r [:content :error? :args :ms])))
+                     made (mapv (fn [c r] (merge (dissoc c :extra-content) (select-keys r [:content :error? :args :ms :unoffered?])))
                                 (:tool-calls parsed) results)
                      calls (into calls made)
                      turns (conj turns {:text (:text parsed) :calls made})]

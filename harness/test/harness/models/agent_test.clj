@@ -1,6 +1,7 @@
 (ns harness.models.agent-test
   (:require
    [babashka.fs :as fs]
+   [babashka.http-client]
    [cheshire.core :as json]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
@@ -394,3 +395,35 @@
         (is (= "insufficient credits" (get-in r [:error :message])) "clipped before anything records it")
         (is (not (str/includes? (pr-str r) "id=k1")) "the URL is nowhere in the result"))
       (finally @(srv/server-stop! stop)))))
+
+;; From the KIT's own security review (GPT-6 Astra, 2026-10-21): the offered set had shaped only what the
+;; model was told, and a provider's call for a tool never offered ran
+(defn- one-call [nm args]
+  {:status 200
+   :body (json/generate-string
+          {:id "gen-1"
+           :choices [{:message {:content nil
+                                :tool_calls [{:id "c1" :type "function"
+                                              :function {:name nm :arguments (json/generate-string args)}}]}}]
+           :usage {:prompt_tokens 1 :completion_tokens 1 :cost 0}})})
+
+(deftest a-tool-the-role-was-not-offered-never-runs
+  (let [dir (fs/create-temp-dir {:prefix "kit-agent-offered"})]
+    (try
+      (spit (str (fs/path dir "private.txt")) "NOT FOR THIS READING")
+      (spit (str (fs/path dir "target.txt")) "original")
+      (testing "a reading offered no tools"
+        (with-redefs [babashka.http-client/post (fn [& _] (one-call "read_file" {:path "private.txt"}))]
+          (let [r (agent/converse! {:model "m" :shape :openai :endpoint "https://provider.invalid"}
+                                   "No tools" "Read only this message" {:dir (str dir)} {:tools #{} :max-iterations 1})
+                c (get-in r [:calls 0])]
+            (is (true? (:error? c)))
+            (is (true? (:unoffered? c)) "kept marked: a model calling a tool it was not given is a signal")
+            (is (str/includes? (:content c) "read_file was not offered to you - your tools are: none"))
+            (is (not (str/includes? (:content c) "NOT FOR THIS READING"))))))
+      (testing "a role offered read_file alone, its packet's target notwithstanding"
+        (with-redefs [babashka.http-client/post (fn [& _] (one-call "write_file" {:path "target.txt" :content "changed"}))]
+          (agent/converse! {:model "m" :shape :openai :endpoint "https://provider.invalid"}
+                           "Read only" "Inspect" {:dir (str dir) :targets ["target.txt"]} {:tools #{"read_file"} :max-iterations 1}))
+        (is (= "original" (slurp (str (fs/path dir "target.txt"))))))
+      (finally (fs/delete-tree dir)))))

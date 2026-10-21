@@ -64,6 +64,13 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### Only a tool the role was offered runs (plan 6.11, item 9, register row 182)
+
+Astra's third finding: `converse!`'s `:tools` set reached only the declarations, so a provider's call
+for a tool never offered ran - a reading with no tools read a project's file. The offered set is now
+what runs; another call is answered as not offered and kept on the call as `:unoffered?`, in the
+transcript and the run log.
+
 ### A key never comes from a record (plan 6.11, item 9, register row 181)
 
 Astra's second finding, HIGH: `bb reprice` took a step's endpoint and its key's variable from the run
