@@ -64,6 +64,14 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### A key never comes from a record (plan 6.11, item 9, register row 181)
+
+Astra's second finding, HIGH: `bb reprice` took a step's endpoint and its key's variable from the run
+record first - a project's file, which the build commits - so a record could send any key in the
+environment to any host. `reprice/key-env-for` now gives the variable from the profile or `routes.edn`
+for the endpoint, and an endpoint neither names is not fetched from, said by name; the same for a
+reading's record. The stub-provider tests name their loopback stub as a trusted route in a fixture.
+
 ### Astra's pass, and the sandbox that could run a command on the host (plan 6.11, item 9, register row 180)
 
 The second pass, the command's first real run: `bb security-review --kit --model "openai/gpt-6-astra

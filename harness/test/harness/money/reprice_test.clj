@@ -1,10 +1,11 @@
 (ns harness.money.reprice-test
   (:require
    [babashka.fs :as fs]
+   [babashka.http-client]
    [cheshire.core :as json]
    [clojure.edn :as edn]
    [clojure.string :as str]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [harness.contract.shapes :as shapes]
    [harness.models.provenance :as provenance]
    [harness.money.report :as report]
@@ -30,6 +31,14 @@
          (finally @(srv/server-stop! stop)))))
 
 (def fast {:attempts 1 :interval-ms 1 :timeout-ms 2000})
+
+;; THE STUB IS A ROUTE THESE TESTS TRUST. `bb reprice` takes a key only for an endpoint the profile or
+;; routes.edn names (register row 181); a stub on the loopback is neither, so these tests name it, with its key
+(use-fixtures :each
+  (fn [t]
+    (let [real reprice/key-env-for]
+      (with-redefs [reprice/key-env-for (fn [ep p r] (if (str/starts-with? (str ep) "http://127.0.0.1:") "REPRICE_TEST_KEY" (real ep p r)))]
+        (t)))))
 
 (defn- record [endpoint]
   {:run/id "w7" :task/id "t" :run/attempts 1 :run/status :merged :run/started-at (java.util.Date.)
@@ -226,3 +235,35 @@
     (is (= [3 2] ((juxt :step/rounds :step/completions) (s {:model "m" :iterations 3 :completions 2 :error {}}))))
     (is (= 0 (:step/completions (s {:model "m" :iterations 1 :completions 0 :error {}}))) "a first request refused")
     (is (not (contains? (s {:model "m" :iterations 2}) :step/completions)) "a runner that never counted them")))
+
+;; From the KIT's own security review (GPT-6 Astra, 2026-10-21): a run record is a project's file, and
+;; it had named both the host and the key's variable that `bb reprice` sent the key to
+(deftest a-record-never-names-the-key-nor-sends-it-to-a-host-nobody-trusts
+  (let [sent (atom [])
+        asked (atom [])
+        rec (fn [roles] {:run/id "r" :run/roles roles
+                         :run/steps [{:step/name :coder :step/kind :dispatch :step/status :done
+                                      :step/generation-ids ["g1"] :step/cost nil}]})
+        trusted {:roles {:coder {:endpoint "https://openrouter.ai/api/v1" :key-env "OPENROUTER_API_KEY"}}}
+        getenv (fn [v] (swap! asked conj v) "the-key")]
+    (with-redefs [babashka.http-client/get (fn [url opts]
+                                             (swap! sent conj {:url url :auth? (boolean (get-in opts [:headers "Authorization"]))})
+                                             {:status 200 :body "{\"data\":{\"total_cost\":0.1}}"})]
+      (testing "an endpoint neither the profile nor routes.edn names is not fetched from"
+        (let [{:keys [changed lines]} (reprice/reprice (rec {:coder {:endpoint "https://collector.invalid/api/v1" :key-env "OPENROUTER_API_KEY"}})
+                                                       {:profile trusted :fetch-opts fast :getenv getenv})]
+          (is (= 0 changed))
+          (is (empty? @sent) "no request at all, so no key")
+          (is (str/includes? (first lines) "collector.invalid/api/v1 for coder is not an endpoint the profile or routes.edn names"))))
+      (testing "a known endpoint takes the key the profile pairs with it, never the record's variable"
+        (reset! asked [])
+        (reprice/reprice (rec {:coder {:endpoint "https://openrouter.ai/api/v1" :key-env "ANTHROPIC_API_KEY"}})
+                         {:profile trusted :fetch-opts fast :getenv getenv})
+        (is (= ["OPENROUTER_API_KEY"] (distinct @asked))))
+      (testing "and a reading the same"
+        (reset! sent [])
+        (is (str/includes? (:line (reprice/reprice-reading {:cost nil :generation-ids ["g"] :endpoint "https://collector.invalid/api/v1"
+                                                            :key-env "OPENROUTER_API_KEY"}
+                                                           {:fetch-opts fast :getenv getenv}))
+                           "not an endpoint the profile or routes.edn names"))
+        (is (empty? @sent))))))

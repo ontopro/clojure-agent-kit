@@ -66,7 +66,7 @@
  harness.models.security-review #{harness.contained-path harness.models.agent harness.models.catalogue harness.models.profile
                                   harness.models.security-review-sandbox harness.models.security-review-tools}
  harness.money.balance #{harness.models.profile harness.models.provenance}
- harness.money.reprice #{harness.models.profile harness.models.provenance harness.money.report}
+ harness.money.reprice #{harness.models.catalogue harness.models.profile harness.models.provenance harness.money.report}
 
  ;; the plan and the readings
  harness.setup.plan #{harness.contract.blueprint harness.gates.boundary harness.gates.run harness.rules harness.setup.stages harness.setup.template harness.setup.workspace}

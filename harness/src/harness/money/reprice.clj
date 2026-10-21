@@ -42,6 +42,7 @@
    [clojure.edn :as edn]
    [clojure.pprint :as pp]
    [clojure.string :as str]
+   [harness.models.catalogue :as catalogue]
    [harness.models.profile :as profile]
    [harness.models.provenance :as provenance]
    [harness.money.report :as report]))
@@ -56,15 +57,31 @@
       :spec-review :spec-reviewer
       base)))
 
+(defn key-env-for
+  "The variable whose key goes to `endpoint`: the one a role of `profile` or an entry of `routes`
+  (`routes.edn`) pairs with that endpoint; nil when neither names the endpoint.
+
+  A KEY NEVER COMES FROM A RECORD. A run record and a reading are a project's files, which a build
+  commits; one naming `{:endpoint \"https://elsewhere/api/v1\" :key-env \"ANTHROPIC_API_KEY\"}` had
+  sent that key to that host on the next `bb reprice`. So the record says where the call went, and
+  only an endpoint the profile or the routes know is fetched from, with their key."
+  [endpoint profile routes]
+  (some (fn [m] (when (and (map? m) (= endpoint (:endpoint m)) (:key-env m)) (:key-env m)))
+        (concat (vals (:roles profile)) (vals routes))))
+
+(defn- untrusted-line [endpoint who]
+  (str endpoint " for " who " is not an endpoint the profile or routes.edn names - not fetched, so no key is sent to it"))
+
 (defn endpoint-of
-  "`{:endpoint _ :key-env _}` for a step: from the record's `:run/roles` when
-  the record kept them, else from `profile`'s role; nil when neither has it."
-  [record profile step-name]
-  (let [rk (role-key step-name)
-        from-record (get-in record [:run/roles rk])
-        from-profile (get-in profile [:roles rk])]
-    (some (fn [m] (when (:endpoint m) (select-keys m [:endpoint :key-env])))
-          [from-record from-profile])))
+  "`{:endpoint _ :key-env _}` for a step: the endpoint from the record's `:run/roles` when the
+  record kept it, else from `profile`'s role; the key's variable always from the profile or
+  `routes` (`key-env-for`), nil when neither knows the endpoint. Nil when no endpoint is found."
+  ([record profile step-name] (endpoint-of record profile step-name (catalogue/routes)))
+  ([record profile step-name routes]
+   (let [rk (role-key step-name)
+         endpoint (some :endpoint [(get-in record [:run/roles rk]) (get-in profile [:roles rk])])]
+     (when endpoint
+       {:endpoint endpoint :key-env (key-env-for endpoint profile routes)}))))
 
 (defn unpriced
   "The dispatch steps `reprice` would touch: at least one id, and no cost - or
@@ -153,7 +170,7 @@
   `:cost-source :repriced`; else exactly as it was. Returns
   `{:reading m :changed? bool :line str-or-nil}`; the line says why nothing
   changed, and is nil when there was nothing to do."
-  [{:keys [cost generation-ids completions endpoint key-env] :as m} {:keys [fetch-opts getenv] :or {getenv #(System/getenv %)}}]
+  [{:keys [cost generation-ids completions endpoint] :as m} {:keys [fetch-opts getenv profile routes] :or {getenv #(System/getenv %)}}]
   (cond
     (some? cost) {:reading m :changed? false}
     (empty? generation-ids) {:reading m :changed? false
@@ -162,8 +179,12 @@
     {:reading m :changed? false :line (short-line completions generation-ids)}
     (nil? (provenance/generation-endpoint endpoint))
     {:reading m :changed? false :line (str endpoint " has no generation record to fetch")}
+
+    (nil? (key-env-for endpoint profile (or routes (catalogue/routes))))
+    {:reading m :changed? false :line (untrusted-line endpoint "the reading")}
+
     :else
-    (let [key (some-> key-env getenv)
+    (let [key (some-> (key-env-for endpoint profile (or routes (catalogue/routes))) getenv)
           {:keys [gens missing fetched]} (fetch-all generation-ids #(provenance/fetch! endpoint % key fetch-opts))]
       (if (seq missing)
         {:reading m :changed? false :line (lagged fetched generation-ids missing)}
@@ -190,13 +211,14 @@
   `{:record _ :changed n :lines [...]}`; the lines say what happened to each
   step. `opts`: `:profile` (a read profile, for a record whose `:run/roles`
   carry no endpoint), `:fetch-opts` (`provenance/fetch!`'s, for the tests),
-  `:getenv` (for the tests; `System/getenv` otherwise)."
-  [record {:keys [profile fetch-opts getenv] :or {getenv #(System/getenv %)}}]
-  (let [targets (set (map :step/name (unpriced record)))
+  `:getenv` (for the tests; `System/getenv` otherwise), `:routes` (`routes.edn`'s, otherwise)."
+  [record {:keys [profile fetch-opts getenv routes] :or {getenv #(System/getenv %)}}]
+  (let [routes (or routes (catalogue/routes))
+        targets (set (map :step/name (unpriced record)))
         results (for [s (:run/steps record)]
                   (if-not (targets (:step/name s))
                     {:step s :line nil :changed? false}
-                    (let [{:keys [endpoint key-env]} (endpoint-of record profile (:step/name s))
+                    (let [{:keys [endpoint key-env]} (endpoint-of record profile (:step/name s) routes)
                           nm (name (:step/name s))]
                       (cond
                         (nil? endpoint)
@@ -207,6 +229,10 @@
                         (nil? (provenance/generation-endpoint endpoint))
                         {:step s :changed? false
                          :line (str "  " nm ": " endpoint " has no generation record to fetch")}
+
+                        (nil? key-env)
+                        {:step s :changed? false
+                         :line (str "  " nm ": " (untrusted-line endpoint (name (role-key (:step/name s)))))}
 
                         (short-of-ids? (step-completions s) (:step/generation-ids s))
                         {:step s :changed? false
@@ -237,8 +263,8 @@
 (defn- reprice-reading-file!
   "`bb reprice` on a reading's record (`plan-review.edn`, `blueprint-review.edn`,
   `spec-review.edn`): the file rewritten as the readings write it, pretty-printed."
-  [path m]
-  (let [{:keys [record changed lines]} (reprice-review m {})]
+  [path m opts]
+  (let [{:keys [record changed lines]} (reprice-review m opts)]
     (doseq [l lines] (println l))
     (if (pos? changed)
       (do (spit path (with-out-str (pp/pprint record)))
@@ -264,7 +290,7 @@
         (System/exit 2))
       (cond
         ;; A reading's record: one call, its ids beside its cost.
-        reading? (reprice-reading-file! path record)
+        reading? (reprice-reading-file! path record {:profile prof})
 
         (empty? (unpriced record))
         (println (str "reprice: nothing to reprice in " path " - every dispatch step has its cost, provider "

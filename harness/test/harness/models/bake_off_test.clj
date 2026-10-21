@@ -7,11 +7,12 @@
    [cheshire.core :as json]
    [clojure.edn :as edn]
    [clojure.string :as str]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [harness.contract.shapes :as shapes]
    [harness.models.bake-off :as bo]
    [harness.models.catalogue :as cat]
    [harness.models.catalogue-test :as cat-test]
+   [harness.money.reprice :as reprice]
    [malli.core :as m]
    [org.httpkit.server :as srv]))
 
@@ -92,6 +93,14 @@
 
 (def ^:private judge-answer
   "```json\n{\"rows\": [{\"finding\": \"a cache no task needs\", \"where\": \"§3\", \"raised_by\": [\"A\", \"B\"], \"note\": \"\", \"real\": true}, {\"finding\": \"only one saw it\", \"where\": \"§1\", \"raised_by\": [\"B\"], \"note\": \"A read it as fine\", \"real\": false}]}\n```")
+
+;; THE STUB IS A ROUTE THESE TESTS TRUST. `bb reprice` takes a key only for an endpoint the profile or
+;; routes.edn names (register row 181); a stub on the loopback is neither, so these tests name it, with its key
+(use-fixtures :each
+  (fn [t]
+    (let [real reprice/key-env-for]
+      (with-redefs [reprice/key-env-for (fn [ep p r] (if (str/starts-with? (str ep) "http://127.0.0.1:") "BAKE_OFF_TEST_KEY" (real ep p r)))]
+        (t)))))
 
 (defn- with-stub [f]
   (let [seen (atom [])
