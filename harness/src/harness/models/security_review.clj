@@ -569,17 +569,27 @@
   {:flow 20 :whole 100})
 
 (defn preflight
-  "Whether a pass may start, from the OpenRouter key's `status` (`balance/openrouter-key-status`), the
-  pass's kind (`:flow` or `:whole`), the last pass's cost and `force`: `{:go? bool :line text}`. The
-  line says the key's remaining, the last pass's cost and the margin; an unreadable balance is
+  "Whether a pass may start, from the OpenRouter `status` (`balance/openrouter-key-status`), the pass's
+  kind (`:flow` or `:whole`), the last pass's cost and `force`: `{:go? bool :line text}`.
+
+  THE LOWER OF THE TWO BINDS. OpenRouter refuses at the key's limit or the account's credit, whichever
+  runs out first: a key raised to a $500 limit showed $341 left while the account held $51, and a
+  check of the key's alone would have let seven flows start against $51. The line names the figure
+  that binds, the other beside it, the last pass's cost and the margin; an unreadable balance is
   refused as a low one is, unless forced."
   [status kind last-cost force]
   (let [margin (get margins kind)
-        remaining (or (:remaining status) (get-in status [:credits :remaining]))
         money #(format "$%.2f" (double %))
-        said (str (if (:unavailable status)
-                    (str "the OpenRouter balance is unavailable (" (:unavailable status) ")")
-                    (str "key " (if (number? remaining) (money remaining) "with no figure") " remaining"))
+        key-left (when (number? (:remaining status)) (:remaining status))
+        account-left (when (number? (get-in status [:credits :remaining])) (get-in status [:credits :remaining]))
+        account-binds? (and account-left (or (nil? key-left) (< account-left key-left)))
+        remaining (if account-binds? account-left key-left)
+        said (str (cond (:unavailable status) (str "the OpenRouter balance is unavailable (" (:unavailable status) ")")
+                        account-binds? (str "account " (money account-left) " remaining"
+                                            (when key-left (str " (the key has " (money key-left) ")")))
+                        key-left (str "key " (money key-left) " remaining"
+                                      (when account-left (str " (the account has " (money account-left) ")")))
+                        :else "no remaining figure from OpenRouter")
                   (when (number? last-cost) (str ", the last pass cost " (money last-cost)))
                   ", the margin for " (if (= :flow kind) "a flow" "the whole KIT") " is " (money margin))
         low? (not (and (number? remaining) (>= remaining margin)))]

@@ -64,6 +64,17 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### The balance check reads the lower of the key and the account (plan 6.11, item 10)
+
+From Fable 5.1's read of `680f598`, before any flow ran: the pre-flight took the OpenRouter key's
+remaining and fell to the account's only when the key had none. The key's limit was raised to $500
+that afternoon, so it showed $341.08 left while the account held $51.08 - and OpenRouter refuses at
+whichever runs out first; seven flows would have started against $51. The lower of the two binds now,
+and the line names it, the other beside it. Three files had been in no flow but the seams -
+`run_lock.clj` and `agent-rules.edn` join tool-calls, `bake_off.clj`, `routes.edn` and `profiles/`
+money-and-records (since row 181 the routes decide where a key may go), `contained_path.clj` the
+contract - and a test now holds every source file to a flow.
+
 ### The KIT's own review in flows (plan 6.11, item 10)
 
 The person's decision, after Astra's pass: the KIT is reviewed a flow at a time. The cost of a whole

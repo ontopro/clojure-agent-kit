@@ -14,11 +14,12 @@
   :reads ["harness/src/harness/models/tools.clj" "harness/src/harness/models/agent.clj"
           "harness/src/harness/models/adapter.clj" "harness/src/harness/models/runner.clj"
           "harness/src/harness/models/runner_check.clj" "harness/src/harness/loop/driver.clj"
-          "harness/src/harness/loop/orchestrate.clj" "harness/src/harness/loop/triage.clj"]
+          "harness/src/harness/loop/orchestrate.clj" "harness/src/harness/loop/triage.clj"
+          "harness/src/harness/loop/run_lock.clj" "harness/resources/agent-rules.edn"]
   :asks "What can a model's tool calls and answers - names, arguments, JSON, text - make the KIT do on the host beyond what its role and packet allow?"}
 
  {:name "contract"
-  :reads ["harness/src/harness/contract/" "harness/src/harness/loop/provision.clj"
+  :reads ["harness/src/harness/contract/" "harness/src/harness/loop/provision.clj" "harness/src/harness/contained_path.clj"
           "harness/src/harness/gates/" "harness/src/harness/setup/plan.clj"
           "harness/src/harness/setup/blueprint_review.clj" "harness/src/harness/setup/plan_review.clj"]
   :asks "From a blueprint and a spec a model wrote to the gates that judge the work: can a path, a name or a form in them escape its folder, run as code, or turn a gate green that should be red?"}
@@ -26,7 +27,8 @@
  {:name "money-and-records"
   :reads ["harness/src/harness/money/" "harness/src/harness/models/provenance.clj"
           "harness/src/harness/models/catalogue.clj" "harness/src/harness/models/profile.clj"
-          "harness/src/harness/loop/log.clj"]
+          "harness/src/harness/loop/log.clj" "harness/src/harness/models/bake_off.clj"
+          "harness/resources/routes.edn" "harness/resources/profiles/"]
   :asks "What reaches the records a build commits - run records, readings, reports - and can a record a project holds make the KIT send a key, a request or a file somewhere it should not?"}
 
  {:name "security-review"

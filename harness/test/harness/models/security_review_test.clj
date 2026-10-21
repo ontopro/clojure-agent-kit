@@ -301,7 +301,22 @@
   (let [{:keys [go? line]} (sr/preflight {:remaining 41.08} :whole 13.66 false)]
     (is (not go?))
     (is (= "key $41.08 remaining, the last pass cost $13.66, the margin for the whole KIT is $100.00 - not started; top up, or run with --force" line)))
+  (testing "the lower of the key's and the account's binds, and is the one named"
+    (let [st {:remaining 341.08 :credits {:remaining 51.08}}]
+      (is (not (:go? (sr/preflight st :whole 13.66 false))))
+      (is (:go? (sr/preflight st :flow 13.66 false)))
+      (is (= "account $51.08 remaining (the key has $341.08), the last pass cost $13.66, the margin for a flow is $20.00"
+             (:line (sr/preflight st :flow 13.66 false)))))
+    (is (str/starts-with? (:line (sr/preflight {:remaining 10.0 :credits {:remaining 60.0}} :flow nil false))
+                          "key $10.00 remaining (the account has $60.00)")))
   (is (:go? (sr/preflight {:remaining 5.0} :flow nil true)) "--force runs it, and says so")
   (is (str/includes? (:line (sr/preflight {:remaining 5.0} :flow nil true)) "under it, run by --force"))
   (is (not (:go? (sr/preflight {:unavailable "HTTP 500"} :flow nil false))) "a balance nobody can read is not taken for enough")
-  (is (:go? (sr/preflight {:limit nil :credits {:remaining 60.0}} :flow nil false)) "a key with no limit is read by the account's credit"))
+  (is (:go? (sr/preflight {:limit nil :credits {:remaining 60.0}} :flow nil false)) "a key with no limit is read by the account's credit")
+  (is (not (:go? (sr/preflight {} :flow nil false))) "no figure at all is not enough"))
+
+(deftest every-source-file-is-in-a-flow-beside-the-seams
+  ;; Fable 5.1's read of `680f598`: two files had been in no flow but the seams
+  (let [flows (remove #(= "seams" (:name %)) (sr/kit-flows))
+        files (map #(str "harness/" %) (map str (fs/glob "." "src/**.clj")))]
+    (is (empty? (remove (fn [f] (some #(some (fn [p] (str/starts-with? f p)) (:reads %)) flows)) files)))))
