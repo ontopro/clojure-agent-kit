@@ -167,10 +167,12 @@
       ;; TWO IMPLEMENTATION FILES ARE REFUSED HERE, by the rule and not by the schema's count:
       ;; the fifth project's two-file packet passed everything up to `start`'s stub step and
       ;; cost two spec reviews and a provisioning first.
-      (when-let [[{:keys [entry reason]}] (stub/check-files spec)]
-        (refuse (str "the packet " task-id " names " (pr-str entry) " under :files/impl: " reason
-                     "\n  split it into one packet per namespace")
-                {:blueprint/error :multi-impl :task/id task-id :files entry}))
+      ;; AND A PATH OUTSIDE THE WORKTREE, under any of the three file keys (`stub/check-files`)
+      (when-let [[{k :key :keys [entry reason]}] (stub/check-files spec)]
+        (let [count? (and (= :files/impl k) (not= 1 (count (:files/impl spec))))]
+          (refuse (str "the packet " task-id " names " (pr-str entry) " under " k ": " reason
+                       (if count? "\n  split it into one packet per namespace" "\n  name each file from the application's root"))
+                  {:blueprint/error (if count? :multi-impl :outside) :task/id task-id :files entry})))
       (when-let [errors (shapes/explain-spec spec)]
         (refuse (str "the packet " task-id " is not a task spec: " (binding [*print-namespace-maps* false] (pr-str errors))
                      "\n  a spec carries :task/id, :task/title, :blueprint/slice {:shapes :interfaces :deps-sigs}, "

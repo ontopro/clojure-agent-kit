@@ -64,6 +64,15 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### Every file of a spec is a path inside the worktree (plan 6.11, item 8, register row 179)
+
+From Fable 5.1's read, checking every reader of a spec's paths - a site Argon's review did not reach:
+row 173 held `:files/impl` only, and `record` copied each `:files/test` path from the worktree into
+`final/<path>`, so a blueprint's `../../../some/file` wrote outside the run. `stub/check-files` now holds
+every path of `:files/impl`, `:files/test` and `:files/context` to relative with no `..` part, by key,
+at extraction, at `start` and at `amend`; `record` copies through `contained-path/inside` as the second
+line. The extraction's refusal names the key, and says to split the packet only for a second file.
+
 ### A killed review's container is cleared by the next (plan 6.11, item 8, register row 178)
 
 From the review's own run: two `kit-review-*` containers, exited two days earlier, held the dependency

@@ -1312,3 +1312,25 @@
         (is (= [:architect :conventions :conventions] (mapv :feedback/from feedback)))))
     (testing "conventions not filled: nothing is added"
       (is (= {:feedback [guidance] :terms []} (loop/quoted-definitions nil [guidance]))))))
+
+;; Fable 5.1's read of the KIT's own security review: `record` copies each test file into `final/`;
+;; a spec path is checked at `start` and `amend`, and here, the second line, nothing is written outside
+(deftest record-copies-nothing-from-or-to-outside-the-worktree-and-final
+  (let [outer (fs/create-temp-dir {:prefix "kit-record-outside"})
+        wt (fs/path outer "a" "wt")
+        run-dir (fs/path outer "r" "run")
+        ctx {:run-dir (str run-dir)
+             :state (atom {:config {:run/id "r"} :attempts {:coder 1} :steps [] :events []
+                           :started-ms (System/currentTimeMillis)
+                           :sessions {:tester {:worktree/path (str wt)}}})}]
+    (try
+      (fs/create-dirs (fs/path wt "test" "a"))
+      (fs/create-dirs run-dir)
+      (spit (str (fs/path outer "escape_test.clj")) "A FILE OUTSIDE THE WORKTREE")
+      (spit (str (fs/path wt "test" "a" "ok_test.clj")) "(ns a.ok-test)")
+      (spit (str (fs/path run-dir "spec.edn"))
+            (pr-str {:task/id "t" :files/impl [] :files/test ["test/a/ok_test.clj" "../../escape_test.clj"]}))
+      (with-out-str (try (loop/record! ctx) (catch Exception _ nil)))
+      (is (fs/exists? (fs/path run-dir "final" "test" "a" "ok_test.clj")) "the file inside is recorded")
+      (is (not (fs/exists? (fs/path outer "r" "escape_test.clj"))) "nothing is written outside final/")
+      (finally (fs/delete-tree outer)))))

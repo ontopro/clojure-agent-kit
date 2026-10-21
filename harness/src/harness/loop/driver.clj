@@ -86,6 +86,7 @@
    [clojure.pprint :as pp]
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [harness.contained-path :as contained-path]
    [harness.contract.packet :as packet]
    [harness.contract.shapes :as shapes]
    [harness.contract.sigs :as sigs]
@@ -1448,6 +1449,12 @@
                                   {:run-loop/error :not-counted}))))
         before (edn/read-string (slurp before-file))
         after (spec-of ctx)
+        ;; the edited spec's files are held as `start` held the first's (`stub/check-files`)
+        _ (when-let [bad (stub/check-files after)]
+            (throw (ex-info (str "the edited spec.edn has " (count bad) " file entr" (if (= 1 (count bad)) "y" "ies") " the loop cannot take:\n"
+                                 (str/join "\n" (map #(str "    " (subs (str (:key %)) 1) " " (pr-str (:entry %)) " — " (:reason %)) bad))
+                                 "\n  fix spec.edn, then `amend` again")
+                            {:run-loop/error :precondition :entries (mapv :entry bad)})))
         slice-changed? (not= (:blueprint/slice before) (:blueprint/slice after))
         tester (:tester (sessions ctx))
         ;; A CHANGED SLICE MEANS A CHANGED STUB. The Tester prototypes against the
@@ -1642,11 +1649,13 @@
      (fs/create-dirs final-dir)
      (doseq [[role paths] [[:coder (:files/impl spec)] [:tester (:files/test spec)]]
              path paths
+             ;; a spec's path is checked at `start` (`stub/check-files`); here it is the second line,
+             ;; read and written only inside the worktrees and `final/` - an amended spec reaches here too
              :let [existing (fn [p] (when (and p (fs/exists? p)) p))
-                   written (existing (some-> (get (sessions ctx) role) :worktree/path (fs/path path)))
-                   gated (when gated? (existing (fs/path gate-wt path)))
+                   written (existing (some-> (get (sessions ctx) role) :worktree/path (contained-path/inside path)))
+                   gated (when gated? (existing (contained-path/inside gate-wt path)))
                    as-written (fs/path final-dir "as-written" path)]
-             :when (or gated written)]
+             :when (and (contained-path/inside final-dir path) (or gated written))]
        (copy-into! (or gated written) (fs/path final-dir path))
        (if (and gated written (not= (slurp (str gated)) (slurp (str written))))
          (copy-into! written as-written)

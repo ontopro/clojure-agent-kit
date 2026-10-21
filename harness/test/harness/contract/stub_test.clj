@@ -223,3 +223,13 @@
             "a folder of the worktree linked elsewhere is not written through")
         (is (not (fs/exists? (fs/path outer "elsewhere" "core.clj")))))
       (finally (fs/delete-tree outer)))))
+
+;; Fable 5.1's read of the KIT's own security review: `:files/test` and `:files/context` are used on
+;; the host too - `record` copies each test file into `final/` - so every file key is held at the spec
+(deftest every-file-of-a-spec-is-a-path-inside-the-worktree
+  (is (nil? (stub/check-files {:files/impl ["src/a/b.clj"] :files/test ["test/a/b_test.clj"] :files/context ["src/a/c.clj"]})))
+  (let [bad (stub/check-files {:files/impl ["src/a/b.clj"]
+                               :files/test ["test/a/b_test.clj" "../../../x_test.clj"]
+                               :files/context ["/etc/hosts" "src/a/c.clj"]})]
+    (is (= [[:files/test ["../../../x_test.clj"]] [:files/context ["/etc/hosts"]]] (mapv (juxt :key :entry) bad)))
+    (is (every? #(re-find #"not a path inside the worktree" (:reason %)) bad))))

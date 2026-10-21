@@ -76,7 +76,7 @@
  harness.setup.blueprint-review #{harness.contained-path harness.models.agent harness.models.profile harness.setup.plan harness.setup.plan-review harness.setup.stages harness.setup.workspace}
 
  ;; the loop
- harness.loop.driver #{harness.contract.packet harness.contract.shapes harness.contract.sigs harness.contract.spec-review
+ harness.loop.driver #{harness.contained-path harness.contract.packet harness.contract.shapes harness.contract.sigs harness.contract.spec-review
                        harness.contract.stub harness.contract.targets harness.gates.repair harness.gates.run harness.loop.log
                        harness.loop.provision harness.models.profile harness.models.provenance harness.models.runner
                        harness.money.balance harness.money.report harness.money.reprice harness.rules harness.setup.plan

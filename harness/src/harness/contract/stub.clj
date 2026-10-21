@@ -145,10 +145,15 @@
               {:key :interfaces :entry f
                :reason "an interface is a function `(name [args])` or a var `(name)`; a bare `name` is neither"}))))
 
+(defn- outside-path?
+  "Whether a spec's path is not one inside a worktree: blank, absolute, or with a `..` part."
+  [p]
+  (let [p (str p)]
+    (or (str/blank? p) (fs/absolute? (fs/path p)) (some #{".."} (map str (fs/components (fs/path p)))))))
+
 (defn check-files
-  "The `:files/impl` entry of a task spec if the stub cannot write it, as
-  data in `check-slice`'s shape - `[{:key :files/impl :entry paths :reason
-  str}]` - and empty when it can.
+  "The file entries of a task spec the loop cannot take, as data in `check-slice`'s shape -
+  `[{:key :files/impl :entry paths :reason str}]` - and nil when it can take them all.
 
   One implementation file per task, for `write!`'s reason: a slice is one
   namespace. The schema (`shapes/TaskSpec`) says `{:max 1}` too, but a schema
@@ -157,21 +162,25 @@
   spec reviews accept it, and met `write!`'s refusal after three worktrees
   existed. `blueprint/spec-for` and `driver/start!` run this first.
 
-  The one file is a path inside the worktree: relative, with no `..` part. The
-  blueprint that names it is a model's writing, and the stub is written on the
-  host before any sandbox - `../../.githooks/pre-commit` had been written to."
-  [{:files/keys [impl]}]
-  (cond
-    (not= 1 (count impl))
-    [{:key :files/impl :entry (vec impl)
-      :reason (str (if (empty? impl) "empty" (str (count impl) " files"))
-                   " — a task stubs exactly one implementation file, one namespace per packet; "
-                   "a second file is a second task")}]
-
-    (let [p (str (first impl))]
-      (or (str/blank? p) (fs/absolute? (fs/path p)) (some #{".."} (map str (fs/components (fs/path p))))))
-    [{:key :files/impl :entry (vec impl)
-      :reason "is not a path inside the worktree - a relative path with no `..` part"}]))
+  EVERY PATH OF `:files/impl`, `:files/test` AND `:files/context` IS ONE INSIDE THE WORKTREE:
+  relative, with no `..` part. The blueprint that names them is a model's writing, and they are
+  used on the host - the stub written to the one file before any sandbox (`../../.githooks/pre-commit`
+  had been written to), `record` copying each test file into the run's `final/`, the gate and the
+  code reviewer reading them. Held here, once, at the spec, before anything is paid for;
+  `harness.contained-path/inside` is the second line where a path meets a folder."
+  [{:files/keys [impl test context]}]
+  (not-empty
+   (vec (concat
+         (when (not= 1 (count impl))
+           [{:key :files/impl :entry (vec impl)
+             :reason (str (if (empty? impl) "empty" (str (count impl) " files"))
+                          " — a task stubs exactly one implementation file, one namespace per packet; "
+                          "a second file is a second task")}])
+         (for [[k paths] [[:files/impl impl] [:files/test test] [:files/context context]]
+               :let [bad (filterv outside-path? paths)]
+               :when (seq bad)]
+           {:key k :entry (if (= k :files/impl) (vec impl) bad)
+            :reason "is not a path inside the worktree - a relative path with no `..` part"})))))
 
 (defn- escaped
   "`s` as the inside of a Clojure string literal. Whatever reaches the

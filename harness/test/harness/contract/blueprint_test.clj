@@ -201,3 +201,14 @@
   (is (= 12 (bp/stage-of "xyx-build/docs/stages/stage-12/stage-12-blueprint.md")))
   (is (nil? (bp/stage-of "/tmp/blueprint.md")) "a blueprint outside a stage folder: no stage written")
   (is (nil? (bp/stage-of "/w/docs/stages/stage-N-blueprint-template.md")) "the template is no stage's"))
+
+(deftest a-packet-naming-a-file-outside-the-worktree-is-refused-at-extraction
+  ;; Fable 5.1's read of the KIT's own security review: every file key, not only :files/impl
+  (let [outside (str blueprint "\n### t-03 — outside\n\n```clojure\n"
+                     "{:task/id \"t-03-outside\" :task/title \"a test file outside\"\n"
+                     " :blueprint/slice {:shapes [] :interfaces [(f [x])]}\n"
+                     " :files/impl [\"src/app/one.clj\"]\n"
+                     " :files/test [\"../../../x_test.clj\"] :files/context [] :layer/name :web}\n```\n")
+        e (is (thrown-with-msg? clojure.lang.ExceptionInfo #"under :files/test: is not a path inside the worktree.*\n  name each file from the application's root"
+                                (bp/spec-for outside "t-03-outside")))]
+    (is (= {:blueprint/error :outside :task/id "t-03-outside" :files ["../../../x_test.clj"]} (ex-data e)))))
