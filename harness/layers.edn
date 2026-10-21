@@ -103,7 +103,7 @@
                                   harness.setup.template harness.setup.workspace}
  harness.setup.upgrade-run #{harness.setup.doctor harness.setup.front-door harness.setup.init harness.setup.skills harness.setup.stage-move harness.setup.stages harness.setup.template
                              harness.setup.template-upgrade harness.setup.upgrade harness.setup.workspace}
- harness.models.bake-off #{harness.contract.spec-review harness.loop.driver harness.models.agent harness.models.catalogue harness.money.reprice
+ harness.models.bake-off #{harness.contained-path harness.contract.spec-review harness.loop.driver harness.models.agent harness.models.catalogue harness.money.reprice
                            harness.setup.blueprint-review harness.setup.plan harness.setup.plan-review harness.setup.stages harness.setup.workspace}
  harness.money.stage-report #{harness.contract.blueprint harness.loop.log harness.models.provenance harness.setup.stages harness.setup.workspace}
  harness.setup.security-fixture #{harness.setup.template}

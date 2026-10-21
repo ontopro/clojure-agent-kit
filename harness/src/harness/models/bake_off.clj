@@ -34,6 +34,7 @@
    [clojure.edn :as edn]
    [clojure.pprint :as pp]
    [clojure.string :as str]
+   [harness.contained-path :as contained-path]
    [harness.contract.spec-review :as spec-review]
    [harness.loop.driver :as driver]
    [harness.models.agent :as agent]
@@ -410,6 +411,27 @@
     (spit (str (fs/path dir "TABLE.md")) md)
     md))
 
+(defn- within
+  "`p` (relative to `root`, or absolute) when it is inside `root`, else nil."
+  [root p]
+  (let [p (str p)
+        rel (if (fs/absolute? p) (str (fs/relativize (fs/absolutize root) p)) p)]
+    ;; the root itself relativizes to "": it is the plan, inside
+    (contained-path/inside root (if (str/blank? rel) "." rel))))
+
+(defn case-refusal
+  "Why a case a spec names may not run, or nil. A spec's `:cases` are a build's file, and a case's
+  `:path` and `:stage` are read into every candidate's prompt, the judge's and the records: one
+  pointing outside the plan - the run folders, for the spec reviewer - had sent a host file to every
+  model. Its id names its records' files, so it is a name, not a path."
+  [role {:keys [id path stage]} {:keys [plan work]}]
+  (let [root (if (= :spec-reviewer role) (fs/path work "runs") plan)]
+    (cond
+      (not (re-matches #"[A-Za-z0-9][A-Za-z0-9._-]*" (str id)))
+      (str "the case id " (pr-str id) " is not a name - letters, digits, `.`, `_` and `-`")
+      (not (within root path)) (str "the case " id "'s :path " path " is not inside " root)
+      (and stage (not (within root stage))) (str "the case " id "'s :stage " stage " is not inside " root))))
+
 (defn run-bake-off!
   "The whole bake-off: expand the spec at `spec-path`, write `resolved.edn`
   beside it, run every case with every candidate, judge each case, render the
@@ -430,6 +452,9 @@
         _ (when (empty? cases)
             (throw (ex-info (str "no case for " (name (:role spec)) " under " (:plan ctx) " - name them under :cases")
                             {:bake-off/error :no-cases})))
+        ;; refused before any call is paid
+        _ (when-let [why (some #(case-refusal (:role spec) % ctx) cases)]
+            (throw (ex-info (str "bake-off: " why) {:bake-off/error :case-outside})))
         id (fs/file-name dir)]
     (write-edn! (fs/path dir "resolved.edn") expanded)
     (println (str "bake-off " id ": " (name (:role spec)) ", " (count cases) " case" (if (= 1 (count cases)) "" "s")

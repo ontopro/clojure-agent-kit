@@ -64,6 +64,13 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### A bake-off case is a file of the plan, its id a name (plan 6.11, item 10, register row 193)
+
+The money flow's third finding, with its second folded in: a spec's case `:path` and `:stage` went
+unbounded into every candidate's and the judge's prompt, and its id into its records' file names.
+`bake-off/case-refusal` holds both paths inside the plan (the run folders for the spec reviewer) and
+the id to a name, before any call is paid.
+
 ### `write_test` holds a path inside the clone too (plan 6.11, item 10, register row 192)
 
 The security-review flow's first finding: `test-path-problem` judged a path against `test/` as its

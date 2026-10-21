@@ -314,3 +314,19 @@
       (is (= ["gen-1"] (:generation-ids r)) (str (:candidate r) ": the completion ids"))
       (is (string? (:endpoint r)))
       (is (contains? r :key-env) "the key's NAME, never a key - nil here, since the test route names none"))))
+
+;; From the KIT's own security review (GPT-6 Astra, the money-and-records flow, 2026-10-21): a spec's
+;; cases are a build's file, and a case's paths go into every candidate's prompt
+(deftest a-case-a-spec-names-is-a-file-of-the-plan-and-its-id-a-name
+  (let [outer (fs/create-temp-dir {:prefix "kit-bake-off-case"})
+        plan (fs/path outer "plan")
+        ctx {:plan (str plan) :work (str (fs/path outer "work"))}]
+    (try
+      (fs/create-dirs (fs/path plan "docs"))
+      (is (nil? (bo/case-refusal :plan-reviewer {:id "plan" :path (str plan)} ctx)) "the plan itself")
+      (is (nil? (bo/case-refusal :plan-reviewer {:id "stage-1" :path (str plan) :stage "docs/stages/stage-1/p.md"} ctx)))
+      (is (re-find #":path .* is not inside" (bo/case-refusal :blueprint-reviewer {:id "x" :path (str (fs/path outer "secret.md"))} ctx)))
+      (is (re-find #":stage .* is not inside" (bo/case-refusal :plan-reviewer {:id "x" :path (str plan) :stage "../../etc/hosts"} ctx)))
+      (is (re-find #"is not inside" (bo/case-refusal :spec-reviewer {:id "r" :path (str plan)} ctx)) "the spec reviewer's runs folder")
+      (is (re-find #"is not a name" (bo/case-refusal :plan-reviewer {:id "../../x" :path (str plan)} ctx)))
+      (finally (fs/delete-tree outer)))))
