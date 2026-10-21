@@ -93,7 +93,7 @@ for a larger application). On 1 to 4: on a fresh clone of the application's merg
 <xyx>-build/docs/stages/stage-N/stage-N-security-review` (no flag for the next in rotation; the application's first
 commit for `--base` at the first stage's end), then `bb security-route
 <xyx>-build/docs/stages/stage-N/stage-N-security-review/security-panel.edn <clone> --out` that folder, which asks
-triage about each row. On 5: `:security/skipped {:date :by :reason}` in the gates record, the person's name and
+triage about each row. On 5: `:security/skipped {:at :by :reason}` in the gates record, the person's name and
 their reason in a sentence - nothing runs. A pre-release stage offers 1 to 4 with all of them the default and
 never 5; say whether fewer would do, from the history and what changed since each member last read, and the person
 chooses. A member that declined or left no answer is said as that and is not a clean review; a finding counts by
@@ -136,9 +136,9 @@ its date, cost and runs; `docs/04-decision-log.md` with the stage's entries sett
 walk's decisions added; `docs/01-requirements.md` with the scope lists revised and the index
 appended; `docs/00-overview.md` with the stage closed in the stage map, the risk register and
 the map re-ranked, the next stage named with its cap proposed; for a pre-release stage, the
-gates record's `:security/signed` with the date and the signer's name (`:by`, never "the
+gates record's `:security/signed` with the time (`:at`, as `bb next` gives it) and the signer's name (`:by`, never "the
 person"), written by the person, before its
-`:stage/closed` with the date, written by the person; the tag `stage-N` on the application's
+`:stage/closed` with the time, written by the person; the tag `stage-N` on the application's
 merged tip. Not this skill's: the run records and `RUNS.md` (`record` writes them per run) and
 the screenshots (the work folder, uncommitted); the security review's folder
 `docs/stages/stage-N/stage-N-security-review/` - its record, the tests it wrote, `security-routing.edn` and any

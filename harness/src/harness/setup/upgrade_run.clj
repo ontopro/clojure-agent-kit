@@ -59,6 +59,7 @@
    [harness.setup.init :as init]
    [harness.setup.skills :as skills]
    [harness.setup.stage-move :as stage-move]
+   [harness.setup.stages :as stages]
    [harness.setup.template :as template]
    [harness.setup.template-upgrade :as tu]
    [harness.setup.upgrade :as upgrade]
@@ -478,7 +479,8 @@
         dir (fs/path (:workspace/work ws) "upgrades" id)
         before (fs/path dir "before")
         done-file (fs/path dir "done.edn")
-        at (str (or now (java.time.LocalDate/now)))
+        ;; a time with its offset, as every recorded event is; a record from before has a day
+        at (str (or now (stages/now-at (:workspace/time-zone ws))))
         _ (fs/create-dirs before)
         facts {:id id :from from :to head :head head :version version :release release :at at}]
     (println (str "bb upgrade --after-pull: " (:workspace/dir ws) " from " (subs from 0 7) " to " (subs head 0 7)

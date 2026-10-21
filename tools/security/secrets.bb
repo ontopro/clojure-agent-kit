@@ -59,7 +59,7 @@
       files (ss/added-files (git "log" "--diff-filter=A" "--name-only" "--no-color" "--format=commit %h" rev-range))
       rows (ss/secret-rows lines files (:secrets-allowed routes) rev-range)
       counts (sc/counts rows)
-      record {:security/at (str (java.time.LocalDateTime/now (java.time.ZoneId/systemDefault)))
+      record {:security/at (str (java.time.OffsetDateTime/now))
               :scan :secrets :range rev-range :head (str/trim (git "rev-parse" "--short" "HEAD"))
               :routes (:routes opts) :counts counts :ok? (zero? (:fail counts)) :rows rows}
       dir (out-dir)

@@ -150,6 +150,16 @@
   skipped security review is the person's decision, and names who decided as a sign-off does."
   [:stage/approved :blueprint/signed :security/signed :security/skipped])
 
+(def ^:private gate-step
+  "The workflow step each gate is passed at."
+  {:stage/approved 7 :blueprint/signed 10 :security/signed 14 :security/skipped 14 :stage/closed 14})
+
+(defn- at-text
+  "A gate's `:at` as the command text gives it: `now-at`, the time `bb next` was asked, ready to
+  paste; the form when there is none."
+  [now-at]
+  (str ":at " (pr-str (or now-at "YYYY-MM-DDTHH:MM+HH:MM"))))
+
 (defn- stage-action
   "The next action inside the stage `s` in progress: `{:id :plan :kind :gates
   :blueprint :reviewed? :packets :merged :runs}` - `:gates` the record's map or
@@ -161,12 +171,15 @@
   said before anything that follows it. Before a packet's run is started, the blueprint's §0
   (`:preconditions`): a row still open that blocks it comes first, the person's; a `per run` row
   is named with the packet's step."
-  [{:keys [id plan kind gates blueprint reviewed? packets merged runs preconditions]}]
+  [{:keys [id plan kind gates blueprint reviewed? packets merged runs preconditions now-at]}]
   (let [{:stage/keys [approved closed] :blueprint/keys [signed]} gates
+        at (at-text now-at)
+        ;; A TIME THAT CANNOT BE READ IS SAID, NEVER THROWN: a bare date or a typo under `:at`
+        unreadable-gate (first (filter #(stages/unreadable-at? (get gates %)) (conj signed-gates :stage/closed)))
         spike? (= 0 id)
         unsigned-threat-model? (and (= "pre-release" kind) (nil? (:security/signed gates)))
         sign-threat-model (str "every line of docs/02-architecture.md §15 answered with its evidence, then "
-                               ":security/signed {:date :by <name>} in " (gates-file id))
+                               ":security/signed {" at " :by <name>} in " (gates-file id))
         ;; a pre-release stage's skip is refused outright below, never first asked for a name
         unnamed-gate (first (filter #(and (unnamed? (get gates %))
                                           (not (and (= "pre-release" kind) (= :security/skipped %))))
@@ -189,14 +202,20 @@
 
       unnamed-gate
       (let [by (:by (get gates unnamed-gate))]
-        (action ({:stage/approved (if spike? 5 7) :blueprint/signed 10 :security/signed 14 :security/skipped 14} unnamed-gate) person
+        (action (if (and spike? (= :stage/approved unnamed-gate)) 5 (gate-step unnamed-gate)) person
                 (str "set :by in " unnamed-gate " to the name of who signed, in " (gates-file id))
                 (str "stage " id "'s " unnamed-gate
                      (if (and (string? by) (not (str/blank? by))) (str " has :by " (pr-str by)) " has no :by")
                      " - a sign-off names who signed")))
 
+      unreadable-gate
+      (action (if (and spike? (= :stage/approved unreadable-gate)) 5 (gate-step unreadable-gate)) person
+              (str "write " unreadable-gate "'s :at as a timestamp with its offset - " at " is the form - in " (gates-file id))
+              (str "stage " id "'s " unreadable-gate " :at " (pr-str (:at (get gates unreadable-gate)))
+                   " is not a timestamp with an offset"))
+
       (and (nil? approved) spike?)
-      (action 5 person (str "set :stage/approved {:date :cap :by <name>} in " (gates-file id))
+      (action 5 person (str "set :stage/approved {" at " :cap :by <name>} in " (gates-file id))
               (str "stage 0 is not approved (" (gates-file id) ")"))
 
       (and (nil? approved) (nil? plan))
@@ -204,7 +223,7 @@
               (str "stage " id " is pulled (" (gates-file id) ") and docs/stages/stage-" id "/ has no plan"))
 
       (nil? approved)
-      (action 7 person (str "read docs/stages/" plan ", then set :stage/approved {:date :cap :by <name>} in " (gates-file id))
+      (action 7 person (str "read docs/stages/" plan ", then set :stage/approved {" at " :cap :by <name>} in " (gates-file id))
               (str "stage " id "'s plan is written and not approved"))
 
       (nil? plan)
@@ -221,7 +240,7 @@
               (str "docs/stages/" blueprint " has no reading under docs/stages/stage-" id "/reviews/"))
 
       (nil? signed)
-      (action 10 person (str "resolve the review's findings in docs/stages/" plan ", then set :blueprint/signed {:date :by <name>} in " (gates-file id))
+      (action 10 person (str "resolve the review's findings in docs/stages/" plan ", then set :blueprint/signed {" at " :by <name>} in " (gates-file id))
               (str "stage " id "'s blueprint is reviewed and not signed"))
 
       (empty? packets)
@@ -421,6 +440,8 @@
                         :reviewed? (fs/exists? (fs/path (stages/reviews-dir build id) "blueprint-review.edn"))
                         :packets (or packets [])
                         :preconditions (if bp-text (preconditions bp-text) [])
+                        ;; the time a gate the person passes now carries, in the project's zone
+                        :now-at (stages/now-at (:workspace/time-zone ws))
                         :merged (into #{} (filter #(= :merged (statuses %))) packets)
                         :runs (into {} (for [t packets :let [s (statuses t)] :when (and s (not= :merged s))] [t s]))}))
        :upgrade (upgrade/open-after-upgrade ws (read-edn (fs/path (:workspace/dir ws) workspace/file-name)))})))
@@ -563,7 +584,7 @@
 
 (defn- more [xs] (when (> (count xs) 6) (str " and " (- (count xs) 6) " more")))
 
-(defn- gate-date [g] (if (and (map? g) (:date g)) (str " " (:date g)) ""))
+(defn- gate-date [g] (if-let [d (stages/gate-day g nil)] (str " " d) ""))
 
 (defn- done-line [stages {:keys [id gates]}]
   (let [ended (for [[k {g :gates}] stages :when (:stage/closed g)] (str "stage " k " closed" (gate-date (:stage/closed g))))

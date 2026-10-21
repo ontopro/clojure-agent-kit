@@ -61,3 +61,39 @@
   (let [i #inst "2026-10-17T02:30:00.000-00:00"
         local (str (.toLocalDate (.atZone (.toInstant i) (java.time.ZoneId/systemDefault))))]
     (is (= local (stages/day i)) "an evening run west of UTC is the day the person wrote in the gates record")))
+
+(deftest a-gate-is-passed-at-a-time-and-a-record-from-before-on-a-day
+  (let [chicago "America/Chicago"]
+    (testing "an :at with its offset, a Z, an #inst"
+      (is (= (java.time.Instant/parse "2026-10-21T14:30:00Z") (stages/gate-instant {:at "2026-10-21T09:30-05:00"} nil)))
+      (is (= (java.time.Instant/parse "2026-10-21T14:30:00Z") (stages/gate-instant {:at "2026-10-21T14:30:00Z"} nil)))
+      (is (= (java.time.Instant/parse "2026-10-21T14:30:00Z") (stages/gate-instant {:at #inst "2026-10-21T14:30:00Z"} nil))))
+    (testing "a :date is that day's midnight in the project's zone, else this machine's"
+      (is (= (java.time.Instant/parse "2026-10-21T05:00:00Z") (stages/gate-instant {:date "2026-10-21"} chicago)))
+      (is (= (.toInstant (.atStartOfDay (java.time.LocalDate/parse "2026-10-21") (java.time.ZoneId/systemDefault)))
+             (stages/gate-instant {:date "2026-10-21"} nil))))
+    (testing "an :at that cannot be read is nil and said, never thrown: a bare date, no offset, a typo"
+      (doseq [a ["2026-10-21" "2026-10-21T09:30" "2026-1O-21T09:30Z" 20261021]]
+        (is (nil? (stages/gate-instant {:at a} nil)) (pr-str a))
+        (is (stages/unreadable-at? {:at a}) (pr-str a)))
+      (is (not (stages/unreadable-at? {:date "2026-10-21"})) "a :date is the old form, not an unreadable :at")
+      (is (not (stages/unreadable-at? nil))))
+    (testing "the day shown: an :at's in the offset it was written with; a :date as written"
+      (is (= "2026-10-21" (stages/gate-day {:at "2026-10-21T23:30-05:00"} nil)) "04:30 the next day in UTC")
+      (is (= "2026-10-21" (stages/gate-day {:date "2026-10-21"} nil)))
+      (is (nil? (stages/gate-day nil nil))))
+    (testing "now, to the minute, in the zone - and read back"
+      (let [a (stages/now-at chicago)]
+        (is (re-matches #"\d{4}-\d\d-\d\dT\d\d:\d\d-0[56]:00" a) a)
+        (is (stages/parse-at a))))))
+
+(deftest a-run-on-an-approval-day-is-placed-by-the-instant-when-both-carry-one
+  (let [at #(java.time.Instant/parse %)
+        infos [{:id 4 :tasks #{"t-01"} :approved "2026-10-19"}
+               {:id 5 :tasks #{"t-01"} :approved "2026-10-21" :approved-at (at "2026-10-21T15:00:00Z")}]]
+    (is (= 4 (stages/record-stage {:task/id "t-01" :run/started-at #inst "2026-10-21T14:00:00Z"} infos))
+        "before stage 5's approval on its day: stage 4's - the day alone had said 5")
+    (is (= 5 (stages/record-stage {:task/id "t-01" :run/started-at #inst "2026-10-21T16:00:00Z"} infos)))
+    (testing "a stage with only a :date keeps the day: a mixed build places as it did"
+      (is (= 4 (stages/record-stage {:task/id "t-01" :run/started-at "2026-10-19T10:00"} infos)))
+      (is (= 5 (stages/record-stage {:task/id "t-01" :run/started-at "2026-10-21"} (update infos 1 dissoc :approved-at)))))))

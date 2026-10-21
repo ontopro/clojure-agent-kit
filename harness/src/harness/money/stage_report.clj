@@ -151,7 +151,7 @@
      :readings readings
      :unpriced {:dispatches (sum :unpriced runs) :readings (reduce + 0 (keep #(get % 3) readings))}
      :cap (:cap (:stage/approved gates))
-     :approved (:date (:stage/approved gates))
+     :approved (stages/gate-day (:stage/approved gates) nil)
      :kind kind
      :security (:security/signed gates)
      :security-skipped (:security/skipped gates)
@@ -223,12 +223,12 @@
                    (str "no record (the kit-stage-end skill runs the security pack's " cmd " with --record docs/stages/stage-N/stage-N-security-" cmd ".edn)")))))
         ;; a skip is the person's, and said where the review's money would have been
         (when security-skipped
-          (str "  Security review: skipped (" (:by security-skipped) ", " (:date security-skipped) "): "
+          (str "  Security review: skipped (" (:by security-skipped) ", " (stages/gate-day security-skipped nil) "): "
                (:reason security-skipped)))
         (when (or security (= "pre-release" kind))
           (str "  Threat model: "
                (if security
-                 (str "signed " (:date security) (some->> (:by security) (str " by ")))
+                 (str "signed " (stages/gate-day security nil) (some->> (:by security) (str " by ")))
                  "not signed (a pre-release stage closes with :security/signed in its gates record)")))]
        flatten
        (remove nil?)

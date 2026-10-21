@@ -197,7 +197,7 @@
 (defn run-checks! []
   (let [rows (sc/rows (probe) routes https?)
         counts (sc/counts rows)
-        record {:security/at (str (java.time.LocalDateTime/now (java.time.ZoneId/systemDefault)))
+        record {:security/at (str (java.time.OffsetDateTime/now))
                 :base base
                 :routes (:routes opts)
                 :kit (kit-commit)

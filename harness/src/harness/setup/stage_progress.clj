@@ -59,7 +59,7 @@
 (defn- short-sha [s] (some-> s str (subs 0 (min 7 (count (str s))))))
 
 (defn- signed [label g extra]
-  (str (box g) label (when g (str " - " (:by g) ", " (:date g))) extra))
+  (str (box g) label (when g (str " - " (:by g) ", " (stages/gate-day g nil))) extra))
 
 (defn prep-line
   "A §0 row's line. A `per run` row is done again before every run and never closes, so it has no
@@ -110,7 +110,7 @@
                         (str (names answered) " - " (count (filter #(= :reproduced (:kind %)) (mapcat :findings answered))) " reproduced")
                         "no reviewer answered")
                       (when (seq quiet) (str "; " (names quiet) " refused or left no answer"))))
-    skipped (str (box true) "Security review: skipped - " (:by skipped) ", " (:date skipped) ": " (:reason skipped))
+    skipped (str (box true) "Security review: skipped - " (:by skipped) ", " (stages/gate-day skipped nil) ": " (:reason skipped))
     :else (str (box false) "Security review")))
 
 (defn render
@@ -143,7 +143,7 @@
                 (review-line review-records (:security/skipped gates))]
                (map prep-line tail)
                (when (= "pre-release" kind) [(signed "Threat model signed" (:security/signed gates) nil)])
-               [(str (box (:stage/closed gates)) "Stage closed" (when-let [c (:stage/closed gates)] (str " - " (:date c))))]))))
+               [(str (box (:stage/closed gates)) "Stage closed" (when-let [c (:stage/closed gates)] (str " - " (stages/gate-day c nil))))]))))
 
 (defn place
   "`text` with `rendered` between the markers: replaced where the markers are; under the section's

@@ -74,7 +74,7 @@
 
 (let [rows (scan)
       counts (sc/counts rows)
-      record {:security/at (str (java.time.LocalDateTime/now (java.time.ZoneId/systemDefault)))
+      record {:security/at (str (java.time.OffsetDateTime/now))
               :scan :deps :source "osv.dev" :app (str (fs/file-name (fs/canonicalize ".")))
               :routes (:routes opts) :counts counts :ok? (zero? (:fail counts)) :rows rows}
       dir (out-dir)

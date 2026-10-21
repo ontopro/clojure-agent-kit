@@ -100,19 +100,78 @@
         (string? x) (subs x 0 (min 10 (count x)))
         :else nil))
 
+;; A GATE IS PASSED AT A TIME, NOT ON A DAY. The gates record carried `:date "YYYY-MM-DD"`, and
+;; two events on one day could not be ordered: a run on its stage's approval day went to the stage
+;; before, and a reading could not be said to come after what asked for it. A gate now carries
+;; `:at`, an ISO-8601 timestamp with its offset; a record from before keeps its `:date`, read as
+;; that day's midnight. Every reader goes through these, so the two forms are read one way.
+
+(defn zone
+  "The zone a time is read in when it carries none: `z` - a `ZoneId`, or an IANA name such as the
+  workspace's `:workspace/time-zone` - else this machine's. One rule for every zone choice."
+  ^java.time.ZoneId [z]
+  (cond (instance? java.time.ZoneId z) z
+        (string? z) (try (java.time.ZoneId/of z) (catch Exception _ (java.time.ZoneId/systemDefault)))
+        :else (java.time.ZoneId/systemDefault)))
+
+(defn now-at
+  "Now as an `:at`, to the minute, with the offset of `z` (`zone`'s): what a KIT command writes,
+  and what `bb next` gives a person to paste."
+  [z]
+  (str (.truncatedTo (java.time.OffsetDateTime/now (zone z)) java.time.temporal.ChronoUnit/MINUTES)))
+
+(defn parse-at
+  "An `:at` as an `Instant`: an ISO-8601 string with its offset (`2026-10-21T09:30-05:00`, `...Z`),
+  or an `#inst`. Nil for anything else - a bare date, a time with no offset, a typo."
+  [x]
+  (cond (instance? java.time.Instant x) x
+        (instance? java.util.Date x) (.toInstant ^java.util.Date x)
+        (string? x) (try (.toInstant (java.time.OffsetDateTime/parse x)) (catch Exception _ nil))
+        :else nil))
+
+(defn unreadable-at?
+  "Whether gate `g` carries an `:at` that `parse-at` cannot read: said by name, never thrown."
+  [g]
+  (and (map? g) (contains? g :at) (nil? (parse-at (:at g)))))
+
+(defn gate-instant
+  "When gate `g` was passed, as an `Instant`: its `:at`; else its `:date` as that day's midnight in
+  `z` (`zone`'s). Nil for no gate, or a time that cannot be read."
+  [g z]
+  (when (map? g)
+    (if (contains? g :at)
+      (parse-at (:at g))
+      (some-> (try (java.time.LocalDate/parse (str (:date g))) (catch Exception _ nil))
+              (.atStartOfDay (zone z))
+              .toInstant))))
+
+(defn gate-day
+  "Gate `g`'s day, `YYYY-MM-DD`, for display: an `:at`'s in the offset it was written with (an
+  `#inst`'s in `z`), else its `:date` as written. Nil for no gate."
+  [g z]
+  (when (map? g)
+    (if (contains? g :at)
+      (let [a (:at g)]
+        (or (when (string? a) (try (str (.toLocalDate (java.time.OffsetDateTime/parse a))) (catch Exception _ nil)))
+            (some-> (parse-at a) (.atZone (zone z)) .toLocalDate str)
+            (str a)))
+      (some-> (:date g) str))))
+
 (defn stage-infos
-  "Every stage of the build with a blueprint, as `{:id :tasks :approved}`: the task ids its
-  blueprint carries (`task-ids-of` reads them from the text) and the date of its approval in its
-  gates record, or nil."
+  "Every stage of the build with a blueprint, as `{:id :tasks :approved :approved-at}`: the task
+  ids its blueprint carries (`task-ids-of` reads them from the text), the day of its approval in its
+  gates record, or nil, and the instant when the approval carries an `:at`."
   [build task-ids-of]
   (vec (for [[id _] (folders (stages-dir build))
              :let [bp (document build id "-blueprint.md")
                    g (document build id "-gates.edn")]
              :when (fs/exists? bp)]
-         {:id id
-          :tasks (set (task-ids-of (slurp (str bp))))
-          :approved (some-> (when (fs/exists? g) (try (edn/read-string (slurp (str g))) (catch Exception _ nil)))
-                            :stage/approved :date str)})))
+         (let [approved (some-> (when (fs/exists? g) (try (edn/read-string (slurp (str g))) (catch Exception _ nil)))
+                                :stage/approved)]
+           {:id id
+            :tasks (set (task-ids-of (slurp (str bp))))
+            :approved (gate-day approved nil)
+            :approved-at (when (and (map? approved) (contains? approved :at)) (parse-at (:at approved)))}))))
 
 (defn record-stage
   "The stage a run record belongs to. Its `:task/stage` when it carries one - the spec's, written
@@ -122,11 +181,16 @@
   apart, is counted in neither rather than in both."
   [record infos]
   (or (:task/stage record)
-      ;; same-day: two stages approved on or before the day, the later wins - the gates carry dates,
-      ;; not times
+      ;; BY THE INSTANT WHEN BOTH CARRY ONE: an approval's `:at` against the run's start. A stage
+      ;; whose approval has only a `:date` keeps the day comparison - same-day, the later stage
+      ;; wins - so a build with both forms places a run on an approval day as it did
       (let [t (:task/id record)
             d (day (:run/started-at record))
+            started (parse-at (:run/started-at record))
             naming (filter #(contains? (:tasks %) t) infos)
-            before (filter #(and d (:approved %) (<= (compare (:approved %) d) 0)) naming)]
+            before (filter #(if (and (:approved-at %) started)
+                              (not (.isAfter ^java.time.Instant (:approved-at %) started))
+                              (and d (:approved %) (<= (compare (:approved %) d) 0)))
+                           naming)]
         (:id (or (last (sort-by :id before))
                  (when (= 1 (count naming)) (first naming)))))))

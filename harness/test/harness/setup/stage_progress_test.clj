@@ -76,3 +76,12 @@
         (is (= r (sp/rendered-in t)))
         (is (str/includes? t "- [x] Plan approved by hand"))
         (is (< (str/index-of t sp/end-marker) (str/index-of t "Plan approved by hand")))))))
+
+(deftest a-gate-and-a-scan-show-their-day-in-either-form
+  (let [old (str/split-lines (sp/render facts))
+        new (str/split-lines (sp/render (-> facts
+                                            (assoc :gates {:stage/approved {:at "2026-10-19T21:00-05:00" :cap "$10" :by "Ada"}
+                                                           :blueprint/signed {:at "2026-10-19T22:10-05:00" :by "Ada"}})
+                                            (assoc :checks {:security/at "2026-10-20T00:05:11.5-05:00" :counts {:ok 9 :warn 2 :fail 0}}))))]
+    (is (= old new) "an :at renders the day a :date did; a scan's offset time the day its local time did")
+    (is (some #{"- [x] Stage plan approved - Ada, 2026-10-19 (cap $10)"} new))))

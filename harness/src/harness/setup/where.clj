@@ -21,6 +21,7 @@
    [clojure.string :as str]
    [harness.money.stage-report :as stage-report]
    [harness.setup.next :as next]
+   [harness.setup.stages :as stages]
    [harness.setup.workspace :as workspace]))
 
 ;; ---------------------------------------------------------------------------
@@ -61,7 +62,7 @@
   [x]
   (when x (/ (Math/round (* 100.0 (double x))) 100.0)))
 
-(defn- gate-date [g] (when (map? g) (some-> (:date g) str)))
+(defn- gate-date [g] (stages/gate-day g nil))
 
 (defn ids-in
   "The decision and risk IDs a stage map cell names - `D7`, `S3`, `P0-8`, `RV-2`, `R5` - in the

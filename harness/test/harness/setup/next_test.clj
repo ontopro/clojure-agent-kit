@@ -144,7 +144,7 @@
     (let [a (next/next-action all)]
       (is (= [14 "the Architect's session"] ((juxt :step :owner) a)) "/kit-stage-end still runs the stage's end")
       (is (str/includes? (:run a) "every line of docs/02-architecture.md §15 answered with its evidence"))
-      (is (str/includes? (:run a) ":security/signed {:date :by <name>} in docs/stages/stage-1/stage-1-gates.edn, before :stage/closed")))
+      (is (str/includes? (:run a) ":security/signed {:at \"YYYY-MM-DDTHH:MM+HH:MM\" :by <name>} in docs/stages/stage-1/stage-1-gates.edn, before :stage/closed")))
     (let [closed (gate all :stage/closed {:date "d"})]
       (is (= [14 "the person"] (step closed)) "closed without it: the person signs before the next stage is pulled")
       (is (= "stage 1 is pre-release and closed without its threat model signed" (:because (next/next-action closed))))
@@ -515,3 +515,20 @@
       (is (= 1 (get-in f [:stage :id])))
       (is (= #{} (get-in f [:stage :merged])) "stage 0's run of the same id is not stage 1's")
       (is (= 11 (:step (next/next-action f))) "the packet is next, not the stage's end"))))
+
+(deftest a-gate-carries-its-time-and-one-that-cannot-be-read-is-said
+  (testing "the command gives a ready :at"
+    (let [a (next/next-action (assoc-in ready [:stage :now-at] "2026-10-21T09:30-05:00"))]
+      (is (= 7 (:step a)))
+      (is (str/includes? (:run a) "set :stage/approved {:at \"2026-10-21T09:30-05:00\" :cap :by <name>}") (:run a))))
+  (testing "an :at that is not a timestamp with an offset is named at its gate's step, never thrown"
+    (let [a (next/next-action (-> (with-stage {:blueprint "stage-1/stage-1-blueprint.md" :reviewed? true :packets ["t1"]
+                                               :now-at "2026-10-21T09:30-05:00"})
+                                  (gate :stage/approved {:at "2026-10-21" :cap "$5" :by "Ada"})))]
+      (is (= [7 "the person"] ((juxt :step :owner) a)))
+      (is (= "stage 1's :stage/approved :at \"2026-10-21\" is not a timestamp with an offset" (:because a)))
+      (is (str/includes? (:run a) ":at \"2026-10-21T09:30-05:00\" is the form"))))
+  (testing "a record from before :at reads as it did"
+    (is (= 11 (:step (next/next-action (-> (with-stage {:blueprint "stage-1/stage-1-blueprint.md" :reviewed? true :packets ["t1"]})
+                                           (gate :stage/approved {:date "2026-10-19" :cap "$5" :by "Ada"})
+                                           (gate :blueprint/signed {:date "2026-10-19" :by "Ada"}))))))))

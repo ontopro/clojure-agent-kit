@@ -1,24 +1,25 @@
 ;; THE HUMAN GATES OF A STAGE, AS A RECORD - a file, not a status line in prose, so that
 ;; `bb next` can read where the stage stands the way the loop reads a merge decision. Copy to
 ;; `stage-N/stage-N-gates.edn` under `docs/stages/`, the stage's folder, when the stage is pulled. Each gate is nil until
-;; the person passes it, then a map with the date and, for a sign-off, who signed: `:by` is a
-;; name, never a role ("the person"). Nothing but the person writes one, and a gate once passed
+;; the person passes it, then a map with the time and, for a sign-off, who signed: `:by` is a
+;; name, never a role ("the person"). The time is `:at`, ISO-8601 with its offset - `bb next`
+;; gives one to paste, in the project's zone; a record written before `:at` carries `:date`. Nothing but the person writes one, and a gate once passed
 ;; is not unpassed - a stage that loops back re-runs its exit criteria and closes again with a
 ;; later date. Three gates for every stage, and a fourth for a pre-release stage. "The exit
 ;; criteria section" below is the stage plan's section headed "Exit criteria (the stage's gate), and
 ;; the cap", whose number differs by the stage's kind. A comment carries no mark to fill.
 {:stage/id "<N>"
- ;; the stage plan approved, with its cap (the exit criteria section): {:date "YYYY-MM-DD" :cap "$n" :by "NAME OF WHO SIGNED"}
+ ;; the stage plan approved, with its cap (the exit criteria section): {:at "YYYY-MM-DDTHH:MM+HH:MM" :cap "$n" :by "NAME OF WHO SIGNED"}
  :stage/approved nil
- ;; the blueprint signed off (workflow step 10): {:date "YYYY-MM-DD" :by "NAME OF WHO SIGNED"}
+ ;; the blueprint signed off (workflow step 10): {:at "YYYY-MM-DDTHH:MM+HH:MM" :by "NAME OF WHO SIGNED"}
  :blueprint/signed nil
  ;; A PRE-RELEASE STAGE ONLY: the threat model signed - every line of 02-architecture.md §15
- ;; answered, each with its evidence (the stage plan's §7): {:date "YYYY-MM-DD" :by "NAME OF WHO SIGNED"}.
+ ;; answered, each with its evidence (the stage plan's §7): {:at "YYYY-MM-DDTHH:MM+HH:MM" :by "NAME OF WHO SIGNED"}.
  ;; Another kind leaves it nil; `bb next` asks for it of a pre-release stage, before it closes
  :security/signed nil
  ;; A STAGE BEFORE PRE-RELEASE ONLY, when the person skips the security reviewer panel at its end -
- ;; the session recommending from what the stage changed: {:date "YYYY-MM-DD" :by "NAME OF WHO DECIDED"
+ ;; the session recommending from what the stage changed: {:at "YYYY-MM-DDTHH:MM+HH:MM" :by "NAME OF WHO DECIDED"
  ;; :reason "why, in a sentence"}. A pre-release stage never skips it; `bb next` says so if one does
  :security/skipped nil
- ;; the exit criteria met, deployed locally and walked (the exit criteria section): {:date "YYYY-MM-DD" :mvp? false}
+ ;; the exit criteria met, deployed locally and walked (the exit criteria section): {:at "YYYY-MM-DDTHH:MM+HH:MM" :mvp? false}
  :stage/closed nil}

@@ -64,6 +64,23 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### Every gate a time (plan 6.11, item 4, register row 171)
+
+The design for amending a stage (row 170) needed to say that a reading came after the amendment that
+asked for it, and the gates record had only days. The person decided: every recorded event a
+timestamp, shown as a date or a date and time as fits. A gate now carries `:at`, ISO-8601 with its
+offset; a record from before keeps its `:date`, read as that day's midnight in the project's zone, or
+the machine's. Every reader goes through `stages/gate-instant` and `gate-day`, so the two forms are
+read one way and an old record renders the same day; a time is compared as an instant, never as text
+(Fable 5.1: `09:30-05:00` sorts before `14:00Z` though it is later). `bb next`'s command text gives a
+ready `:at` in the project's zone, and an `:at` it cannot read - a bare date, a typo - is named at its
+gate's step rather than thrown. Row 140's edge closes for any stage approved with an `:at`: a run on
+the approval day is placed by the instant; a stage with only a `:date` is compared by day as before, so
+a build with both forms places runs as it did. The security pack's `:security/at` was a local time with
+no zone, the one ambiguous value; it carries its offset. The upgrade's record is a time. Left as days,
+being text or ids: the documents' "Last updated" lines, `source.md`'s rows, the lessons' "Closed:",
+bake-off ids, and the health record's `:as-of` (row 127).
+
 ### A dispatch's completions are not its rounds (plan 6.11, item 3, register row 169)
 
 Fable 5.1's read of 3b found its reprice rule counting a dispatch step's generation ids against
