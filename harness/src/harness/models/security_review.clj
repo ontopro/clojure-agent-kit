@@ -84,13 +84,25 @@
                "code assumes about it. The rest of the repository is there to read when the change "
                "calls into it.")}})
 
+(def final-notice
+  "What the security reviewer reads before its last completion: a pass cut off by its round limit had
+  said nothing, the tests it wrote standing without a word of what they claim."
+  (str "This is your last completion: answer now with the JSON block, from what you have checked - "
+       "each test of yours that failed is a reproduced finding; an empty list if nothing held."))
+
+(defn- budget
+  "The opening's sentence on the completions a review has."
+  [rounds]
+  (when rounds
+    (str "\n\nYou have " rounds " completions, tool calls included; the last one must be your answer. Plan your reading for it.")))
+
 (def max-listing 200)
 (def max-diff 60000)
 
 (defn opening
   "The first message: the stance's task, the repository's files, and for the change
   stance the diff. `files` is the clone's tracked file paths; `diff` its change from the base."
-  [stance {:keys [files diff scans]}]
+  [stance {:keys [files diff scans rounds]}]
   (let [{:keys [label task]} (get stances stance)
         shown (take max-listing files)]
     (str "This is a " label " review.\n\n" task "\n\n"
@@ -104,6 +116,7 @@
                   diff)
                 "\n```"))
          (when (seq scans) (str "\n\nResults of the dependency and secrets scans, for you to weigh:\n" scans))
+         (budget rounds)
          "\n\nBegin. Give your answer as the JSON block described, when you have checked what you mean to report.")))
 
 (defn refused?
@@ -240,7 +253,7 @@
   [role stance clone {:keys [kit base rounds requests max-tokens scans sandbox]
                       :or {base "base" rounds default-rounds requests default-requests max-tokens default-max-tokens}}]
   (let [role (assoc-in role [:params :max_tokens] max-tokens)
-        facts (assoc (clone-facts clone base) :scans scans)
+        facts (assoc (clone-facts clone base) :scans scans :rounds rounds)
         t-sandbox (System/currentTimeMillis)
         sb (or sandbox (sandbox/start! {:kit kit :clone clone}))
         t0 (System/currentTimeMillis)]
@@ -248,7 +261,7 @@
       (let [ctx {:dir (str clone) :sandbox sb :request-budget (atom requests) :written (atom #{})}
             r (agent/converse! role system-prompt (opening stance facts) ctx
                                {:registry security-review-tools/specs :tools (set (keys security-review-tools/specs))
-                                :max-iterations rounds :timeout-ms 600000})
+                                :max-iterations rounds :timeout-ms 600000 :final-notice final-notice})
             findings (parse-findings (:text r))]
         (merge {:stance stance
                 :status (:status r)
@@ -366,7 +379,7 @@
   "The first message of a review of the KIT at `head`: the scope - the whole, or one `flow`'s, the rest
   context - and, from earlier passes' records, `after`, what was found and fixed, so this pass looks
   elsewhere."
-  [{:keys [head files after flow]}]
+  [{:keys [head files after flow rounds]}]
   (let [scope (kit-scope files flow)
         found (distinct (for [r after, f (:findings r)] (select-keys f [:title :where])))]
     (str (if flow
@@ -383,6 +396,7 @@
                 "where those passes did not:\n"
                 (str/join "\n" (for [{:keys [title where]} found]
                                  (str "- " title (when where (str " (" where ")")))))))
+         (budget rounds)
          "\n\nBegin. Give your answer as the JSON block described, when you have checked what you mean to report.")))
 
 (defn kit-clone!
@@ -417,9 +431,9 @@
             t0 (System/currentTimeMillis)]
         (try
           (let [ctx {:dir (str clone) :sandbox sb :written (atom #{})}
-                r (agent/converse! role kit-system-prompt (kit-opening {:head head :files files :after after :flow flow}) ctx
+                r (agent/converse! role kit-system-prompt (kit-opening {:head head :files files :after after :flow flow :rounds rounds}) ctx
                                    {:registry security-review-tools/kit-specs :tools (set (keys security-review-tools/kit-specs))
-                                    :max-iterations rounds :timeout-ms 600000})
+                                    :max-iterations rounds :timeout-ms 600000 :final-notice final-notice})
                 findings (parse-findings (:text r))]
             (merge {:stance :tracer
                     :target (str "KIT " head)

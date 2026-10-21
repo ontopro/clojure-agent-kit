@@ -107,6 +107,15 @@
     x
     (walk/postwalk #(if (string? %) (str/replace % secret (str "<" key-env ">")) %) x)))
 
+(defn with-notice
+  "The tool results' turn `msgs` (`adapter/tool-results-message`'s) with `notice` for the model to read
+  beside them: a text block in the Anthropic shape's one user turn, a user message after the OpenAI
+  shape's tool messages."
+  [shape msgs notice]
+  (if (= :anthropic shape)
+    (update-in msgs [(dec (count msgs)) :content] conj {:type "text" :text notice})
+    (conj msgs {:role "user" :content notice})))
+
 (def secret-name
   "An environment variable whose name says it holds a secret."
   #"(?i)key|token|secret|password")
@@ -292,7 +301,12 @@
                                    (:tool-calls parsed))
                      messages (-> messages
                                   (conj (adapter/assistant-message (:shape role) parsed))
-                                  (into (adapter/tool-results-message (:shape role) results)))
+                                  ;; THE LAST COMPLETION IS SAID TO BE THE LAST. A security review's flow
+                                  ;; spent all twenty on reading and never answered: it was not told the
+                                  ;; next was its last. `:final-notice` rides with the results before it
+                                  (into (cond-> (adapter/tool-results-message (:shape role) results)
+                                          (and (:final-notice opts) (= (inc n) max-iterations))
+                                          (#(with-notice (:shape role) % (:final-notice opts))))))
                      ;; the provider's :extra-content (Gemini's thought signature) travels back in the
                      ;; assistant message above, not into the transcript and the run log
                      made (mapv (fn [c r] (merge (dissoc c :extra-content) (select-keys r [:content :error? :args :ms :unoffered?])))

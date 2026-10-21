@@ -472,3 +472,25 @@
          (agent/secrets {"OPENROUTER_API_KEY" "sk-or-12345678" "PATH" "/usr/bin:/bin" "GH_TOKEN" "short" "MY_ROLE_VAR" "abcdefghij"}
                         "MY_ROLE_VAR")))
   (is (= "a <DB_PASSWORD> b" (agent/redact-secrets "a hunter2hunter2 b" [["DB_PASSWORD" "hunter2hunter2"]]))))
+
+;; A security review's flows spent all twenty completions reading and never answered: the last
+;; completion is now said to be the last
+(deftest the-last-completion-is-said-to-be-the-last
+  (let [sent (atom [])
+        registry {"peek" {:description "d" :schema {:type "object" :properties {}} :fn (fn [_ _] (tools/ok "ok"))}}]
+    (with-redefs [babashka.http-client/post (fn [_ opts] (swap! sent conj (:body opts)) (one-call "peek" {}))]
+      (let [r (agent/converse! {:model "m" :shape :openai :endpoint "https://provider.invalid"}
+                               "s" "o" {:dir "."} {:registry registry :tools #{"peek"} :max-iterations 3
+                                                   :final-notice "THIS IS YOUR LAST"})]
+        (is (:capped? r) "still capped: the budget was the stop")
+        (is (= 3 (count @sent)))
+        (is (= [false false true] (mapv #(str/includes? % "THIS IS YOUR LAST") @sent)) "only before the last completion")))
+    (testing "the Anthropic shape carries it in the results' own turn"
+      (is (= [{:role "user" :content [{:type "tool_result"} {:type "text" :text "N"}]}]
+             (agent/with-notice :anthropic [{:role "user" :content [{:type "tool_result"}]}] "N"))))
+    (testing "none asked, none sent"
+      (reset! sent [])
+      (with-redefs [babashka.http-client/post (fn [_ opts] (swap! sent conj (:body opts)) (one-call "peek" {}))]
+        (agent/converse! {:model "m" :shape :openai :endpoint "https://provider.invalid"}
+                         "s" "o" {:dir "."} {:registry registry :tools #{"peek"} :max-iterations 2}))
+      (is (not-any? #(str/includes? % "last completion") @sent)))))

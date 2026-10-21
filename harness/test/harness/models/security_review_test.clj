@@ -320,3 +320,8 @@
   (let [flows (remove #(= "seams" (:name %)) (sr/kit-flows))
         files (map #(str "harness/" %) (map str (fs/glob "." "src/**.clj")))]
     (is (empty? (remove (fn [f] (some #(some (fn [p] (str/starts-with? f p)) (:reads %)) flows)) files)))))
+
+(deftest a-review-is-told-its-budget-and-its-last-round
+  (is (str/includes? (sr/kit-opening {:head "h" :files [] :rounds 20}) "You have 20 completions, tool calls included; the last one must be your answer"))
+  (is (str/includes? (sr/opening :tracer {:files [] :rounds 60}) "You have 60 completions"))
+  (is (str/includes? sr/final-notice "This is your last completion: answer now with the JSON block")))

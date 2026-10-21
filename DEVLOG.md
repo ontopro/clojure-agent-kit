@@ -64,6 +64,17 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### A review is told its budget, and its last completion (plan 6.11, item 10)
+
+The first two flows, Astra at twenty completions each, both stopped at the limit with no answer -
+$3.78 and $3.19, mostly searches and reads - because neither was told the next completion was its
+last. The person stopped the batch. `converse!` takes `:final-notice`, a text it sends beside the tool
+results before the last completion allowed (a text block in the Anthropic shape's turn, a user
+message after the OpenAI shape's tool messages); a capped run still says `:capped?`. A security
+review sends one - "This is your last completion: answer now with the JSON block…" - and its
+opening says the budget: "You have N completions, tool calls included; the last one must be your
+answer." Generic: a Coder's would say to finish its target file.
+
 ### The balance check reads the lower of the key and the account (plan 6.11, item 10)
 
 From Fable 5.1's read of `680f598`, before any flow ran: the pre-flight took the OpenRouter key's
