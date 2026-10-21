@@ -64,6 +64,13 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### The readings read only inside the plan (plan 6.11, item 12, register row 203)
+
+The contract and setup flows' shared finding: the plan review slurped `docs/<name>` unbounded, so a
+linked `source.md` sent a host file to the reviewer's provider. `contained-path/read-inside` - inside,
+a regular file, else nil - now reads the plan's documents, the stage plan and the blueprint review's
+requirements.
+
 ### The skills are never synced or pruned through a link (plan 6.11, item 12, register row 202)
 
 The setup flow's skills finding: a link planted under `.claude/skills/` made the sync overwrite, and

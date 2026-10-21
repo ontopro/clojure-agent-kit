@@ -33,6 +33,7 @@
    [clojure.edn :as edn]
    [clojure.pprint :as pp]
    [clojure.string :as str]
+   [harness.contained-path :as contained-path]
    [harness.models.agent :as agent]
    [harness.models.profile :as profile]
    [harness.setup.plan :as plan]
@@ -127,9 +128,10 @@
 (defn read-documents
   "`documents` under `<plan>/docs/` as `[[name text-or-nil] …]`."
   [plan-dir]
-  (vec (for [nm documents
-             :let [f (fs/path plan-dir "docs" nm)]]
-         [nm (when (fs/exists? f) (slurp (str f)))])))
+  ;; read only inside the plan: a build whose `docs/source.md` was a link had sent a host file to the
+  ;; reviewer's provider
+  (vec (for [nm documents]
+         [nm (contained-path/read-inside plan-dir (str "docs/" nm))])))
 
 (defn plan-dir-of
   "The plan a stage plan belongs to: it lives at `<plan>/docs/stages/stage-N/<file>`.
@@ -173,7 +175,10 @@
                  (when-not (fs/exists? stage-plan)
                    (throw (ex-info (str "no stage plan at " stage-plan)
                                    {:plan-review/error :no-stage-plan :path (str stage-plan)})))
-                 [(str (fs/file-name (fs/parent (fs/absolutize stage-plan))) "/" (fs/file-name stage-plan)) (slurp (str stage-plan))])
+                 [(str (fs/file-name (fs/parent (fs/absolutize stage-plan))) "/" (fs/file-name stage-plan))
+                  (or (contained-path/read-inside plan-dir (str (fs/relativize (fs/absolutize plan-dir) (fs/absolutize stage-plan))))
+                      (throw (ex-info (str stage-plan " is not a file inside the plan " plan-dir " - a link out of it is not read")
+                                      {:plan-review/error :no-stage-plan :path (str stage-plan)})))])
          input (review-input stage docs (checklist (slurp (str method-path))))
          t0 (System/currentTimeMillis)
          r (agent/converse! role system-prompt input {:dir (str plan-dir)} {:max-iterations 1 :tools #{}})]

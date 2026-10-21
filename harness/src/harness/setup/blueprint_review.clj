@@ -172,8 +172,7 @@
         ;; the header's file is read only beside the blueprint - outside reads as missing
         stage-file (when stage-name (contained-path/inside (fs/parent blueprint-path) stage-name))
         stage-text (when (and stage-file (fs/regular-file? stage-file)) (slurp (str stage-file)))
-        req-file (fs/path plan-dir "docs" requirements-name)
-        req-text (when (fs/exists? req-file) (slurp (str req-file)))
+        req-text (contained-path/read-inside plan-dir (str "docs/" requirements-name))
         input (review-input stage-name stage-text req-text bp-name bp-text (checklist (slurp (str method-path))))
         t0 (System/currentTimeMillis)
         r (agent/converse! role system-prompt input {:dir plan-dir} {:max-iterations 1 :tools #{}})]

@@ -64,3 +64,11 @@
       ;; string a caller opens, it opens what was judged
       (when (and (fs/starts-with? p base) rp rb (fs/starts-with? rp rb) (= rp (real p)))
         p))))
+
+(defn read-inside
+  "The text of `path` (relative to `root`) when `inside` holds it and it is a regular file; nil
+  otherwise - outside reads as missing, as a file that does not exist always has. The one read every
+  reader of a path someone else named goes through."
+  [root path]
+  (when-let [p (inside root path)]
+    (when (fs/regular-file? p) (slurp (str p)))))

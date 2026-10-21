@@ -173,3 +173,18 @@
     (fs/delete-tree (fs/path plan "docs"))
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"none of the plan's documents"
                           (pr/review! plan (str (fs/path plan "profile.edn")) method-path)))))
+
+;; From the KIT's own security review (GPT-6 Astra, the contract and setup flows, 2026-10-21): a build whose
+;; docs/ file was a link sent a host file to the reviewer's provider
+(deftest a-plan-document-is-read-only-inside-the-plan
+  (let [outer (fs/create-temp-dir {:prefix "kit-plan-review-link"})
+        plan (fs/path outer "plan")]
+    (try
+      (fs/create-dirs (fs/path plan "docs"))
+      (spit (str (fs/path outer "host-secret.md")) "HOST SECRET")
+      (spit (str (fs/path plan "docs" "00-overview.md")) "# the overview")
+      (fs/create-sym-link (fs/path plan "docs" "source.md") (fs/path outer "host-secret.md"))
+      (let [docs (into {} (pr/read-documents (str plan)))]
+        (is (= "# the overview" (get docs "00-overview.md")))
+        (is (nil? (get docs "source.md")) "a link out of the plan reads as missing"))
+      (finally (fs/delete-tree outer)))))
