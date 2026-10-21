@@ -22,6 +22,7 @@
    [clojure.edn :as edn]
    [clojure.pprint :as pp]
    [clojure.string :as str]
+   [harness.contained-path :as contained-path]
    [harness.models.agent :as agent]
    [harness.models.catalogue :as catalogue]
    [harness.models.profile :as profile]
@@ -156,12 +157,34 @@
   {:files (vec (remove str/blank? (str/split-lines (git clone "ls-files"))))
    :diff (git clone "diff" "--no-color" (str base "..HEAD"))})
 
+(defn written-files
+  "The files a security reviewer wrote below `dir` (relative to `clone`): every regular file there that
+  is not one of `tracked` - the clone's files as `git ls-files` listed them BEFORE the sandbox started -
+  path -> text.
+
+  NO GIT AFTER THE SANDBOX, AND NO LINK FOLLOWED. The clone was mounted in a container where a
+  model's tests ran as root: what it left is not to be trusted by the host. Git read the clone's own
+  configuration, where `core.fsmonitor` (or `hooksPath`, `sshCommand`, `pager`) runs a command on the
+  host; a link left in `test/` had put a host file's text into the record. So the tracked set is taken
+  before, the folder is walked after, and a link - or a file whose real path leaves the clone - is
+  passed over."
+  [clone dir tracked]
+  (let [root (fs/path clone dir)
+        tracked (set tracked)]
+    (into (sorted-map)
+          (for [f (when (fs/directory? root {:nofollow-links true}) (fs/glob root "**" {:hidden true}))
+                :let [rel (str (fs/relativize clone f))]
+                :when (and (not (fs/sym-link? f))
+                           (fs/regular-file? f {:nofollow-links true})
+                           (contained-path/inside clone rel)
+                           (not (contains? tracked rel)))]
+            [rel (slurp (str f))]))))
+
 (defn reproductions
-  "The test files the security reviewer wrote: the clone's untracked files below `test/`, path -> text."
-  [clone]
-  (into (sorted-map)
-        (for [rel (remove str/blank? (str/split-lines (git clone "ls-files" "--others" "--exclude-standard" "test")))]
-          [rel (slurp (str (fs/path clone rel)))])))
+  "The test files the security reviewer wrote: the clone's files below `test/` that `tracked` - its
+  files before the sandbox - does not list, path -> text (`written-files`)."
+  [clone tracked]
+  (written-files clone "test" tracked))
 
 (def default-rounds
   "Completions a review may take. Thirty cut a model off that sends its requests one to a completion
@@ -219,7 +242,7 @@
                 :status (:status r)
                 :findings findings
                 :no-block? (nil? findings)
-                :tests (reproductions clone)
+                :tests (reproductions clone (:files facts))
                 :text (:text r)
                 :refused? (refused? (:steps r) (:error r))
                 :empty-answer? (and (= :done (:status r)) (str/blank? (:text r)))
@@ -336,11 +359,10 @@
   (str/trim (git dest "rev-parse" "--short" "HEAD")))
 
 (defn kit-reproductions
-  "The test files the security reviewer wrote in the KIT's clone: untracked below `harness/test/`."
-  [clone]
-  (into (sorted-map)
-        (for [rel (remove str/blank? (str/split-lines (git clone "ls-files" "--others" "--exclude-standard" "harness/test")))]
-          [rel (slurp (str (fs/path clone rel)))])))
+  "The test files the security reviewer wrote in the KIT's clone: below `harness/test/`, not among
+  `tracked` - its files before the sandbox (`written-files`: no git after the sandbox, no link followed)."
+  [clone tracked]
+  (written-files clone "harness/test" tracked))
 
 (defn review-kit!
   "Review the KIT at `kit`'s HEAD with `role`: clone it under `work`, start the KIT's sandbox, run the
@@ -368,7 +390,7 @@
                     :status (:status r)
                     :findings findings
                     :no-block? (nil? findings)
-                    :tests (kit-reproductions clone)
+                    :tests (kit-reproductions clone files)
                     :text (:text r)
                     :refused? (refused? (:steps r) (:error r))
                     :empty-answer? (and (= :done (:status r)) (str/blank? (:text r)))

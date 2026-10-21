@@ -64,6 +64,22 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### Astra's pass, and the sandbox that could run a command on the host (plan 6.11, item 9, register row 180)
+
+The second pass, the command's first real run: `bb security-review --kit --model "openai/gpt-6-astra
+high" --after <Argon's record>`. It did not finish: OpenRouter refused completion 39 for want of credit
+(402), so the record says nothing - 38 completions, 12.6 minutes, $13.66 as OpenRouter reported it,
+about nine times Argon's pass. It had written six tests; each failed again in a fresh clone and
+sandbox, and Fable 5.1 read each against the code and found it failing for the property it states, so
+the six stand as reproduced, rows 180-185, each fix with Astra's test.
+
+The first, HIGH, for every review and not only the KIT's: the clone, `.git` included, was mounted
+writable in the container where a model's tests ran as root, and the host collected those tests with
+`git ls-files` in it - a `core.fsmonitor` written into `.git/config` ran on the host, and a link left in
+`test/` put a host file into the record. The clone's `.git` is now mounted read-only in both run
+containers (tried: the write refused, the tests run), and the tests are collected with no git after
+the sandbox: the tracked files listed before it starts, the folder walked after, links passed over.
+
 ### `bb security-review --kit`: the KIT's own security review, a command (plan 6.11, item 9)
 
 The person's decision, after item 8: the local driver that ran the KIT's own review becomes the

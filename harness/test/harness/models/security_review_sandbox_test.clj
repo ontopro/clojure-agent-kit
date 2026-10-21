@@ -161,3 +161,9 @@
     (is (nil? (:request s)) "nothing is served")
     ((:stop! s))
     (is (= ["docker" "rm" "-f" (:name s)] (last @seen)))))
+
+(deftest the-clone-s-git-is-read-only-in-both-containers
+  ;; its configuration is what the host's git reads; `core.fsmonitor` written inside had run on the host
+  (let [has (fn [argv & xs] (some #(= xs (take (count xs) %)) (partition (count xs) 1 argv)))]
+    (is (has (sb/run-argv {:image "img" :clone "/c" :name "n" :review "/r"}) "-v" "/c/.git:/work/app/.git:ro"))
+    (is (has (sb/kit-run-argv {:image "img" :clone "/c" :name "n" :review "/r"}) "-v" "/c/.git:/work/kit/.git:ro"))))

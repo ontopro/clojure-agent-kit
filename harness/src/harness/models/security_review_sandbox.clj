@@ -55,13 +55,16 @@
 
 (defn run-argv
   "The second container, left running: no network, the cache read-only, limits, the clone and
-  the request script mounted, nothing to do until it is told."
+  the request script mounted - the clone's `.git` read-only - nothing to do until it is told."
   [{:keys [image clone name review]}]
   ["docker" "run" "-d" "--name" name
    "--network" "none"
    "--memory" "4g" "--cpus" "2" "--pids-limit" "512"
    "--cap-drop" "ALL" "--security-opt" "no-new-privileges"
    "-v" (str clone ":" app-dir)
+   ;; the clone's git read-only: its configuration is the host's git's, which collects the results
+   ;; - `core.fsmonitor` written in here had run a command on the host
+   "-v" (str clone "/.git:" app-dir "/.git:ro")
    "-v" (str m2-volume ":/root/.m2:ro")
    "-v" (str review ":" review-dir ":ro")
    "-w" app-dir
@@ -231,6 +234,7 @@
    "--memory" "4g" "--cpus" "2" "--pids-limit" "512"
    "--cap-drop" "ALL" "--security-opt" "no-new-privileges"
    "-v" (str clone ":" kit-dir)
+   "-v" (str clone "/.git:" kit-dir "/.git:ro")
    "-v" (str m2-volume ":/root/.m2:ro")
    "-v" (str deps-clj-volume ":/root/.deps.clj:ro")
    "-v" (str review ":" review-dir ":ro")

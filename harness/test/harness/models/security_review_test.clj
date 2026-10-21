@@ -191,3 +191,43 @@
   (is (str/includes? sr/kit-system-prompt "harness/test/"))
   (is (str/includes? sr/kit-system-prompt "Finding nothing is a complete and welcome answer"))
   (is (= {:kit true :after "r.edn" :model "m"} (sr/parse-args ["--kit" "--after" "r.edn" "--model" "m"]))))
+
+;; From the KIT's own security review (GPT-6 Astra, 2026-10-21): the clone was mounted writable in a
+;; container where a model's test ran as root, and the host collected the tests from it with git
+(defn- git! [dir & args]
+  (apply p/shell {:dir (str dir) :out :string :err :string} "git" args))
+
+(deftest collecting-the-tests-follows-no-link-left-in-the-clone
+  (doseq [[test-dir collect] [["test" sr/reproductions] ["harness/test" sr/kit-reproductions]]]
+    (let [outer (fs/create-temp-dir {:prefix "kit-review-collect-link"})
+          clone (fs/path outer "clone")
+          secret (fs/path outer "host-secret")
+          out (fs/path outer "records")
+          rel (str test-dir "/leak_test.clj")]
+      (try
+        (fs/create-dirs (fs/path clone test-dir))
+        (git! clone "init" "-q")
+        (spit (str secret) "HOST-ONLY-SECRET")
+        (fs/create-sym-link (fs/path clone rel) secret)
+        (spit (str (fs/path clone test-dir "mine_test.clj")) "(ns mine-test)")
+        (let [tests (collect clone [])]
+          (sr/write-record! out "review" {:tests tests})
+          (is (= [(str test-dir "/mine_test.clj")] (keys tests)) "the test it wrote, and nothing through a link")
+          (is (not (fs/exists? (fs/path out "review-tests" rel)))))
+        (finally (fs/delete-tree outer))))))
+
+(deftest collecting-the-tests-runs-no-git-in-the-clone
+  (doseq [[test-dir collect] [["test" sr/reproductions] ["harness/test" sr/kit-reproductions]]]
+    (let [outer (fs/create-temp-dir {:prefix "kit-review-collect-git"})
+          clone (fs/path outer "clone")
+          marker (fs/path outer "host-command-ran")]
+      (try
+        (fs/create-dirs (fs/path clone test-dir))
+        (git! clone "init" "-q")
+        (spit (str (fs/path clone "seed.txt")) "seed")
+        (git! clone "add" "seed.txt")
+        (spit (str (fs/path clone ".git" "config"))
+              (str "\n[core]\n\tfsmonitor = \"touch " marker "; echo token\"\n") :append true)
+        (collect clone ["seed.txt"])
+        (is (not (fs/exists? marker)) "the clone's core.fsmonitor never runs on the host")
+        (finally (fs/delete-tree outer))))))
