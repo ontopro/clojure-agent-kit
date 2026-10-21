@@ -447,9 +447,12 @@
    ;; written when the record was taken can be fetched by `bb reprice`
    ;; later. Only when known: a record written before this key is unchanged.
    [:step/generation-ids {:optional true} [:vector :string]]
-   ;; The rounds the dispatch took - its completions - so a report says how
-   ;; close to the role's limit it came. Only when known: an older record is unchanged.
+   ;; The rounds the dispatch took, so a report says how close to the role's
+   ;; limit it came. Only when known: an older record is unchanged.
    [:step/rounds {:optional true} pos-int?]
+   ;; Its completions: a round whose request failed has none, so a failed
+   ;; dispatch has one round more. What `bb reprice` counts ids against.
+   [:step/completions {:optional true} nat-int?]
    ;; Total native tokens. A single number because this is a report column;
    ;; the prompt/completion split belongs in :runner/meta, which is where
    ;; :tokens already lived upstream (see PROVENANCE.md) before it was one of

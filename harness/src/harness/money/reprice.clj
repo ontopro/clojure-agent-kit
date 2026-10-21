@@ -92,6 +92,12 @@
   [n ids]
   (and (number? n) (< (count ids) n)))
 
+(defn- step-completions
+  "A dispatch step's completions: `:step/completions`, or - a record from before it was kept - its
+  rounds when it finished, since a step that failed has a round with no completion."
+  [s]
+  (or (:step/completions s) (when (= :done (:step/status s)) (:step/rounds s))))
+
 (defn- short-line [n ids]
   (str (count ids) " of " n " completions kept a generation id - left unpriced, a sum of the rest would be part of the cost"))
 
@@ -202,9 +208,9 @@
                         {:step s :changed? false
                          :line (str "  " nm ": " endpoint " has no generation record to fetch")}
 
-                        (short-of-ids? (:step/rounds s) (:step/generation-ids s))
+                        (short-of-ids? (step-completions s) (:step/generation-ids s))
                         {:step s :changed? false
-                         :line (str "  " nm ": " (short-line (:step/rounds s) (:step/generation-ids s)))}
+                         :line (str "  " nm ": " (short-line (step-completions s) (:step/generation-ids s)))}
 
                         :else
                         (let [key (some-> key-env getenv)

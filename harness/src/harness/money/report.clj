@@ -81,7 +81,12 @@
       (seq (:generation-ids meta*)) (assoc :step/generation-ids (vec (:generation-ids meta*)))
       ;; How many rounds it took. The record held one generation id per round
       ;; and the report never counted them; a project did, by hand.
-      (:iterations meta*) (assoc :step/rounds (:iterations meta*)))))
+      (:iterations meta*) (assoc :step/rounds (:iterations meta*))
+      ;; THE COMPLETIONS, WHICH ARE NOT THE ROUNDS. A request the provider failed
+      ;; is a round with no completion, and `bb reprice` read rounds as completions:
+      ;; a dispatch that failed after k completions, k ids kept, was "short of an id"
+      ;; and left unpriced for good.
+      (some? (:completions meta*)) (assoc :step/completions (:completions meta*)))))
 
 (defn synthetic
   "A step whose numbers were made up — an example, a mock, a sketch.

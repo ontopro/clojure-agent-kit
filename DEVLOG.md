@@ -62,6 +62,19 @@ tested" stays information for an adopter, never a block.
 
 ---
 
+## 2026-10-21 (plan 6.11)
+
+### A dispatch's completions are not its rounds (plan 6.11, item 3, register row 169)
+
+Fable 5.1's read of 3b found its reprice rule counting a dispatch step's generation ids against
+`:step/rounds`, the loop's iterations. A round whose request the provider failed has no completion,
+so a dispatch that failed after k completions had k+1 rounds and k ids, and `bb reprice` left it
+unpriced for good, saying a completion had kept no id - the kind of step that most needs a late cost.
+The step now keeps the runner's own count, `:step/completions` (optional, so an older record renders
+unchanged), and the rule reads it; an older record's rounds stand in only for a step that finished.
+Tested on a failed dispatch, the same from before the count was kept, a capped one, and a finished
+one whose completion kept no id.
+
 ## 2026-10-20 (plan 6.11)
 
 ### A sum over what was priced says so (plan 6.11, items 3b and 3c, register row 169)

@@ -7,6 +7,7 @@
    [clojure.test :refer [deftest is testing]]
    [harness.contract.shapes :as shapes]
    [harness.models.provenance :as provenance]
+   [harness.money.report :as report]
    [harness.money.reprice :as reprice]
    [org.httpkit.server :as srv]))
 
@@ -202,3 +203,26 @@
             out (with-out-str (reprice/-main path))]
         (is (str/includes? out "nothing to reprice"))
         (is (= before (slurp path)))))))
+
+(deftest a-step-is-short-of-ids-by-its-completions-never-its-rounds
+  (let [run (fn [coder] #(reprice/reprice (update-in (record %) [:run/steps 1] merge coder) {:fetch-opts fast :getenv {}}))
+        gens {"gen-a" {:total_cost 0.25} "gen-b" {:total_cost 0.125}}
+        priced? (fn [[{:keys [record changed]} _]] (and (= 1 changed) (= 0.375 (:step/cost (nth (:run/steps record) 1)))))]
+    (testing "a dispatch that failed after 2 completions has 3 rounds, 2 ids, and is priced"
+      (is (priced? (with-stub gens (run {:step/status :fail :step/rounds 3 :step/completions 2})))))
+    (testing "so is one recorded before the completions were kept: a failed step's rounds are not its completions"
+      (is (priced? (with-stub gens (run {:step/status :fail :step/rounds 3})))))
+    (testing "a capped dispatch: as many rounds as completions"
+      (is (priced? (with-stub gens (run {:step/status :fail :step/rounds 2 :step/completions 2})))))
+    (testing "a completion with no id is still short, by the completions or a finished step's rounds"
+      (doseq [coder [{:step/completions 3 :step/rounds 3} {:step/rounds 3}]]
+        (let [[{:keys [changed lines]} seen] (with-stub gens (run coder))]
+          (is (= 0 changed))
+          (is (empty? seen) "nothing fetched")
+          (is (str/includes? (first lines) "coder: 2 of 3 completions kept a generation id - left unpriced")))))))
+
+(deftest a-dispatch-step-keeps-its-completions-beside-its-rounds
+  (let [s #(report/dispatch-step :coder {:status :failed :files [] :stdout nil :runner/meta %} 100)]
+    (is (= [3 2] ((juxt :step/rounds :step/completions) (s {:model "m" :iterations 3 :completions 2 :error {}}))))
+    (is (= 0 (:step/completions (s {:model "m" :iterations 1 :completions 0 :error {}}))) "a first request refused")
+    (is (not (contains? (s {:model "m" :iterations 2}) :step/completions)) "a runner that never counted them")))
