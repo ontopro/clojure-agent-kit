@@ -19,7 +19,7 @@
 
 {;; leaves
  harness.contract.shapes #{}
- harness.contract.stub #{}
+ harness.contract.stub #{harness.contained-path}
  harness.contract.targets #{}
  harness.gates.boundary #{}
  harness.gates.forms #{}

@@ -36,7 +36,8 @@
   (:require
    [babashka.fs :as fs]
    [clojure.pprint :as pp]
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [harness.contained-path :as contained-path]))
 
 (defn ns-for
   "The namespace a source path declares: `src/app/some_ns.clj` ->
@@ -154,13 +155,23 @@
   error names a count and not the rule; the fifth project wrote a packet with
   `handlers.clj` and `routes.clj`, watched the extraction, `sigs` and two paid
   spec reviews accept it, and met `write!`'s refusal after three worktrees
-  existed. `blueprint/spec-for` and `driver/start!` run this first."
+  existed. `blueprint/spec-for` and `driver/start!` run this first.
+
+  The one file is a path inside the worktree: relative, with no `..` part. The
+  blueprint that names it is a model's writing, and the stub is written on the
+  host before any sandbox - `../../.githooks/pre-commit` had been written to."
   [{:files/keys [impl]}]
-  (when (not= 1 (count impl))
+  (cond
+    (not= 1 (count impl))
     [{:key :files/impl :entry (vec impl)
       :reason (str (if (empty? impl) "empty" (str (count impl) " files"))
                    " — a task stubs exactly one implementation file, one namespace per packet; "
-                   "a second file is a second task")}]))
+                   "a second file is a second task")}]
+
+    (let [p (str (first impl))]
+      (or (str/blank? p) (fs/absolute? (fs/path p)) (some #{".."} (map str (fs/components (fs/path p))))))
+    [{:key :files/impl :entry (vec impl)
+      :reason "is not a path inside the worktree - a relative path with no `..` part"}]))
 
 (defn- escaped
   "`s` as the inside of a Clojure string literal. Whatever reaches the
@@ -247,10 +258,16 @@
   guessing."
   [dir impl-paths slice]
   (when-let [[{:keys [reason]}] (check-files {:files/impl impl-paths})]
-    (throw (ex-info (str "a slice stubs exactly one implementation file: " reason)
-                    {:sandbox/error :multi-impl :files (vec impl-paths)})))
+    (throw (if (= 1 (count impl-paths))
+             (ex-info (str "the stub's file " (first impl-paths) " " reason)
+                      {:sandbox/error :outside :files (vec impl-paths)})
+             (ex-info (str "a slice stubs exactly one implementation file: " reason)
+                      {:sandbox/error :multi-impl :files (vec impl-paths)}))))
   (let [path (first impl-paths)
-        target (fs/path dir path)]
+        ;; and inside by its real path: a folder of the worktree linked elsewhere is not written through
+        target (or (contained-path/inside dir path)
+                   (throw (ex-info (str path " is not a path inside the worktree " dir)
+                                   {:sandbox/error :outside :files (vec impl-paths)})))]
     (fs/create-dirs (fs/parent target))
     (spit (str target) (render (ns-for path) slice))
     path))

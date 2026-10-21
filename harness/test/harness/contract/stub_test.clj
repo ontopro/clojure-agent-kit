@@ -199,3 +199,27 @@
   (let [dir (str (fs/create-temp-dir))]
     (is (thrown-with-msg? Exception #"exactly one"
                           (stub/write! dir ["a.clj" "b.clj"] '{:interfaces [(f [x])]})))))
+
+;; From the KIT's own security review (Gemini 4 Argon, 2026-10-21): the stub is written on the
+;; host, before any sandbox, to a path a model's blueprint named
+(deftest the-stub-is-written-only-inside-the-worktree
+  (let [outer (fs/create-temp-dir {:prefix "kit-stub-outside"})
+        dir (fs/path outer "tester")
+        slice '{:interfaces [(f [x])]}]
+    (try
+      (fs/create-dirs (fs/path dir "src"))
+      (fs/create-dirs (fs/path outer "elsewhere"))
+      (spit (str (fs/path outer "outside.clj")) "ORIGINAL")
+      (fs/create-sym-link (fs/path dir "src" "linked") (fs/path outer "elsewhere"))
+      (testing "refused before anything is paid, by check-files"
+        (doseq [p ["../outside.clj" "src/../../outside.clj" (str (fs/path outer "outside.clj"))]]
+          (is (re-find #"not a path inside the worktree" (:reason (first (stub/check-files {:files/impl [p]})))) p)))
+      (testing "and by write!, whatever reached it"
+        (is (thrown-with-msg? Exception #"the stub's file \.\./outside\.clj is not a path inside the worktree"
+                              (stub/write! (str dir) ["../outside.clj"] slice)))
+        (is (= "ORIGINAL" (slurp (str (fs/path outer "outside.clj")))))
+        (is (thrown-with-msg? Exception #"not a path inside the worktree"
+                              (stub/write! (str dir) ["src/linked/core.clj"] slice))
+            "a folder of the worktree linked elsewhere is not written through")
+        (is (not (fs/exists? (fs/path outer "elsewhere" "core.clj")))))
+      (finally (fs/delete-tree outer)))))

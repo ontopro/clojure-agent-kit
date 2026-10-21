@@ -64,6 +64,15 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### The stub is written only inside the worktree (plan 6.11, item 8, register row 173)
+
+The review's second finding, MEDIUM-HIGH by Fable 5.1's reading: `driver/start!` wrote the Tester's
+stub to the spec's `:files/impl` path, on the host, before any sandbox, and nothing read the path - a
+blueprint, which a model writes, could name `../../../.githooks/pre-commit`. `stub/check-files`, which
+`driver/start!` and `blueprint/spec-for` run before anything is paid for, now refuses a blank, absolute
+or `..` path by the entry, beside its refusal of a second file; `write!` writes through
+`contained-path/inside`, so a folder of the worktree linked elsewhere is not written through either.
+
 ### The KIT's own security review, and a finding's paths read only inside (plan 6.11, item 8, register row 172)
 
 The person asked for a security review of the KIT itself, by Gemini 4 Argon at Google's own API.
