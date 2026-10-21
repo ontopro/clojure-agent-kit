@@ -102,3 +102,27 @@
     (is (fs/exists? (fs/path (at "stage-end") skills/file-name)) "a project's own skill is never touched")
     (is (= [] (skills/stale kit-dir target)))
     (is (not-any? :changed? (skills/sync! kit-dir target :check? true)) "the shipped renderings are untouched")))
+
+;; From the KIT's own security review (GPT-6 Astra, the setup-and-upgrade flow, 2026-10-21): a link planted
+;; under .claude/skills/ made the sync overwrite, and the prune delete, outside the workspace
+(deftest a-skill-is-never-written-or-removed-through-a-link
+  (let [outer (fs/create-temp-dir {:prefix "kit-skills-link"})
+        ws (fs/path outer "ws")
+        elsewhere (fs/path outer "elsewhere")]
+    (try
+      (fs/create-dirs (fs/path ws ".claude" "skills"))
+      (fs/create-dirs elsewhere)
+      (spit (str (fs/path elsewhere "SKILL.md")) "THE PERSON'S OWN")
+      (fs/create-sym-link (fs/path ws ".claude" "skills" "kit-plan") elsewhere)
+      (testing "the sync refuses the linked skill and writes the rest"
+        (let [rs (skills/sync! kit-dir (str ws))
+              linked (first (filter #(= "kit-plan" (:name %)) rs))]
+          (is (re-find #"is a link or leads outside the workspace" (str (:refused linked))))
+          (is (= "THE PERSON'S OWN" (slurp (str (fs/path elsewhere "SKILL.md")))))
+          (is (fs/exists? (fs/path ws ".claude" "skills" "kit-start" "SKILL.md")))))
+      (testing "the prune removes nothing through a link"
+        (fs/create-sym-link (fs/path ws ".claude" "skills" "kit-old") elsewhere)
+        (spit (str (fs/path elsewhere "SKILL.md")) (str "<!-- generated -->\n" (slurp (str (fs/path ws ".claude" "skills" "kit-start" "SKILL.md")))))
+        (skills/prune! kit-dir (str ws))
+        (is (fs/exists? (fs/path elsewhere "SKILL.md"))))
+      (finally (fs/delete-tree outer)))))

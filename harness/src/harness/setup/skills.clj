@@ -29,6 +29,7 @@
    [babashka.fs :as fs]
    [babashka.process :as p]
    [clojure.string :as str]
+   [harness.contained-path :as contained-path]
    [harness.setup.workspace :as workspace]))
 
 (def source-dir "skills")
@@ -155,17 +156,25 @@
   names (nil: the clone's own HEAD, for the clone's own copy). Returns one map
   per skill: `:name`, `:path`, `:existed?`, `:changed?` (not current before
   the call). Folders under the target that are not shipped skills are left
-  alone."
+  alone.
+
+  NEVER THROUGH A LINK. A link planted under `.claude/skills/` - a folder the Architect's session can
+  write - had made the sync overwrite a file outside the workspace, as the person. A skill whose path
+  is not inside the workspace, or is a link, is not written: `:refused` says why."
   [kit-dir target-root & {:keys [check? commit]}]
   (vec (for [nm (shipped kit-dir)
              :let [source (slurp (source-path kit-dir nm))
-                   path (fs/path target-root target-dir nm file-name)
-                   existed? (fs/exists? path)
-                   changed? (not (and existed? (current? (slurp (str path)) source)))]]
+                   rel (str target-dir "/" nm "/" file-name)
+                   path (fs/path target-root rel)
+                   refused (when (or (nil? (contained-path/inside target-root rel)) (fs/sym-link? path))
+                             (str rel " is a link or leads outside the workspace - not written through"))
+                   existed? (and (not refused) (fs/exists? path))
+                   changed? (and (not refused) (not (and existed? (current? (slurp (str path)) source))))]]
          (do (when (and changed? (not check?))
                (fs/create-dirs (fs/parent path))
                (spit (str path) (render nm source commit)))
-             {:name nm :path (str path) :existed? existed? :changed? changed?}))))
+             (cond-> {:name nm :path (str path) :existed? existed? :changed? changed?}
+               refused (assoc :refused refused))))))
 
 (defn stale
   "The renderings under `target-root/.claude/skills/` of a skill the KIT at
@@ -188,9 +197,14 @@
   `:kept` (what else the folder held, left in place - never written by this
   command, so never removed by it)."
   [kit-dir target-root]
+  ;; a regular file inside the workspace only: a link there had made the prune delete outside it
   (vec (for [nm (stale kit-dir target-root)
-             :let [d (fs/path target-root target-dir nm)]]
-         (do (fs/delete (fs/path d file-name))
+             :let [d (fs/path target-root target-dir nm)
+                   f (fs/path d file-name)]
+             :when (and (contained-path/inside target-root (str target-dir "/" nm "/" file-name))
+                        (not (fs/sym-link? d)) (not (fs/sym-link? f))
+                        (fs/regular-file? f {:nofollow-links true}))]
+         (do (fs/delete f)
              (let [kept (mapv #(str (fs/file-name %)) (fs/list-dir d))]
                (when (empty? kept) (fs/delete d))
                {:name nm :path (str d) :kept kept})))))

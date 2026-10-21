@@ -64,6 +64,12 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### The skills are never synced or pruned through a link (plan 6.11, item 12, register row 202)
+
+The setup flow's skills finding: a link planted under `.claude/skills/` made the sync overwrite, and
+the prune delete, outside the workspace. A linked or outside path is refused and said; the prune
+removes regular files inside only.
+
 ### The panel keeps links and its records' names (plan 6.11, item 12, register rows 200 and 201)
 
 Two panel findings, both flows' (Astra's and Argon's): the member's copy followed a link in the

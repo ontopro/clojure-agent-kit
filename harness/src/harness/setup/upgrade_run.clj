@@ -273,10 +273,12 @@
 (defn- step-skills! [{:keys [ws kit head]}]
   (let [rs (skills/sync! kit (:workspace/dir ws) :commit head)
         written (map :name (filter :changed? rs))
+        refused (keep :refused rs)
         pruned (map :name (skills/prune! kit (:workspace/dir ws)))]
     {:status :done
      :detail (str (if (seq written) (str "written: " (str/join ", " written)) "all current")
-                  (when (seq pruned) (str "; removed, no longer shipped: " (str/join ", " pruned))))}))
+                  (when (seq pruned) (str "; removed, no longer shipped: " (str/join ", " pruned)))
+                  (when (seq refused) (str "; " (str/join "; " refused))))}))
 
 (defn- step-orientation! [{:keys [ws kit before from head version]}]
   (let [ws-dir (:workspace/dir ws)
