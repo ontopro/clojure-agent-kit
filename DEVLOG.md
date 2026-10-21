@@ -64,6 +64,14 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### A `..` after a link is taken where the OS takes it (plan 6.11, item 12, register row 198)
+
+The seams pass on Argon at Google's own API (20 completions, $1.90; the two flows OpenAI refused ran
+on Argon too, $1.22 and $0.63, no refusal) found a hole in row 190: `inside` took `..` from the string
+before following links, while the file tools opened the string, where the OS follows the link first.
+The walk now takes the path as written, `..` from where it has got to; a path is inside only when its
+written and normalized forms are one file, so either string is safe to open.
+
 ### The sandbox stops before its tests are collected (plan 6.11, item 12, register row 197)
 
 The security-review flow's lifecycle finding: the tests were collected while the container ran, so a

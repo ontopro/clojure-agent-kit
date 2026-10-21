@@ -57,3 +57,22 @@
       (is (some? (contained-path/inside root "src/in.clj")) "a dangling link pointing inside")
       (is (nil? (contained-path/inside root "loop-a/x")) "a loop of links")
       (finally (fs/delete-tree outer)))))
+
+;; From the KIT's own security review (Gemini 4 Argon, the seams flow, 2026-10-21): `..` was taken from the
+;; string before the links were followed, while the file tools opened the string - where the OS takes the
+;; link first and the `..` after it
+(deftest a-dotdot-after-a-link-goes-where-the-os-goes
+  (let [outer (fs/create-temp-dir {:prefix "kit-contained-dotdot"})
+        root (fs/path outer "ws")]
+    (try
+      (fs/create-dirs (fs/path root "src" "deep" "er"))
+      (fs/create-dirs (fs/path outer "other" "sub"))
+      (spit (str (fs/path outer "other" "secret")) "s")
+      (fs/create-sym-link (fs/path root "linkdir") (fs/path outer "other" "sub"))
+      (fs/create-sym-link (fs/path root "inlink") (fs/path root "src" "deep" "er"))
+      (is (nil? (contained-path/inside root "linkdir/../secret")) "the OS lands outside")
+      (is (nil? (contained-path/inside root "inlink/../x.clj"))
+          "inside either way, but two different files: the string a caller opens is not the one judged")
+      (is (some? (contained-path/inside root "src/../src/a.clj")) "a `..` with no link before it is one place")
+      (is (some? (contained-path/inside root "./src/./a.clj")))
+      (finally (fs/delete-tree outer)))))

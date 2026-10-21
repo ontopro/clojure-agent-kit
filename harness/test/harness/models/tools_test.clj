@@ -431,3 +431,17 @@
         (is (str/includes? (:content (tools/invoke ctx {:id "a" :name "read_file" :args {:path (str (fs/path outer "outside.txt"))}}))
                            "is an absolute path")))
       (finally (fs/delete-tree outer)))))
+
+(deftest read-file-never-follows-a-link-and-then-climbs-out
+  ;; the seams flow: `read_file` had checked `base/secret` and opened `linkdir/../secret`
+  (let [outer (fs/create-temp-dir {:prefix "kit-tools-dotdot"})
+        ws (fs/path outer "ws")]
+    (try
+      (fs/create-dirs ws)
+      (fs/create-dirs (fs/path outer "other" "sub"))
+      (spit (str (fs/path outer "other" "secret")) "HOST SECRET")
+      (fs/create-sym-link (fs/path ws "linkdir") (fs/path outer "other" "sub"))
+      (let [r (tools/invoke {:dir (str ws) :targets []} {:id "c" :name "read_file" :args {:path "linkdir/../secret"}})]
+        (is (:error? r))
+        (is (not (str/includes? (str (:content r)) "HOST SECRET"))))
+      (finally (fs/delete-tree outer)))))
