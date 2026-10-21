@@ -289,3 +289,19 @@
       (doseq [p ["test/harness/x_test.clj" "harness/src/harness/x_test.clj" "harness/test/../../x_test.clj"]]
         (is (:error? (tools/invoke rt/kit-specs ctx {:id "2" :name "write_test" :args {:path p :content "(ns x-test)"}})) p))
       (finally (fs/delete-tree dir)))))
+
+;; From the KIT's own security review (GPT-6 Astra, the security-review flow, 2026-10-21): a test running
+;; as root could replace `test/` itself with a link, and the host's next write_test followed it
+(deftest replacing-the-test-root-does-not-move-where-a-test-is-written
+  (let [outer (fs/create-temp-dir {:prefix "kit-review-test-root"})
+        ws (fs/path outer "clone")
+        elsewhere (fs/path outer "host-folder")]
+    (try
+      (fs/create-dirs ws)
+      (fs/create-dirs (fs/path elsewhere "app"))
+      (fs/create-sym-link (fs/path ws "test") elsewhere)
+      (let [r (tools/invoke rt/specs {:dir (str ws) :written (atom #{})}
+                            {:id "1" :name "write_test" :args {:path "test/app/x_test.clj" :content "(ns app.x-test)"}})]
+        (is (:error? r))
+        (is (not (fs/exists? (fs/path elsewhere "app" "x_test.clj")))))
+      (finally (fs/delete-tree outer)))))

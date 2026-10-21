@@ -116,8 +116,11 @@
         p (fs/normalize (fs/absolutize (fs/path dir (str path))))
         rel (str (fs/relativize base p))
         ;; by parts and by real path: a folder under test/ linked elsewhere is not written through
-        under-test? (some-> (contained-path/inside (fs/path base "test") (str (fs/relativize (fs/path base "test") p)))
-                            (not= (fs/normalize (fs/absolutize (fs/path base "test")))))]
+        ;; and inside the CLONE: a `test/` that is itself a link had moved the root it was judged against,
+        ;; and the host wrote where the link pointed
+        under-test? (and (contained-path/inside dir (str path))
+                         (some-> (contained-path/inside (fs/path base "test") (str (fs/relativize (fs/path base "test") p)))
+                                 (not= (fs/normalize (fs/absolutize (fs/path base "test"))))))]
     (cond
       (str/blank? path) "path is required"
       (not under-test?) (str path " is not below test/ - a test is the only thing you may write")

@@ -64,6 +64,12 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### `write_test` holds a path inside the clone too (plan 6.11, item 10, register row 192)
+
+The security-review flow's first finding: `test-path-problem` judged a path against `test/` as its
+root, so a test that replaced `test/` with a link moved where the host's next `write_test` wrote. The
+path must now be inside the clone as well.
+
 ### A spec's file has a source file's shape (plan 6.11, item 10, register row 191)
 
 The contract flow's second finding: the `:files/impl` path became the stub's namespace, held only to
