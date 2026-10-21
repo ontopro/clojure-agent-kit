@@ -121,7 +121,9 @@
   (let [review-file (str (fs/normalize (fs/absolutize review-file)))
         review (edn/read-string (slurp review-file))
         dir (fs/parent review-file)
-        tests-of (fn [record-name] (fs/path dir (str (fs/strip-ext record-name) "-tests")))
+        ;; a panel row's :record names a file of this folder by construction; the table is a build's file,
+        ;; so only its file name is taken - `../x` had moved the folder whose tests were trusted
+        tests-of (fn [record-name] (fs/path dir (str (fs/strip-ext (fs/file-name (str record-name))) "-tests")))
         ;; ONE REVIEW'S RECORD, OR A PANEL'S TABLE: either way, what to route and where its test is
         panel? (contains? review :rows)
         items (if panel?

@@ -123,3 +123,23 @@
         (is (not (str/includes? (slurp (str (fs/path work "security-routing.edn"))) "OUTSIDE"))
             "and nothing of it reaches the routing record the build commits"))
       (finally (fs/delete-tree outer)))))
+
+(deftest a-panel-row-s-record-is-a-file-of-the-folder
+  ;; the security-review flow (GPT-6 Astra, Gemini 4 Argon): a table's `:record "../x"` had moved the folder
+  ;; whose tests were trusted
+  (let [outer (fs/create-temp-dir {:prefix "kit-route-panel-record"})
+        dir (fs/path outer "review")
+        clone (fs/path outer "clone")
+        seen (atom [])]
+    (try
+      (fs/create-dirs clone)
+      (fs/create-dirs (fs/path outer "elsewhere-tests" "test"))
+      (spit (str (fs/path outer "elsewhere-tests" "test" "a_test.clj")) "NOT THIS REVIEW'S")
+      (fs/create-dirs dir)
+      (spit (str (fs/path dir "security-panel.edn"))
+            (pr-str {:rows [{:finding {:title "T" :kind :reproduced :test "test/a_test.clj" :where "src/a.clj"}
+                             :record "../elsewhere.edn" :by ["m"]}]}))
+      (routing/route! {:review-file (str (fs/path dir "security-panel.edn")) :clone (str clone) :architecture nil :out (str dir)
+                       :triage-fn (fn [t] (swap! seen conj t) {:route :human :reason "r"})})
+      (is (nil? (get-in (first @seen) [:payload :test-text])) "the test is read only from this folder's records")
+      (finally (fs/delete-tree outer)))))

@@ -126,3 +126,24 @@
 
 (deftest members-without-names-is-said
   (is (thrown-with-msg? clojure.lang.ExceptionInfo #"--members needs names" (panel/parse-args ["x" "--members"]))))
+
+;; From the KIT's own security review (GPT-6 Astra and Gemini 4 Argon, 2026-10-21): the member's copy
+;; followed a link in the project's repository, so a host file became a regular file of the copy
+(deftest a-member-s-copy-keeps-a-link-a-link
+  (let [outer (fs/create-temp-dir {:prefix "kit-panel-copy-link"})
+        clone (fs/path outer "clone")
+        seen (atom nil)]
+    (try
+      (fs/create-dirs (fs/path clone "src"))
+      (spit (str (fs/path outer "host-secret")) "HOST")
+      (fs/create-sym-link (fs/path clone "src" "linked.clj") (fs/path outer "host-secret"))
+      (with-redefs [review/review!
+                    (fn [_ _ copy _]
+                      (reset! seen {:link? (fs/sym-link? (fs/path copy "src" "linked.clj"))})
+                      {:status :done :findings [] :tests {} :steps [] :calls [] :ms 1})
+                    review/write-record! (fn [& _] "rec.edn")]
+        (try (panel/run-panel! {:kit "." :clone (str clone) :stance :tracer :parallel 1 :out (str (fs/path outer "out"))}
+                               [{:name "m" :model "x"}])
+             (catch Exception _ nil)))
+      (is (true? (:link? @seen)) "the copy carries the link as a link, which the review's tools then refuse")
+      (finally (fs/delete-tree outer)))))

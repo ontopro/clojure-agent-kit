@@ -64,6 +64,13 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### The panel keeps links and its records' names (plan 6.11, item 12, register rows 200 and 201)
+
+Two panel findings, both flows' (Astra's and Argon's): the member's copy followed a link in the
+project into a regular file holding host text, and a panel row's `:record "../x"` moved the folder
+whose tests `security-route` trusted. The copy keeps links as links; only a record's file name is
+taken.
+
 ### A key echoed in an answer is redacted too (plan 6.11, item 12, register row 187)
 
 The tool-calls flow's provider-echo finding: rows 183 and 186 redacted errors and tool results, not an

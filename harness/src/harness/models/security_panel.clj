@@ -256,7 +256,9 @@
               (let [scratch (str (fs/create-temp-dir {:prefix "kit-panel"}))
                     copy (str (fs/path scratch "app"))]
                 (try
-                  (fs/copy-tree clone copy)
+                  ;; LINKS STAY LINKS: copy-tree followed them, so a link in a project's repository became a
+                  ;; regular file holding a host file's text in the member's copy, and `inside` then passed it
+                  (fs/copy-tree clone copy {:nofollow-links true})
                   (println (str "  " (:name m) ": reading (" (name stance) ")"))
                   (let [r (review/review! (dissoc m :name) stance copy (cond-> {:kit kit} base (assoc :base base) rounds (assoc :rounds rounds)))
                         r (assoc r :member (:name m))
