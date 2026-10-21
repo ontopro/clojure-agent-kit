@@ -193,7 +193,15 @@
                :when (seq bad)]
            {:key k :entry bad
             :reason (str "is not a source file's path - src/, test/ or dev/, then parts of letters, digits and _, "
-                         "each starting with a letter, ending .clj or .cljc")})))))
+                         "each starting with a letter, ending .clj or .cljc")})
+         ;; ONE FILE, ONE LIST. A path under :files/impl and :files/test had let the Tester's version
+         ;; replace the Coder's at assembly - the role separation the method rests on
+         (let [lists {:files/impl impl :files/test test :files/context context}
+               owners (for [[k ps] lists, p (distinct ps)] [(str p) k])
+               twice (->> owners (group-by first) (filter #(> (count (val %)) 1)) (map key) sort vec)]
+           (when (seq twice)
+             [{:key :files/test :entry twice
+               :reason "is named in more than one of :files/impl, :files/test and :files/context - a file is one role's"}]))))))
 
 (defn- escaped
   "`s` as the inside of a Clojure string literal. Whatever reaches the

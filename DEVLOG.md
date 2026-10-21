@@ -64,6 +64,12 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### A file is one role's (plan 6.11, item 10, register row 194)
+
+The contract flow's fourth finding: a path named under both `:files/impl` and `:files/test` let the
+Tester's version replace the Coder's at assembly. `check-files` refuses a path named in more than one
+list.
+
 ### A bake-off case is a file of the plan, its id a name (plan 6.11, item 10, register row 193)
 
 The money flow's third finding, with its second folded in: a spec's case `:path` and `:stage` went

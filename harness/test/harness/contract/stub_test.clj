@@ -258,3 +258,13 @@
   (is (= [:files/test] (mapv :key (stub/check-files {:files/impl ["src/a/b.clj"] :files/test ["test/a/b)_test.clj"]}))))
   (is (thrown-with-msg? Exception #"not a source file's path"
                         (stub/write! (str (fs/create-temp-dir)) ["src/a/b) (def x 1) ;.clj"] '{:interfaces [(f [x])]}))))
+
+;; From the KIT's own security review (GPT-6 Astra, the contract flow, 2026-10-21): assembly copied the
+;; Tester's version of a file named under both lists over the Coder's
+(deftest a-file-is-named-in-one-list-only
+  (let [bad (stub/check-files {:files/impl ["src/a/b.clj"] :files/test ["test/a/b_test.clj" "src/a/b.clj"]})]
+    (is (= [["src/a/b.clj"]] (mapv :entry bad)))
+    (is (re-find #"more than one of :files/impl, :files/test and :files/context" (:reason (first bad)))))
+  (is (seq (stub/check-files {:files/impl ["src/a/b.clj"] :files/test ["test/a/b_test.clj"] :files/context ["src/a/b.clj"]}))
+      "the implementation is not its own context either")
+  (is (nil? (stub/check-files {:files/impl ["src/a/b.clj"] :files/test ["test/a/b_test.clj"] :files/context ["src/a/c.clj"]}))))
