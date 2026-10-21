@@ -352,3 +352,20 @@
     (is (= '[{:ns a.impl :name extra} {:ns a.impl :name helper} {:ns a.impl :name ops}]
            (sigs/impl-names dir (assoc spec :files/impl ["src/a/absent.clj" "src/a/impl.clj"])))
         "and an absent one beside a present one is skipped, not handed to clj-kondo")))
+
+;; From the KIT's own security review (Gemini 4 Argon, 2026-10-21)
+(def probe (atom false))
+
+(deftest a-spec-on-stdin-is-read-as-edn-never-evaluated
+  (reset! probe false)
+  (let [dir (str (fs/create-temp-dir {:prefix "kit-sigs-edn"}))]
+    (try
+      (spit (str (fs/path dir "a.clj")) "(ns a)\n(defn f [x] x)\n")
+      (with-out-str
+        (try
+          (with-in-str (str "{:task/id #=(do (reset! harness.contract.sigs-test/probe true) \"t1\")"
+                            " :files/context [\"a.clj\"] :blueprint/slice {:deps-sigs [(a/f [x])]}}")
+            (sigs/-main "--dir" dir))
+          (catch Exception _ nil)))
+      (is (false? @probe) "`#=` in a spec is refused by the reader, never run")
+      (finally (fs/delete-tree dir)))))

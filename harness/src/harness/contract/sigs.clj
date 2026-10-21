@@ -440,7 +440,8 @@
   judges the packet the agent is about to be given."
   [& args]
   (let [dir (or (second (drop-while #(not= "--dir" %) args)) ".")
-        spec (read-string (slurp *in*))
+        ;; EDN, never `read-string`: a spec on stdin is text, and `#=` in it ran code on the host
+        spec (edn/read-string {:default tagged-literal} (slurp *in*))
         v (violations dir (:files/context spec) (:deps-sigs (:blueprint/slice spec)))]
     (if (seq v)
       (do (println (str "sigs: " (count v) " violation(s) in " (:task/id spec)))

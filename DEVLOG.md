@@ -64,6 +64,13 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### `bb sigs` reads its spec as EDN (plan 6.11, item 8, register row 175)
+
+The review's fourth finding: `sigs/-main` read the spec on stdin with `read-string`, so `#=` in it ran
+on the host. LOW-MEDIUM by Fable 5.1's reading - a blueprint's fences are read with `edn/read`, which
+refuses `#=`, so only a spec written by hand reaches it - and one word to fix: `edn/read-string`, the
+only `read-string` that was left in `harness/src`.
+
 ### A model's file tools check a path by its parts (plan 6.11, item 8, register row 174)
 
 The review's third finding: `tools/within?` compared strings, so a sibling of the worktree whose name
