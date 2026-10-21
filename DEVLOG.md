@@ -64,6 +64,23 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### The flows' findings, and `bb balance` asks only OpenRouter (plan 6.11, item 10, register row 189)
+
+The six flows by Astra with the last-round notice: tool-calls and security-review refused by OpenAI's
+safeguard (a 403, "flagged for possible cybersecurity risk", at completions 19 and 15, $3.49 and
+$2.17, their tests kept), contract six reproduced ($3.78), money-and-records five ($3.17),
+setup-and-upgrade three ($3.69), tool-packs four ($2.11) - $18.41, every flow the provider let finish
+answering. Each pass's tests were run again in a fresh clone and sandbox, and each Fable 5.1 called
+real failed again. Not findings, said here: clj-kondo run on the host over a project's
+`.clj-kondo/config.edn` - the planted hook ran under kondo's interpreter and wrote nothing; `bb tasks`
+evaluating a project's `:init` - on bb 1.13.226 it does not; the clone's diff drivers - `.git/config`
+is the person's own clone's, read-only in the container since row 180.
+
+The first fixed, HIGH: `bb balance` took a run record with a `:roles` key for its profile and any
+endpoint containing "openrouter" for OpenRouter's, and sent the variable the record named to it.
+OpenRouter is asked only at the endpoint `routes.edn` names, with the routes' key; a record is never
+a profile.
+
 ### A review is told its budget, and its last completion (plan 6.11, item 10)
 
 The first two flows, Astra at twenty completions each, both stopped at the limit with no answer -

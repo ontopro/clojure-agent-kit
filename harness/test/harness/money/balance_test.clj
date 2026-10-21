@@ -1,11 +1,22 @@
 (ns harness.money.balance-test
   (:require
    [babashka.fs :as fs]
+   [babashka.http-client]
    [cheshire.core :as json]
    [clojure.string :as str]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [harness.money.balance :as balance]
    [org.httpkit.server :as srv]))
+
+;; THE STUB IS AN OPENROUTER THESE TESTS TRUST. `bb balance` asks only the endpoint routes.edn names, with
+;; the routes key (`openrouter-route`); a stub on the loopback is neither, so these tests name it, its key
+;; PATH - set, and harmless to send to the stub. The trust check has its own test, below, outside this
+(use-fixtures :each
+  (fn [t]
+    (let [real balance/openrouter-route]
+      (with-redefs [balance/openrouter-route (fn ([ep] (if (str/starts-with? (str ep) "http://127.0.0.1:") {:endpoint ep :key-env "PATH"} (real ep)))
+                                               ([ep routes] (real ep routes)))]
+        (t)))))
 
 (deftest spend-is-summed-per-provider-and-a-costless-step-counts-for-nothing
   (is (= {"Anthropic API" 0.75 "OpenAI" 0.1}
@@ -76,7 +87,8 @@
         (finally @(srv/server-stop! stop)))))
   (testing "an OpenRouter key that does not answer is unavailable, not an error"
     (is (:unavailable (balance/openrouter-key-status "http://127.0.0.1:1/api/v1" "PATH")))
-    (is (= {:unavailable "NO_SUCH_VAR_HERE is unset"} (balance/openrouter-key-status "http://x" "NO_SUCH_VAR_HERE")))))
+    (with-redefs [balance/openrouter-route (fn [ep & _] {:endpoint ep :key-env "NO_SUCH_VAR_HERE"})]
+      (is (= {:unavailable "NO_SUCH_VAR_HERE is unset"} (balance/openrouter-key-status "http://x" "ignored"))))))
 
 (deftest the-profile-argument-is-optional-and-told-from-a-record-by-its-shape
   ;; A stop's next-steps line says `bb balance` alone; from a workspace's clone that must
@@ -136,3 +148,30 @@
           (is (str/includes? (balance/line {:roles {:coder {:endpoint ep :key-env "PATH"}}} [])
                              "OpenRouter unavailable (HTTP 200, a body that is not JSON)")))
         (finally @(srv/server-stop! stop))))))
+
+;; From the KIT's own security review (GPT-6 Astra, the money-and-records flow, 2026-10-21): a run
+;; record given to `bb balance` was taken for a profile, a URL containing "openrouter" for OpenRouter,
+;; and the record's own variable was sent there
+(deftest only-the-routes-openrouter-is-asked-and-with-the-routes-key
+  (let [routes {:anthropic {:endpoint "https://openrouter.ai/api/v1" :key-env "OPENROUTER_API_KEY"}
+                :google-direct {:endpoint "https://generativelanguage.googleapis.com/v1beta/openai" :key-env "GEMINI_API_KEY"}}]
+    (is (= {:endpoint "https://openrouter.ai/api/v1" :key-env "OPENROUTER_API_KEY"}
+           (balance/openrouter-route "https://openrouter.ai/api/v1" routes)))
+    (is (nil? (balance/openrouter-route "https://evil.example/openrouter/api/v1" routes)) "a URL that contains the word is not it")
+    (is (nil? (balance/openrouter-route "https://generativelanguage.googleapis.com/v1beta/openai" routes)) "another route is not OpenRouter")))
+
+(deftest a-run-record-is-never-a-profile-and-sends-nothing
+  (let [dir (fs/create-temp-dir {:prefix "kit-balance-record"})
+        rec (str (fs/path dir "run.edn"))
+        sent (atom [])]
+    (try
+      (spit rec (pr-str {:run/id "r" :run/steps []
+                         :roles {:coder {:endpoint "https://evil.example/openrouter/api/v1" :key-env "PATH"}}}))
+      (is (= [nil [rec]] (balance/split-args [rec] nil)) "a record with :roles is still a record")
+      (with-redefs [babashka.http-client/get (fn [url _] (swap! sent conj url) {:status 200 :body "{\"data\":{}}"})]
+        (is (str/includes? (:unavailable (balance/openrouter-key-status "https://evil.example/openrouter/api/v1" "PATH"))
+                           "is not OpenRouter's endpoint as routes.edn names it - not asked, so no key is sent"))
+        (is (str/includes? (balance/line {:roles {:coder {:endpoint "https://evil.example/openrouter/api/v1" :key-env "PATH"}}} [])
+                           "OpenRouter not in this profile")))
+      (is (empty? @sent) "no request leaves")
+      (finally (fs/delete-tree dir)))))

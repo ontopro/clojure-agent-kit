@@ -18,6 +18,7 @@
             [cheshire.core :as json]
             [clojure.edn :as edn]
             [clojure.string :as str]
+            [harness.models.catalogue :as catalogue]
             [harness.models.profile :as profile]
             [harness.models.provenance :as provenance]))
 
@@ -50,6 +51,20 @@
   [x]
   (when (number? x) x))
 
+(defn openrouter-route
+  "OpenRouter's endpoint and its key's variable as `routes` (`routes.edn`) names them, when `endpoint`
+  is that endpoint exactly; nil otherwise.
+
+  ASKED ONLY OF THE ENDPOINT THE ROUTES NAME, WITH THE ROUTES' KEY. A role's endpoint was taken for
+  OpenRouter's when it CONTAINED the word, and its own `:key-env` was sent: a run record handed to
+  `bb balance` as its profile sent any variable to `https://elsewhere/openrouter/`."
+  ([endpoint] (openrouter-route endpoint (catalogue/routes)))
+  ([endpoint routes]
+   (some (fn [r] (when (and (map? r) (= endpoint (:endpoint r)) (:key-env r)
+                            (= "openrouter.ai" (some-> (:endpoint r) java.net.URI. .getHost)))
+                   (select-keys r [:endpoint :key-env])))
+         (vals routes))))
+
 (defn openrouter-key-status
   "`{:limit :usage :remaining}` in dollars for the key in `key-env`, plus
   `:credits {:total :usage :remaining}` for the ACCOUNT when its endpoint
@@ -66,10 +81,18 @@
   ANY FIGURE MAY BE MISSING. A key with no limit has no limit and no remaining; a field the
   provider leaves out, or sends as something other than a number, is nil here, and the line and
   the report name it rather than compute with it."
-  [endpoint key-env]
-  (let [key (System/getenv key-env)]
-    (if (str/blank? key)
+  [endpoint _key-env]
+  (let [route (openrouter-route endpoint)
+        key-env (:key-env route)
+        key (some-> key-env System/getenv)]
+    (cond
+      (nil? route)
+      {:unavailable (str endpoint " is not OpenRouter's endpoint as routes.edn names it - not asked, so no key is sent")}
+
+      (str/blank? key)
       {:unavailable (str key-env " is unset")}
+
+      :else
       (let [d (get-data endpoint key "/key")]
         (if (:unavailable d)
           d
@@ -83,7 +106,7 @@
   "The first role in `profile` served by OpenRouter - a security reviewer panel's members among them - or nil."
   [profile]
   (->> (map second (profile/role-blocks profile))
-       (filter #(some-> (:endpoint %) (str/includes? "openrouter")))
+       (filter #(openrouter-route (:endpoint %)))
        first))
 
 (defn spend-by-provider
@@ -150,7 +173,9 @@
   told apart by what is in the file, not by its name."
   [path]
   (boolean (and path (fs/regular-file? path)
-                (try (contains? (edn/read-string (slurp path)) :roles)
+                (try (let [m (edn/read-string {:default tagged-literal} (slurp path))]
+                       ;; a run record is a record whatever else it carries
+                       (and (contains? m :roles) (not (some #(contains? m %) [:run/id :run/steps :steps]))))
                      (catch Exception _ false)))))
 
 (defn split-args
