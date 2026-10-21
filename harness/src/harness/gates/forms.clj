@@ -69,6 +69,13 @@
      :to end-row
      :hash (hash form)}))
 
+(defn read-all
+  "The top-level forms of `content` as data, in order - `table`'s reading without the rows; nil when
+  the content does not parse."
+  [content]
+  (try (vec (unsplice (e/parse-string-all (str content) read-options)))
+       (catch Exception _ nil)))
+
 (defn table
   "The top-level forms of `content`, in order, each
   `{:kind :name :from :to :hash}`; `[]` for an empty file; nil when the

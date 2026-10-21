@@ -31,7 +31,8 @@
   (:require
    [babashka.fs :as fs]
    [clojure.edn :as edn]
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [harness.gates.forms :as forms]))
 
 (def file-name "layers.edn")
 
@@ -71,12 +72,31 @@
   [ruleset]
   (into {} (filter (comp symbol? key)) ruleset))
 
+(defn- unquoted [x] (if (and (seq? x) (= 'quote (first x))) (second x) x))
+
+(defn file-ns-form
+  "A file's namespace as one `ns` form: its first `ns` form's name, with the `:require` and `:use`
+  clauses of EVERY top-level `ns` form and every top-level `(require …)` and `(use …)` call - nil for a
+  file with no `ns` form, or one that does not read.
+
+  EVERY TOP-LEVEL FORM IS READ. The gate read the first form alone, so a second `(ns app.api
+  (:require [app.secret]))` further down - or a `(require 'app.secret)` - loaded a forbidden
+  namespace past it."
+  [text]
+  (let [all (forms/read-all text)
+        nss (filter #(and (seq? %) (= 'ns (first %))) all)
+        calls (filter #(and (seq? %) (#{'require 'use} (first %))) all)]
+    (when (seq nss)
+      (list* 'ns (second (first nss))
+             (concat (mapcat #(filter seq? (drop 2 %)) nss)
+                     (for [c calls] (cons (keyword (name (first c))) (map unquoted (rest c)))))))))
+
 (defn- ns-forms
-  "Every namespace defined under `src-dir`, as `[name ns-form]`, sorted by file."
+  "Every namespace defined under `src-dir`, as `[name ns-form]` (`file-ns-form`), sorted by file."
   [src-dir]
   (for [f (sort (fs/glob src-dir "**/*.clj"))
-        :let [form (edn/read-string (slurp (str f)))]
-        :when (and (seq? form) (= 'ns (first form)))]
+        :let [form (file-ns-form (slurp (str f)))]
+        :when form]
     [(second form) form]))
 
 (defn defined

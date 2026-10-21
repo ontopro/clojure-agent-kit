@@ -85,3 +85,20 @@
       (is (= '#{app.secret app.other clojure.set}
              (boundary/requires-of '(ns x (:require (app [secret :as s] other) [clojure [set :as st]])))))
       (finally (fs/delete-tree dir)))))
+
+;; From the KIT's own security review (GPT-6 Astra, the contract flow, 2026-10-21): the gate read a file's
+;; first form alone, so a second ns form - or a require call - loaded a forbidden namespace past it
+(deftest every-top-level-form-of-a-file-is-read
+  (let [dir (fs/create-temp-dir {:prefix "kit-boundary-second-ns"})
+        src (fs/path dir "src")
+        rules '{app.api #{} app.secret #{}}
+        api (fs/path src "app" "api.clj")]
+    (try
+      (fs/create-dirs (fs/path src "app"))
+      (spit (str (fs/path src "app" "secret.clj")) "(ns app.secret)\n")
+      (doseq [spelling ["(ns app.api)\n(defn f [] 1)\n(ns app.api (:require [app.secret :as s]))\n"
+                        "(ns app.api)\n(require '[app.secret :as s])\n"
+                        "(ns app.api)\n(use 'app.secret)\n"]]
+        (spit (str api) spelling)
+        (is (= [:forbidden-dependency] (mapv :kind (boundary/violations src rules))) spelling))
+      (finally (fs/delete-tree dir)))))

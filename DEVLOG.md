@@ -64,6 +64,13 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### The boundary gate reads every top-level form (plan 6.11, item 10, register row 196)
+
+The contract flow's sixth finding: the gate read a file's first form, so a second `ns` form or a
+`(require …)` call loaded a forbidden namespace past it. It reads every top-level form now, by the
+same reader as the form table. A test file that does not parse also covers no target since row 195 -
+said here, as the behaviour it changed; gate 0 runs before either.
+
 ### A target is covered only by a test that runs (plan 6.11, item 10, register row 195)
 
 The contract flow's fifth finding: the targets gate read lines, so a marked `deftest` inside

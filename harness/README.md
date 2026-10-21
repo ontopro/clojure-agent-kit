@@ -100,7 +100,7 @@ the source by name: a namespace the source has that the table never mentions fai
 | `harness.contract.spec-review` | contract | 4 | A review of the CONTRACT before anyone works from it: `bb run-loop spec-review <run-dir>`. |
 | `harness.contract.stub` | contract | 1 | The contract, as code the Tester can load. |
 | `harness.contract.targets` | contract | 1 | The spec's `:property-targets`, checked against the tests the Tester wrote. |
-| `harness.gates.boundary` | gates | 0 | Gate 4: the architecture-boundary check (method §09), against a project's |
+| `harness.gates.boundary` | gates | 1 | Gate 4: the architecture-boundary check (method §09), against a project's |
 | `harness.gates.forms` | gates | 0 | The top-level forms of a Clojure file, as a table: kind, name, line range, |
 | `harness.gates.kit-status` | gates | 2 | `bb kit-status`: what an item's end should look at, printed and never |
 | `harness.gates.record` | gates | 0 | The KIT's gates record and the commit check that reads it. |
