@@ -447,3 +447,28 @@
   (is (= {:m "Bearer <K> rejected" :n ["<K>"]} (agent/redact {:m "Bearer sk-12345678 rejected" :n ["sk-12345678"]} "sk-12345678" "K")))
   (is (= {:m "abc"} (agent/redact {:m "abc"} "abc" "K")) "a value too short to be a key is left")
   (is (= {:m "x"} (agent/redact {:m "x"} nil "K"))))
+
+;; Fable 5.1's read of `71652b6`: the Coder's nrepl_eval runs with the person's whole environment
+(deftest a-secret-a-tool-returns-reaches-neither-the-model-nor-the-transcript
+  ;; PATH stands in for a key - the role's own key-env counts whatever it is called
+  (let [value (System/getenv "PATH")
+        sent (atom [])
+        registry {"peek" {:description "returns the environment" :schema {:type "object" :properties {}}
+                          :fn (fn [_ _] (tools/ok (str "env: " value)))}}]
+    (with-redefs [babashka.http-client/post
+                  (fn [_ opts]
+                    (swap! sent conj (:body opts))
+                    (if (= 1 (count @sent))
+                      (one-call "peek" {})
+                      {:status 200 :body (json/generate-string {:id "gen-2" :choices [{:message {:content "done"}}]
+                                                                :usage {:prompt_tokens 1 :completion_tokens 1 :cost 0}})}))]
+      (let [r (agent/converse! {:model "m" :shape :openai :endpoint "https://provider.invalid" :key-env "PATH"}
+                               "s" "o" {:dir "."} {:registry registry :tools #{"peek"} :max-iterations 3})]
+        (is (= "env: <PATH>" (get-in r [:calls 0 :content])) "the transcript has the variable's name")
+        (is (not (str/includes? (second @sent) value)) "and the model is never sent the value")))))
+
+(deftest the-environment-s-secrets-are-named-by-their-names
+  (is (= [["OPENROUTER_API_KEY" "sk-or-12345678"] ["MY_ROLE_VAR" "abcdefghij"]]
+         (agent/secrets {"OPENROUTER_API_KEY" "sk-or-12345678" "PATH" "/usr/bin:/bin" "GH_TOKEN" "short" "MY_ROLE_VAR" "abcdefghij"}
+                        "MY_ROLE_VAR")))
+  (is (= "a <DB_PASSWORD> b" (agent/redact-secrets "a hunter2hunter2 b" [["DB_PASSWORD" "hunter2hunter2"]]))))

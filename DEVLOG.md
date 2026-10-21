@@ -64,6 +64,14 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### A tool's output is read for secrets (plan 6.11, item 9, register row 186)
+
+From Fable 5.1's read of `71652b6`: the Coder's `nrepl_eval` runs with the person's whole environment,
+so one `(System/getenv)` put every key into a tool result - to the provider, the transcript, the
+record. `converse!` now reads the environment's secrets once a conversation - each variable named
+for a key, token, secret or password, and the role's own key-env - and replaces each value by its
+name in every tool result before the model or the transcript sees it.
+
 ### A dispatch says how many tools its role was not offered (plan 6.11, item 9, register row 182)
 
 From Fable 5.1's read of `eec5da8`: the runner counts a dispatch's refused calls, `:unoffered`, and the

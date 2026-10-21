@@ -107,6 +107,27 @@
     x
     (walk/postwalk #(if (string? %) (str/replace % secret (str "<" key-env ">")) %) x)))
 
+(def secret-name
+  "An environment variable whose name says it holds a secret."
+  #"(?i)key|token|secret|password")
+
+(defn secrets
+  "The environment's secrets, as `[[name value] ...]`, longest value first: every variable `env` (a
+  map, `System/getenv`'s) whose name `secret-name` matches, and the role's own `key-env`, whatever it
+  is called - each value of eight characters or more. Computed once a conversation; never printed."
+  [env key-env]
+  (->> env
+       (filter (fn [[k v]] (and (string? v) (>= (count v) 8)
+                                (or (= k key-env) (re-find secret-name (str k))))))
+       (map (fn [[k v]] [(str k) v]))
+       (sort-by (comp - count second))
+       vec))
+
+(defn redact-secrets
+  "`x` with each of `pairs` (`secrets`) redacted, its value replaced by `<NAME>`."
+  [x pairs]
+  (reduce (fn [x [k v]] (redact x v k)) x pairs))
+
 (defn- post!
   "One completion, sent again on a transient error up to `attempts` times in
   all. Returns `[parsed error retries]`: the answer or the last error, and how
@@ -216,7 +237,11 @@
          registry (:registry opts)
          offered (set (or (:tools opts) (tools/for-role :coder)))
          decls (tools/declarations (:shape role) offered registry)
-         key (some-> (:key-env role) System/getenv)]
+         key (some-> (:key-env role) System/getenv)
+         ;; WHAT A TOOL RETURNS IS READ FOR SECRETS before the model or the transcript sees it: the
+         ;; Coder's `nrepl_eval` runs on the host with the person's whole environment, and one
+         ;; `(System/getenv)` would put every key into the transcript and the committed record
+         env-secrets (secrets (into {} (System/getenv)) (:key-env role))]
      (loop [messages [{:role "user" :content opening}]
             calls []
             turns []
@@ -261,7 +286,9 @@
                                                (assoc (tools/err (str (:name c) " was not offered to you - your tools are: "
                                                                       (if (seq offered) (str/join ", " (sort offered)) "none")))
                                                       :id (:id c) :unoffered? true))]
-                                       (assoc r :ms (- (System/currentTimeMillis) t))))
+                                       (-> r
+                                           (update :content redact-secrets env-secrets)
+                                           (assoc :ms (- (System/currentTimeMillis) t)))))
                                    (:tool-calls parsed))
                      messages (-> messages
                                   (conj (adapter/assistant-message (:shape role) parsed))
