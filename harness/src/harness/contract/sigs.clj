@@ -427,6 +427,14 @@
   (if (seq deps)
     (update spec :files/context #(vec (distinct (concat % deps))))
     spec))
+
+(defn read-spec
+  "A spec's `text` as `{:spec spec}`, or `{:refused why}` when it is not EDN. EDN, never
+  `read-string`: a spec is text, and `#=` in it had run code on the host."
+  [text]
+  (try {:spec (edn/read-string {:default tagged-literal} text)}
+       (catch Exception e {:refused (str "the spec on stdin is not EDN - " (ex-message e))})))
+
 (defn -main
   "bb sigs — check a task spec's :deps-sigs against its :files/context.
 
@@ -440,8 +448,8 @@
   judges the packet the agent is about to be given."
   [& args]
   (let [dir (or (second (drop-while #(not= "--dir" %) args)) ".")
-        ;; EDN, never `read-string`: a spec on stdin is text, and `#=` in it ran code on the host
-        spec (edn/read-string {:default tagged-literal} (slurp *in*))
+        {:keys [spec refused]} (read-spec (slurp *in*))
+        _ (when refused (println (str "sigs: " refused)) (System/exit 2))
         v (violations dir (:files/context spec) (:deps-sigs (:blueprint/slice spec)))]
     (if (seq v)
       (do (println (str "sigs: " (count v) " violation(s) in " (:task/id spec)))

@@ -133,8 +133,11 @@
         ;; test folder - a `where` of `a/../../../.env` had sent a workspace's key to triage's
         ;; provider and into `security-routing.edn`, which the build commits. Outside, the text is nil
         routed (vec (for [{f :finding :keys [tests-dir by]} items
-                          :let [files (vec (for [rel (named-files (:where f))]
-                                             [rel (read-text (contained-path/inside clone rel))]))
+                          ;; a path outside is left out, not listed with no text: the record lists what was read
+                          :let [files (vec (for [rel (named-files (:where f))
+                                                 :let [p (contained-path/inside clone rel)]
+                                                 :when p]
+                                             [rel (read-text p)]))
                                 v (triage-fn (trigger-for f (read-text (some->> (:test f) (contained-path/inside tests-dir))) files architecture))]]
                       (cond-> {:finding f
                                :tests-dir (str tests-dir)

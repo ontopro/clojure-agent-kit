@@ -119,7 +119,7 @@
                        :triage-fn (fn [t] (swap! seen conj t) {:route :human :reason "r"})})
       (let [payload (:payload (first @seen))]
         (is (nil? (:test-text payload)) "a :test outside the test folder is not read")
-        (is (every? (comp nil? second) (:files payload)) "a :where outside the clone is not read")
+        (is (empty? (:files payload)) "a :where outside the clone is not read, nor listed")
         (is (not (str/includes? (slurp (str (fs/path work "security-routing.edn"))) "OUTSIDE"))
             "and nothing of it reaches the routing record the build commits"))
       (finally (fs/delete-tree outer)))))

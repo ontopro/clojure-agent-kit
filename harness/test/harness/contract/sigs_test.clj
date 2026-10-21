@@ -358,14 +358,9 @@
 
 (deftest a-spec-on-stdin-is-read-as-edn-never-evaluated
   (reset! probe false)
-  (let [dir (str (fs/create-temp-dir {:prefix "kit-sigs-edn"}))]
-    (try
-      (spit (str (fs/path dir "a.clj")) "(ns a)\n(defn f [x] x)\n")
-      (with-out-str
-        (try
-          (with-in-str (str "{:task/id #=(do (reset! harness.contract.sigs-test/probe true) \"t1\")"
-                            " :files/context [\"a.clj\"] :blueprint/slice {:deps-sigs [(a/f [x])]}}")
-            (sigs/-main "--dir" dir))
-          (catch Exception _ nil)))
-      (is (false? @probe) "`#=` in a spec is refused by the reader, never run")
-      (finally (fs/delete-tree dir)))))
+  (let [r (sigs/read-spec (str "{:task/id #=(do (reset! harness.contract.sigs-test/probe true) \"t1\")"
+                               " :files/context [\"a.clj\"] :blueprint/slice {:deps-sigs [(a/f [x])]}}"))]
+    (is (false? @probe) "`#=` in a spec is refused by the reader, never run")
+    (is (= "the spec on stdin is not EDN - No dispatch macro for: =" (:refused r))
+        "and said in one line, which `bb sigs` prints before it exits 2"))
+  (is (= {:spec {:task/id "t"}} (sigs/read-spec "{:task/id \"t\"}"))))

@@ -64,6 +64,13 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### Two loose ends of the review's fixes (plan 6.11, item 8, register rows 172 and 175)
+
+From Fable 5.1's read of `34fe4ad` and `f402057`, two nits, one commit. `bb security-route` lists in its
+trigger and its record only the files a finding names that are inside the clone - an outside path had
+travelled as a name with no text, noise for whoever read it. `bb sigs` given a spec that is not EDN says
+so in one line and exits 2 (`sigs/read-spec`), where the reader's stack trace had ended it.
+
 ### Every file of a spec is a path inside the worktree (plan 6.11, item 8, register row 179)
 
 From Fable 5.1's read, checking every reader of a spec's paths - a site Argon's review did not reach:
