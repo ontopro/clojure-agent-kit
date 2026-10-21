@@ -99,3 +99,27 @@
                            :triage-fn (fn [_] {:route :human :reason "accept"}) :out dir})]
     (is (= 1 (count (:files r))))
     (is (not (fs/exists? (fs/path dir "security-fixes.md"))))))
+
+;; From the KIT's own security review (Gemini 4 Argon, 2026-10-21): its test, in the KIT's names
+(deftest a-finding-s-paths-are-read-only-inside-the-clone-and-its-test-folder
+  (let [outer (fs/create-temp-dir {:prefix "kit-security-route-out"})
+        work (fs/path outer "work")
+        clone (fs/path work "clone")
+        record (fs/path work "rev-1.edn")
+        seen (atom [])]
+    (try
+      (fs/create-dirs (fs/path clone "src" "app"))
+      (fs/create-dirs (fs/path work "rev-1-tests" "test" "app"))
+      (spit (str (fs/path outer "host-file.txt")) "OUTSIDE THE TEST FOLDER")
+      (spit (str (fs/path outer "config.edn")) "{:api-key \"OUTSIDE THE CLONE\"}")
+      (spit (str record)
+            (pr-str {:findings [{:title "T" :kind :reproduced :test "../../host-file.txt"
+                                 :where "src/../../../config.edn: leak" :why "w"}]}))
+      (routing/route! {:review-file (str record) :clone (str clone) :architecture nil :out (str work)
+                       :triage-fn (fn [t] (swap! seen conj t) {:route :human :reason "r"})})
+      (let [payload (:payload (first @seen))]
+        (is (nil? (:test-text payload)) "a :test outside the test folder is not read")
+        (is (every? (comp nil? second) (:files payload)) "a :where outside the clone is not read")
+        (is (not (str/includes? (slurp (str (fs/path work "security-routing.edn"))) "OUTSIDE"))
+            "and nothing of it reaches the routing record the build commits"))
+      (finally (fs/delete-tree outer)))))

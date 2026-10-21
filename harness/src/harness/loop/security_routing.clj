@@ -22,6 +22,7 @@
    [clojure.edn :as edn]
    [clojure.pprint :as pp]
    [clojure.string :as str]
+   [harness.contained-path :as contained-path]
    [harness.loop.triage :as triage]
    [harness.models.profile :as profile]
    [harness.setup.workspace :as workspace]))
@@ -128,10 +129,13 @@
                   {:finding finding :tests-dir (tests-of record) :by by})
                 (for [f (:findings review) :when (= :reproduced (:kind f))]
                   {:finding f :tests-dir (tests-of (fs/file-name review-file))}))
+        ;; A FINDING'S PATHS ARE THE SECURITY REVIEWER'S WORDS: read only inside the clone and the
+        ;; test folder - a `where` of `a/../../../.env` had sent a workspace's key to triage's
+        ;; provider and into `security-routing.edn`, which the build commits. Outside, the text is nil
         routed (vec (for [{f :finding :keys [tests-dir by]} items
                           :let [files (vec (for [rel (named-files (:where f))]
-                                             [rel (read-text (fs/path clone rel))]))
-                                v (triage-fn (trigger-for f (read-text (some->> (:test f) (fs/path tests-dir))) files architecture))]]
+                                             [rel (read-text (contained-path/inside clone rel))]))
+                                v (triage-fn (trigger-for f (read-text (some->> (:test f) (contained-path/inside tests-dir))) files architecture))]]
                       (cond-> {:finding f
                                :tests-dir (str tests-dir)
                                :verdict (assoc (select-keys v [:route :reason :guidance :impl :target :triage/fallback :refused? :prompt :answer])

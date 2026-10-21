@@ -64,6 +64,34 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### The KIT's own security review, and a finding's paths read only inside (plan 6.11, item 8, register row 172)
+
+The person asked for a security review of the KIT itself, by Gemini 4 Argon at Google's own API.
+`bb security-review` is built for an application from the template - `bb serve`, `clojure -X:test`, a
+request tool - and the KIT has none of those, so a local driver reused its parts: `agent/converse!`,
+the review's `read_file`, `search`, `write_test` and `run_tests`, its findings format, over a clone of
+the KIT at `ef9a93c`, the tests run by `bb` in the toolchain image with no network. One tracer pass,
+high effort, 92 files in scope (`harness/src`, `tools/`, `.githooks/`, the `bb.edn` files), the rest
+readable: 38 completions, 102 tool calls, 12.2 minutes, about $1.49 - computed from the usage (337,863
+tokens in, 7,282,837 read from the cache, 8,416 out) at Argon's list price, since Google's API reports no
+cost and the driver's role carried none (row 169's "cannot be said", doing its job). Five findings, all
+reproduced; each test failed again in a fresh clone and sandbox. The record stays local, as the KIT's
+run records do; the tests come into `harness/test/` under the KIT's names, one commit per finding,
+and they are the evidence. Fable 5.1 read the driver (its no-network container had mounted the shared
+dependency cache writable; read-only now, and the cache volume removed after the run) and the record.
+
+Before it, the security pack's two scans on the KIT: `secrets --all` finds nothing in 77,042 added
+lines; `deps` finds no advisory for the two `deps.edn`, and fails on `jackson-core` that `bb.edn`'s
+etaoin brings - waived, row 133: a jar's Java classes are never loaded under `bb`.
+
+The first finding, HIGH: `bb security-route` read the files a finding's `:test` and `:where` name with
+no bound, so a security reviewer's answer could send any file the person can read - a workspace's
+`.env` - to triage's provider and into `security-routing.edn`, which a build commits. A new leaf,
+`harness.contained-path/inside`, is the check every such reader will make: the path compared by its
+parts (`fs/starts-with?`, never a string prefix), followed through a symlink to its real path - or its
+nearest existing ancestor's, for a file not yet written - and an absolute path refused. `route!` reads
+through it; outside reads as nil, as a missing file always has.
+
 ### A commit with no read mark is listed (plan 6.11, item 5)
 
 `bb kit-status` prints one more list: the commits since the last tag, merges aside, that no line of the
