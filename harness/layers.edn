@@ -51,7 +51,7 @@
  harness.contract.packet #{harness.contract.shapes}
  harness.contract.sigs #{harness.setup.doctor}
  harness.contract.blueprint #{harness.contract.shapes harness.contract.sigs harness.contract.stub}
- harness.loop.provision #{harness.gates.repair}
+ harness.loop.provision #{harness.contained-path harness.gates.repair}
  harness.setup.skills #{harness.setup.workspace}
  harness.setup.inventory #{harness.rules}
 

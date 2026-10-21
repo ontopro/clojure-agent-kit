@@ -64,6 +64,12 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### The assembly copies only inside both folders (plan 6.11, item 9, register row 185)
+
+Astra's last finding, LOW-MEDIUM: `assemble!` joined loop.edn's `:architecture :files` paths, as written,
+to the source folder and the gate worktree, so `../x` wrote beside the gate. A path is now copied only
+when `contained-path/inside` holds it in both; otherwise the assembly is refused by name.
+
 ### The boundary gate reads a prefix list (plan 6.11, item 9, register row 184)
 
 Astra's fifth finding: `boundary/requires-of` dropped a list, so `(:require (app [secret :as s]))` named

@@ -31,6 +31,7 @@
    [babashka.fs :as fs]
    [babashka.process :as p]
    [clojure.string :as str]
+   [harness.contained-path :as contained-path]
    [harness.gates.repair :as repair]))
 
 (def defaults
@@ -311,9 +312,15 @@
          (throw (ex-info "a role did not produce its :files/target"
                          {:missing absent}))))
      (let [gate-dir (:worktree/path gate-session)
+           ;; A PATH IS COPIED ONLY INSIDE BOTH FOLDERS. `:architecture :files` comes from loop.edn as
+           ;; written, and `../x` had been written beside the gate worktree; refused by name
            copy! (fn [src-dir path]
-                   (let [src (fs/path src-dir path)
-                         dst (fs/path gate-dir path)]
+                   (let [src (contained-path/inside src-dir path)
+                         dst (contained-path/inside gate-dir path)
+                         _ (when-not (and src dst)
+                             (throw (ex-info (str path " is not a path inside " (if src gate-dir src-dir)
+                                                  " - a file to assemble is named from the folder's root")
+                                             {:outside path})))]
                      (when (fs/exists? src)
                        (fs/create-dirs (fs/parent dst))
                        (fs/copy src dst {:replace-existing true})

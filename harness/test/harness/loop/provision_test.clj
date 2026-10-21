@@ -335,3 +335,23 @@
     (testing "and a teardown takes it, so they do not accumulate"
       (prov/teardown! s root)
       (is (not (fs/exists? (:nrepl/log s)))))))
+
+;; From the KIT's own security review (GPT-6 Astra, 2026-10-21): loop.edn's `:architecture :files` had
+;; been copied with the path as written, so `../x` wrote beside the gate worktree
+(deftest an-architecture-file-is-copied-only-inside-both-folders
+  (let [outer (fs/create-temp-dir {:prefix "kit-assemble-outside"})
+        arch (fs/path outer "run" "arch")
+        gate (fs/path outer "worktrees" "gate")
+        victim (fs/path outer "worktrees" "outside.txt")]
+    (try
+      (fs/create-dirs arch)
+      (fs/create-dirs gate)
+      (spit (str (fs/path outer "run" "outside.txt")) "from outside the architecture folder")
+      (spit (str victim) "untouched")
+      (spit (str (fs/path arch "layers.edn")) "{}")
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"\.\./outside\.txt is not a path inside"
+                            (prov/assemble! {:worktree/path (str gate)} [] {:from (str arch) :files ["../outside.txt"]})))
+      (is (= "untouched" (slurp (str victim))))
+      (is (= ["layers.edn"] (:architecture (prov/assemble! {:worktree/path (str gate)} [] {:from (str arch) :files ["layers.edn"]})))
+          "a file inside both is copied as before")
+      (finally (fs/delete-tree outer)))))
