@@ -271,6 +271,9 @@
              [parsed err sent-again] (post! role system messages decls timeout-ms retry)
              ;; THE KEY NEVER LEAVES IN AN ERROR: a provider had echoed it back
              err (redact err key (:key-env role))
+             ;; NOR IN AN ANSWER: a provider that echoes the key in its text or a tool call's arguments
+             ;; had put it into the history sent back, the notes, the transcript and the run's record
+             parsed (some-> parsed (redact-secrets env-secrets))
              ms-completion (- (System/currentTimeMillis) t0)
              retries (+ retries sent-again)]
          (cond

@@ -64,6 +64,13 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### A key echoed in an answer is redacted too (plan 6.11, item 12, register row 187)
+
+The tool-calls flow's provider-echo finding: rows 183 and 186 redacted errors and tool results, not an
+answer's own text or a tool call's arguments. `converse!` now reads every answer for the
+environment's secrets before the history, the notes, the transcript or the record take it. With it,
+`inside`'s docstring names the two-readings refusal of row 198, where a caller reads it.
+
 ### A flagged 403 is a refusal (plan 6.11, item 12, register row 199)
 
 OpenAI refused two flows with a 403 that says the content was flagged; the records called them failed

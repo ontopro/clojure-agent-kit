@@ -49,7 +49,8 @@
 (defn inside
   "`path` (a string or a path, relative to `root`) resolved against `root`, when it stays inside it:
   the normalized absolute path. Nil when it is blank, absolute, leaves `root` once `..` is resolved,
-  or resolves outside `root` through a symlink. `root` itself counts as inside."
+  resolves outside `root` through a symlink, or names two files as written and as normalized (a `..`
+  after a link) - so a caller may open either string. `root` itself counts as inside."
   [root path]
   (when-not (or (nil? path) (str/blank? (str path)) (fs/absolute? (fs/path (str path))))
     (let [base (fs/normalize (fs/absolutize root))
