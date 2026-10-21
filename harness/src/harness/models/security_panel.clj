@@ -211,11 +211,13 @@
   (vec (for [[id _] (stages/folders (stages/stages-dir build))
              :let [recs (map :record (folder-records (stages/document build id "-security-review")))
                    cost (reduce + 0 (keep :cost recs))
+                   unpriced (count (remove :cost recs))
                    computed? (some #(= :list-price (:cost-source %)) recs)]]
          (if (seq recs)
            (str "  stage " id ": " (str/join ", " (sort (distinct (map record-member recs))))
                 " - " (count (filter #(= :reproduced (:kind %)) (mapcat :findings recs))) " reproduced, "
-                (when computed? "~") (format "$%.2f" (double cost)))
+                (when computed? "~") (format "$%.2f" (double cost))
+                (when (pos? unpriced) (str " (" unpriced " unpriced)")))
            (str "  stage " id ": no review")))))
 
 (defn choose

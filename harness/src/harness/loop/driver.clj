@@ -415,7 +415,7 @@
            ;; The whole run's money, where the report's own footer says how much
            ;; of the run it covers. A step that reported no cost contributes 0,
            ;; so this is a floor and the steps are where it is checked.
-           :run/cost (:cost (report/totals (:steps state)))
+           :run/cost (report/run-cost (:steps state))
            :run/started-at (java.util.Date. (:started-ms state))
            ;; THE HIGHEST ATTEMPT OF ANY ONE ROLE, which is what names a retry's step
            ;; (`next-attempt`). It is NOT the number of dispatch rounds - that is `rounds`,

@@ -163,10 +163,16 @@
   review and the spec review each wrote `:cost nil`, with no id to fetch by,
   and the person took the figure off the account balance instead. A dispatch
   step had kept its ids for that purpose since the fifth build; a reading is
-  the same call with a different reader."
+  the same call with a different reader.
+
+  THE COST IS THE CALL'S ONLY WHEN EVERY COMPLETION WAS PRICED, as a dispatch's is
+  (`runner`): a sum over some of them was written as the reading's cost, and `bb reprice`,
+  which fills a nil, never filled it. `:completions` lets the reprice tell a call whose every
+  completion has an id from one that lost some."
   [{:keys [steps]} role]
   {:model (some :model (reverse steps))
-   :cost (let [cs (keep :cost steps)] (when (seq cs) (reduce + cs)))
+   :cost (when (and (seq steps) (every? (comp number? :cost) steps)) (reduce + (map :cost steps)))
+   :completions (count steps)
    :generation-ids (vec (keep :generation-id steps))
    :endpoint (:endpoint role)
    :key-env (:key-env role)})

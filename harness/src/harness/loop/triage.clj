@@ -501,7 +501,7 @@
                                     ;; sheet reconciled every triage call off the balance.
                                     :generation-ids (vec (keep :generation-id steps))
                                     :retries (or retries 0)
-                                    :cost-source (cond (empty? costs) nil
+                                    :cost-source (cond (not complete?) nil
                                                        (some #(= :list-price (:cost-source %)) steps) :list-price
                                                        :else :reported)
                                     :usage (when (seq steps)

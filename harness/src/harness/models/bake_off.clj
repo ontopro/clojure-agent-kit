@@ -268,7 +268,7 @@
                                        :no-block? (nil? (:findings r)) :input (:input r)
                                        :at (str (java.time.Instant/now))}
                                       ;; what a late cost is fetched by: the ids, the endpoint, the key's NAME
-                                      (select-keys r [:generation-ids :endpoint :key-env])))
+                                      (select-keys r [:generation-ids :completions :endpoint :key-env])))
                              (catch clojure.lang.ExceptionInfo e
                                {:case (:id c) :candidate (:id cand) :model-named (:model cand)
                                 :failed (ex-message e) :at (str (java.time.Instant/now))}))]
@@ -305,11 +305,11 @@
             {:status :failed :error {:harness/error :nothing-to-judge}})
         rows (when (= :done (:status r)) (parse-rows (:text r)))
         ;; what a late cost is fetched by, as a reading keeps it: the ids, the endpoint, the key's NAME
-        fetch-by (select-keys (agent/call-record r (:profile judge)) [:generation-ids :endpoint :key-env])
+        fetch-by (select-keys (agent/call-record r (:profile judge)) [:generation-ids :completions :endpoint :key-env])
         rec (merge {:case case-id :judge? true :judge (:model judge) :model (some :model (reverse (:steps r)))
                     :order lettered-ids :seed seed
                     :rows (when rows (mapv (fn [row] (update row :raised_by #(mapv lettered-ids %))) rows))
-                    :cost (let [cs (keep :cost (:steps r))] (when (seq cs) (reduce + cs)))
+                    :cost (:cost (agent/call-record r (:profile judge)))
                     :ms (- (System/currentTimeMillis) t0)
                     :failed (when (= :failed (:status r)) (pr-str (select-keys (:error r) [:harness/error :status])))
                     :no-block? (and (= :done (:status r)) (nil? rows))
@@ -328,7 +328,14 @@
 ;; the table
 ;; ---------------------------------------------------------------------------
 
-(defn- money [x] (if x (format "$%.4f" (double x)) "—"))
+(defn- money [x] (if (number? x) (format "$%.4f" (double x)) "—"))
+
+(defn- unpriced
+  "How many of `recs` answered and carry no cost: a sum over them is short by theirs."
+  [recs]
+  (count (filter #(and (not (:failed %)) (nil? (:cost %))) recs)))
+
+(defn- unpriced-note [n] (if (pos? n) (str " (" n " unpriced)") ""))
 
 (defn summary
   "Per candidate, over every case: findings raised, rows it raised (by the
@@ -352,7 +359,9 @@
           :rows (count raised) :alone (count alone)
           :real (when marked? (count real))
           :cost cost :ms (reduce + (map #(or (:ms %) 0) recs))
-          :real-per-dollar (when (and marked? cost (pos? cost)) (/ (count real) cost))
+          :unpriced (unpriced recs)
+          ;; per dollar only over a whole cost: a part of it made a candidate look cheaper than it was
+          :real-per-dollar (when (and marked? cost (pos? cost) (zero? (unpriced recs))) (/ (count real) cost))
           :failed (count (filter :failed recs))})))
 
 (defn render
@@ -369,10 +378,12 @@
          (str/join "\n" (for [s (summary candidates judges marks resolved)]
                           (format "| %s | `%s` | %d | %d | %d | %s | %s | %ds | %s |"
                                   (:candidate s) (:model s) (:findings s) (:rows s) (:alone s)
-                                  (if (:real s) (str (:real s)) "—") (money (:cost s)) (quot (:ms s) 1000)
+                                  (if (:real s) (str (:real s)) "—") (str (money (:cost s)) (unpriced-note (:unpriced s))) (quot (:ms s) 1000)
                                   (if (:real-per-dollar s) (format "%.1f" (double (:real-per-dollar s))) "—"))))
-         "\n\nJudge: " (money (reduce + (keep :cost (vals judges)))) " over " (count judges) " case" (if (= 1 (count judges)) "" "s")
-         "; the whole bake-off " (money (reduce + (concat (keep :cost (vals judges)) (for [[_ rs] candidates r rs :when (:cost r)] (:cost r))))) ".\n\n"
+         "\n\nJudge: " (money (reduce + (keep :cost (vals judges)))) (unpriced-note (unpriced (vals judges)))
+         " over " (count judges) " case" (if (= 1 (count judges)) "" "s")
+         "; the whole bake-off " (money (reduce + (concat (keep :cost (vals judges)) (for [[_ rs] candidates r rs :when (:cost r)] (:cost r)))))
+         (unpriced-note (+ (unpriced (vals judges)) (unpriced (for [[_ rs] candidates r rs] r)))) ".\n\n"
          (str/join "\n\n"
                    (for [[case-id j] (sort-by key judges)]
                      (str "## Case `" case-id "`\n\n"

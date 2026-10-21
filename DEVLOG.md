@@ -64,6 +64,24 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-20 (plan 6.11)
 
+### A sum over what was priced says so (plan 6.11, items 3b and 3c, register row 169)
+
+The audit behind 3a found sums presented as whole over parts. A reading - a plan, blueprint, spec or
+security review, a bake-off's - wrote the sum of its priced completions as its cost, and `bb
+reprice`, which fills a nil, never filled it; now a reading's cost is nil unless every completion was
+priced, as a dispatch's already was, and the reading keeps its completion count, so a reprice leaves
+a call that kept fewer ids than completions unpriced rather than summing part of it. A run with
+nothing priced recorded `:run/cost` 0, which reads as free; it is nil. Where a sum is over some parts
+the line says how many were not, and only then, so a whole record renders as before: the run
+report's spec readings and direct providers, the stage report (a new "Unpriced:" line), the stage
+progress, the security panel's history, the roadmap's money, the stop's reviews bought, `bb balance`,
+the bake-off table, which also drops its per-dollar figure over part of a cost. The token figures say
+their coverage the same way (3c). A randomized test drops figures - always, or at random - from a
+run's steps, balances, usage and readings and from a bake-off's records, three hundred times, and
+asserts every renderer renders. Against the first project's build: its stage reports and progress
+sections unchanged; one published run table gains "Tokens cover 6 of 7 dispatches", a step priced
+with no token count.
+
 ### A money figure a provider leaves out never throws (plan 6.11, item 3a, register row 169)
 
 The first project's key had its limit unset between a run's start and its record, so the balance at

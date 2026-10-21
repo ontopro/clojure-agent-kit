@@ -182,7 +182,7 @@
                     :cost cost
                     :at (str (java.time.Instant/now))}
                    ;; what `bb reprice` fetches a late cost by; the variable's NAME, never a key
-                   (select-keys read [:generation-ids :endpoint :key-env]))]
+                   (select-keys read [:generation-ids :completions :endpoint :key-env]))]
     ;; NO BLOCK, NO FILE: a count of zero from an answer that gave none would be recorded by
     ;; `start` as a clean review.
     (if (nil? findings)
@@ -234,7 +234,7 @@
       (let [{:keys [count cost model at reviews] :as m} (edn/read-string (slurp (str f)))
             ;; the handles for a late cost, only when the file has them, so an older review
             ;; replays unchanged; `record` fetches by them, and `bb reprice` after
-            handles #(select-keys % [:generation-ids :endpoint :key-env :cost-source])]
+            handles #(select-keys % [:generation-ids :completions :endpoint :key-env :cost-source])]
         (cond-> (merge {:event/kind :spec-review :findings count :cost cost :model model :at at}
                        (handles m))
           (seq reviews) (assoc :reviews (mapv #(merge (select-keys % [:count :cost :model :at]) (handles %)) reviews)))))))

@@ -212,7 +212,7 @@
                     :cost cost
                     :at (str (java.time.Instant/now))}
                    ;; what `bb reprice` fetches a late cost by; the variable's NAME, never a key
-                   (select-keys read [:generation-ids :endpoint :key-env]))]
+                   (select-keys read [:generation-ids :completions :endpoint :key-env]))]
     (if (nil? findings)
       (do (println "blueprint review: the answer had no findings block; nothing written — run it again")
           {:no-block? true})

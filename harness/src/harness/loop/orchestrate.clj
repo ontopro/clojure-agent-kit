@@ -327,7 +327,9 @@
   (let [{:keys [count cost cost-known]} (reviews-bought events steps)]
     (when (pos? count)
       (println (str "  reviews this run has bought: " count
-                    (if (pos? cost-known) (format " ($%.2f)" (double cost)) " (cost not yet known)")
+                    (cond (zero? cost-known) " (cost not yet known)"
+                          (< cost-known count) (format " ($%.2f for the %d priced)" (double cost) cost-known)
+                          :else (format " ($%.2f)" (double cost)))
                     " — every `check` after a change buys another, and none counts against the cap"))))
   (doseq [{:keys [step files iterations]} (cut-off-writers events)]
     (println (str "  NOTE: " (name step) " ended at its iteration cap (" iterations " turns) after writing "
@@ -501,7 +503,7 @@
                       :route (:route action)
                       :reason (:reason action)
                       :attempts (driver/rounds state)
-                      :cost (:cost (report/totals (:steps state)))}))]
+                      :cost (report/run-cost (:steps state))}))]
      (loop [n 0]
        (when (> n max-actions)
          (throw (ex-info (str "the loop took " max-actions " actions without stopping")

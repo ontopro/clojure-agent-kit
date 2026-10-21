@@ -212,6 +212,11 @@
              (cond-> {:runs 0 :merged 0 :rounds 0 :run-minutes 0
                       :money (when (seq readings) (cents (reduce + 0 (map second readings))))}
                (seq readings) (assoc :money-note "readings only, no blueprint yet")))
+           ;; THE CALLS WITH NO COST, as the stage report counts them: the money is what was priced
+           (let [n (if summary
+                     (reduce + 0 (vals (:unpriced summary)))
+                     (reduce + 0 (keep #(get % 3) readings)))]
+             (when (pos? n) {:unpriced n}))
            (breakdown costs))))
 
 (defn phase-rows
@@ -310,8 +315,15 @@
 
 (defn- dollars [x] (if (and (number? x) (== x (Math/floor x)) (< (Math/abs (double x)) 1e9)) (str "$" (long x)) (format "$%.2f" (double x))))
 
-(defn- money-cell [{:keys [money money-note]}]
-  (cond (nil? money) "-" money-note (str (format "$%.2f" (double money)) " (readings only)") :else (format "$%.2f" (double money))))
+(defn unpriced-note
+  "` (n unpriced)` beside a stage's money when calls in it carried no cost, else empty."
+  [{:keys [unpriced]}]
+  (if (pos? (or unpriced 0)) (str " (" unpriced " unpriced)") ""))
+
+(defn- money-cell [{:keys [money money-note] :as s}]
+  (cond (nil? money) "-"
+        money-note (str (format "$%.2f" (double money)) " (readings only)" (unpriced-note s))
+        :else (str (format "$%.2f" (double money)) (unpriced-note s))))
 
 (defn- usd [x] (if x (format "$%.2f" (double x)) "-"))
 

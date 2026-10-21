@@ -80,7 +80,11 @@
          (cond
            merged (str " - merged, run `" (:run/id merged) "` " (day (:run/started-at merged))
                        ;; the run's whole money, its spec readings with it, as `bb report` gives it
-                       (format ", $%.2f, %d round%s" (double (+ (:cost s) (:spec-review-cost s))) (:rounds s) (if (= 1 (:rounds s)) "" "s"))
+                       (format ", $%.2f%s, %d round%s" (double (+ (:cost s) (:spec-review-cost s)))
+                               ;; a call with no cost leaves the money short, said beside it
+                               (let [n (+ (or (:unpriced s) 0) (count (remove :cost (:spec-readings s))))]
+                                 (if (pos? n) (str " (" n " unpriced)") ""))
+                               (:rounds s) (if (= 1 (:rounds s)) "" "s"))
                        (when-let [c (short-sha (:run/app-commit merged))] (str ", app `" c "`"))
                        (when (> (count records) 1) (str "; " (count records) " runs")))
            r (str " - " (name (:run/status r)) ", run `" (:run/id r) "`")

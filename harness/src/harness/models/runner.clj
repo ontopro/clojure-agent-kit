@@ -416,7 +416,7 @@
                                    ;; Where the cost came from, and the counts
                                    ;; and rates behind it, so a record can
                                    ;; re-derive a list-price figure.
-                                   :cost-source (cond (empty? costs) nil
+                                   :cost-source (cond (not complete?) nil
                                                       (some #(= :list-price (:cost-source %)) steps) :list-price
                                                       :else :reported)
                                    :usage (when (seq steps)

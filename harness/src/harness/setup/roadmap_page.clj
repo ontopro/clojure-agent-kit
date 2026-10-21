@@ -317,12 +317,14 @@
       ["" "<h2>Money and time</h2>" "<table>"
        "  <thead><tr><th>Stage</th><th>Kind · name</th><th>State</th><th class=\"num\">Cap</th><th class=\"num\">Spent</th><th class=\"num\">Runs</th><th class=\"num\">Rounds</th><th class=\"num\">Run minutes</th><th>Approved → closed</th></tr></thead>"
        "  <tbody>"]
-      (for [{:keys [id kind state cap cap-note money money-note runs merged rounds run-minutes approved closed days] nm :name} stages]
+      (for [{:keys [id kind state cap cap-note money money-note runs merged rounds run-minutes approved closed days] nm :name :as s} stages]
         (str "    <tr><td>" id "</td><td>" (esc (str/join " · " (remove str/blank? [kind nm]))) "</td><td>"
              (esc (case state :closed "closed" :running "running" :planned "planned, not approved" :next "next, not pulled" :ahead "ahead"))
              "</td>"
              (num (cond cap (esc (str (dollars cap) (when cap-note (str " " cap-note)))) cap-note (esc (str "(cap " cap-note ")")) :else dash))
-             (num (cond (nil? money) dash money-note (str (usd money) " (readings only)") :else (usd money)))
+             (num (cond (nil? money) dash
+                        money-note (str (usd money) " (readings only)" (where/unpriced-note s))
+                        :else (str (usd money) (where/unpriced-note s))))
              (num (if (pos? (or runs 0)) (str merged " of " runs " merged") dash))
              (num (if (pos? (or rounds 0)) rounds dash))
              (num (if (pos? (or run-minutes 0)) run-minutes dash))

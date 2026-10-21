@@ -86,6 +86,15 @@
         missing (vec (keep (fn [[id g]] (when (nil? (:total_cost g)) id)) got))]
     {:gens (map second got) :missing missing :fetched (- (count ids) (count missing))}))
 
+(defn- short-of-ids?
+  "Whether a call of `n` completions kept fewer ids than that: their sum would be part of its cost,
+  written as all of it. `n` nil - a record from before it was kept - is not short."
+  [n ids]
+  (and (number? n) (< (count ids) n)))
+
+(defn- short-line [n ids]
+  (str (count ids) " of " n " completions kept a generation id - left unpriced, a sum of the rest would be part of the cost"))
+
 (defn reprice-step
   "`step` with its cost filled from `fetch` (a fn of an id returning a
   generation record or nil), or unchanged. Returns `{:step _ :fetched n
@@ -138,11 +147,13 @@
   `:cost-source :repriced`; else exactly as it was. Returns
   `{:reading m :changed? bool :line str-or-nil}`; the line says why nothing
   changed, and is nil when there was nothing to do."
-  [{:keys [cost generation-ids endpoint key-env] :as m} {:keys [fetch-opts getenv] :or {getenv #(System/getenv %)}}]
+  [{:keys [cost generation-ids completions endpoint key-env] :as m} {:keys [fetch-opts getenv] :or {getenv #(System/getenv %)}}]
   (cond
     (some? cost) {:reading m :changed? false}
     (empty? generation-ids) {:reading m :changed? false
                              :line "no generation id on the reading (written before the ids were kept)"}
+    (short-of-ids? completions generation-ids)
+    {:reading m :changed? false :line (short-line completions generation-ids)}
     (nil? (provenance/generation-endpoint endpoint))
     {:reading m :changed? false :line (str endpoint " has no generation record to fetch")}
     :else
@@ -191,6 +202,10 @@
                         {:step s :changed? false
                          :line (str "  " nm ": " endpoint " has no generation record to fetch")}
 
+                        (short-of-ids? (:step/rounds s) (:step/generation-ids s))
+                        {:step s :changed? false
+                         :line (str "  " nm ": " (short-line (:step/rounds s) (:step/generation-ids s)))}
+
                         :else
                         (let [key (some-> key-env getenv)
                               {:keys [step fetched missing]}
@@ -209,7 +224,7 @@
         steps (mapv :step results)
         changed (count (filter :changed? results))]
     {:record (cond-> (assoc record :run/steps steps)
-               (pos? changed) (assoc :run/cost (:cost (report/totals steps))))
+               (pos? changed) (assoc :run/cost (report/run-cost steps)))
      :changed changed
      :lines (vec (keep :line results))}))
 

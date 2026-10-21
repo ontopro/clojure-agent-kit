@@ -72,6 +72,9 @@
      :task/id (:task/id record)
      :status status
      :cost (reduce + 0 (keep :step/cost steps))
+     ;; the dispatches that carry no cost: every money figure is a sum of what was priced, and
+     ;; the block says how many were not
+     :unpriced (count (filter #(and (= :dispatch (:step/kind %)) (= :measured (:step/source %)) (nil? (:step/cost %))) steps))
      :by-role by-role
      :rounds (inc (count (filter #(= :triage (:event/kind %)) events)))
      :retry-cost (reduce + 0 (keep :step/cost (filter #(retry? (:step/name %)) dispatches)))
@@ -112,7 +115,7 @@
   the status each has (`:no-record` for one without); the run summaries
   (`:runs`); the totals - runs, merged, money, money by role, rounds, retry
   cost, rejections, stops by owner and by kind; the readings (`:readings`:
-  `[[label cost n] …]` for the plan review, the blueprint review, the security
+  `[[label cost n unpriced] …]` for the plan review, the blueprint review, the security
   review and the spec reviews) and their money; the cap and its date from the gates record, or
   nil; the threat model's signature from it (`:security`) and the plan's kind,
   which together say whether a pre-release stage is signed; the security
@@ -129,7 +132,7 @@
         spec-n (count spec-readings)
         spec-cost (reduce + 0 (keep :cost spec-readings))
         readings (cond-> (vec readings)
-                   (pos? spec-n) (conj ["spec reviews" spec-cost spec-n]))
+                   (pos? spec-n) (conj ["spec reviews" spec-cost spec-n (count (remove :cost spec-readings))]))
         reading-money (reduce + 0 (map second readings))]
     {:id id
      :packets (mapv (fn [t] [t (or (:status (by-task t)) :no-record)]) packets)
@@ -146,6 +149,7 @@
      :stops (merge-sum (map :stops runs))
      :stop-kinds (merge-sum (map :stop-kinds runs))
      :readings readings
+     :unpriced {:dispatches (sum :unpriced runs) :readings (reduce + 0 (keep #(get % 3) readings))}
      :cap (:cap (:stage/approved gates))
      :approved (:date (:stage/approved gates))
      :kind kind
@@ -169,7 +173,7 @@
   stage, which says when it has none; and the two scans' lines the same way."
   [{:keys [id run-count merged money cap approved before by-role readings reading-money
            rounds retry-cost dispatch-money rejections stops stop-kinds packets kind security
-           security-checks security-scans security-skipped]}]
+           security-checks security-scans security-skipped unpriced]}]
   (->> [(str "Stage " id " report · " run-count " run" (when (not= 1 run-count) "s") ", " merged " merged · "
              (dollars money) (if cap (str " of cap " cap (when approved (str " (approved " approved ")")))
                                  " · cap: not recorded (no :stage/approved in the gates record)")
@@ -185,6 +189,13 @@
              " · readings " (dollars reading-money)
              (when (seq readings)
                (str " (" (str/join ", " (for [[label c n] readings] (str label " " n " " (dollars c)))) ")")))
+        ;; ONLY WHEN SOMETHING WAS NOT PRICED, so a block published before the line reads the same
+        (let [{d :dispatches r :readings} unpriced
+              n (fn [k one many] (when (pos? (or k 0)) (str k " " (if (= 1 k) one many))))]
+          (when (some #(pos? (or % 0)) [d r])
+            (str "  Unpriced: " (str/join " and " (remove nil? [(n d "dispatch" "dispatches") (n r "reading" "readings")]))
+                 " with no cost - every money figure above is what was priced, short by theirs"
+                 " (`bb reprice` fills a run's late costs)")))
         (str "  Rounds: " rounds " over " run-count " run" (when (not= 1 run-count) "s")
              (when (pos? run-count) (format " (%.1f per run)" (double (/ rounds run-count))))
              " · retries " (dollars retry-cost) " (" (pct retry-cost dispatch-money) " of the dispatch money)"
@@ -290,12 +301,12 @@
          [id (str (fs/path dir nm))])))
 
 (defn- reading
-  "`[label cost n]` for a review record: every reading in its `:reviews`
+  "`[label cost n unpriced]` for a review record: every reading in its `:reviews`
   history, or the record alone when it has none; nil when no file."
   [label path]
   (when-let [m (read-edn path)]
     (let [rs (or (seq (:reviews m)) [m])]
-      [label (reduce + 0 (keep :cost rs)) (count rs)])))
+      [label (reduce + 0 (keep :cost rs)) (count rs) (count (remove :cost rs))])))
 
 (def ^:private routing-file
   "What `bb security-route` writes into a stage's security review folder, beside the
@@ -306,12 +317,12 @@
 (declare security-review-records)
 
 (defn- folder-reading
-  "`[label cost n]` over the security reviewers' records in `dir` (`security-review-records`), each
+  "`[label cost n unpriced]` over the security reviewers' records in `dir` (`security-review-records`), each
   one reading; nil when there is none."
   [label dir]
   (let [ms (map :record (security-review-records dir))]
     (when (seq ms)
-      [label (reduce + 0 (keep :cost ms)) (count ms)])))
+      [label (reduce + 0 (keep :cost ms)) (count ms) (count (remove :cost ms))])))
 
 (defn record-member
   "The security reviewer a review record was run under: its `:member`, else - a record from before
@@ -336,12 +347,13 @@
     []))
 
 (defn- routing-reading
-  "`[label cost n]` for the routing file in `dir`: a triage call per finding routed,
+  "`[label cost n unpriced]` for the routing file in `dir`: a triage call per finding routed,
   each verdict carrying its cost; nil when there is no routing file. Its money was in
   no reading before."
   [label dir]
   (when-let [{:keys [routed]} (read-edn (fs/path dir routing-file))]
-    [label (reduce + 0 (keep #(get-in % [:verdict :cost]) routed)) (count routed)]))
+    [label (reduce + 0 (keep #(get-in % [:verdict :cost]) routed)) (count routed)
+     (count (remove #(get-in % [:verdict :cost]) routed))]))
 
 (defn- records-for
   "The run records under `records-dir` that are stage `id`'s (`stages/record-stage` over `infos`)
@@ -360,7 +372,7 @@
          vec)))
 
 (defn stage-readings
-  "Stage `id`'s readings as `[[label cost n] …]`, from its folder alone - so a stage still in its
+  "Stage `id`'s readings as `[[label cost n unpriced] …]`, from its folder alone - so a stage still in its
   plan step, with no blueprint yet, has them too."
   [build id]
   (let [reviews (stages/reviews-dir build id)]

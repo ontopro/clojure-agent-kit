@@ -67,7 +67,7 @@
                               :run/events [{:event/kind :spec-review :cost (:cost (last reviews)) :reviews reviews}]})
         s (sr/stage-summary {:id 2 :packets ["t3"] :records [(run "t3" [shared]) (run "t3-b" [shared own])]
                              :gates {:stage/id "2"}})]
-    (is (= [["spec reviews" 0.75 2]] (:readings s)))
+    (is (= [["spec reviews" 0.75 2 0]] (:readings s)))
     (testing "a reading with no ids and no time is its own, as before"
       (is (= 2 (count (sr/distinct-readings [{:spec-readings [{:cost 0.25} {:cost 0.25}]}])))))))
 
@@ -103,7 +103,7 @@
     (is (= 2 (:run-count s)))
     (is (= 1 (:merged s)))
     (is (= 8.125 (:dispatch-money s)))
-    (is (= [["stage plan review" 0.5 1] ["blueprint review" 1.5 2] ["spec reviews" 0.75 3]] (:readings s)) "the spec reviews counted from the runs")
+    (is (= [["stage plan review" 0.5 1] ["blueprint review" 1.5 2] ["spec reviews" 0.75 3 0]] (:readings s)) "the spec reviews counted from the runs")
     (is (= 2.75 (:reading-money s)))
     (is (= 10.875 (:money s)) "dispatch and readings")
     (is (= {:coder 5.75 :tester 0.75 :orchestrator 0.375 :reviewer 1.25} (:by-role s)))
@@ -234,13 +234,13 @@
           (str ";; Written by the KIT's security pack. Do not edit.\n"
                (pr-str {:security/at "2026-10-08T00:05" :counts {:ok 9 :warn 2 :fail 0 :skipped 3} :ok? true :rows []})))
     (is (= [[0 plan-0] [1 plan-1]] (sr/stage-plans stages)) "one per stage folder; the template beside them is none")
-    (is (= [["project plan review" 0.75 1] ["stage plan review" 0.25 1] ["security review" 0.5 1] ["spec reviews" 0.25 1]]
+    (is (= [["project plan review" 0.75 1 0] ["stage plan review" 0.25 1 0] ["security review" 0.5 1 0] ["spec reviews" 0.25 1 0]]
            (:readings (sr/summary-for build records 0)))
         "stage 0 counts the project plan review and its own stage plan review, said apart, and its security review")
     (is (nil? (sr/summary-for build records 2)) "no blueprint, nothing to roll up")
     (let [s (sr/summary-for build records 1)]
       (is (= ["t1" "t2"] (mapv :task/id (:runs s))) "the records of the blueprint's packets, in its order; w0 is stage 0's")
-      (is (= [["blueprint review" 1.5 2] ["security review" 1.25 2] ["security routing" 0.25 2] ["spec reviews" 0.75 3]]
+      (is (= [["blueprint review" 1.5 2 0] ["security review" 1.25 2 0] ["security routing" 0.25 2 0] ["spec reviews" 0.75 3 0]]
              (:readings s))
           "the history's readings; no plan review for this stage; two security reviews, the -tests folder's file
            none and the routing file its own reading: two findings triaged")

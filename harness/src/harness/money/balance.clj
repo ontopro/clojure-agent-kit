@@ -95,6 +95,12 @@
             (if cost (update acc (or provider "unknown") (fnil + 0) cost) acc))
           {} steps))
 
+(defn unpriced-by-provider
+  "How many dispatch steps per `:step/provider` carry no cost: a direct provider's spend is the
+  run's priced steps, and one with none priced read as $0.00."
+  [steps]
+  (frequencies (keep #(when (and (= :dispatch (:step/kind %)) (nil? (:step/cost %)) (:step/provider %)) (:step/provider %)) steps)))
+
 (defn- money [x] (if (number? x) (format "$%.2f" (double x)) "—"))
 
 (defn key-text
@@ -114,6 +120,7 @@
   (let [or-role (openrouter-role profile)
         status (when or-role (openrouter-key-status (:endpoint or-role) (:key-env or-role)))
         spend (spend-by-provider steps)
+        unpriced (unpriced-by-provider steps)
         ;; "Anthropic API" is the provider a DIRECT dispatch records; an Anthropic model served
         ;; through OpenRouter records its serving provider ("Anthropic"), and that spend is
         ;; already in the key's figure. This once summed both and called the sum "Anthropic
@@ -132,7 +139,8 @@
                                  (money (:total c)) " bought - the number a cap is really against")
                             "; account credit unavailable")))
          (if (seq direct)
-           (str " · direct spend this run: " (str/join ", " (for [p direct] (str p " " (money (get spend p 0)))))
+           (str " · direct spend this run: " (str/join ", " (for [p direct] (str p " " (money (get spend p 0))
+                                                                                 (when-let [n (get unpriced p)] (str " (" n " unpriced)")))))
                 " (no balance endpoint; each console has it)")
            " · no role is on a provider's API directly, so the key's usage is the whole spend"))))
 

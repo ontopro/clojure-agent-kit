@@ -105,6 +105,14 @@
    :synthetic (count (filter #(= :synthetic (:step/source %)) steps))
    :step-count (count steps)})
 
+(defn run-cost
+  "`:run/cost` from `steps`: the priced steps' sum, a floor the report's footer says the coverage of,
+  or nil when no step was priced - the shape's nil when the client reports none. A run whose every
+  cost was missing recorded $0, a figure that reads as free."
+  [steps]
+  (let [{:keys [cost cost-known]} (totals steps)]
+    (when (pos? cost-known) cost)))
+
 (defn- fmt-ms
   "Milliseconds, seconds, or minutes — whichever a human can read at a
   glance. A dispatch that hit its iteration cap ran for 541292ms, and
@@ -153,6 +161,10 @@
           review-cost (if (seq reviews)
                         (let [cs (keep :cost reviews)] (when (seq cs) (reduce + cs)))
                         (:cost e))
+          ;; A READING WITH NO COST LEAVES THE SUM SHORT, said as such: "in all" and the whole cost
+          ;; were printed over the readings that had one
+          priced-reviews (count (keep :cost reviews))
+          short? (and (seq reviews) (< priced-reviews (count reviews)))
           {:keys [cost cost-known list-priced]} (totals (:run/steps run))]
       (remove
        nil?
@@ -161,12 +173,14 @@
                   (count reviews)
                   (str/join "; " (for [{:keys [count cost]} reviews]
                                    (str (counted count) (when cost (str " " (fmt-cost cost))))))
-                  (if review-cost (str "; " (fmt-cost review-cost) " in all") "")
+                  (cond (nil? review-cost) ""
+                        short? (str "; " (fmt-cost review-cost) " for the " priced-reviews " of " (count reviews) " priced")
+                        :else (str "; " (fmt-cost review-cost) " in all"))
                   (counted (:findings e)))
           (format "  Spec review before start: %s%s."
                   (counted (:findings e))
                   (if-let [c (:cost e)] (str ", " (fmt-cost c)) "")))
-        (when (and review-cost (pos? cost-known))
+        (when (and review-cost (not short?) (pos? cost-known))
           (format "  Whole cost: %s%s — the loop's %s%s above and %s of spec review, which that total does not include."
                   (if (pos? list-priced) "~" "") (fmt-cost (+ cost review-cost))
                   (if (pos? list-priced) "~" "") (fmt-cost cost)
@@ -289,9 +303,12 @@
         ;; A direct step always has its provider, from the endpoint - Anthropic's API, Google's
         ;; (`provenance/direct-provider?`); Google's was once summed here as OpenRouter's.
         openrouter-cost (reduce + 0 (map :step/cost (remove #(provenance/direct-provider? (:step/provider %)) priced)))
-        direct-cost (->> priced (filter #(provenance/direct-provider? (:step/provider %)))
+        ;; A DIRECT STEP WITH NO COST is a provider's spend the line cannot show - a role on its API
+        ;; with no `:pricing` reports none - and "spend $0.000000" read as free; it is counted and said.
+        direct-cost (->> steps
+                         (filter #(provenance/direct-provider? (:step/provider %)))
                          (group-by :step/provider)
-                         (map (fn [[p ss]] [p (reduce + (map :step/cost ss))]))
+                         (map (fn [[p ss]] [p (reduce + 0 (keep :step/cost ss)) (count (remove :step/cost ss))]))
                          (sort-by first))]
     (into [(format "  Money: %s over %d priced step%s%s."
                    (fmt-cost total) (count priced) (if (= 1 (count priced)) "" "s")
@@ -310,19 +327,25 @@
               ;; through OpenRouter printed "Anthropic spend $0.00" under a provider line
               ;; that said "Anthropic $0.18" - the serving provider - and read as a contradiction.
               (seq direct-cost)
-              (into (for [[p c] direct-cost]
-                      (format "        %s spend %s (its API has no balance endpoint; the console has it)." p (fmt-cost c)))))))))
+              (into (for [[p c n] direct-cost]
+                      (format "        %s spend %s%s (its API has no balance endpoint; the console has it)." p (fmt-cost c)
+                              (if (pos? n) (format ", %d step%s unpriced" n (if (= 1 n) "" "s")) "")))))))))
 
 (defn token-lines
   "Tokens per model from the dispatch events' `:usage`, with the cache share for
   models that report cache reads: a cache read is a quarter of the price."
   [{:keys [run/events]}]
-  (let [ds (filter #(and (= :dispatch (:event/kind %)) (:usage %)) events)]
+  (let [all (filter #(= :dispatch (:event/kind %)) events)
+        ds (filter :usage all)]
     (if (empty? ds)
       ["  Tokens: not recorded (no dispatch carries usage)."]
-      (into ["  Tokens, per model (in / out / cache-read / cache-write):"]
+      ;; SOME DISPATCHES WITHOUT USAGE: the sums are theirs alone, and the header says over how many
+      (into [(if (< (count ds) (count all))
+               (format "  Tokens, per model (in / out / cache-read / cache-write), over the %d of %d dispatches that carry usage:"
+                       (count ds) (count all))
+               "  Tokens, per model (in / out / cache-read / cache-write):")]
             (for [[model us] (group-by :model ds)
-                  :let [sum (fn [k] (reduce + 0 (keep k (map :usage us))))
+                  :let [sum (fn [k] (reduce + 0 (filter number? (map k (map :usage us)))))
                         in (sum :in) out (sum :out) cr (sum :cache-read) cw (sum :cache-write)
                         prompt (+ in cr cw)]]
               (format "        %-36s %s / %s / %s / %s%s" (or model "—")
@@ -543,6 +566,12 @@
                " money.")
           (format "  Cost covers %d of %d steps; the rest reported none."
                   cost-known step-count))
+        ;; A TOKEN TOTAL OVER SOME DISPATCHES is said as such, as the cost's is; only then, so a
+        ;; published table whose every dispatch carried tokens reads the same
+        (let [ds (filter #(= :dispatch (:step/kind %)) steps)
+              known (count (filter :step/tokens ds))]
+          (when (< 0 known (count ds))
+            (format "  Tokens cover %d of %d dispatches; the rest reported none." known (count ds))))
         (when (pos? list-priced)
           (format "  ~ = computed from list price for %d of them (usage × the profile's :pricing), not reported by the endpoint."
                   list-priced))
