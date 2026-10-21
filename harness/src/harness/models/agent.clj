@@ -48,10 +48,16 @@
   OR THE CALL'S ERROR SAYS SO. Through OpenRouter a refusal is a completion's finish reason; at
   Anthropic's own API it is the response's `stop_reason`, which the adapter turns into the call's
   error (`:stop-reason \"refusal\"`) and no step - so a security review refused there was
-  recorded as no answer, and its bake-off row said so."
+  recorded as no answer, and its bake-off row said so.
+
+  OR AN HTTP 403 THAT SAYS IT WAS FLAGGED. OpenAI's safeguard answers a request it will not serve with
+  a 403 - \"This content was flagged for possible cybersecurity risk\" - an error, not a finish reason;
+  two flows of the KIT's own review were recorded as failed calls with no answer, as if broken."
   ([steps] (refused? steps nil))
   ([steps error]
    (boolean (or (= "refusal" (:stop-reason error))
+                (and (= 403 (:status error))
+                     (re-find #"(?i)\bflagged\b|content.?filter|safeguard|safety system" (str (:message error))))
                 (some #(or (= "refusal" (:native-finish-reason %)) (= "content_filter" (:finish-reason %))) steps)))))
 
 (defn last-json-block

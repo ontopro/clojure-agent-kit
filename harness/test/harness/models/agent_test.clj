@@ -494,3 +494,12 @@
         (agent/converse! {:model "m" :shape :openai :endpoint "https://provider.invalid"}
                          "s" "o" {:dir "."} {:registry registry :tools #{"peek"} :max-iterations 2}))
       (is (not-any? #(str/includes? % "last completion") @sent)))))
+
+;; The refused flows of the KIT's own review (GPT-6 Astra, 2026-10-21): OpenAI's safeguard answered with
+;; a 403, and the record called it a failed call
+(deftest a-flagged-403-is-a-refusal
+  (is (agent/refused? [] {:harness/error :api-error :status 403
+                          :message "This content was flagged for possible cybersecurity risk. If this seems wrong, try rephrasing"}))
+  (is (not (agent/refused? [] {:harness/error :api-error :status 403 :message "Forbidden: this key has no access"}))
+      "a 403 that says nothing of a safeguard is a failed call")
+  (is (not (agent/refused? [] {:harness/error :api-error :status 500 :message "flagged"}))))

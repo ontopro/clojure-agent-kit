@@ -64,6 +64,12 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### A flagged 403 is a refusal (plan 6.11, item 12, register row 199)
+
+OpenAI refused two flows with a 403 that says the content was flagged; the records called them failed
+calls. `agent/refused?` now reads such a 403 as the provider's refusal, and the review's table shows
+the two old records as refused.
+
 ### A `..` after a link is taken where the OS takes it (plan 6.11, item 12, register row 198)
 
 The seams pass on Argon at Google's own API (20 completions, $1.90; the two flows OpenAI refused ran

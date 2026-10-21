@@ -539,7 +539,9 @@
   [records]
   (let [passes (vec (for [{:keys [file record]} (sort-by (juxt (comp str :flow :record) :file) records)]
                       {:file file :flow (or (:flow record) "whole") :model (:model record)
-                       :status (cond (:refused? record) :refused (:no-block? record) :no-answer
+                       ;; a record written before a flagged 403 was read as a refusal says so from its error
+                       :status (cond (or (:refused? record) (agent/refused? (:steps record) (:error record))) :refused
+                                     (:no-block? record) :no-answer
                                      (= :failed (:status record)) :failed :else :answered)
                        :cost (:cost record) :minutes (some-> (:ms record) (/ 60000.0))
                        :reproduced (count (filter #(= :reproduced (:kind %)) (:findings record)))
