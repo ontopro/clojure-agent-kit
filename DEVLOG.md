@@ -64,6 +64,22 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### The KIT's own review in flows (plan 6.11, item 10)
+
+The person's decision, after Astra's pass: the KIT is reviewed a flow at a time. The cost of a whole
+pass is its growing context - Astra's sent 6.5 million tokens over 38 completions, the last request
+near 300 thousand, and $13.66 bought no answer when the credit ran out. A flow is a short pass over
+one path through the KIT, so every request stays small, a refusal or a cut-off loses one flow and
+not the pass, and the passes are read side by side. `resources/security-review/kit-flows.edn` names
+six - a model's tool calls, the contract path, money and records, the security review itself, setup
+and upgrade, the tool packs - and `seams`, which reads everything and asks only where they meet.
+`bb security-review --kit --flow <name>` points the opening at the flow's files and question, the rest
+context, findings only inside it; `--after` may be given once a pass, merged; `--table` writes
+`kit-review.md` and `.edn` from the records, a row a pass and every finding under its flow, with the
+tests a pass wrote even when it gave no answer. Before a pass the OpenRouter key's remaining is read:
+under $20 for a flow, $100 for the whole, nothing starts unless `--force`, and the line says the last
+pass's cost beside the margin. The kit-session skill runs the six, then the seams.
+
 ### A tool's output is read for secrets (plan 6.11, item 9, register row 186)
 
 From Fable 5.1's read of `71652b6`: the Coder's `nrepl_eval` runs with the person's whole environment,

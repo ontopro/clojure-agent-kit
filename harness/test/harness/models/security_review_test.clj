@@ -181,16 +181,16 @@
   (let [files ["harness/src/harness/a.clj" "harness/test/harness/a_test.clj" "tools/security/check.bb"
                ".githooks/pre-commit" "bb.edn" "method.md"]
         o (sr/kit-opening {:head "abc1234" :files files
-                           :after {:model "gemini-4-argon" :findings [{:title "T one" :where "a.clj: f"} {:title "T two"}]}})]
+                           :after [{:model "gemini-4-argon" :findings [{:title "T one" :where "a.clj: f"} {:title "T two"}]}]})]
     (is (= ["harness/src/harness/a.clj" "tools/security/check.bb" ".githooks/pre-commit" "bb.edn"] (sr/kit-scope files)))
     (is (str/includes? o "at abc1234"))
     (is (str/includes? o "(4 files)"))
-    (is (str/includes? o "AN EARLIER PASS (gemini-4-argon) FOUND THESE, AND THEY ARE FIXED"))
+    (is (str/includes? o "EARLIER PASSES (gemini-4-argon) FOUND THESE, AND THEY ARE FIXED"))
     (is (str/includes? o "- T one (a.clj: f)\n- T two"))
-    (is (not (str/includes? (sr/kit-opening {:head "h" :files files}) "EARLIER PASS")) "no earlier pass, nothing said"))
+    (is (not (str/includes? (sr/kit-opening {:head "h" :files files}) "EARLIER PASSES")) "no earlier pass, nothing said"))
   (is (str/includes? sr/kit-system-prompt "harness/test/"))
   (is (str/includes? sr/kit-system-prompt "Finding nothing is a complete and welcome answer"))
-  (is (= {:kit true :after "r.edn" :model "m"} (sr/parse-args ["--kit" "--after" "r.edn" "--model" "m"]))))
+  (is (= {:kit true :after ["r.edn"] :model "m"} (sr/parse-args ["--kit" "--after" "r.edn" "--model" "m"]))))
 
 ;; From the KIT's own security review (GPT-6 Astra, 2026-10-21): the clone was mounted writable in a
 ;; container where a model's test ran as root, and the host collected the tests from it with git
@@ -246,3 +246,62 @@
         (let [out (with-out-str (is (= [(str test-dir "/app/mine_test.clj")] (keys (collect clone [])))))]
           (is (str/includes? out "huge_test.clj is over") "the one over the size is named"))
         (finally (fs/delete-tree outer))))))
+
+;; ---------------------------------------------------------------------------
+;; the KIT in flows (plan 6.11, item 10)
+;; ---------------------------------------------------------------------------
+
+(deftest the-kit-s-flows-are-six-and-the-seams
+  (let [flows (sr/kit-flows)]
+    (is (= ["tool-calls" "contract" "money-and-records" "security-review" "setup-and-upgrade" "tool-packs" "seams"]
+           (mapv :name flows)))
+    (is (every? #(and (seq (:reads %)) (string? (:asks %))) flows))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no flow named nope - the flows: tool-calls" (sr/kit-flow "nope")))))
+
+(deftest a-flow-is-the-scope-and-the-rest-is-context
+  (let [files ["harness/src/harness/models/tools.clj" "harness/src/harness/models/agent.clj"
+               "harness/src/harness/money/reprice.clj" "tools/security/check.bb" "method.md"]
+        flow (sr/kit-flow "tool-calls")
+        o (sr/kit-opening {:head "abc" :files files :flow flow})]
+    (is (= ["harness/src/harness/models/tools.clj" "harness/src/harness/models/agent.clj"] (sr/kit-scope files flow)))
+    (is (str/includes? o "one flow of the KIT at abc, `tool-calls`:"))
+    (is (str/includes? o "Its files (2):"))
+    (is (str/includes? o "report only what is wrong inside this flow's files"))
+    (is (not (str/includes? (sr/kit-opening {:head "abc" :files files}) "report only")) "the whole pass is not narrowed")))
+
+(deftest every-earlier-pass-is-told-once
+  (let [o (sr/kit-opening {:head "h" :files []
+                           :after [{:model "a" :findings [{:title "One"} {:title "Two"}]}
+                                   {:model "b" :findings [{:title "Two"} {:title "Three" :where "x.clj"}]}]})]
+    (is (str/includes? o "EARLIER PASSES (a, b) FOUND THESE"))
+    (is (str/includes? o "- One\n- Two\n- Three (x.clj)") "merged, each finding once")
+    (is (= {:after ["r1.edn" "r2.edn"] :flow "seams" :force true :table true}
+           (sr/parse-args ["--after" "r1.edn" "--after" "r2.edn" "--flow" "seams" "--force" "--table"])))))
+
+(deftest the-passes-side-by-side-by-flow
+  (let [out (fs/create-temp-dir {:prefix "kit-review-table"})]
+    (try
+      (spit (str (fs/path out "a.edn")) (pr-str {:target "KIT abc" :flow "contract" :model "m1" :status :done :cost 2.5 :ms 120000
+                                                 :findings [{:kind :reproduced :title "T" :where "w" :test "harness/test/t_test.clj"}
+                                                            {:kind :hypothesis :title "H"}]
+                                                 :tests ["harness/test/t_test.clj"]}))
+      (spit (str (fs/path out "b.edn")) (pr-str {:target "KIT abc" :model "m2" :status :failed :no-block? true :tests ["x" "y"]}))
+      (spit (str (fs/path out "other.edn")) (pr-str {:stance :tracer :model "not the KIT's"}))
+      (let [t (sr/kit-table! out)
+            md (slurp (str (fs/path out "kit-review.md")))]
+        (is (= [["whole" :no-answer 0 0 2] ["contract" :answered 1 1 1]]
+               (mapv (juxt :flow :status :reproduced :hypotheses :tests) (:passes t))) "a project's record is not the KIT's")
+        (is (= ["T" "H"] (mapv :title (filter #(= "contract" (:flow %)) (:findings t)))))
+        (is (str/includes? md "| contract | m1 | answered | $2.50 | 2.0 | 1 | 1 | 1 | a.edn |"))
+        (is (str/includes? md "- **contract**, reproduced: T (w) - `harness/test/t_test.clj`")))
+      (finally (fs/delete-tree out)))))
+
+(deftest a-pass-is-not-started-under-the-margin
+  (is (:go? (sr/preflight {:remaining 41.08} :flow 13.66 false)))
+  (let [{:keys [go? line]} (sr/preflight {:remaining 41.08} :whole 13.66 false)]
+    (is (not go?))
+    (is (= "key $41.08 remaining, the last pass cost $13.66, the margin for the whole KIT is $100.00 - not started; top up, or run with --force" line)))
+  (is (:go? (sr/preflight {:remaining 5.0} :flow nil true)) "--force runs it, and says so")
+  (is (str/includes? (:line (sr/preflight {:remaining 5.0} :flow nil true)) "under it, run by --force"))
+  (is (not (:go? (sr/preflight {:unavailable "HTTP 500"} :flow nil false))) "a balance nobody can read is not taken for enough")
+  (is (:go? (sr/preflight {:limit nil :credits {:remaining 60.0}} :flow nil false)) "a key with no limit is read by the account's credit"))

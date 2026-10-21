@@ -20,6 +20,7 @@
    [babashka.fs :as fs]
    [babashka.process :as p]
    [clojure.edn :as edn]
+   [clojure.java.io :as io]
    [clojure.pprint :as pp]
    [clojure.string :as str]
    [harness.contained-path :as contained-path]
@@ -27,7 +28,8 @@
    [harness.models.catalogue :as catalogue]
    [harness.models.profile :as profile]
    [harness.models.security-review-sandbox :as sandbox]
-   [harness.models.security-review-tools :as security-review-tools]))
+   [harness.models.security-review-tools :as security-review-tools]
+   [harness.money.balance :as balance]))
 
 ;; ---------------------------------------------------------------------------
 ;; what the security reviewer is told
@@ -336,26 +338,50 @@
        "```\n"
        "with an empty list when you found nothing."))
 
+(defn kit-flows
+  "The flows of the KIT a review can be pointed at, one at a time (`resources/security-review/kit-flows.edn`):
+  `[{:name :reads [path prefixes] :asks \"one question\"}]`."
+  []
+  (edn/read-string (slurp (io/resource "security-review/kit-flows.edn"))))
+
+(defn kit-flow
+  "The flow named `nm`, or a throw naming the flows there are."
+  [nm]
+  (or (some #(when (= nm (:name %)) %) (kit-flows))
+      (throw (ex-info (str "no flow named " nm " - the flows: " (str/join ", " (map :name (kit-flows)))) {:flow nm}))))
+
 (defn kit-scope
   "The files a review of the KIT is pointed at, of the clone's tracked `files`: the harness's source,
-  the tool packs, the commit hook, the `bb.edn` files. The rest is there to read."
-  [files]
-  (filterv #(or (str/starts-with? % "harness/src/") (str/starts-with? % "tools/")
-                (str/starts-with? % ".githooks/") (str/ends-with? % "bb.edn"))
-           files))
+  the tool packs, the commit hook, the `bb.edn` files - or, for a `flow`, the files under its `:reads`.
+  The rest is there to read."
+  ([files] (kit-scope files nil))
+  ([files flow]
+   (if flow
+     (filterv (fn [f] (some #(str/starts-with? f %) (:reads flow))) files)
+     (filterv #(or (str/starts-with? % "harness/src/") (str/starts-with? % "tools/")
+                   (str/starts-with? % ".githooks/") (str/ends-with? % "bb.edn"))
+              files))))
 
 (defn kit-opening
-  "The first message of a review of the KIT at `head`: the scope, the rest said to be readable, and
-  - from an earlier pass's record, `after` - what was found and fixed, so this pass looks elsewhere."
-  [{:keys [head files after]}]
-  (let [scope (kit-scope files)]
-    (str "This is a review of the whole KIT at " head ". Review the source in scope (" (count scope) " files):\n"
+  "The first message of a review of the KIT at `head`: the scope - the whole, or one `flow`'s, the rest
+  context - and, from earlier passes' records, `after`, what was found and fixed, so this pass looks
+  elsewhere."
+  [{:keys [head files after flow]}]
+  (let [scope (kit-scope files flow)
+        found (distinct (for [r after, f (:findings r)] (select-keys f [:title :where])))]
+    (str (if flow
+           (str "This is a review of one flow of the KIT at " head ", `" (:name flow) "`: " (:asks flow)
+                "\n\nIts files (" (count scope) "):\n")
+           (str "This is a review of the whole KIT at " head ". Review the source in scope (" (count scope) " files):\n"))
          (str/join "\n" scope)
-         "\n\nThe rest of the repository (" (count files) " files in all: tests, documents, templates, skills) is there to read and search."
-         (when (seq (:findings after))
-           (str "\n\nAN EARLIER PASS (" (:model after) ") FOUND THESE, AND THEY ARE FIXED - do not report them again; look "
-                "where that pass did not:\n"
-                (str/join "\n" (for [{:keys [title where]} (:findings after)]
+         "\n\nThe rest of the repository (" (count files) " files in all: tests, documents, templates, skills) is there to read and search"
+         (if flow
+           " as context: report only what is wrong inside this flow's files - the other flows have passes of their own."
+           ".")
+         (when (seq found)
+           (str "\n\nEARLIER PASSES (" (str/join ", " (distinct (keep :model after))) ") FOUND THESE, AND THEY ARE FIXED - do not report them again; look "
+                "where those passes did not:\n"
+                (str/join "\n" (for [{:keys [title where]} found]
                                  (str "- " title (when where (str " (" where ")")))))))
          "\n\nBegin. Give your answer as the JSON block described, when you have checked what you mean to report.")))
 
@@ -376,9 +402,10 @@
 
 (defn review-kit!
   "Review the KIT at `kit`'s HEAD with `role`: clone it under `work`, start the KIT's sandbox, run the
-  conversation with the KIT's tools, remove the sandbox and the clone whatever happens. `after` is an
-  earlier pass's record, or nil. Options as `review!`'s, and `:sandbox` for a test."
-  [role kit work {:keys [after rounds max-tokens sandbox]
+  conversation with the KIT's tools, remove the sandbox and the clone whatever happens. `after` is the
+  earlier passes' records, `flow` one of `kit-flows` or nil for the whole. Options as `review!`'s, and
+  `:sandbox` for a test."
+  [role kit work {:keys [after flow rounds max-tokens sandbox]
                   :or {rounds default-rounds max-tokens default-max-tokens}}]
   (let [role (assoc-in role [:params :max_tokens] max-tokens)
         clone (fs/path work (str "clone-" (subs (str (random-uuid)) 0 8)))]
@@ -390,13 +417,14 @@
             t0 (System/currentTimeMillis)]
         (try
           (let [ctx {:dir (str clone) :sandbox sb :written (atom #{})}
-                r (agent/converse! role kit-system-prompt (kit-opening {:head head :files files :after after}) ctx
+                r (agent/converse! role kit-system-prompt (kit-opening {:head head :files files :after after :flow flow}) ctx
                                    {:registry security-review-tools/kit-specs :tools (set (keys security-review-tools/kit-specs))
                                     :max-iterations rounds :timeout-ms 600000})
                 findings (parse-findings (:text r))]
             (merge {:stance :tracer
                     :target (str "KIT " head)
-                    :after (some-> after :model)
+                    :after (vec (distinct (keep :model after)))
+                    :flow (:name flow)
                     :status (:status r)
                     :findings findings
                     :no-block? (nil? findings)
@@ -422,10 +450,14 @@
        "  <clone>    a git clone of the application, with the revision its change is from (default: base)\n"
        "  --model    as bb models names it and the bake-off takes it, e.g. \"openai/gpt-6-astra high\"\n"
        "  --profile  the profile whose first security reviewer outside the Coder's family reads (its panel's, or its one :security-reviewer); without --model or --profile, the workspace's\n"
-       "bb security-review --kit (--model \"<model> [effort]\" | --profile <profile.edn>) [--after <record.edn>] [--rounds N] [--max-tokens N] [--out <dir>]\n"
+       "bb security-review --kit (--model \"<model> [effort]\" | --profile <profile.edn>) [--flow <name>] [--after <record.edn>]... [--force] [--rounds N] [--max-tokens N] [--out <dir>]\n"
+       "bb security-review --kit --table [--out <dir>]\n"
        "  --kit      the KIT itself, a clone of this checkout's HEAD: its tests run by bb in the toolchain image, nothing served; the record\n"
        "             in .local/security-review-kit/out/ by default, never committed (the kit-session skill says when it runs, and where a result lands)\n"
-       "  --after    an earlier pass's record: what it found is said to be fixed, so this pass looks elsewhere\n"
+       "  --flow     one flow of resources/security-review/kit-flows.edn - a short pass over one path; the six, then seams\n"
+       "  --after    an earlier pass's record, as many as were run: what they found is said to be fixed, so this pass looks elsewhere\n"
+       "  --force    run though the OpenRouter key's remaining is under the margin ($20 for a flow, $100 for the whole)\n"
+       "  --table    the records in --out side by side, by flow: kit-review.md and .edn\n"
        "A real model call: it spends money (up to --rounds completions, default " default-rounds ")."))
 
 (defn parse-args [args]
@@ -433,7 +465,10 @@
     (cond (nil? a) m
           (= a "--stance") (recur (rest more) (assoc m :stance (keyword (first more))))
           (= a "--kit") (recur more (assoc m :kit true))
-          (= a "--after") (recur (rest more) (assoc m :after (first more)))
+          (= a "--after") (recur (rest more) (update m :after (fnil conj []) (first more)))
+          (= a "--flow") (recur (rest more) (assoc m :flow (first more)))
+          (= a "--force") (recur more (assoc m :force true))
+          (= a "--table") (recur more (assoc m :table true))
           (= a "--model") (recur (rest more) (assoc m :model (first more)))
           (= a "--profile") (recur (rest more) (assoc m :profile (first more)))
           (= a "--base") (recur (rest more) (assoc m :base (first more)))
@@ -476,24 +511,120 @@
      :model (:model m)
      :effort (get-in m [:params :reasoning_effort])}))
 
+(def kit-table-file "kit-review.md")
+
+(defn kit-table
+  "The KIT's review records `records` (`[{:file :record}]`) side by side: one row a pass - its flow, model,
+  status, cost, minutes, findings by kind - and every finding under its flow, with the passes that
+  reproduced it. `{:passes [...] :findings [...]}`."
+  [records]
+  (let [passes (vec (for [{:keys [file record]} (sort-by (juxt (comp str :flow :record) :file) records)]
+                      {:file file :flow (or (:flow record) "whole") :model (:model record)
+                       :status (cond (:refused? record) :refused (:no-block? record) :no-answer
+                                     (= :failed (:status record)) :failed :else :answered)
+                       :cost (:cost record) :minutes (some-> (:ms record) (/ 60000.0))
+                       :reproduced (count (filter #(= :reproduced (:kind %)) (:findings record)))
+                       :hypotheses (count (filter #(= :hypothesis (:kind %)) (:findings record)))
+                       ;; a pass with no answer may still have written tests that fail: they are read, not lost
+                       :tests (count (:tests record))}))
+        findings (vec (for [{:keys [file record]} records, fnd (:findings record)]
+                        (assoc (select-keys fnd [:kind :title :where :test]) :flow (or (:flow record) "whole") :file file)))]
+    {:passes passes :findings (vec (sort-by (juxt :flow #(if (= :reproduced (:kind %)) 0 1) :title) findings))}))
+
+(defn render-kit-table
+  "`kit-table`'s value as Markdown."
+  [{:keys [passes findings]}]
+  (let [money #(if (number? %) (format "$%.2f" (double %)) "—")]
+    (str "# The KIT's own security review\n\n"
+         "| Flow | Model | Status | Cost | Minutes | Reproduced | Hypotheses | Tests written | Record |\n|---|---|---|---|---|---|---|---|---|\n"
+         (str/join (for [p passes]
+                     (str "| " (:flow p) " | " (:model p) " | " (name (:status p)) " | " (money (:cost p)) " | "
+                          (if (:minutes p) (format "%.1f" (:minutes p)) "—") " | " (:reproduced p) " | " (:hypotheses p) " | " (:tests p) " | " (:file p) " |\n")))
+         "\n## Findings\n\n"
+         (if (empty? findings)
+           "None.\n"
+           (str/join (for [x findings]
+                       (str "- **" (:flow x) "**, " (name (:kind x)) ": " (:title x)
+                            (when (:where x) (str " (" (:where x) ")")) (when (:test x) (str " - `" (:test x) "`")) "\n")))))))
+
+(defn kit-records
+  "The KIT's review records in `out`, `[{:file :record}]` - a record whose `:target` names the KIT."
+  [out]
+  (vec (for [f (sort (map str (fs/glob out "*.edn")))
+             :let [r (try (edn/read-string {:default tagged-literal} (slurp f)) (catch Exception _ nil))]
+             :when (and (map? r) (str/starts-with? (str (:target r)) "KIT "))]
+         {:file (str (fs/file-name f)) :record r})))
+
+(defn kit-table!
+  "Write `kit-review.md` and `kit-review.edn` in `out` from the KIT's records there. Returns the table."
+  [out]
+  (let [t (kit-table (kit-records out))]
+    (spit (str (fs/path out "kit-review.edn")) (with-out-str (pp/pprint t)))
+    (spit (str (fs/path out kit-table-file)) (render-kit-table t))
+    t))
+
+(def margins
+  "What a pass is refused under, in dollars of the OpenRouter key's remaining: the whole KIT's second
+  pass cost $13.66 for 38 completions and was cut off by the credit; a flow is meant to be small."
+  {:flow 20 :whole 100})
+
+(defn preflight
+  "Whether a pass may start, from the OpenRouter key's `status` (`balance/openrouter-key-status`), the
+  pass's kind (`:flow` or `:whole`), the last pass's cost and `force`: `{:go? bool :line text}`. The
+  line says the key's remaining, the last pass's cost and the margin; an unreadable balance is
+  refused as a low one is, unless forced."
+  [status kind last-cost force]
+  (let [margin (get margins kind)
+        remaining (or (:remaining status) (get-in status [:credits :remaining]))
+        money #(format "$%.2f" (double %))
+        said (str (if (:unavailable status)
+                    (str "the OpenRouter balance is unavailable (" (:unavailable status) ")")
+                    (str "key " (if (number? remaining) (money remaining) "with no figure") " remaining"))
+                  (when (number? last-cost) (str ", the last pass cost " (money last-cost)))
+                  ", the margin for " (if (= :flow kind) "a flow" "the whole KIT") " is " (money margin))
+        low? (not (and (number? remaining) (>= remaining margin)))]
+    (cond (not low?) {:go? true :line said}
+          force {:go? true :line (str said " - under it, run by --force")}
+          :else {:go? false :line (str said " - not started; top up, or run with --force")})))
+
+(defn- last-cost
+  "The newest KIT record's cost in `out`, or nil."
+  [out]
+  (some-> (seq (filter #(number? (:cost (:record %))) (kit-records out)))
+          (->> (sort-by #(str (fs/last-modified-time (fs/path out (:file %))))))
+          last :record :cost))
+
 (defn- main-kit
   "`--kit`: the KIT's own review, its record under `.local/security-review-kit/`."
-  [{:keys [model rounds max-tokens out after] :as opts} kit]
-  (let [profile-path (when-not model (:profile opts))]
+  [{:keys [model rounds max-tokens out after flow force table] :as opts} kit]
+  (let [profile-path (when-not model (:profile opts))
+        work (str (fs/path kit ".local" "security-review-kit"))
+        out (or out (str (fs/path work "out")))]
+    (when table
+      (let [t (kit-table! out)]
+        (println (str "  " (count (:passes t)) " pass(es), " (count (:findings t)) " finding(s): " (fs/path out kit-table-file)))
+        (System/exit 0)))
     (when-not (or model profile-path)
       (println usage)
       (System/exit 2))
     (let [cand (if model
                  (catalogue/expand-candidate (catalogue/fetch-listing) (catalogue/routes) model)
                  (role-from-profile profile-path))
-          work (str (fs/path kit ".local" "security-review-kit"))
-          out (or out (str (fs/path work "out")))
-          id (str (:id cand) "-kit-" (.format (java.time.LocalDateTime/now) (java.time.format.DateTimeFormatter/ofPattern "yyyyMMdd-HHmmss")))
-          earlier (when after (edn/read-string (slurp after)))]
-      (println (str "  review of the KIT by " (:model cand) " (" (:effort cand) "), up to " (or rounds default-rounds) " completions"
-                    (when earlier (str ", after " (count (:findings earlier)) " finding(s) of " (:model earlier)))))
+          the-flow (when flow (kit-flow flow))
+          id (str (:id cand) "-kit-" (if flow (str flow "-") "") (.format (java.time.LocalDateTime/now) (java.time.format.DateTimeFormatter/ofPattern "yyyyMMdd-HHmmss")))
+          earlier (mapv #(edn/read-string {:default tagged-literal} (slurp %)) after)
+          endpoint (get-in cand [:profile :endpoint])]
+      ;; THE BALANCE BEFORE THE PASS: a pass cut off by the credit says nothing
+      (if (some-> endpoint (str/includes? "openrouter"))
+        (let [{:keys [go? line]} (preflight (balance/openrouter-key-status endpoint (get-in cand [:profile :key-env]))
+                                            (if flow :flow :whole) (last-cost out) force)]
+          (println (str "  " line))
+          (when-not go? (System/exit 1)))
+        (println (str "  " endpoint " has no balance this command reads - not checked")))
+      (println (str "  review of the KIT" (when flow (str ", flow " flow)) " by " (:model cand) " (" (:effort cand) "), up to " (or rounds default-rounds) " completions"
+                    (when (seq earlier) (str ", after " (count (mapcat :findings earlier)) " finding(s) of " (str/join ", " (distinct (keep :model earlier)))))))
       (let [r (review-kit! (:profile cand) kit work
-                           (cond-> {:after earlier} rounds (assoc :rounds rounds) max-tokens (assoc :max-tokens max-tokens)))
+                           (cond-> {:after earlier :flow the-flow} rounds (assoc :rounds rounds) max-tokens (assoc :max-tokens max-tokens)))
             file (write-record! out id r)]
         (print-review r)
         (println (str "  record: " file))

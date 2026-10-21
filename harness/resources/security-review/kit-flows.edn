@@ -1,0 +1,50 @@
+;; THE KIT'S OWN SECURITY REVIEW IN FLOWS (`bb security-review --kit --flow <name>`).
+;;
+;; A whole pass over the KIT is one long conversation whose context grows with every file read: the
+;; second pass sent 6.5 million tokens over 38 completions, the last request near 300 thousand, and
+;; $13.66 bought it no answer when the credit ran out. A flow is a short pass over one path through
+;; the KIT - what an attacker's input meets on its way - so every request stays small, a refusal
+;; loses one flow and not the pass, and the passes can be read side by side (`--table`).
+;;
+;; Each flow: `:reads` - the path prefixes, from the repository's root, that are its scope; the rest
+;; of the repository is context. `:asks` - the one question it is pointed at. Run the six, then
+;; `seams`, which reads everything and asks only where they meet.
+
+[{:name "tool-calls"
+  :reads ["harness/src/harness/models/tools.clj" "harness/src/harness/models/agent.clj"
+          "harness/src/harness/models/adapter.clj" "harness/src/harness/models/runner.clj"
+          "harness/src/harness/models/runner_check.clj" "harness/src/harness/loop/driver.clj"
+          "harness/src/harness/loop/orchestrate.clj" "harness/src/harness/loop/triage.clj"]
+  :asks "What can a model's tool calls and answers - names, arguments, JSON, text - make the KIT do on the host beyond what its role and packet allow?"}
+
+ {:name "contract"
+  :reads ["harness/src/harness/contract/" "harness/src/harness/loop/provision.clj"
+          "harness/src/harness/gates/" "harness/src/harness/setup/plan.clj"
+          "harness/src/harness/setup/blueprint_review.clj" "harness/src/harness/setup/plan_review.clj"]
+  :asks "From a blueprint and a spec a model wrote to the gates that judge the work: can a path, a name or a form in them escape its folder, run as code, or turn a gate green that should be red?"}
+
+ {:name "money-and-records"
+  :reads ["harness/src/harness/money/" "harness/src/harness/models/provenance.clj"
+          "harness/src/harness/models/catalogue.clj" "harness/src/harness/models/profile.clj"
+          "harness/src/harness/loop/log.clj"]
+  :asks "What reaches the records a build commits - run records, readings, reports - and can a record a project holds make the KIT send a key, a request or a file somewhere it should not?"}
+
+ {:name "security-review"
+  :reads ["harness/src/harness/models/security_review.clj" "harness/src/harness/models/security_review_sandbox.clj"
+          "harness/src/harness/models/security_review_tools.clj" "harness/src/harness/models/security_score.clj"
+          "harness/src/harness/models/security_panel.clj" "harness/src/harness/models/security_bake_off.clj"
+          "harness/src/harness/loop/security_routing.clj" "harness/resources/security-review/"]
+  :asks "Can a security reviewer - a model running tests as root in the sandbox - reach the host, the shared caches, other reviews or the records through what the review does before, during and after the sandbox?"}
+
+ {:name "setup-and-upgrade"
+  :reads ["harness/src/harness/setup/" "harness/src/harness/rules.clj" ".githooks/"
+          "harness/src/harness/gates/kit_status.clj" "harness/src/harness/gates/tag_check.clj" "bb.edn" "harness/bb.edn"]
+  :asks "When the KIT makes, upgrades or checks a workspace - init, upgrade, the template, the front door, the commit hook - can a workspace's files or a pulled KIT make it write, run or commit what the person did not ask for?"}
+
+ {:name "tool-packs"
+  :reads ["tools/"]
+  :asks "Do the tool packs - security, browser, SVG - keep what they read from an application, a picture or a page from running, writing or leaking on the host?"}
+
+ {:name "seams"
+  :reads ["harness/src/" "tools/" ".githooks/" "bb.edn" "harness/bb.edn"]
+  :asks "Only where the flows meet: a value one part checks and another trusts, a path or a name that crosses from one part to the next unchecked, a record one part writes and another reads as if the KIT had written it."}]

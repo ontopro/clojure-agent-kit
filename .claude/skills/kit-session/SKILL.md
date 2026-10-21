@@ -112,7 +112,14 @@ KIT's run records are not.
 - **First, the scans, from the root:** `bb --config tools/security/bb.edn secrets --all`, and `deps`
   in `tools/svg` and `harness/health/selfcheck`. The `bb.edn` libraries' `jackson-core` is waived,
   register row 133.
-- **A second pass** by another family, with `--after <the first's record>`, so it is told what was
+- **In flows, not whole:** `--flow <name>` for each of the six in
+  `harness/resources/security-review/kit-flows.edn`, then `seams`; `--table` sets the records side by
+  side. A whole pass is one conversation whose context grows with every file read - the second whole
+  pass cost $13.66 and was cut off by the credit with no answer - and a flow keeps each request small.
+- **The balance first:** the command reads the OpenRouter key's remaining and starts no pass under
+  the margin, $20 for a flow, $100 for the whole, unless `--force`; the line says the last pass's
+  cost beside it.
+- **A second pass** by another family, with `--after` each earlier record, so it is told what was
   found and fixed and looks elsewhere.
 - **The reader** reads each finding against the code, and gives its severity by its source (what an
   attacker controls), its sink (where the effect lands) and its scope.
