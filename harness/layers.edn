@@ -45,7 +45,7 @@
  harness.gates.repair #{harness.setup.doctor}
  harness.gates.tag-check #{harness.gates.record harness.gates.toolchain-newer}
  harness.gates.kit-status #{harness.gates.record harness.gates.tag-check harness.gates.toolchain-newer}
- harness.models.tools #{harness.gates.forms harness.gates.repair harness.setup.doctor}
+ harness.models.tools #{harness.contained-path harness.gates.forms harness.gates.repair harness.setup.doctor}
  harness.models.profile #{harness.contract.shapes harness.models.catalogue harness.setup.doctor harness.setup.workspace}
  harness.money.report #{harness.contract.shapes harness.models.provenance harness.setup.workspace}
  harness.contract.packet #{harness.contract.shapes}
@@ -59,7 +59,7 @@
  harness.models.agent #{harness.models.adapter harness.models.provenance harness.models.tools}
  harness.models.runner #{harness.gates.repair harness.models.agent harness.models.tools harness.rules}
  harness.models.runner-check #{harness.contract.shapes harness.models.runner}
- harness.models.security-review-tools #{harness.models.tools}
+ harness.models.security-review-tools #{harness.contained-path harness.models.tools}
  harness.models.security-review-sandbox #{}
  harness.models.security-score #{harness.models.security-review-sandbox harness.models.security-review-tools}
  harness.models.security-bake-off #{harness.models.catalogue harness.models.security-review harness.models.security-score}

@@ -64,6 +64,16 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### A model's file tools check a path by its parts (plan 6.11, item 8, register row 174)
+
+The review's third finding: `tools/within?` compared strings, so a sibling of the worktree whose name
+starts with the worktree's passed, and a symlink was followed out; the security reviewer's `search` and
+`write_test` did the same. The code reviewer has `read_file` alone, so for it this was the whole
+boundary - a link in a project's repository put any file the person can read into its prompt.
+`read_file`, `write_file` and `edit_file` now go through `contained-path/inside`, an absolute path
+said as one; `search` refuses a path outside and leaves out a file linked outside; `write_test` does
+not write through a linked folder under `test/`. `nrepl_eval` is still a shell, as `tools.clj` says.
+
 ### The stub is written only inside the worktree (plan 6.11, item 8, register row 173)
 
 The review's second finding, MEDIUM-HIGH by Fable 5.1's reading: `driver/start!` wrote the Tester's

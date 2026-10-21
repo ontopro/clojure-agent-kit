@@ -238,3 +238,25 @@
     (testing "without the record of what was written, nothing is rewritable"
       (call {:dir dir} "write_test" {:path "test/app/solo_test.clj" :content a-test})
       (is (:error? (call {:dir dir} "write_test" {:path "test/app/solo_test.clj" :content a-test}))))))
+
+;; From the KIT's own security review (Gemini 4 Argon, 2026-10-21)
+(deftest search-and-write-test-stay-inside-by-parts-and-real-path
+  (let [outer (fs/create-temp-dir {:prefix "kit-review-inside"})
+        ws (fs/path outer "clone")]
+    (try
+      (fs/create-dirs (fs/path ws "src"))
+      (fs/create-dirs (fs/path ws "test"))
+      (fs/create-dirs (fs/path outer "clone-other"))
+      (spit (str (fs/path outer "clone.log")) "SIBLING SECRET")
+      (spit (str (fs/path outer "outside.txt")) "OUTSIDE SECRET")
+      (fs/create-sym-link (fs/path ws "src" "linked.clj") (fs/path outer "outside.txt"))
+      (fs/create-sym-link (fs/path ws "test" "linked") (fs/path outer "clone-other"))
+      (let [s1 (tools/invoke rt/specs {:dir (str ws)} {:id "1" :name "search" :args {:pattern "SECRET" :path "../clone.log"}})
+            s2 (tools/invoke rt/specs {:dir (str ws)} {:id "2" :name "search" :args {:pattern "SECRET"}})]
+        (is (:error? s1) "a sibling whose name starts with the clone's")
+        (is (not (str/includes? (:content s2) "OUTSIDE SECRET")) "a file linked to outside is not searched"))
+      (let [w (tools/invoke rt/specs {:dir (str ws) :written (atom #{})}
+                            {:id "3" :name "write_test" :args {:path "test/linked/escape_test.clj" :content "(ns linked.escape-test)"}})]
+        (is (:error? w) "a folder under test/ linked elsewhere is not written through")
+        (is (not (fs/exists? (fs/path outer "clone-other" "escape_test.clj")))))
+      (finally (fs/delete-tree outer)))))

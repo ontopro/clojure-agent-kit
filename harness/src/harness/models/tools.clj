@@ -44,6 +44,7 @@
    [babashka.process :as p]
    [cheshire.core :as json]
    [clojure.string :as str]
+   [harness.contained-path :as contained-path]
    [harness.gates.forms :as forms]
    [harness.gates.repair :as repair]
    [harness.setup.doctor :as doctor]))
@@ -78,22 +79,24 @@
 ;; the tools
 ;; ---------------------------------------------------------------------------
 
-(defn- within?
-  "Whether `path` stays inside `dir` once resolved.
+(defn- outside
+  "Why `path` is not a file of the workspace `dir`, or nil when it is.
 
-  `..` in a path is the whole reason this exists: `:files/target` is compared
-  as strings, and `src/app/../../../etc/passwd` is not in the target list while
-  still escaping the worktree."
+  `..` in a path is why this exists: `:files/target` is compared as strings,
+  and `src/app/../../../etc/passwd` is not in the target list while still
+  escaping the worktree. It was a string prefix, so `../run-1-coder.nrepl.log`
+  beside the worktree `run-1-coder` passed, and a symlink was followed out - for
+  the code reviewer, whose only tool is `read_file`, this is the whole boundary.
+  `harness.contained-path/inside` checks by parts and by real path."
   [dir path]
-  (let [root (fs/normalize (fs/absolutize dir))
-        p (fs/normalize (fs/absolutize (fs/path dir path)))]
-    (str/starts-with? (str p) (str root))))
+  (cond (fs/absolute? (fs/path (str path))) (str path " is an absolute path - name it from the workspace's root")
+        (nil? (contained-path/inside dir path)) (str path " is outside the workspace")))
 
 (defn- read-file
   [{:keys [dir]} {:keys [path]}]
   (cond
     (str/blank? path) (err "path is required")
-    (not (within? dir path)) (err (str path " is outside the workspace"))
+    (outside dir path) (err (outside dir path))
     (not (fs/exists? (fs/path dir path))) (err (str path " does not exist"))
     :else (ok (slurp (str (fs/path dir path))))))
 
@@ -168,7 +171,7 @@
   (cond
     (str/blank? path) (err "path is required")
     (nil? content) (err "content is required")
-    (not (within? dir path)) (err (str path " is outside the workspace"))
+    (outside dir path) (err (outside dir path))
     ;; The packet's own list, enforced here rather than only at assembly. An
     ;; agent that learns at the END of a task that half its work is refused has
     ;; spent the whole task; told at the first write, it can ask.
@@ -224,7 +227,7 @@
       (nil? old_text) (err "old_text is required")
       (empty? old_text) (err "old_text is empty — there is nothing to match")
       (nil? new_text) (err "new_text is required")
-      (not (within? dir path)) (err (str path " is outside the workspace"))
+      (outside dir path) (err (outside dir path))
       (not (contains? (set targets) path))
       (err (str path " is not in this task's :files/target — you may edit only "
                 (str/join ", " targets)))

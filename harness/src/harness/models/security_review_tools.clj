@@ -19,6 +19,7 @@
   (:require
    [babashka.fs :as fs]
    [clojure.string :as str]
+   [harness.contained-path :as contained-path]
    [harness.models.tools :as tools]))
 
 ;; ---------------------------------------------------------------------------
@@ -48,6 +49,8 @@
   (->> (fs/glob root "**" {:hidden true})
        (filter fs/regular-file?)
        (remove (fn [f] (some skipped-dirs (map str (fs/components (fs/relativize root f))))))
+       ;; a link in the clone that resolves outside it is not the clone's file
+       (filter (fn [f] (contained-path/inside root (str (fs/relativize root f)))))
        (sort-by str)
        (filter text-file?)))
 
@@ -59,11 +62,11 @@
   "`pattern` (a regular expression) searched line by line through the clone, or only below
   `path`; `path:line: text` per match, at most `max-matches`."
   [{:keys [dir]} {:keys [pattern path]}]
-  (let [root (fs/normalize (fs/absolutize (if (str/blank? path) dir (fs/path dir path))))
+  (let [root (if (str/blank? path) (fs/normalize (fs/absolutize dir)) (contained-path/inside dir path))
         base (fs/normalize (fs/absolutize dir))]
     (cond
       (str/blank? pattern) (tools/err "pattern is required")
-      (not (str/starts-with? (str root) (str base))) (tools/err (str path " is outside the workspace"))
+      (nil? root) (tools/err (str path " is outside the workspace"))
       (not (fs/exists? root)) (tools/err (str path " does not exist"))
       :else
       (let [re (try (re-pattern pattern) (catch Exception _ nil))]
@@ -100,7 +103,9 @@
   (let [base (fs/normalize (fs/absolutize dir))
         p (fs/normalize (fs/absolutize (fs/path dir (str path))))
         rel (str (fs/relativize base p))
-        under-test? (str/starts-with? (str p) (str (fs/path base "test") "/"))]
+        ;; by parts and by real path: a folder under test/ linked elsewhere is not written through
+        under-test? (some-> (contained-path/inside (fs/path base "test") (str (fs/relativize (fs/path base "test") p)))
+                            (not= (fs/normalize (fs/absolutize (fs/path base "test")))))]
     (cond
       (str/blank? path) "path is required"
       (not under-test?) (str path " is not below test/ - a test is the only thing you may write")

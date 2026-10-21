@@ -406,3 +406,28 @@
     (is (= 1 (count (tools/lint-warnings dir "src/app/service.clj"))))
     (is (= [] (tools/lint-warnings dir "src/app/store.clj")))
     (is (nil? (tools/lint-warnings "/no/such/dir" "x.clj")) "swallowed: the write has already happened")))
+
+;; From the KIT's own security review (Gemini 4 Argon, 2026-10-21): the code reviewer's only tool
+;; is read_file, so its check is that role's whole boundary
+(deftest a-tool-s-path-is-inside-by-its-parts-and-its-real-path
+  (let [outer (fs/create-temp-dir {:prefix "kit-tools-inside"})
+        ws (fs/path outer "run-1-coder")
+        ctx {:dir (str ws) :targets ["src/linked.clj"]}]
+    (try
+      (fs/create-dirs (fs/path ws "src"))
+      (fs/create-dirs (fs/path outer "run-1-coder-other"))
+      (spit (str (fs/path outer "run-1-coder.nrepl.log")) "THE NREPL LOG")
+      (spit (str (fs/path outer "run-1-coder-other" "x.clj")) "(ns x)")
+      (spit (str (fs/path outer "outside.txt")) "OUTSIDE")
+      (fs/create-sym-link (fs/path ws "src" "linked.clj") (fs/path outer "outside.txt"))
+      (doseq [p ["../run-1-coder.nrepl.log" "../run-1-coder-other/x.clj" "src/linked.clj"]]
+        (let [r (tools/invoke ctx {:id "c" :name "read_file" :args {:path p}})]
+          (is (:error? r) p)
+          (is (str/includes? (:content r) "outside the workspace") p)))
+      (testing "a write through a link to outside is refused too, even when the link is a target"
+        (is (:error? (tools/invoke ctx {:id "w" :name "write_file" :args {:path "src/linked.clj" :content "x"}})))
+        (is (= "OUTSIDE" (slurp (str (fs/path outer "outside.txt"))))))
+      (testing "an absolute path is said as one"
+        (is (str/includes? (:content (tools/invoke ctx {:id "a" :name "read_file" :args {:path (str (fs/path outer "outside.txt"))}}))
+                           "is an absolute path")))
+      (finally (fs/delete-tree outer)))))
