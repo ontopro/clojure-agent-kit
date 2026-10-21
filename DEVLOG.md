@@ -64,6 +64,12 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### A dispatch says how many tools its role was not offered (plan 6.11, item 9, register row 182)
+
+From Fable 5.1's read of `eec5da8`: the runner counts a dispatch's refused calls, `:unoffered`, and the
+dispatch event carries the count when it is not zero - "this role tried a tool it was not given",
+read from the run log without opening a transcript.
+
 ### Only a test file is collected from the sandbox (plan 6.11, item 9, register row 180)
 
 From Fable 5.1's read of `baccaeb`: a test running as root can write any file under `test/` - an editor's

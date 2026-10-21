@@ -1334,3 +1334,9 @@
       (is (fs/exists? (fs/path run-dir "final" "test" "a" "ok_test.clj")) "the file inside is recorded")
       (is (not (fs/exists? (fs/path outer "r" "escape_test.clj"))) "nothing is written outside final/")
       (finally (fs/delete-tree outer)))))
+
+(deftest a-dispatch-event-counts-the-tools-a-role-was-not-offered
+  ;; Fable 5.1's read of `eec5da8`: said on the event, without opening a transcript
+  (is (= 2 (:unoffered (loop/dispatch-event :reviewer :reviewer {} {:status :done :runner/meta {:unoffered 2}}))))
+  (is (not (contains? (loop/dispatch-event :reviewer :reviewer {} {:status :done :runner/meta {:unoffered 0}}) :unoffered))
+      "none, nothing said"))

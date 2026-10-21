@@ -399,6 +399,8 @@
                                    :retries (or retries 0)
                                    :cost-known (count costs)
                                    :tool-calls (count calls)
+                                   ;; calls for a tool the role was not offered, refused (`agent/converse!`)
+                                   :unoffered (count (filter :unoffered? calls))
                                    :generation-ids (vec (keep :generation-id steps))
                                    ;; Where the dispatch's time went. The three
                                    ;; do not sum to its wall time — the rest is

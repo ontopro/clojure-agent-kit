@@ -321,6 +321,9 @@
       ;; on it, and it reads events, not results.
       (= :reviewer role) (assoc :verdict (:verdict m))
       (:cost-partial m) (assoc :cost-partial (:cost-partial m))
+      ;; A ROLE THAT CALLED A TOOL IT WAS NOT GIVEN is said on the event, so a report's reader sees it
+      ;; without opening a transcript - a signal, like a write outside the packet
+      (pos? (or (:unoffered m) 0)) (assoc :unoffered (:unoffered m))
       (:transcript m) (assoc :transcript (cap-transcript (:transcript m)))
       ;; THE USAGE IS THE COMPLETION'S, NOT THE COST'S. It travelled only beside a
       ;; cost-source, so a dispatch whose generation record lagged - cost nil,
