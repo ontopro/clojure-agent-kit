@@ -22,4 +22,10 @@
  ;; :reason "why, in a sentence"}. A pre-release stage never skips it; `bb next` says so if one does
  :security/skipped nil
  ;; the exit criteria met, deployed locally and walked (the exit criteria section): {:at "YYYY-MM-DDTHH:MM+HH:MM" :mvp? false}
- :stage/closed nil}
+ :stage/closed nil
+ ;; A STAGE AMENDED AFTER ITS PACKETS RAN, one pass at a time (method §04): each pass an entry
+ ;; {:q "Q-n" :opened "YYYY-MM-DDTHH:MM+HH:MM" :approved {:at :cap :by} :signed {:at :by}}. `bb stage-amend Q-n`
+ ;; writes :q and :opened - a KIT command, not a hand - and the two sign-offs inside are the
+ ;; person's, as the gates above are. The first approval and sign-off stay as they were; the
+ ;; latest re-approval's :cap is the stage's cap. `bb next` asks for each gate again in turn
+ :stage/amendments nil}

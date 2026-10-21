@@ -150,7 +150,8 @@
      :stop-kinds (merge-sum (map :stop-kinds runs))
      :readings readings
      :unpriced {:dispatches (sum :unpriced runs) :readings (reduce + 0 (keep #(get % 3) readings))}
-     :cap (:cap (:stage/approved gates))
+     ;; a re-approval moves it: the stage's cap now, never a sum of passes
+     :cap (stages/effective-cap gates)
      :approved (stages/gate-day (:stage/approved gates) nil)
      :kind kind
      :security (:security/signed gates)

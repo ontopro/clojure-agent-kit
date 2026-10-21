@@ -64,6 +64,28 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### A stage amended after its packets ran (plan 6.11, item 4, register row 170)
+
+The first project's stage 5 had every packet merged when the person, walking the site, asked for
+arrows into a journey page as well: a Q row, a new requirement, four packets, inside the cap. The KIT
+had no step for it - `bb next` asked for the next packet - and the project's session nearly skipped
+the blueprint review. The person: iterative development allows such a change, and it goes through the
+process again, recorded as a second pass. Method §04 now says when a change is amended into the stage
+and when it is deferred, beside the rule that a gate can loop back; an amendment re-runs the four
+gates whatever it touched, which costs a plan review on a change that only split a packet, and keeps
+one rule. A pass is one entry of `:stage/amendments`, not two lists paired by position (Fable 5.1:
+a project that re-approved twice and signed once would be unreadable); `bb stage-amend` writes its
+opening, because an opening written by hand after the readings would leave `bb next` asking for them
+forever. `bb next` puts a run under way first - a person who walks the site mid-stage is not left with
+a merge nobody asks for - then the pass's gates, then a new packet. Each reading is compared with its
+gate as an instant (row 171). The cap is one function, `stages/effective-cap`, read by the stage
+report and the roadmap, never a sum of passes. The security review read before an amendment is said
+as that in the stage's progress, and the stage-end skill reads it again - otherwise an amendment would
+be the one way a stage closes with code no security reviewer read. The readings kept only their cost
+per reading; the findings now too, a size choice reversed, the money unchanged. New §0 rows of a pass
+follow the open-prep rule as any. Nothing to migrate: the key is optional, and a project records an
+amendment made before it by `bb stage-amend` and its sign-offs, or leaves it in its status lines.
+
 ### Every gate a time (plan 6.11, item 4, register row 171)
 
 The design for amending a stage (row 170) needed to say that a reading came after the amendment that

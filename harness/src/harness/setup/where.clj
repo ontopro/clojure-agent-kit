@@ -198,7 +198,7 @@
   (let [{:keys [gates plan blueprint build]} files
         approved (gate-date (:stage/approved gates))
         closed (gate-date (:stage/closed gates))
-        c (if-let [gc (:cap (:stage/approved gates))] (cap gc) (cap (:cap-cell extra)))
+        c (if-let [gc (stages/effective-cap gates)] (cap gc) (cap (:cap-cell extra)))
         {:keys [summary readings minutes costs]} figures]
     (merge {:id id :kind (or (not-empty (:kind row)) (:kind files)) :name (:name row) :delivers (:delivers row)
             :map-status (:status row) :state (state id files here)

@@ -194,3 +194,54 @@
                            naming)]
         (:id (or (last (sort-by :id before))
                  (when (= 1 (count naming)) (first naming)))))))
+
+;; A STAGE AMENDED AFTER ITS PACKETS RAN is a pass of its own: the person's words as a Q row, the
+;; stage plan amended and read again, re-approved with its cap, the blueprint amended and read
+;; again, signed off again. The first approval and sign-off stay as they were - a gate once passed
+;; is not unpassed - and each pass is an entry of `:stage/amendments`, opened by `bb stage-amend`.
+
+(defn amendments
+  "Stage gates `gates`' amendments, in the order they were opened."
+  [gates]
+  (vec (filter map? (:stage/amendments gates))))
+
+(defn open-amendment
+  "The stage's last amendment while it is not signed off: one pass at a time. Nil when there is
+  none, or the last is signed."
+  [gates]
+  (let [a (last (amendments gates))]
+    (when (and a (nil? (:signed a))) a)))
+
+(defn effective-cap
+  "The stage's cap: the latest re-approval's `:cap`, else the first approval's - a re-approval
+  moves it, and one written without a `:cap` leaves the one before it. Never a sum of passes."
+  [gates]
+  (or (some :cap (rseq (mapv :approved (amendments gates))))
+      (:cap (:stage/approved gates))))
+
+(defn gate-time
+  "Gate `g`'s day and time, `YYYY-MM-DD HH:MM`, for a list where two events may share a day: an
+  `:at`'s in the offset it was written with; a `:date` alone as `gate-day` has it."
+  [g z]
+  (let [a (when (map? g) (:at g))
+        t (when (string? a) (try (java.time.OffsetDateTime/parse a) (catch Exception _ nil)))]
+    (if t
+      (.format t (java.time.format.DateTimeFormatter/ofPattern "yyyy-MM-dd HH:mm"))
+      (gate-day g z))))
+
+(defn reading-times
+  "When each reading in the readings file at `path` (`reviews/plan-review.edn`,
+  `reviews/blueprint-review.edn`) was taken - its history's `:at`s and its own - as instants; empty
+  for no file. What tells an amendment's readings from the first pass's."
+  [path]
+  (let [r (when (fs/exists? path) (try (edn/read-string (slurp (str path))) (catch Exception _ nil)))]
+    (vec (distinct (keep parse-at (cons (:at r) (map :at (:reviews r))))))))
+
+(defn stamp-instant
+  "The instant a security review's file name carries, `...-yyyyMMdd-HHmmss.edn`, on this machine's
+  calendar - the clock it was written with; nil for a name without one."
+  [file-name]
+  (when-let [[_ s] (re-find #"(\d{8}-\d{6})" (str file-name))]
+    (try (.toInstant (.atZone (java.time.LocalDateTime/parse s (java.time.format.DateTimeFormatter/ofPattern "yyyyMMdd-HHmmss"))
+                              (java.time.ZoneId/systemDefault)))
+         (catch Exception _ nil))))

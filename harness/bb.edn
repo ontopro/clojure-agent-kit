@@ -141,6 +141,9 @@
   stage-progress {:doc "bb stage-progress <stage-plan.md> | --check [--workspace <dir>]: the stage plan's last section, its progress, written from the stage's records between two marker comments - the plan approved and the blueprint reviewed and signed (the gates record), each §0 prep row before the packet it blocks, each packet in the blueprint's order with its run, cost and rounds, the security pack, its scans and the security review or its skip, the threat model at pre-release, the stage closed; the person's own lines below the end marker kept. --check says which plans are behind their records - information, never a failure"
                   :requires ([harness.setup.stage-progress :as stage-progress])
                   :task (apply stage-progress/-main *command-line-args*)}
+  stage-amend {:doc "bb stage-amend Q-n [--workspace <dir>]: open an amendment of the stage in progress - {:q :opened} in its gates record's :stage/amendments, the time now in the project's zone - for the Q row of docs/source.md §3 that asks for it; bb next then asks for the stage plan amended and read again, approved again with its cap, the blueprint amended and read again, signed off again. Refused: a stage not signed off, a closed stage, an amendment already open, a Q row source.md does not carry (harness.setup.stage-amend)"
+               :requires ([harness.setup.stage-amend :as stage-amend])
+               :task (apply stage-amend/-main *command-line-args*)}
 
   stage-report {:doc "bb stage-report <stage-plan.md> | --check [--workspace <dir>]: a stage's roll-up over the run records of its blueprint's packets and its readings - money by role, rounds, stops by owner, retries and rejections - beside its cap and the stage before, rendered into the stage plan's exit-criteria section; --check holds every published block to the records (nothing to check outside a workspace)"
                 :requires ([harness.money.stage-report :as stage-report])

@@ -97,3 +97,27 @@
     (testing "a stage with only a :date keeps the day: a mixed build places as it did"
       (is (= 4 (stages/record-stage {:task/id "t-01" :run/started-at "2026-10-19T10:00"} infos)))
       (is (= 5 (stages/record-stage {:task/id "t-01" :run/started-at "2026-10-21"} (update infos 1 dissoc :approved-at)))))))
+
+(deftest a-stages-cap-is-its-latest-approval-and-one-pass-is-open-at-a-time
+  (let [first-pass {:stage/approved {:at "2026-10-15T10:00Z" :cap "$20" :by "Ada"}}]
+    (is (= "$20" (stages/effective-cap first-pass)) "no amendment: the approval's")
+    (is (= "$30" (stages/effective-cap (assoc first-pass :stage/amendments [{:q "Q-1" :approved {:cap "$30"}}]))))
+    (is (= "$20" (stages/effective-cap (assoc first-pass :stage/amendments [{:q "Q-1" :opened "x"}]))) "opened, not approved")
+    (is (= "$45" (stages/effective-cap (assoc first-pass :stage/amendments [{:q "Q-1" :approved {:cap "$30"}} {:q "Q-2" :approved {:cap "$45"}}])))
+        "the latest, never a sum")
+    (is (= "$30" (stages/effective-cap (assoc first-pass :stage/amendments [{:q "Q-1" :approved {:cap "$30"}} {:q "Q-2" :approved {:by "Ada"}}])))
+        "a re-approval without a :cap leaves the one before")
+    (is (nil? (stages/open-amendment first-pass)))
+    (is (= "Q-2" (:q (stages/open-amendment {:stage/amendments [{:q "Q-1" :signed {:by "Ada"}} {:q "Q-2"}]}))))
+    (is (nil? (stages/open-amendment {:stage/amendments [{:q "Q-1" :signed {:by "Ada"}}]})) "signed: closed")))
+
+(deftest a-readings-times-and-a-reviews-file-stamp-read-as-instants
+  (let [d (fs/create-temp-dir) f (fs/path d "plan-review.edn")]
+    (spit (str f) (pr-str {:at "2026-10-21T15:00:00Z" :reviews [{:at "2026-10-15T09:00:00Z"} {:at "2026-10-21T15:00:00Z"}]}))
+    (is (= (mapv #(java.time.Instant/parse %) ["2026-10-21T15:00:00Z" "2026-10-15T09:00:00Z"]) (stages/reading-times f)))
+    (is (= [] (stages/reading-times (fs/path d "none.edn")))))
+  (is (= (.toInstant (.atZone (java.time.LocalDateTime/parse "2026-10-19T17:33:48") (java.time.ZoneId/systemDefault)))
+         (stages/stamp-instant "gpt-6-astra-tracer-20261019-173348.edn")))
+  (is (nil? (stages/stamp-instant "security-panel.edn")))
+  (is (= "2026-10-21 09:30" (stages/gate-time {:at "2026-10-21T09:30-05:00"} nil)))
+  (is (= "2026-10-21" (stages/gate-time {:date "2026-10-21"} nil))))

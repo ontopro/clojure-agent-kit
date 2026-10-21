@@ -85,3 +85,26 @@
                                             (assoc :checks {:security/at "2026-10-20T00:05:11.5-05:00" :counts {:ok 9 :warn 2 :fail 0}}))))]
     (is (= old new) "an :at renders the day a :date did; a scan's offset time the day its local time did")
     (is (some #{"- [x] Stage plan approved - Ada, 2026-10-19 (cap $10)"} new))))
+
+(deftest each-amendment-is-listed-and-a-review-before-it-said
+  (let [i #(java.time.Instant/parse %)
+        two (-> facts
+                (assoc-in [:gates :stage/amendments]
+                          [{:q "Q-26" :opened "2026-10-21T09:30-05:00"
+                            :approved {:at "2026-10-21T10:30-05:00" :cap "$30" :by "Ada"} :signed {:at "2026-10-21T11:30-05:00" :by "Ada"}}
+                           {:q "Q-27" :opened "2026-10-22T09:00-05:00"}])
+                (assoc :plan-readings [(i "2026-10-21T15:00:00Z")] :blueprint-readings [(i "2026-10-21T16:00:00Z")]))
+        out (sp/render two)]
+    (is (str/includes? out (str/join "\n" ["**Amendment Q-26** (opened 2026-10-21 09:30)" ""
+                                           "- [x] Stage plan read again"
+                                           "- [x] Approved again - Ada, 2026-10-21 10:30 (cap $30)"
+                                           "- [x] Blueprint read again"
+                                           "- [x] Signed off again - Ada, 2026-10-21 11:30"])))
+    (is (str/includes? out (str/join "\n" ["**Amendment Q-27** (opened 2026-10-22 09:00)" ""
+                                           "- [ ] Stage plan read again" "- [ ] Approved again" "- [ ] Blueprint read again" "- [ ] Signed off again"])))
+    (testing "a security review or a skip from before the last amendment's sign-off"
+      (let [signed {:q "Q-26" :signed (i "2026-10-21T16:30:00Z")}]
+        (is (str/ends-with? (sp/review-line [{:member "gpt-6-astra" :findings [] ::sp/at (i "2026-10-20T10:00:00Z")}] nil signed)
+                            "0 reproduced - before the amendment Q-26: the panel reads again, or the skip is decided again"))
+        (is (not (str/includes? (sp/review-line [{:member "gpt-6-astra" :findings [] ::sp/at (i "2026-10-22T10:00:00Z")}] nil signed) "before the amendment")))
+        (is (str/includes? (sp/review-line [] {:at "2026-10-20T10:00-05:00" :by "Ada" :reason "content"} signed) "before the amendment Q-26"))))))

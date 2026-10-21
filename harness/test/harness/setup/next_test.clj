@@ -532,3 +532,57 @@
     (is (= 11 (:step (next/next-action (-> (with-stage {:blueprint "stage-1/stage-1-blueprint.md" :reviewed? true :packets ["t1"]})
                                            (gate :stage/approved {:date "2026-10-19" :cap "$5" :by "Ada"})
                                            (gate :blueprint/signed {:date "2026-10-19" :by "Ada"}))))))))
+
+(deftest an-amended-stage-asks-its-four-gates-again-before-a-new-packet
+  (let [i #(java.time.Instant/parse %)
+        base (-> (with-stage {:blueprint "stage-1/stage-1-blueprint.md" :reviewed? true :packets ["t1" "t2"] :merged #{"t1" "t2"}
+                              :now-at "2026-10-21T11:00-05:00"
+                              :plan-readings [(i "2026-10-15T14:00:00Z")] :blueprint-readings [(i "2026-10-16T14:00:00Z")]})
+                 (gate :stage/approved {:at "2026-10-15T10:00-05:00" :cap "$20" :by "Ada"})
+                 (gate :blueprint/signed {:at "2026-10-16T10:00-05:00" :by "Ada"}))
+        amended (fn [f & am] (-> f (gate :stage/amendments [(apply merge {:q "Q-26" :opened "2026-10-21T09:30-05:00"} am)])))
+        a #(next/next-action %)]
+    (testing "1: the plan amended and read again - a reading before :opened is the first pass's"
+      (let [x (a (amended base))]
+        (is (= [7 "the Architect's session"] ((juxt :step :owner) x)))
+        (is (= "amend docs/stages/stage-1/stage-1-plan.md for Q-26 (its requirements, its packets, its cap), then bb plan-review docs/stages/stage-1/stage-1-plan.md" (:run x)))
+        (is (= "stage 1 is amended (Q-26, opened 2026-10-21) and its plan has no reading since" (:because x)))))
+    (testing "a reading compared as an instant: 14:31Z is after 09:30-05:00, though it sorts before it as text"
+      (is (= 7 (:step (a (amended (assoc-in base [:stage :plan-readings] [(i "2026-10-21T14:31:00Z")]))))))
+      (is (= "the person" (:owner (a (amended (assoc-in base [:stage :plan-readings] [(i "2026-10-21T14:31:00Z")])))))))
+    (let [read (assoc-in base [:stage :plan-readings] [(i "2026-10-15T14:00:00Z") (i "2026-10-21T15:00:00Z")])]
+      (testing "2: approved again, with the cap and a ready :at"
+        (is (= "read the plan review's findings, then add :approved {:at \"2026-10-21T11:00-05:00\" :cap :by <name>} to Q-26 in :stage/amendments in docs/stages/stage-1/stage-1-gates.edn"
+               (:run (a (amended read))))))
+      (let [approved (amended read {:approved {:at "2026-10-21T10:30-05:00" :cap "$30" :by "Ada"}})]
+        (testing "3: the blueprint amended and read again"
+          (is (= [9 "the Architect's session"] ((juxt :step :owner) (a approved))))
+          (is (str/starts-with? (:run (a approved)) "amend docs/stages/stage-1/stage-1-blueprint.md for Q-26 (its packets, its §0), then bb blueprint-review")))
+        (let [bp-read (assoc-in approved [:stage :blueprint-readings] [(i "2026-10-21T16:00:00Z")])]
+          (testing "4: signed off again"
+            (is (= [10 "the person"] ((juxt :step :owner) (a bp-read))))
+            (is (str/includes? (:run (a bp-read)) "add :signed {:at \"2026-10-21T11:00-05:00\" :by <name>} to Q-26")))
+          (testing "then the new packets as usual"
+            (let [done (-> bp-read
+                           (gate :stage/amendments [{:q "Q-26" :opened "2026-10-21T09:30-05:00"
+                                                     :approved {:at "2026-10-21T10:30-05:00" :cap "$30" :by "Ada"}
+                                                     :signed {:at "2026-10-21T11:30-05:00" :by "Ada"}}])
+                           (update :stage merge {:packets ["t1" "t2" "t3"]}))]
+              (is (= 11 (:step (a done))))
+              (is (str/includes? (:run (a done)) " t3 "))))
+          (testing "a sign-off in a pass that names no one, or whose :at cannot be read, is said at its step"
+            (is (= "stage 1's amendment Q-26 :approved names no one - a sign-off names who signed"
+                   (:because (a (amended read {:approved {:at "2026-10-21T10:30-05:00" :by "the person"}})))))
+            (is (= [10 "the person"] ((juxt :step :owner) (a (amended read {:approved {:at "2026-10-21T10:30-05:00" :by "Ada"}
+                                                                            :signed {:at "2026-10-21" :by "Ada"}})))))))))
+    (testing "a run under way is finished first: the merge before the amendment"
+      (let [x (a (-> (amended base) (update :stage merge {:packets ["t1" "t2" "t3"] :merged #{"t1" "t2"} :runs {"t3" :awaiting-merge}})))]
+        (is (= [13 "the person"] ((juxt :step :owner) x)))))
+    (testing "but a packet not started waits for the amendment"
+      (is (= 7 (:step (a (-> (amended base) (update :stage merge {:packets ["t1" "t2" "t3"]})))))))
+    (testing "a closed stage is not amended"
+      (let [x (a (-> (amended base) (gate :stage/closed {:at "2026-10-20T10:00-05:00"})))]
+        (is (= "stage 1 is closed and its amendment Q-26 is open - a closed stage is not amended" (:because x)))))
+    (testing "the plan check's list is information while an amendment is open"
+      (is (next/plan-step? (:stage (amended base))))
+      (is (not (next/plan-step? (:stage base)))))))

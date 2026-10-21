@@ -97,10 +97,30 @@
 
 (defn- said-nothing? [r] (boolean (or (:refused? r) (:no-block? r) (= :failed (:status r)))))
 
+(declare review-line*)
+
+(defn- before-amendment
+  "` - before the amendment Q-n ...` when the last of `times` (instants) comes before `amended`
+  (`{:q :signed}`, the last amendment's sign-off as an instant): the stage's code changed after the
+  review read it, or after the skip was decided over less."
+  [times amended]
+  (let [t (last (sort (remove nil? times)))]
+    (when (and t (:signed amended) (.isBefore ^java.time.Instant t (:signed amended)))
+      (str " - before the amendment " (:q amended) ": the panel reads again, or the skip is decided again"))))
+
 (defn review-line
   "The security review's line: who read (from the folder's records), what they reproduced, or the
   skip. Ticked only when a reviewer answered: a review declined or left without an answer is not a
-  clean one, and is said as that."
+  clean one, and is said as that. `amended` (`{:q :signed}`) marks a review or a skip from before the
+  stage's last amendment was signed off."
+  ([recs skipped] (review-line recs skipped nil))
+  ([recs skipped amended]
+   (str (review-line* recs skipped)
+        (if (seq recs)
+          (before-amendment (map ::at recs) amended)
+          (when skipped (before-amendment [(stages/gate-instant skipped nil)] amended))))))
+
+(defn- review-line*
   [recs skipped]
   (cond
     (seq recs) (let [{quiet true answered false} (group-by said-nothing? recs)
@@ -113,10 +133,25 @@
     skipped (str (box true) "Security review: skipped - " (:by skipped) ", " (stages/gate-day skipped nil) ": " (:reason skipped))
     :else (str (box false) "Security review")))
 
+(defn- amendment-lines
+  "A stage amendment's lines: opened, its plan read again, approved again with its cap, its blueprint
+  read again, signed off again - each read off the gates record and the readings' times."
+  [{:keys [q opened approved signed]} plan-readings blueprint-readings]
+  (let [since? (fn [readings t] (boolean (and t (some #(not (.isBefore ^java.time.Instant % t)) readings))))
+        o (stages/parse-at opened)]
+    ["" (str "**Amendment " q "** (opened " (stages/gate-time {:at opened} nil) ")") ""
+     (str (box (since? plan-readings o)) "Stage plan read again")
+     (str (box approved) "Approved again"
+          (when approved (str " - " (:by approved) ", " (stages/gate-time approved nil)))
+          (when-let [c (:cap approved)] (str " (cap " c ")")))
+     (str (box (since? blueprint-readings (stages/gate-instant approved nil))) "Blueprint read again")
+     (str (box signed) "Signed off again" (when signed (str " - " (:by signed) ", " (stages/gate-time signed nil))))]))
+
 (defn render
   "The rendered part of the section, between the markers, from `facts`: `{:kind :gates :reviewed?
-  :preconditions :packets :records :checks :scans :review-records}`."
-  [{:keys [kind gates reviewed? preconditions packets records checks scans review-records]}]
+  :preconditions :packets :records :checks :scans :review-records :plan-readings
+  :blueprint-readings}`."
+  [{:keys [kind gates reviewed? preconditions packets records checks scans review-records plan-readings blueprint-readings]}]
   (let [by-task (group-by :task/id records)
         ;; each §0 row before the first packet it blocks; `every task` rows first; the rest at the end
         every (filter #(re-find #"(?i)\bevery task\b" (:blocks %)) preconditions)
@@ -125,22 +160,25 @@
                                  (let [rows (remove placed (filter #(next/blocks? (:blocks %) t) rest-rows))]
                                    [(into placed rows) (-> acc (into (map prep-line rows)) (conj (packet-line t (by-task t))))]))
                                [#{} []] packets)
-        tail (remove placed rest-rows)]
+        tail (remove placed rest-rows)
+        passes (stages/amendments gates)
+        last-signed (let [a (last passes)] (when (:signed a) {:q (:q a) :signed (stages/gate-instant (:signed a) nil)}))]
     (str/join "\n"
               (concat
                ["**Plan and blueprint**" ""
                 (signed "Stage plan approved" (:stage/approved gates)
                         (when-let [c (:cap (:stage/approved gates))] (str " (cap " c ")")))
                 (str (box reviewed?) "Blueprint reviewed")
-                (signed "Blueprint signed off" (:blueprint/signed gates) nil)
-                "" "**Prep and packets** (the blueprint's §0 and §4; a packet's rounds are its first dispatch and each triage after it, as `bb report` counts them)" ""]
+                (signed "Blueprint signed off" (:blueprint/signed gates) nil)]
+               (mapcat #(amendment-lines % plan-readings blueprint-readings) passes)
+               ["" "**Prep and packets** (the blueprint's §0 and §4; a packet's rounds are its first dispatch and each triage after it, as `bb report` counts them)" ""]
                (map prep-line every)
                (if (seq lines) lines ["- [ ] No packet in the blueprint yet"])
                ["" "**The stage's end**" ""
                 (scan-line "Security pack" checks)
                 (scan-line "Dependency scan" (:deps scans))
                 (scan-line "Secrets scan" (:secrets scans))
-                (review-line review-records (:security/skipped gates))]
+                (review-line review-records (:security/skipped gates) last-signed)]
                (map prep-line tail)
                (when (= "pre-release" kind) [(signed "Threat model signed" (:security/signed gates) nil)])
                [(str (box (:stage/closed gates)) "Stage closed" (when-let [c (:stage/closed gates)] (str " - " (stages/gate-day c nil))))]))))
@@ -193,7 +231,11 @@
      :records (:records f)
      :checks (read-edn (doc "-security.edn"))
      :scans {:deps (read-edn (doc "-security-deps.edn")) :secrets (read-edn (doc "-security-secrets.edn"))}
-     :review-records (mapv :record (sr/security-review-records (doc "-security-review")))}))
+     ;; each record with the time its file name carries, to tell one from before an amendment
+     :review-records (mapv (fn [{:keys [file record]}] (assoc record ::at (stages/stamp-instant file)))
+                           (sr/security-review-records (doc "-security-review")))
+     :plan-readings (stages/reading-times (fs/path (stages/reviews-dir build id) "plan-review.edn"))
+     :blueprint-readings (stages/reading-times (fs/path (stages/reviews-dir build id) "blueprint-review.edn"))}))
 
 (defn- stage-id-of [build plan]
   (some (fn [[id p]] (when (= (str (fs/canonicalize p)) (str (fs/canonicalize plan))) id))

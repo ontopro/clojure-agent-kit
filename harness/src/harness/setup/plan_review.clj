@@ -230,8 +230,10 @@
        (do (fs/create-dirs (fs/parent out-file))
            (spit (str out-file)
                  (with-out-str
+                   ;; EVERY READING KEEPS ITS FINDINGS: a stage amended is read again, and the first
+                   ;; pass's findings had survived only in git
                    (pp/pprint (assoc out :reviews (conj (vec (:reviews (existing out-file)))
-                                                        (dissoc out :findings))))))
+                                                        out)))))
            (print-findings findings (:cost out))
            (println (str "written to " out-file
                          " — resolve each in 00-overview.md §5's table"

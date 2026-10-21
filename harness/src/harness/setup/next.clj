@@ -171,7 +171,8 @@
   said before anything that follows it. Before a packet's run is started, the blueprint's §0
   (`:preconditions`): a row still open that blocks it comes first, the person's; a `per run` row
   is named with the packet's step."
-  [{:keys [id plan kind gates blueprint reviewed? packets merged runs preconditions now-at]}]
+  [{:keys [id plan kind gates blueprint reviewed? packets merged runs preconditions now-at zone
+           plan-readings blueprint-readings]}]
   (let [{:stage/keys [approved closed] :blueprint/keys [signed]} gates
         at (at-text now-at)
         ;; A TIME THAT CANNOT BE READ IS SAID, NEVER THROWN: a bare date or a typo under `:at`
@@ -189,6 +190,22 @@
                                      preconditions))
         open-prep (when (and next-packet (contains? #{nil :abandoned} (get runs next-packet))) (prep-for :open))
         per-run (when next-packet (seq (map :id (prep-for :per-run))))
+        ;; A RUN UNDER WAY IS FINISHED FIRST: an amendment blocks starting a packet, never a merge
+        ;; or a decision a run already waits on
+        in-flight (let [s (get runs next-packet)] (when (and next-packet s (not= :abandoned s)) s))
+        ;; ONE PASS AT A TIME: the last amendment, while it is not signed off
+        am (stages/open-amendment gates)
+        ;; the last pass, open or signed: a sign-off in it that names no one, or whose time cannot be
+        ;; read, is said as the first pass's is
+        last-am (last (stages/amendments gates))
+        q (:q last-am)
+        opened (some-> am :opened stages/parse-at)
+        on-day #(stages/gate-day {:at %} zone)
+        since? (fn [readings t] (boolean (and t (some #(not (.isBefore ^java.time.Instant % t)) readings))))
+        in-amendment (str " to " q " in :stage/amendments in " (gates-file id))
+        am-unreadable (when last-am (first (filter #(stages/unreadable-at? (get last-am %)) [:approved :signed])))
+        am-unnamed (when last-am (first (filter #(unnamed? (get last-am %)) [:approved :signed])))
+        am-step {:approved 7 :signed 10}
         start-packet (fn [t because]
                        (action 11 architect (str (when per-run (str "per run, first " (str/join ", " per-run) " (docs/stages/" blueprint " §0); then "))
                                                  "bb spec-from-blueprint docs/stages/" blueprint " " t " <run-dir>/spec.edn, then bb run-loop start <run-dir>")
@@ -247,6 +264,54 @@
       (action 8 architect (str "add the packets to docs/stages/" blueprint)
               (str "docs/stages/" blueprint " carries no packet (a fence whose first form has a :task/id)"))
 
+      in-flight
+      (let [t next-packet]
+        (case in-flight
+          :awaiting-merge (action 13 person (str "bb run-loop merge <run-dir> <decision.edn> for " t)
+                                  (str "the run for " t " is stopped :awaiting-merge"))
+          :escalated (action 12 person (str "read the run for " t " and decide; then bb run-loop run <run-dir>")
+                             (str "the run for " t " is :escalated"))
+          (action 12 architect (str "bb run-loop run <run-dir> for " t)
+                  (str "the run for " t " is " in-flight))))
+
+      ;; AN AMENDMENT, ITS FOUR GATES AGAIN - each reading compared as an instant, never as text
+      (and am closed)
+      (action 7 architect (str "remove " q " from :stage/amendments in " (gates-file id)
+                               " and defer it: the scope's deferred list, with its reason and the stage that will take it (method §04)")
+              (str "stage " id " is closed and its amendment " q " is open - a closed stage is not amended"))
+
+      (and am (nil? opened))
+      (action 7 architect (str "bb stage-amend " q " writes an amendment's :opened; or write it as a timestamp with its offset - "
+                               at " is the form - in " (gates-file id))
+              (str "stage " id "'s amendment " q " has no :opened that reads as a time"))
+
+      am-unreadable
+      (action (am-step am-unreadable) person
+              (str "write " q "'s " am-unreadable " :at as a timestamp with its offset - " at " is the form - in " (gates-file id))
+              (str "stage " id "'s amendment " q " " am-unreadable " :at " (pr-str (:at (get last-am am-unreadable)))
+                   " is not a timestamp with an offset"))
+
+      am-unnamed
+      (action (am-step am-unnamed) person
+              (str "set :by in " q "'s " am-unnamed " to the name of who signed, in " (gates-file id))
+              (str "stage " id "'s amendment " q " " am-unnamed " names no one - a sign-off names who signed"))
+
+      (and am (not (since? plan-readings opened)))
+      (action 7 architect (str "amend docs/stages/" plan " for " q " (its requirements, its packets, its cap), then bb plan-review docs/stages/" plan)
+              (str "stage " id " is amended (" q ", opened " (on-day (:opened am)) ") and its plan has no reading since"))
+
+      (and am (nil? (:approved am)))
+      (action 7 person (str "read the plan review's findings, then add :approved {" at " :cap :by <name>}" in-amendment)
+              (str "stage " id "'s plan is amended for " q " and read, and not approved again"))
+
+      (and am (not (since? blueprint-readings (stages/gate-instant (:approved am) zone))))
+      (action 9 architect (str "amend docs/stages/" blueprint " for " q " (its packets, its §0), then bb blueprint-review docs/stages/" blueprint)
+              (str "stage " id "'s plan is approved again for " q " and its blueprint has no reading since"))
+
+      am
+      (action 10 person (str "resolve the review's findings in docs/stages/" plan ", then add :signed {" at " :by <name>}" in-amendment)
+              (str "stage " id "'s blueprint is amended for " q " and read, and not signed off again"))
+
       (seq open-prep)
       (let [[hp & more] open-prep]
         (action 11 (str person " (with the Architect's session)")
@@ -297,7 +362,9 @@
   [stage]
   (let [{:stage/keys [closed] :blueprint/keys [signed]} (:gates stage)]
     (or (nil? stage)
-        (and (nil? closed) (nil? signed)))))
+        (and (nil? closed) (nil? signed))
+        ;; an amendment open: its plan and blueprint are being written again
+        (and (nil? closed) (some? (stages/open-amendment (:gates stage)))))))
 
 (defn- plan-first?
   "Does plan-check's list send the workflow back to step 2: before any stage, or while stage 0
@@ -442,6 +509,10 @@
                         :preconditions (if bp-text (preconditions bp-text) [])
                         ;; the time a gate the person passes now carries, in the project's zone
                         :now-at (stages/now-at (:workspace/time-zone ws))
+                        :zone (:workspace/time-zone ws)
+                        ;; when each reading was taken, so an amendment's are told from the first pass's
+                        :plan-readings (stages/reading-times (fs/path (stages/reviews-dir build id) "plan-review.edn"))
+                        :blueprint-readings (stages/reading-times (fs/path (stages/reviews-dir build id) "blueprint-review.edn"))
                         :merged (into #{} (filter #(= :merged (statuses %))) packets)
                         :runs (into {} (for [t packets :let [s (statuses t)] :when (and s (not= :merged s))] [t s]))}))
        :upgrade (upgrade/open-after-upgrade ws (read-edn (fs/path (:workspace/dir ws) workspace/file-name)))})))

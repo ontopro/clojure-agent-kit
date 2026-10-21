@@ -15,6 +15,16 @@ Workflow step 6 for stage 0 (its plan from the spike template, the first thing s
 after approval) and step 7 for every stage after, in the Architect's session, once per stage,
 before the blueprint is cut.
 
+**And when the stage is amended** - the person asks for more before the stage closes (`method.md` §04). Say
+first whether it serves the stage's goal, fits the cap or needs it raised, and comes before the close; if not,
+it is deferred, and the scope's deferred list says to which stage. If it is amended: the person's words as a Q
+row of `docs/source.md` §3, then `bb stage-amend Q-n` - it opens the pass in the gates record, and is run
+before anything is read again, so the readings come after it. Then amend the stage plan (its requirements,
+its packets, its cap) and run `bb plan-review` over it again; the person approves again with the cap
+(`:approved` in the pass, `:by` their name); amend the blueprint and run `bb blueprint-review` again; the
+person signs off again (`:signed`). `bb next` asks for each, with a ready `:at`. A whole new pass for a
+change that touched only the blueprint too: the four gates are re-run whatever it touched.
+
 ## Reads
 
 | File | Heading |

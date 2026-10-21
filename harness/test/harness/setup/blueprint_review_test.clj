@@ -123,7 +123,8 @@
                                     (str (fs/path plan "profile.edn")) method-path))))
       (let [again (edn/read-string (slurp (str (fs/path plan "docs" "stages" "stage-1" "reviews" "blueprint-review.edn"))))]
         (is (= 0 (:count again)))
-        (is (= [2 0] (mapv :count (:reviews again))))))))
+        (is (= [2 0] (mapv :count (:reviews again))))
+        (is (= [2 0] (mapv (comp count :findings) (:reviews again))) "each reading keeps its own findings")))))
 
 (deftest a-missing-stage-document-is-named-and-the-read-goes-on
   (let [[[written] seen] (with-stub answer

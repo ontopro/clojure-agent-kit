@@ -94,7 +94,9 @@ for a larger application). On 1 to 4: on a fresh clone of the application's merg
 commit for `--base` at the first stage's end), then `bb security-route
 <xyx>-build/docs/stages/stage-N/stage-N-security-review/security-panel.edn <clone> --out` that folder, which asks
 triage about each row. On 5: `:security/skipped {:at :by :reason}` in the gates record, the person's name and
-their reason in a sentence - nothing runs. A pre-release stage offers 1 to 4 with all of them the default and
+their reason in a sentence - nothing runs. A stage amended after its review read or its skip was decided
+(`bb stage-progress` says "before the amendment Q-n") is read again - the next member in rotation, its own
+record - or the skip is decided again over what the stage now changes. A pre-release stage offers 1 to 4 with all of them the default and
 never 5; say whether fewer would do, from the history and what changed since each member last read, and the person
 chooses. A member that declined or left no answer is said as that and is not a clean review; a finding counts by
 its own failing test, never by how many members found it. Read `security-panel.md` and the routing with the
