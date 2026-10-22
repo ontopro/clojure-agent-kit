@@ -181,3 +181,22 @@
                            "OpenRouter not in this profile")))
       (is (empty? @sent) "no request leaves")
       (finally (fs/delete-tree dir)))))
+
+;; From the KIT's own security review (GPT-6 Astra, the money-and-records flow, 2026-10-21): a provider's
+;; `:data` carrying its own `:unavailable` was returned verbatim as the reason - into the log and the run
+;; record, with the key it echoed
+(deftest the-reason-a-balance-is-unavailable-is-the-kits-own-and-carries-no-key
+  (let [key (System/getenv "PATH")]
+    (with-redefs [balance/openrouter-route (fn [ep & _] {:endpoint ep :key-env "PATH"})]
+      (testing "a provider's own :unavailable is not a reason"
+        (let [status (with-redefs [babashka.http-client/get
+                                   (fn [_ opts] {:status 200 :body (json/generate-string {:data {:unavailable (get-in opts [:headers "Authorization"])}})})]
+                       (balance/openrouter-key-status "https://openrouter.ai/api/v1" "PATH"))]
+          (is (not (:unavailable status)))
+          (is (not (str/includes? (pr-str status) key)))))
+      (testing "an exception quoting the key is redacted to the variable's name"
+        (let [status (with-redefs [babashka.http-client/get
+                                   (fn [_ opts] (throw (ex-info (str "refused: " (get-in opts [:headers "Authorization"])) {})))]
+                       (balance/openrouter-key-status "https://openrouter.ai/api/v1" "PATH"))]
+          (is (= "no answer: refused: Bearer <PATH>" (:unavailable status)))
+          (is (not (str/includes? (pr-str status) key))))))))

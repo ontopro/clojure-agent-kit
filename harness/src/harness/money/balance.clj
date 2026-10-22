@@ -26,7 +26,11 @@
   "An answer `{:status :body}` as its parsed `:data` map, or `{:unavailable reason}`. A provider
   that answers with a body that is not JSON, or with no `:data` map, is unavailable, said as such:
   `bb balance`, a run's `start` and `bb run-loop run` read this, and a proxy's HTML page once
-  could have thrown through all three."
+  could have thrown through all three.
+
+  THE REASON IS THE KIT'S OWN WORDS. A provider's `:data` carrying an `:unavailable` of its own had
+  been returned as the reason, verbatim, into the log and the run record - with whatever it echoed:
+  the data's own `:unavailable` is dropped, and only a number is read from the rest."
   [{:keys [status body reason]}]
   (let [status (or status 0)
         data (when (<= 200 status 299)
@@ -35,16 +39,18 @@
           (not (<= 200 status 299)) {:unavailable (str "HTTP " status)}
           (= ::unreadable data) {:unavailable (str "HTTP " status ", a body that is not JSON")}
           (not (map? data)) {:unavailable (str "HTTP " status ", no data in the answer")}
-          :else data)))
+          :else (dissoc data :unavailable))))
 
 (defn- get-data
   "`GET <endpoint>/<path>` with the key, as the parsed `:data` map, or
-  `{:unavailable reason}` (`read-data`)."
-  [endpoint key path]
+  `{:unavailable reason}` (`read-data`) - the key redacted to `<key-env>` from both: an exception's
+  message is the client's, and may quote what it sent."
+  [endpoint key key-env path]
   (let [url (str (str/replace endpoint #"/+$" "") path)]
-    (read-data (try (http/get url {:headers {"Authorization" (str "Bearer " key)}
-                                   :throw false :timeout 8000})
-                    (catch Exception e {:status 0 :reason (or (ex-message e) (.getSimpleName (class e)))})))))
+    (-> (read-data (try (http/get url {:headers {"Authorization" (str "Bearer " key)}
+                                       :throw false :timeout 8000})
+                        (catch Exception e {:status 0 :reason (or (ex-message e) (.getSimpleName (class e)))})))
+        (provenance/redact key key-env))))
 
 (defn- number-or-nil
   "`x` when it is a number, else nil: a provider's field may be absent, null or not a number."
@@ -101,10 +107,10 @@
       {:unavailable (str key-env " is unset")}
 
       :else
-      (let [d (get-data endpoint key "/key")]
+      (let [d (get-data endpoint key key-env "/key")]
         (if (:unavailable d)
           d
-          (let [c (get-data endpoint key "/credits")]
+          (let [c (get-data endpoint key key-env "/credits")]
             (cond-> {:limit (number-or-nil (:limit d)) :usage (number-or-nil (:usage d)) :remaining (number-or-nil (:limit_remaining d))}
               (not (:unavailable c))
               (assoc :credits (let [t (number-or-nil (:total_credits c)) u (number-or-nil (:total_usage c))]

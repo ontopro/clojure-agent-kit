@@ -30,7 +30,8 @@
   (:require
    [babashka.http-client :as http]
    [cheshire.core :as json]
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [clojure.walk :as walk]))
 
 (def defaults
   "MEASURED, not guessed. The first real completion through this namespace
@@ -58,8 +59,20 @@
   (when (and endpoint (str/includes? endpoint "/api/v1"))
     (str (str/replace endpoint #"/+$" "") "/generation")))
 
+(defn redact
+  "`x` with every string's occurrence of the key `secret` replaced by `<key-env>` - the variable's
+  name, never its value. A provider's answer can echo the Authorization header it was sent - in an
+  error, a generation record's `provider_name`, a balance's body - and each goes into the run's
+  state, its log and the record a build commits. A key shorter than eight characters is not a key,
+  and nothing is replaced."
+  [x secret key-env]
+  (if (or (not (string? secret)) (< (count secret) 8))
+    x
+    (walk/postwalk #(if (string? %) (str/replace % secret (str "<" key-env ">")) %) x)))
+
 (defn fetch!
-  "The generation record for `id`, or nil.
+  "The generation record for `id`, or nil, the key it was sent with redacted (`<key>`): the record's
+  `provider_name` becomes the step's provider, in the record a build commits.
 
   Returns nil rather than throwing on every failure path — a 404 that never
   resolves, a timeout, a dead network, a body that is not JSON or carries no `:data` map. The dispatch already succeeded; failing
@@ -81,7 +94,7 @@
            (cond
              (<= 200 status 299)
              (let [d (try (:data (json/parse-string (str body) true)) (catch Exception _ nil))]
-               (when (map? d) d))
+               (when (map? d) (redact d key "key")))
 
              (< n attempts)
              (do (Thread/sleep interval-ms) (recur (inc n)))

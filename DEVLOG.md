@@ -64,6 +64,18 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### A money answer echoing its key is redacted (plan 6.11, item 12, register row 205)
+
+The money-and-records flow's two echo findings (GPT-6 Astra). Row 183 redacted the key from a
+completion's error, but two other answers still reached the records as sent:
+- the balance returned a provider's own `:data` `:unavailable` as its reason;
+- a generation record's `provider_name` became the step's provider.
+
+`redact` now lives in `provenance`, below every caller that sends a key, and `agent/redact` points to
+it. `fetch!` redacts the key it sent from the record it returns, which covers `bb reprice` and a
+dispatch's own fetch. The balance drops a provider's own `:unavailable`, and redacts the key from
+each answer and each exception's message. Astra's two tests, adapted, fail without the fix.
+
 ### The SVG pack's trace stays in its folders (plan 6.11, item 12, register row 204)
 
 The tool-packs flow's finding (GPT-6 Astra): `trace` took an icon's name, a picture's path and the

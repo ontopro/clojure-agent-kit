@@ -267,3 +267,20 @@
                                                            {:fetch-opts fast :getenv getenv}))
                            "not an endpoint the profile or routes.edn names"))
         (is (empty? @sent))))))
+
+;; From the KIT's own security review (GPT-6 Astra, the money-and-records flow, 2026-10-21): a generation
+;; record echoing the key it was sent put it in `:step/provider`, the record and the console
+(deftest a-generation-record-echoing-its-key-is-redacted
+  (let [secret "sk-review-only-dummy-secret-65187"
+        record {:run/id "r" :run/roles {:coder {:endpoint "https://openrouter.ai/api/v1"}}
+                :run/steps [{:step/name :coder :step/kind :dispatch :step/status :done
+                             :step/generation-ids ["g"] :step/cost nil}]}
+        result (with-redefs [babashka.http-client/get
+                             (fn [_ opts]
+                               {:status 200 :body (json/generate-string
+                                                   {:data {:total_cost 0.1 :native_tokens_prompt 1
+                                                           :provider_name (get-in opts [:headers "Authorization"])}})})]
+                 (reprice/reprice record {:getenv (constantly secret) :fetch-opts {:attempts 1 :interval-ms 1 :timeout-ms 2000}}))]
+    (is (= 0.1 (get-in result [:record :run/steps 0 :step/cost])) "the cost is still taken")
+    (is (= "Bearer <key>" (get-in result [:record :run/steps 0 :step/provider])))
+    (is (not (str/includes? (pr-str result) secret)))))

@@ -22,7 +22,6 @@
    [babashka.http-client :as http]
    [cheshire.core :as json]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [harness.models.adapter :as adapter]
    [harness.models.provenance :as provenance]
    [harness.models.tools :as tools]))
@@ -103,15 +102,10 @@
   (let [after (some-> (get headers "retry-after") str/trim parse-long)]
     (if after (* 1000 after) (* interval-ms (dec n)))))
 
-(defn redact
-  "`x` with every string's occurrence of the key `secret` replaced by `<key-env>` - the variable's
-  name, never its value. A provider's error can echo the Authorization header it was sent; the
-  error goes into the run's state, its log and the record a build commits. A key shorter than eight
-  characters is not a key, and nothing is replaced."
-  [x secret key-env]
-  (if (or (not (string? secret)) (< (count secret) 8))
-    x
-    (walk/postwalk #(if (string? %) (str/replace % secret (str "<" key-env ">")) %) x)))
+(def redact
+  "`provenance/redact`: `x` with the key `secret` replaced by `<key-env>`. Defined there, below every
+  caller that sends a key - the generation record and the balance read too."
+  provenance/redact)
 
 (defn with-notice
   "The tool results' turn `msgs` (`adapter/tool-results-message`'s) with `notice` for the model to read
