@@ -245,6 +245,35 @@
                 (tools/ok (show-response r)))))))
 
 ;; ---------------------------------------------------------------------------
+;; read_diff
+;; ---------------------------------------------------------------------------
+
+(def max-diff-page
+  "Characters of the change `read_diff` returns at once: a tool's output less room for the page's two
+  notes, so `tools/max-output` never cuts the note that names the next offset."
+  (- tools/max-output 1000))
+
+(defn- read-diff
+  "A page of the change under review, from character `offset`: the diff the review was opened with,
+  held in memory - no file in the clone, so nothing a test could replace and nothing collected as
+  the review's. A diff stance's opening is cut where a stage's change is long, and its note had sent
+  the security reviewer to `read_file` for a file that does not exist."
+  [{:keys [diff]} {:keys [offset]}]
+  (let [n (count diff)
+        o (or offset 0)]
+    (cond
+      (not (string? diff)) (tools/err "this review was given no diff - read the files with read_file")
+      (not (and (number? o) (== o (long o)) (<= 0 o))) (tools/err "offset is a whole number of characters, 0 or more")
+      (>= (long o) (max n 1)) (tools/err (str "offset " (long o) " is past the diff's end - it has " n " characters"))
+      :else
+      (let [o (long o)
+            end (min n (+ o max-diff-page))]
+        (tools/ok (str "[the diff, characters " o " to " end " of " n "]\n" (subs diff o end) "\n"
+                       (if (< end n)
+                         (str "[read_diff with offset " end " reads on]")
+                         "[the end of the diff]")))))))
+
+;; ---------------------------------------------------------------------------
 ;; the registry
 ;; ---------------------------------------------------------------------------
 
@@ -306,6 +335,21 @@
                           :body {:type "string" :description "The request body, for a POST or PUT."}}
              :required ["method" "path"]}
     :fn #'request}})
+
+(def diff-specs
+  "A change reviewer's tools (`--stance diff`): `specs` and `read_diff`, the change it was given read
+  on past where its opening cut it."
+  (assoc specs
+         "read_diff"
+         {:description (str "Read the change under review - the diff your first message showed - from a character "
+                            "offset, " max-diff-page " characters at a time. The diff is not a file in the "
+                            "repository: read_file cannot open it, and this is the only way to read past where "
+                            "the first message cut it. A page may start or end mid-line.")
+          :schema {:type "object"
+                   :properties {:offset {:type "integer"
+                                         :description "The character to start from, 0 for the beginning; the cut note and each page name the next."}}
+                   :required ["offset"]}
+          :fn #'read-diff}))
 
 (def kit-specs
   "The tools for a review of the KIT itself (`bb security-review --kit`): `read_file` and `search` over

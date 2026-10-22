@@ -36,7 +36,13 @@
       (let [many (sr/opening :tracer {:files (mapv #(str "f" %) (range 500))})
             big (sr/opening :diff {:files [] :diff (apply str (repeat (* 2 sr/max-diff) "x"))})]
         (is (str/includes? many "[300 more not listed"))
-        (is (str/includes? big (str "[diff cut at " sr/max-diff " of ")))))
+        (is (str/includes? big (str "[the diff is cut here, at " sr/max-diff " of ")))
+        ;; from the sandbox proof of plan 6.11 (run 1): the note had named read_file, and no file holds the diff
+        (is (str/includes? big (str "read_diff with offset " sr/max-diff " reads on")))
+        (is (not (str/includes? big "read_file")))))
+    (testing "read_diff is a change reviewer's tool, never a tracer's"
+      (is (contains? (sr/registry :diff) "read_diff"))
+      (is (not (contains? (sr/registry :tracer) "read_diff"))))
     (is (str/includes? (sr/opening :tracer (assoc facts :scans "deps: 1 ok")) "deps: 1 ok"))))
 
 (deftest the-answer-is-read-from-its-last-json-block

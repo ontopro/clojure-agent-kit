@@ -99,6 +99,12 @@
 (def max-listing 200)
 (def max-diff 60000)
 
+(defn registry
+  "The security reviewer's tools for `stance`: a change reviewer's add `read_diff`, its diff read on
+  past the opening's cut; a tracer's have no diff to read."
+  [stance]
+  (if (= :diff stance) security-review-tools/diff-specs security-review-tools/specs))
+
 (defn opening
   "The first message: the stance's task, the repository's files, and for the change
   stance the diff. `files` is the clone's tracked file paths; `diff` its change from the base."
@@ -112,7 +118,10 @@
          (when (= :diff stance)
            (str "\n\nThe change under review:\n```diff\n"
                 (if (> (count diff) max-diff)
-                  (str (subs diff 0 max-diff) "\n[diff cut at " max-diff " of " (count diff) " characters; read_file has the rest]")
+                  ;; THE NOTE SAYS WHERE THE REST IS: it had sent the reviewer to read_file, and no file
+                  ;; holds the diff - a stage's change of 205,711 characters, eight paid calls hunting one
+                  (str (subs diff 0 max-diff) "\n[the diff is cut here, at " max-diff " of " (count diff)
+                       " characters. The rest is not a file in the repository: read_diff with offset " max-diff " reads on]")
                   diff)
                 "\n```"))
          (when (seq scans) (str "\n\nResults of the dependency and secrets scans, for you to weigh:\n" scans))
@@ -241,7 +250,7 @@
 
 (defn review!
   "Review the application cloned in `clone`: start the sandbox, run `role` (a role block) in the
-  stance `stance` with the five tools, stop the sandbox whatever happens. Options: `:kit`
+  stance `stance` with its tools (`registry`: five, a change review six), stop the sandbox whatever happens. Options: `:kit`
   (this KIT's folder), `:base` (the revision the change is from, default \"base\"), `:rounds`,
   `:requests`, `:max-tokens`, `:scans` (text for the security reviewer to weigh), `:sandbox` (a started one,
   for a test).
@@ -258,9 +267,11 @@
         sb (or sandbox (sandbox/start! {:kit kit :clone clone}))
         t0 (System/currentTimeMillis)]
     (try
-      (let [ctx {:dir (str clone) :sandbox sb :request-budget (atom requests) :written (atom #{})}
+      (let [ctx (cond-> {:dir (str clone) :sandbox sb :request-budget (atom requests) :written (atom #{})}
+                  (= :diff stance) (assoc :diff (:diff facts)))
+            tools (registry stance)
             r (agent/converse! role system-prompt (opening stance facts) ctx
-                               {:registry security-review-tools/specs :tools (set (keys security-review-tools/specs))
+                               {:registry tools :tools (set (keys tools))
                                 :max-iterations rounds :timeout-ms 600000 :final-notice final-notice})
             findings (parse-findings (:text r))
             ;; THE SANDBOX STOPS BEFORE ITS TESTS ARE COLLECTED: a process a test left running could swap a

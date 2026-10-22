@@ -64,6 +64,24 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-22 (plan 6.11)
 
+### A change reviewer reads the whole change (plan 6.11, item 11, register row 211)
+
+The proof's first run gave stage 5 one GPT-6 Astra reading, `--stance diff`. The change was
+205,711 characters, and the opening cut it at 60,000 with "read_file has the rest". No file held
+the diff, so eight of the reading's eleven failed calls hunted for one. The reviewer still read 32
+of the changed files, but nothing showed it the rest of the change.
+
+- **`read_diff`:** a change reviewer's tool. It returns a page of the diff the review was opened
+  with, from an offset, and each page names the next. The diff is held in memory, never written
+  into the clone, so a test cannot replace it and the record does not collect it.
+- **The page:** `tools/max-output` less 1,000 characters, so the tool-output limit never cuts the
+  note naming the next offset. The first page size tried, 40,000, was cut by it.
+- **The cut note:** it says the rest is not a file in the repository, and gives the offset.
+- **Only for a diff review:** `registry` offers `read_diff` to the diff stance; a tracer has no
+  diff to read.
+
+The tests need the fix to load.
+
 ### A cap is dated by the approval that set it (plan 6.11, item 11, register row 210)
 
 Also from the proof's first run. Since row 170 the stage report's cap is the latest re-approval's,

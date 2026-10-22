@@ -326,3 +326,22 @@
         (is (str/includes? (:content r) "is a link, not a file")))
       (is (= "(ns app.existing-test)\n" (slurp (str app-test))) "the application's test is unchanged")
       (finally (fs/delete-tree outer)))))
+
+;; From the sandbox proof of plan 6.11 (run 1): a change reviewer's opening cut a stage's 205,711-character
+;; diff at 60,000 and named a file for the rest that does not exist
+(deftest read-diff-reads-the-change-on-in-pages
+  (let [diff (apply str (repeat (+ rt/max-diff-page 10) "d"))
+        ctx {:dir "." :diff diff}
+        rd (fn [c args] (tools/invoke rt/diff-specs c {:id "d" :name "read_diff" :args args}))
+        first-page (rd ctx {:offset 0})
+        last-page (rd ctx {:offset rt/max-diff-page})]
+    (is (false? (:error? first-page)))
+    (is (str/starts-with? (:content first-page) (str "[the diff, characters 0 to " rt/max-diff-page " of " (count diff) "]")))
+    (is (str/ends-with? (:content first-page) (str "[read_diff with offset " rt/max-diff-page " reads on]")))
+    (is (str/includes? (:content last-page) "dddddddddd\n[the end of the diff]"))
+    (testing "refused: past the end, not a whole number, below 0, no diff"
+      (is (str/includes? (:content (rd ctx {:offset (count diff)})) "past the diff's end"))
+      (doseq [o ["10" 1.5 -1]]
+        (is (:error? (rd ctx {:offset o})) (pr-str o)))
+      (is (str/includes? (:content (rd {:dir "."} {:offset 0})) "given no diff")))
+    (is (= (set (conj (keys rt/specs) "read_diff")) (set (keys rt/diff-specs))) "the rest of the tools as they were")))
