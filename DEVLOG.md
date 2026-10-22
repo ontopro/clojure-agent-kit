@@ -64,6 +64,26 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### Names and destinations: a target is a file, a record's name a name (plan 6.11, item 12, register rows 188 and 206)
+
+Step 10's lows, in one commit.
+
+- **Row 188.** A target linked to a context file inside the worktree let `write_file` and `edit_file`
+  change the context file. `contained-path/as-written?` holds a path inside with no link between the
+  root and the file, judged from the root's own real path so that macOS's `/tmp` is not a link in
+  it. Both tools refuse otherwise.
+- **Row 206.**
+  - The scorer writes a review's tests through `inside` its clone, so a `test` link in the fixture's
+    branch leads nowhere.
+  - `write-record!` refuses an id that is not a name. The id carries a panel member's `:name`.
+  - `bb profile` names such a member.
+  - The rule is `[A-Za-z0-9._:-]+`: Fable's set plus `:`, because a candidate's id is a slug's last
+    segment and a slug may carry a variant (`:free`). A `:` cannot make a path.
+
+The bake-off case id, the fourth low, landed with row 193. Each test fails without its fix. The record
+id's test, run without its fix, wrote a record into the temp folder's parent: the escape was real, and
+that stray file was removed.
+
 ### A money answer echoing its key is redacted (plan 6.11, item 12, register row 205)
 
 The money-and-records flow's two echo findings (GPT-6 Astra). Row 183 redacted the key from a

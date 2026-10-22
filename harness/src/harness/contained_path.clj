@@ -65,6 +65,18 @@
       (when (and (fs/starts-with? p base) rp rb (fs/starts-with? rp rb) (= rp (real p)))
         p))))
 
+(defn as-written?
+  "Whether `path` (relative to `root`) is `inside` it with no link between `root` and the file: it
+  lands where it is written, so the file opened is the one the path names. A link inside that leads
+  inside still names another file - a target linked to a context file had let the file tools write
+  the context file under the target's name."
+  [root path]
+  (boolean
+   (when-let [p (inside root path)]
+     (let [base (fs/normalize (fs/absolutize root))]
+       ;; from the root's own real path: a root reached through a link (macOS's /tmp) is not one in the path
+       (= (real p) (fs/normalize (fs/path (real base) (str (fs/relativize base p)))))))))
+
 (defn read-inside
   "The text of `path` (relative to `root`) when `inside` holds it and it is a regular file; nil
   otherwise - outside reads as missing, as a file that does not exist always has. The one read every

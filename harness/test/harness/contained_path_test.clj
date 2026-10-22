@@ -76,3 +76,21 @@
       (is (some? (contained-path/inside root "src/../src/a.clj")) "a `..` with no link before it is one place")
       (is (some? (contained-path/inside root "./src/./a.clj")))
       (finally (fs/delete-tree outer)))))
+
+(deftest as-written-means-no-link-between-the-root-and-the-file
+  (let [outer (fs/create-temp-dir {:prefix "kit-as-written"})
+        root (fs/path outer "w")]
+    (try
+      (fs/create-dirs (fs/path root "src"))
+      (spit (str (fs/path root "src" "a.clj")) "a")
+      (fs/create-sym-link (fs/path root "src" "b.clj") (fs/path "a.clj"))
+      (fs/create-sym-link (fs/path root "lnk") (fs/path "src"))
+      (is (contained-path/as-written? root "src/a.clj"))
+      (is (contained-path/as-written? root "src/new.clj") "a file not yet written")
+      (is (not (contained-path/as-written? root "src/b.clj")) "a link to a file inside")
+      (is (not (contained-path/as-written? root "lnk/a.clj")) "a file under a linked folder")
+      (is (not (contained-path/as-written? root "../other.clj")) "outside: false, never nil")
+      (testing "a root reached through a link is not a link in the path"
+        (fs/create-sym-link (fs/path outer "via") root)
+        (is (contained-path/as-written? (fs/path outer "via") "src/a.clj")))
+      (finally (fs/delete-tree outer)))))

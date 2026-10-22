@@ -445,3 +445,29 @@
         (is (:error? r))
         (is (not (str/includes? (str (:content r)) "HOST SECRET"))))
       (finally (fs/delete-tree outer)))))
+
+;; From the KIT's own security review (GPT-6 Astra, the tool-calls flow, 2026-10-21; register row 188): a
+;; target linked to a context file inside the worktree let write_file and edit_file change the context file
+(deftest a-target-is-a-file-not-a-link
+  (let [dir (str (fs/create-temp-dir {:prefix "kit-tools-alias"}))
+        context (str (fs/path dir "context.txt"))
+        ctx {:dir dir :targets ["target.txt" "linked/inner.txt"]}]
+    (try
+      (spit context "READ ONLY UPSTREAM")
+      (fs/create-sym-link (fs/path dir "target.txt") (fs/path "context.txt"))
+      (testing "write_file refuses the link and writes nothing"
+        (let [r (tools/invoke ctx {:id "w" :name "write_file" :args {:path "target.txt" :content "CHANGED"}})]
+          (is (:error? r))
+          (is (str/includes? (:content r) "a target is a file, not a link"))
+          (is (= "READ ONLY UPSTREAM" (slurp context)))))
+      (testing "edit_file the same"
+        (let [r (tools/invoke ctx {:id "e" :name "edit_file" :args {:path "target.txt" :old_text "READ ONLY" :new_text "CHANGED"}})]
+          (is (:error? r))
+          (is (= "READ ONLY UPSTREAM" (slurp context)))))
+      (testing "a target under a linked folder, the same"
+        (fs/create-dirs (fs/path dir "real"))
+        (fs/create-sym-link (fs/path dir "linked") (fs/path "real"))
+        (let [r (tools/invoke ctx {:id "w2" :name "write_file" :args {:path "linked/inner.txt" :content "x"}})]
+          (is (:error? r))
+          (is (not (fs/exists? (fs/path dir "real" "inner.txt"))))))
+      (finally (fs/delete-tree dir)))))

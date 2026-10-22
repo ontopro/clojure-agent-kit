@@ -122,6 +122,11 @@
   every stage's end."
   [:plan-reviewer :blueprint-reviewer :spec-reviewer :coder :tester :reviewer :orchestrator :security-reviewer])
 
+(def name-re
+  "A panel member's name, and the review record named after it: letters, digits, `.`, `_`, `-` and
+  `:` - a model slug's last segment, as a candidate's id is, may carry a variant (`:free`, `:beta`)."
+  #"[A-Za-z0-9._:-]+")
+
 (defn member-name
   "What a security reviewer panel knows a member by: its `:name`, else its model slug's last
   segment (`openai/gpt-6-astra` is `gpt-6-astra`), as the review records' file names carry it."
@@ -213,6 +218,12 @@
         (and (nil? panel) (nil? (:security-reviewer roles)))
         (conj {:profile/error :no-security-reviewer
                :detail "neither :roles :security-reviewer nor :security-panel - every stage's end needs one"})
+
+        (seq (remove #(re-matches name-re (str %)) names))
+        (conj {:profile/error :panel-member-name
+               :detail (str "a security panel member's name names its review records' files: "
+                            (str/join ", " (map pr-str (remove #(re-matches name-re (str %)) names)))
+                            " - give it a :name of letters, digits, `.`, `_`, `-` and `:`")})
 
         (not= (count names) (count (distinct names)))
         (conj {:profile/error :panel-duplicate-name

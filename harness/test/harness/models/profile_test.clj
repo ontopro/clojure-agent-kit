@@ -368,6 +368,9 @@
          (errors (assoc base :security-panel [astra]))) "a panel and a lone reviewer are two lists")
   (is (= [:no-security-reviewer] (errors (update base :roles dissoc :security-reviewer))))
   (is (= [:panel-duplicate-name] (errors (panel astra astra))))
+  ;; From the KIT's own security review (the security-review flow): a member's name names its records' files
+  (is (= [:panel-member-name] (errors (panel (assoc astra :name "../../elsewhere")))))
+  (is (= [] (errors (panel (assoc astra :name "gpt-6:free")))) "a slug's variant is a name")
   (is (= [:panel-all-coder-family] (errors (panel sonnet)))))
 
 (deftest the-shipped-examples-carry-a-panel

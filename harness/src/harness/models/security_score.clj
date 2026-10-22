@@ -169,9 +169,12 @@
         clone (str (fs/path scratch "app"))]
     (try
       (sh scratch "git" "clone" "-q" "--single-branch" "--branch" branch "--no-tags" app-dir clone)
-      (doseq [[rel text] files]
-        (fs/create-dirs (fs/parent (fs/path clone rel)))
-        (spit (str (fs/path clone rel)) text))
+      ;; written only inside the clone, as read only inside the record's folder (row 177)
+      (doseq [[rel text] files
+              :let [p (contained-path/inside clone rel)]
+              :when p]
+        (fs/create-dirs (fs/parent p))
+        (spit (str p) text))
       (let [sb (sandbox/start! {:kit kit :clone clone})]
         (try
           (into (sorted-map)

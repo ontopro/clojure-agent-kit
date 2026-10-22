@@ -3,7 +3,9 @@
   a reviewer's tests in the sandbox is `bb security-score`, never in the gates."
   (:require
    [babashka.fs :as fs]
+   [babashka.process]
    [clojure.test :refer [deftest is testing]]
+   [harness.models.security-review-sandbox]
    [harness.models.security-score :as score]))
 
 (deftest a-test-path-is-its-namespace
@@ -123,3 +125,22 @@
         (try (score/score! "." (str record) (str fixture)) (catch Exception _ nil)))
       (is (= ["test/app/ok_test.clj"] (keys @seen)) "only a test file's path, inside the folder, is scored")
       (finally (fs/delete-tree dir)))))
+
+;; From the KIT's own security review (the security-review flow): the scorer wrote a review's tests into its
+;; clone of the fixture without asking where they landed - a `test` link in the branch led them out
+(deftest the-scorer-writes-a-reviews-tests-only-inside-its-clone
+  (let [outer (fs/create-temp-dir {:prefix "kit-score-dest"})
+        app (fs/path outer "app")
+        elsewhere (fs/path outer "elsewhere")
+        git! (fn [& args] (apply babashka.process/shell {:dir (str app) :out :string :err :string} "git" args))]
+    (try
+      (fs/create-dirs app)
+      (fs/create-dirs elsewhere)
+      (git! "init" "-q" "-b" "faulted")
+      (fs/create-sym-link (fs/path app "test") elsewhere)
+      (git! "add" "-A")
+      (git! "-c" "user.name=t" "-c" "user.email=t@t" "commit" "-q" "-m" "a link")
+      (with-redefs [harness.models.security-review-sandbox/start! (fn [_] {:run-tests (fn [_] {:exit 0 :out "Ran 0 tests"}) :stop! (fn [])})]
+        (#'score/run-branch! "kit" (str app) "faulted" {"test/x/a_test.clj" "(ns x.a-test)"} ["x.a-test"]))
+      (is (empty? (fs/list-dir elsewhere)) "nothing written through the link")
+      (finally (fs/delete-tree outer)))))

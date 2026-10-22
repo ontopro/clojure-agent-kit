@@ -92,6 +92,14 @@
   (cond (fs/absolute? (fs/path (str path))) (str path " is an absolute path - name it from the workspace's root")
         (nil? (contained-path/inside dir path)) (str path " is outside the workspace")))
 
+(defn- linked
+  "Why `path` is refused for a write, when a link lies between the worktree and it; else nil. A
+  target is a file, not a link: a target linked to a context file inside the worktree had made
+  `write_file` and `edit_file` change the context file, which the packet's list never named."
+  [dir path]
+  (when-not (contained-path/as-written? dir path)
+    (str path " is a link, or under one - a target is a file, not a link; nothing was written")))
+
 (defn- read-file
   [{:keys [dir]} {:keys [path]}]
   (cond
@@ -172,6 +180,7 @@
     (str/blank? path) (err "path is required")
     (nil? content) (err "content is required")
     (outside dir path) (err (outside dir path))
+    (linked dir path) (err (linked dir path))
     ;; The packet's own list, enforced here rather than only at assembly. An
     ;; agent that learns at the END of a task that half its work is refused has
     ;; spent the whole task; told at the first write, it can ask.
@@ -228,6 +237,7 @@
       (empty? old_text) (err "old_text is empty — there is nothing to match")
       (nil? new_text) (err "new_text is required")
       (outside dir path) (err (outside dir path))
+      (linked dir path) (err (linked dir path))
       (not (contains? (set targets) path))
       (err (str path " is not in this task's :files/target — you may edit only "
                 (str/join ", " targets)))

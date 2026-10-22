@@ -298,6 +298,10 @@
   wrote under `<id>-tests/`, the record saying how its cost was got (`cost-source`). Returns the
   record's path."
   [out id review]
+  ;; THE ID IS A FILE NAME. It carries a panel member's name or a profile's, which a project's profile
+  ;; gives: held to a name's characters, so no name puts the record outside `out`
+  (when-not (re-matches profile/name-re (str id))
+    (throw (ex-info (str (pr-str id) " is not a record's name - letters, digits, `.`, `_`, `-` and `:`; rename the member") {:id id})))
   (fs/create-dirs out)
   (let [edn-file (str (fs/path out (str id ".edn")))
         tests-dir (fs/path out (str id "-tests"))]

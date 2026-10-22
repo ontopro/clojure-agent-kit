@@ -338,3 +338,14 @@
       (with-stub [(text-reply "```json\n{\"findings\": []}\n```")]
         #(sr/review! {:family :stub :model "stub-1" :shape :openai :endpoint %} :diff clone {:rounds 2})))
     (is (= [:stopped :collected] (take 2 @events)) "stopped first, then collected")))
+
+;; From the KIT's own security review (the security-review flow): a record's id carries a panel member's
+;; name, and named the file it is written to
+(deftest a-records-id-is-a-name
+  (let [out (fs/create-temp-dir {:prefix "kit-review-id"})]
+    (try
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"is not a record's name"
+                            (sr/write-record! (str (fs/path out "a" "records")) "../../escaped-tracer-1" {:tests {}})))
+      (is (not (fs/exists? (fs/path out "escaped-tracer-1.edn"))) "where the id led: out/a/records/../../")
+      (is (fs/exists? (sr/write-record! (str (fs/path out "records")) "gpt-6:free-high-tracer-1" {:tests {}})))
+      (finally (fs/delete-tree out)))))
