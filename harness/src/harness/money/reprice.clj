@@ -184,8 +184,9 @@
     {:reading m :changed? false :line (untrusted-line endpoint "the reading")}
 
     :else
-    (let [key (some-> (key-env-for endpoint profile (or routes (catalogue/routes))) getenv)
-          {:keys [gens missing fetched]} (fetch-all generation-ids #(provenance/fetch! endpoint % key fetch-opts))]
+    (let [key-env (key-env-for endpoint profile (or routes (catalogue/routes)))
+          key (some-> key-env getenv)
+          {:keys [gens missing fetched]} (fetch-all generation-ids #(provenance/fetch! endpoint % key (assoc fetch-opts :key-env key-env)))]
       (if (seq missing)
         {:reading m :changed? false :line (lagged fetched generation-ids missing)}
         (let [c (reduce + 0 (map :total_cost gens))]
@@ -241,7 +242,7 @@
                         :else
                         (let [key (some-> key-env getenv)
                               {:keys [step fetched missing]}
-                              (reprice-step s #(provenance/fetch! endpoint % key fetch-opts))]
+                              (reprice-step s #(provenance/fetch! endpoint % key (assoc fetch-opts :key-env key-env)))]
                           (if (seq missing)
                             {:step s :changed? false
                              :line (str "  " nm ": " (lagged fetched (:step/generation-ids s) missing))}

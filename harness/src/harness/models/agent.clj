@@ -169,7 +169,7 @@
              (delay {:gen nil :ms 0})
              (future
                (let [t (System/currentTimeMillis)
-                     gen (provenance/fetch! (:endpoint role) (:id parsed) key opts)]
+                     gen (provenance/fetch! (:endpoint role) (:id parsed) key (assoc opts :key-env (:key-env role)))]
                  {:gen gen :ms (- (System/currentTimeMillis) t)})))})
 
 (defn- settle

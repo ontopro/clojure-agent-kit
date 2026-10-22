@@ -23,19 +23,21 @@
   [names]
   (vec (remove #(and (string? %) (re-matches name-re %)) names)))
 
-(def ^:private no-links (make-array LinkOption 0))
+;; no option given: `isRegularFile` and `toRealPath` FOLLOW every link, so the file judged is the one
+;; the path lands on
+(def ^:private follow-links (make-array LinkOption 0))
 
 (defn picture-file
   "The picture `png` names, relative to `base` (the icons file's folder), as the file it lands on
   when that is a regular file inside `base` with every link followed; nil otherwise - blank, not a
   string, absolute, out by `..` or out through a link. The file returned is the one judged."
   ^File [^File base png]
-  (when (and (string? png) (not (str/blank? png)))
+  (when (and (string? png) (not (str/blank? png)) (not (.isAbsolute (.toPath (File. ^String png)))))
     (let [b (.normalize (.toPath (.getAbsoluteFile base)))
           p (.normalize (.resolve b ^String png))]
-      (when (and (.startsWith p b) (Files/isRegularFile p no-links))
-        (let [rp (.toRealPath p no-links)]
-          (when (.startsWith rp (.toRealPath b no-links)) (.toFile rp)))))))
+      (when (and (.startsWith p b) (Files/isRegularFile p follow-links))
+        (let [rp (.toRealPath p follow-links)]
+          (when (.startsWith rp (.toRealPath b follow-links)) (.toFile rp)))))))
 
 (defn out-folder
   "The output folder: `out` as the person gave it, else `traced/` beside the icons file - refused

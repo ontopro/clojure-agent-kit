@@ -64,6 +64,18 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-22 (plan 6.11)
 
+### Three nits from Fable's reads: a picture path, a link option's name, a key's mask (plan 6.11, item 12)
+
+- **An absolute picture path is refused.** `picture-file`'s docstring said absolute meant nil, but
+  an absolute path landing inside the icons file's folder was taken. Its test fails without the fix.
+- **`no-links` is `follow-links`.** An empty option array makes `isRegularFile` and `toRealPath`
+  FOLLOW links, and the old name said the opposite. A test of a folder that is a link to outside
+  now holds the behaviour; it passed before too, since only the name was wrong.
+- **A fetched record's mask names the variable.** `fetch!` masked the key as `<key>`, unlike every
+  other redaction. It takes `:key-env` in its options, which the dispatch's and `bb reprice`'s
+  calls now pass, so the mask reads `<OPENROUTER_API_KEY>`. The reprice test, updated, fails
+  without the fix.
+
 ### A review's tests are judged from the record's folder (plan 6.11, item 12, register row 208)
 
 Argon direct's routing record, verified on HEAD. `route!` and `score!` read a record's tests

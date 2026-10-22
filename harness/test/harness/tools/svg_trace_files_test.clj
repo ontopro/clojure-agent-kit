@@ -28,7 +28,14 @@
         (is (= (str (fs/real-path (fs/path project "crops" "in.png"))) (str (files/picture-file base "crops/in.png"))))
         (testing "out by `..`, absolute, through a link, missing, not a string: nil"
           (doseq [png ["../private.png" (str (fs/path root "private.png")) "crops/linked.png" "crops/none.png" "" nil 7]]
-            (is (nil? (files/picture-file base png)) (pr-str png)))))
+            (is (nil? (files/picture-file base png)) (pr-str png))))
+        ;; from Fable 5.1's read of `c5d7e01`: an absolute path that happened to land inside was taken
+        (is (nil? (files/picture-file base (str (fs/path project "crops" "in.png")))) "absolute, though inside")
+        (testing "a folder that is a link to outside is followed, and refused"
+          (fs/create-dirs (fs/path root "outside-crops"))
+          (spit (str (fs/path root "outside-crops" "in.png")) "host file")
+          (fs/create-sym-link (fs/path project "linked-crops") (fs/path root "outside-crops"))
+          (is (nil? (files/picture-file base "linked-crops/in.png")))))
       (finally (fs/delete-tree root)))))
 
 (deftest nothing-is-written-through-a-link

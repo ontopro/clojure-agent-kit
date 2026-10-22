@@ -71,7 +71,8 @@
     (walk/postwalk #(if (string? %) (str/replace % secret (str "<" key-env ">")) %) x)))
 
 (defn fetch!
-  "The generation record for `id`, or nil, the key it was sent with redacted (`<key>`): the record's
+  "The generation record for `id`, or nil, the key it was sent with redacted (`<KEY_ENV>`, the variable
+  `:key-env` in `opts` names, else `<key>`): the record's
   `provider_name` becomes the step's provider, in the record a build commits.
 
   Returns nil rather than throwing on every failure path — a 404 that never
@@ -94,7 +95,7 @@
            (cond
              (<= 200 status 299)
              (let [d (try (:data (json/parse-string (str body) true)) (catch Exception _ nil))]
-               (when (map? d) (redact d key "key")))
+               (when (map? d) (redact d key (or (:key-env opts) "key"))))
 
              (< n attempts)
              (do (Thread/sleep interval-ms) (recur (inc n)))

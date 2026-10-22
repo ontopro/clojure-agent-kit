@@ -282,5 +282,6 @@
                                                            :provider_name (get-in opts [:headers "Authorization"])}})})]
                  (reprice/reprice record {:getenv (constantly secret) :fetch-opts {:attempts 1 :interval-ms 1 :timeout-ms 2000}}))]
     (is (= 0.1 (get-in result [:record :run/steps 0 :step/cost])) "the cost is still taken")
-    (is (= "Bearer <key>" (get-in result [:record :run/steps 0 :step/provider])))
+    (is (= "Bearer <OPENROUTER_API_KEY>" (get-in result [:record :run/steps 0 :step/provider]))
+        "the mask names the variable the key came from, as every other redaction does")
     (is (not (str/includes? (pr-str result) secret)))))
