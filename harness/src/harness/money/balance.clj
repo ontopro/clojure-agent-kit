@@ -51,6 +51,14 @@
   [x]
   (when (number? x) x))
 
+(defn- host
+  "The host of `endpoint`, or nil when it is not a string or does not parse as a URI: a routes file is
+  read, not trusted, and one bad entry must not stop the lookup of the rest."
+  [endpoint]
+  (when (string? endpoint)
+    (try (.getHost (java.net.URI. endpoint))
+         (catch java.net.URISyntaxException _ nil))))
+
 (defn openrouter-route
   "OpenRouter's endpoint and its key's variable as `routes` (`routes.edn`) names them, when `endpoint`
   is that endpoint exactly; nil otherwise.
@@ -61,7 +69,7 @@
   ([endpoint] (openrouter-route endpoint (catalogue/routes)))
   ([endpoint routes]
    (some (fn [r] (when (and (map? r) (= endpoint (:endpoint r)) (:key-env r)
-                            (= "openrouter.ai" (some-> (:endpoint r) java.net.URI. .getHost)))
+                            (= "openrouter.ai" (host (:endpoint r))))
                    (select-keys r [:endpoint :key-env])))
          (vals routes))))
 

@@ -158,7 +158,13 @@
     (is (= {:endpoint "https://openrouter.ai/api/v1" :key-env "OPENROUTER_API_KEY"}
            (balance/openrouter-route "https://openrouter.ai/api/v1" routes)))
     (is (nil? (balance/openrouter-route "https://evil.example/openrouter/api/v1" routes)) "a URL that contains the word is not it")
-    (is (nil? (balance/openrouter-route "https://generativelanguage.googleapis.com/v1beta/openai" routes)) "another route is not OpenRouter")))
+    (is (nil? (balance/openrouter-route "https://generativelanguage.googleapis.com/v1beta/openai" routes)) "another route is not OpenRouter")
+    ;; From Fable 5.1's read: one route that does not parse threw, and stopped the lookup
+    (testing "a route whose endpoint does not parse, or is not a string, is skipped, not thrown"
+      (let [bad (assoc routes :broken {:endpoint "https://bad host/v1" :key-env "X"} :odd {:endpoint :not-a-url :key-env "Y"})]
+        (is (= {:endpoint "https://openrouter.ai/api/v1" :key-env "OPENROUTER_API_KEY"}
+               (balance/openrouter-route "https://openrouter.ai/api/v1" bad)))
+        (is (nil? (balance/openrouter-route "https://bad host/v1" bad)))))))
 
 (deftest a-run-record-is-never-a-profile-and-sends-nothing
   (let [dir (fs/create-temp-dir {:prefix "kit-balance-record"})

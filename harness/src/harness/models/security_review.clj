@@ -503,7 +503,7 @@
                 (quot (:ms r) 1000) "s, " (if (:cost r) (format "$%.2f" (double (:cost r))) "cost not yet reported")))
   (println (str "  tools: " (pr-str (frequencies (map first (:calls r))))))
   (cond
-    (:refused? r) (println "  the model REFUSED to do this review (finish reason content_filter / refusal): its own safeguard, not a failure of the call. The review did not happen; this is not a clean review")
+    (:refused? r) (println "  the model REFUSED to do this review (finish reason content_filter / refusal, or a 403 its provider flagged): its own safeguard, not a failure of the call. The review did not happen; this is not a clean review")
     (:empty-answer? r) (println "  the last completion returned no text at all - cut off at its output limit, or an empty reply; the steps in the record say which")
     (:no-block? r) (println "  the answer had no findings block - it says nothing, and is not a clean review")
     (empty? (:findings r)) (println "  no findings")

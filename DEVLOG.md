@@ -64,6 +64,13 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### Two nits from Fable's reads: a route that does not parse, the refusal's line (plan 6.11, item 12)
+
+`balance/openrouter-route` parsed each route's endpoint with `java.net.URI.` under `some->`, which
+catches nothing: one entry with a space, or one that is not a string, threw and stopped `bb balance`.
+Such an entry is now skipped. And the review's printed refusal line now names the flagged 403
+(row 199) beside `content_filter` and `refusal`.
+
 ### A refused skill is never "in sync" (plan 6.11, item 12, register row 202)
 
 From Fable 5.1's read of `3db3932`: the sync refused a linked skill, but `bb skills-sync` and its
