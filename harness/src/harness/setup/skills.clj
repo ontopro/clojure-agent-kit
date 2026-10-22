@@ -188,7 +188,9 @@
     (vec (sort (for [f (when (fs/directory? d) (fs/list-dir d))
                      :let [nm (str (fs/file-name f))
                            p (fs/path f file-name)]
-                     :when (and (not (ships nm)) (fs/regular-file? p) (generated? (slurp (str p))))]
+                     ;; never read through a link: a linked folder or file is not a rendering this wrote
+                     :when (and (not (ships nm)) (not (fs/sym-link? f)) (fs/regular-file? p {:nofollow-links true})
+                                (generated? (slurp (str p))))]
                  nm)))))
 
 (defn prune!
@@ -243,12 +245,13 @@
                      {:name nm :path (str (fs/path root target-dir nm)) :label label}))]
       (when (empty? targets)
         (println (str "skills: every citation holds; no workspace here, so nothing is rendered")))
-      (doseq [{:keys [path changed? existed? label]} results]
-        (println (str "skills " (cond (and check? changed? (not existed?)) "missing: "
+      (doseq [{:keys [path changed? existed? label refused]} results]
+        (println (str "skills " (cond refused "refused: "
+                                      (and check? changed? (not existed?)) "missing: "
                                       (and check? changed?) "drift: "
                                       changed? "synced: "
                                       :else "in sync: ")
-                      path " (" label ")")))
+                      path " (" label ")" (when refused (str " - " refused)))))
       (if check?
         (doseq [{:keys [path label]} old]
           (println (str "skills stale: " path " (" label ") - a rendering of a skill this KIT no longer ships")))
@@ -258,4 +261,8 @@
                         (when (seq kept) (str "; kept beside it, not written here: " (str/join ", " kept)))))))
       (when (and check? (or (seq drifted) (seq old)))
         (println "skills: a rendering does not match skills/ - run `bb skills-sync` from the workspace folder")
+        (System/exit 1))
+      ;; A REFUSAL IS NEVER "IN SYNC": the rendering was not written or compared, in either mode
+      (when (some :refused results)
+        (println "skills: a rendering is a link or leads outside the workspace - remove it, then `bb skills-sync`")
         (System/exit 1)))))

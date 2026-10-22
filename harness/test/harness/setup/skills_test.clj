@@ -3,6 +3,7 @@
   and the two renderings held to the source."
   (:require
    [babashka.fs :as fs]
+   [babashka.process :as process]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [harness.setup.skills :as skills]))
@@ -125,4 +126,15 @@
         (spit (str (fs/path elsewhere "SKILL.md")) (str "<!-- generated -->\n" (slurp (str (fs/path ws ".claude" "skills" "kit-start" "SKILL.md")))))
         (skills/prune! kit-dir (str ws))
         (is (fs/exists? (fs/path elsewhere "SKILL.md"))))
+      (testing "nothing is read through a link to find a stale rendering"
+        (is (not (some #{"kit-old"} (skills/stale kit-dir (str ws))))))
+      ;; From Fable 5.1's read of `3db3932`: the command printed "in sync" and exited 0 on a refusal
+      (testing "the command says the refusal and exits 1, checking or writing"
+        (spit (str (fs/path ws "workspace.edn")) (pr-str {:workspace/kit kit-dir}))
+        (doseq [args [["--check"] []]]
+          (let [r (apply process/shell {:out :string :err :string :continue true}
+                         "bb" "skills-sync" "--workspace" (str ws) args)]
+            (is (= 1 (:exit r)) (pr-str args))
+            (is (re-find #"skills refused: .*kit-plan.* is a link or leads outside" (:out r)))
+            (is (not (re-find #"in sync: .*kit-plan" (:out r)))))))
       (finally (fs/delete-tree outer)))))

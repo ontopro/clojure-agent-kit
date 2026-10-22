@@ -64,6 +64,13 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### A refused skill is never "in sync" (plan 6.11, item 12, register row 202)
+
+From Fable 5.1's read of `3db3932`: the sync refused a linked skill, but `bb skills-sync` and its
+`--check` printed it "in sync" and exited 0, so the workspace gates passed over the link. The command
+now prints `skills refused:` with the reason and exits 1 in both modes. And `stale` no longer reads a
+linked folder's `SKILL.md` to decide whether it is a rendering: a link is never one this wrote.
+
 ### The readings read only inside the plan (plan 6.11, item 12, register row 203)
 
 The contract and setup flows' shared finding: the plan review slurped `docs/<name>` unbounded, so a
