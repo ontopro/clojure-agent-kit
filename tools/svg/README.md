@@ -60,6 +60,8 @@ Every position is in the picture's own pixels; `:epsilon` and `:min-length` are 
 picture drawn 600 wide, so a setting means the same at any crop size. It writes `<name>.svg`,
 `overlay-<name>.svg` - the trace in green over the picture - and `index.html`, a contact sheet of
 every icon at 48 and 24 pixels beside its overlay, under `--out` (else `traced/` beside the file).
+An icon's name is letters, digits, `_` and `-`; a picture is a file of the icons file's folder; and
+nothing is written through a link, the default `traced/` included - each refused by name.
 
 > [!IMPORTANT]
 > Judge every traced icon on the contact sheet before it is used: a trace is the picture's strokes
@@ -67,5 +69,5 @@ every icon at 48 and 24 pixels beside its overlay, under `--out` (else `traced/`
 
 Each icon needs its own settings, found by eye on the overlay, and a fill the picture has is not a
 stroke - leave it out with `:exclude` and draw it with `:add`. The fitting is pure and tested in
-the KIT's gates (`src/svg_trace.clj`); the command, which reads the PNGs, runs on the JVM like the
-check (`src/svg_trace_command.clj`). `check` then holds the result to rendering.
+the KIT's gates (`src/svg_trace.clj`, with where the command reads and writes, `src/svg_trace_files.clj`);
+the command, which reads the PNGs, runs on the JVM like the check (`src/svg_trace_command.clj`). `check` then holds the result to rendering.

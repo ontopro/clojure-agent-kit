@@ -279,7 +279,11 @@
             circle (let [[x y r] circle] {:t :circle :c [(* k x) (* k y)] :r (* k r)})
             path {:t :path :cmds (vec (for [[c & args] path]
                                         (case c
-                                          "A" (let [[r large sweep p] args] ["A" (* k r) large sweep (mapv #(* k %) p)])
+                                          "A" (let [[r large sweep p] args]
+                                                ;; the flags are written into the path as they are: 0 or 1, never text
+                                                (when-not (and (#{0 1} large) (#{0 1} sweep))
+                                                  (throw (ex-info (str "an arc's flags are 0 or 1, not " (pr-str large) " and " (pr-str sweep)) {:arc args})))
+                                                ["A" (* k r) large sweep (mapv #(* k %) p)])
                                           "Z" ["Z"]
                                           (into [c] (map (fn [p] (mapv #(* k %) p)) args)))))})
     fill (assoc :fill true)))

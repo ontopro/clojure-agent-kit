@@ -64,6 +64,19 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### The SVG pack's trace stays in its folders (plan 6.11, item 12, register row 204)
+
+The tool-packs flow's finding (GPT-6 Astra): `trace` took an icon's name, a picture's path and the
+output folder from the project's icons file and followed each wherever it led. Where the command
+reads and writes is now `svg-trace-files`, plain `java.nio` so the pack still needs no library and
+its tests run in bb (the command imports ImageIO, which bb lacks). A name is `[A-Za-z0-9_-]+`, every
+one checked before the first write. A picture is a file of the icons file's folder, links followed.
+Each write is opened with `NOFOLLOW_LINKS`, so a link is refused even if it is planted between the
+check and the write, and a default `traced/` that is a link is refused. The contact sheet escapes its
+text, and `svg-trace` refuses an added arc's flags unless each is 0 or 1. Astra's four tests, plus the
+arc test, are adapted in `svg-trace-files-test`. The command, run on the JVM against the four
+attacks, refused each one and traced a plain icon.
+
 ### Two nits from Fable's reads: a route that does not parse, the refusal's line (plan 6.11, item 12)
 
 `balance/openrouter-route` parsed each route's endpoint with `java.net.URI.` under `some->`, which
