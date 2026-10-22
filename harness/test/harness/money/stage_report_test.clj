@@ -293,3 +293,16 @@
     (is (= ["s1-t1" "s1-t1b"] (mapv :run/id (:records (sr/stage-facts build records 1))))
         "stage 1: by date, and the record that says stage 1 whatever its date")
     (is (= [1 1.0] ((juxt :run-count :money) (sr/summary-for build records 0))))))
+
+;; From the sandbox proof of plan 6.11 (run 1): the report paired the cap a re-approval set with the
+;; first approval's day
+(deftest a-cap-is-dated-by-the-approval-that-set-it
+  (let [gates {:stage/id "5" :stage/approved {:date "2026-10-20" :cap "$9" :by "Ada"}}
+        line (fn [g] (first (str/split-lines (sr/render (sr/stage-summary {:id 5 :packets [] :records [] :gates g})))))]
+    (is (str/includes? (line gates) "of cap $9 (approved 2026-10-20)"))
+    (is (str/includes? (line (assoc gates :stage/amendments [{:q "Q-1" :opened "2026-10-22T19:59+05:30"
+                                                              :approved {:at "2026-10-22T20:03+05:30" :cap "$12" :by "Ada"}}]))
+                       "of cap $12 (approved 2026-10-22)"))
+    (is (str/includes? (line (assoc gates :stage/amendments [{:q "Q-1" :approved {:at "2026-10-22T20:03+05:30" :by "Ada"}}]))
+                       "of cap $9 (approved 2026-10-20)")
+        "a re-approval with no :cap leaves the cap, and its day, where they were")))

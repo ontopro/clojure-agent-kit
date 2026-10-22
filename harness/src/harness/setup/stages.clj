@@ -212,12 +212,18 @@
   (let [a (last (amendments gates))]
     (when (and a (nil? (:signed a))) a)))
 
-(defn effective-cap
-  "The stage's cap: the latest re-approval's `:cap`, else the first approval's - a re-approval
-  moves it, and one written without a `:cap` leaves the one before it. Never a sum of passes."
+(defn effective-approval
+  "The approval the stage's cap stands on, the gate itself so its time comes with it: the latest
+  re-approval carrying a `:cap`, else the first approval - a re-approval moves the cap, and one
+  written without a `:cap` leaves the one before it."
   [gates]
-  (or (some :cap (rseq (mapv :approved (amendments gates))))
-      (:cap (:stage/approved gates))))
+  (or (some #(when (:cap %) %) (rseq (mapv :approved (amendments gates))))
+      (:stage/approved gates)))
+
+(defn effective-cap
+  "The stage's cap: `effective-approval`'s. Never a sum of passes."
+  [gates]
+  (:cap (effective-approval gates)))
 
 (defn gate-time
   "Gate `g`'s day and time, `YYYY-MM-DD HH:MM`, for a list where two events may share a day: an

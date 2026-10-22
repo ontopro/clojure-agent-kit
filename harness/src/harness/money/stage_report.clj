@@ -152,7 +152,9 @@
      :unpriced {:dispatches (sum :unpriced runs) :readings (reduce + 0 (keep #(get % 3) readings))}
      ;; a re-approval moves it: the stage's cap now, never a sum of passes
      :cap (stages/effective-cap gates)
-     :approved (stages/gate-day (:stage/approved gates) nil)
+     ;; the day of the approval that set that cap - a re-approval's, else the first: a moved cap beside
+     ;; the first approval's day read as that day's
+     :approved (stages/gate-day (stages/effective-approval gates) nil)
      :kind kind
      :security (:security/signed gates)
      :security-skipped (:security/skipped gates)

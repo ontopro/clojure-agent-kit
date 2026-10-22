@@ -64,6 +64,13 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-22 (plan 6.11)
 
+### A cap is dated by the approval that set it (plan 6.11, item 11, register row 210)
+
+Also from the proof's first run. Since row 170 the stage report's cap is the latest re-approval's,
+but the day beside it was still the first approval's, so a moved cap read as if it stood on that
+day. `stages/effective-approval` returns the gate the cap stands on, with its time. `effective-cap`
+reads it, and the report dates the cap by it. The test fails without the fix.
+
 ### The where map is plain EDN again (plan 6.11, item 11, register row 209)
 
 The sandbox proof's first run found it: `bb next --where --edn` on the first KIT project printed
