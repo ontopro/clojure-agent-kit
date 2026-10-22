@@ -62,6 +62,28 @@ tested" stays information for an adopter, never a block.
 
 ---
 
+## 0.6.11 — plan 6.11's boundary: a stage amended after its packets ran, and the KIT's own security review
+
+Plan 6.11 added:
+- **The stage amendment.** A stage can be amended after its packets ran: `bb stage-amend Q-n` opens
+  the pass, and `bb next` walks it - the plan read again and approved again with its cap, the
+  blueprint read again and signed off again.
+- **Times.** Every gate is a time with its offset, in the project's zone.
+- **Money.** A report says how much of its money it covers, and nothing throws on a figure a
+  provider left out.
+- **The build** ignores `.local/`, and a §0 prep row's parts are sub-bullets.
+- **The seats**, the KIT's own two-session way of working, and `bb security-review --kit`, a
+  security review of the KIT itself by flow.
+- **That review's fixes**, rows 172-208: paths and links held to their folders, keys a provider
+  echoes redacted, a packet's files held to a namespace's path, a tool a role was not offered
+  refused, a provider's safeguard recorded as a refusal.
+- **From the sandbox proof on the first project:** a change review reads a long diff whole with
+  `read_diff`, the where map is plain EDN again, and a cap is dated by the approval that set it.
+
+A workspace at `0.6.10` takes it with `bb upgrade` from the workspace folder. It then
+re-renders any published run table whose report gained the coverage line, which
+`bb report-check` names.
+
 ## 2026-10-22 (plan 6.11)
 
 ### A change reviewer reads the whole change (plan 6.11, item 11, register row 211)
