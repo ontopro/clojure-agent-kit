@@ -102,6 +102,15 @@
   [path]
   (boolean (re-matches test-path-pattern (str path))))
 
+(defn record-test-file
+  "A test a review record names, `rel` in its `tests-dir` (`<id>-tests/`, beside the record in `dir`):
+  the path when it is inside `tests-dir` and lands inside `dir`, else nil. The tests folder is a
+  build's file, so it is judged from the record's folder - a `<id>-tests` that was itself a link had
+  moved the root its tests were judged against, and a host file reached the triage model's provider."
+  [dir tests-dir rel]
+  (when (contained-path/inside tests-dir rel)
+    (contained-path/inside dir (str (fs/file-name tests-dir) "/" rel))))
+
 (defn- test-path-problem
   "Why `path` is not a place a security reviewer may write, or nil: a `*_test.clj` file below `test/` that
   is either new or one this review wrote itself (`written`, an atom of the paths it has

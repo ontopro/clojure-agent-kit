@@ -64,6 +64,16 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-22 (plan 6.11)
 
+### A review's tests are judged from the record's folder (plan 6.11, item 12, register row 208)
+
+Argon direct's routing record, verified on HEAD. `route!` and `score!` read a record's tests
+inside its `<id>-tests/` folder, taking that folder as the root. When the folder was itself a link
+to outside, the root moved with it, and a host file a finding's `:test` named reached the triage
+model's provider or the scorer's run. This is row 203's class, and the build repository can carry
+the link. `security-review-tools/record-test-file` keeps the path inside the tests folder and
+judges `<id>-tests/<path>` from the record's own folder. Both readers use it. Each reader's test
+fails without the fix.
+
 ### A test of the review's own is a file, not a link (plan 6.11, item 12, register row 207)
 
 Argon direct's security-review record, verified on HEAD. `write_test` lets the review rewrite a

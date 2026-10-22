@@ -25,6 +25,7 @@
    [harness.contained-path :as contained-path]
    [harness.loop.triage :as triage]
    [harness.models.profile :as profile]
+   [harness.models.security-review-tools :as security-review-tools]
    [harness.setup.workspace :as workspace]))
 
 ;; ---------------------------------------------------------------------------
@@ -140,7 +141,7 @@
                                                  :let [p (contained-path/inside clone rel)]
                                                  :when p]
                                              [rel (read-text p)]))
-                                v (triage-fn (trigger-for f (read-text (some->> (:test f) (contained-path/inside tests-dir))) files architecture))]]
+                                v (triage-fn (trigger-for f (read-text (security-review-tools/record-test-file dir tests-dir (:test f))) files architecture))]]
                       (cond-> {:finding f
                                :tests-dir (str tests-dir)
                                :verdict (assoc (select-keys v [:route :reason :guidance :impl :target :triage/fallback :refused? :prompt :answer])

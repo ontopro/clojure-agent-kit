@@ -143,3 +143,22 @@
                        :triage-fn (fn [t] (swap! seen conj t) {:route :human :reason "r"})})
       (is (nil? (get-in (first @seen) [:payload :test-text])) "the test is read only from this folder's records")
       (finally (fs/delete-tree outer)))))
+
+;; From the KIT's own security review (Gemini 4 Argon direct, the security-review flow, 2026-10-21): a
+;; `<id>-tests` folder that was a link to outside moved the root its tests were judged against
+(deftest a-tests-folder-that-is-a-link-is-not-read-through
+  (let [outer (fs/create-temp-dir {:prefix "kit-route-tests-link"})
+        work (fs/path outer "work")
+        clone (fs/path work "clone")
+        record (fs/path work "rev-1.edn")
+        seen (atom [])]
+    (try
+      (fs/create-dirs (fs/path clone "src" "app"))
+      (spit (str (fs/path outer "host-secret.txt")) "HOST FILE")
+      (fs/create-sym-link (fs/path work "rev-1-tests") outer)
+      (spit (str record) (pr-str {:findings [{:title "T" :kind :reproduced :test "host-secret.txt" :where "src/app/web.clj" :why "w"}]}))
+      (routing/route! {:review-file (str record) :clone (str clone) :architecture nil :out (str work)
+                       :triage-fn (fn [t] (swap! seen conj t) {:route :human :reason "r"})})
+      (is (nil? (get-in (first @seen) [:payload :test-text])))
+      (is (not (str/includes? (slurp (str (fs/path work "security-routing.edn"))) "HOST FILE")))
+      (finally (fs/delete-tree outer)))))

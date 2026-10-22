@@ -144,3 +144,25 @@
         (#'score/run-branch! "kit" (str app) "faulted" {"test/x/a_test.clj" "(ns x.a-test)"} ["x.a-test"]))
       (is (empty? (fs/list-dir elsewhere)) "nothing written through the link")
       (finally (fs/delete-tree outer)))))
+
+;; From the KIT's own security review (Gemini 4 Argon direct, the security-review flow, 2026-10-21): a
+;; `<record>-tests` folder that was a link to outside had its files scored
+(deftest a-tests-folder-that-is-a-link-is-not-read-through
+  (let [dir (fs/create-temp-dir {:prefix "kit-score-tests-link"})
+        reviews (fs/path dir "reviews")
+        record (fs/path reviews "rev.edn")
+        elsewhere (fs/path dir "elsewhere")
+        fixture (fs/path dir "fixture")
+        seen (atom nil)]
+    (try
+      (fs/create-dirs (fs/path elsewhere "test" "app"))
+      (fs/create-dirs reviews)
+      (fs/create-dirs (fs/path fixture "notes"))
+      (spit (str (fs/path elsewhere "test" "app" "host_test.clj")) "(ns app.host-test)")
+      (fs/create-sym-link (fs/path reviews "rev-tests") elsewhere)
+      (spit (str (fs/path fixture "cases.edn")) (pr-str {:faulted "f" :clean "c" :faults [] :variants {}}))
+      (spit (str record) (pr-str {:model "m" :findings [] :tests ["test/app/host_test.clj"]}))
+      (with-redefs [score/outcomes! (fn [_ _ _ files] (reset! seen files) {})]
+        (try (score/score! "." (str record) (str fixture)) (catch Exception _ nil)))
+      (is (empty? @seen))
+      (finally (fs/delete-tree dir)))))

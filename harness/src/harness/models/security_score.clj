@@ -226,7 +226,7 @@
         ;; folder - one outside, or one whose namespace a command could not carry, is not scored
         files (into (sorted-map)
                     (for [rel (:tests review)
-                          :let [p (contained-path/inside tests-dir rel)]
+                          :let [p (security-review-tools/record-test-file (fs/parent tests-dir) tests-dir rel)]
                           :when (and p (security-review-tools/test-path? rel) (fs/regular-file? p))]
                       [rel (slurp (str p))]))
         cases (edn/read-string (slurp (str (fs/path fixture-dir "cases.edn"))))
