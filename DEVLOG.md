@@ -64,6 +64,17 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-22 (plan 6.11)
 
+### Two nits from Fable's reads of row 208 and the three nits (plan 6.11, item 12)
+
+- **`score!` given a bare file name.** It took the record's folder as `(fs/parent tests-dir)`, which
+  is nil for a one-part relative path such as `review.edn`. `inside` then threw. Every command
+  passes a full path, so only a direct call from a REPL reached it. The folder is now taken from
+  the absolute path. There is no test: one would need a record in the test run's own working
+  directory.
+- **The `follow-links` comment** now names the trap as well. With `NOFOLLOW_LINKS`, `toRealPath`
+  resolves no link at all, and a picture reached through a linked folder would be judged where it is
+  written. The folder-link test holds that either way.
+
 ### Three nits from Fable's reads: a picture path, a link option's name, a key's mask (plan 6.11, item 12)
 
 - **An absolute picture path is refused.** `picture-file`'s docstring said absolute meant nil, but

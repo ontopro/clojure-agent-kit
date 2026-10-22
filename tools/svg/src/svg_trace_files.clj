@@ -24,7 +24,8 @@
   (vec (remove #(and (string? %) (re-matches name-re %)) names)))
 
 ;; no option given: `isRegularFile` and `toRealPath` FOLLOW every link, so the file judged is the one
-;; the path lands on
+;; the path lands on. Never `NOFOLLOW_LINKS` here: `toRealPath` then resolves no link at all, and a
+;; picture through a linked folder would be judged where it is written, not where it lands
 (def ^:private follow-links (make-array LinkOption 0))
 
 (defn picture-file
