@@ -18,6 +18,7 @@
    [babashka.fs :as fs]
    [clojure.pprint :as pp]
    [clojure.string :as str]
+   [harness.contained-path :as contained-path]
    [harness.gates.repair :as repair]
    [harness.models.agent :as agent]
    [harness.models.tools :as tools]
@@ -320,7 +321,11 @@
   what is already on disk before a dispatch starts."
   [dir]
   (if dir
-    (into {} (for [p (repair/changed-files dir)] [p (slurp (str (fs/path dir p)))]))
+    ;; read only inside the worktree, a regular file: a link a role planted there is not followed out
+    (into {} (for [p (repair/changed-files dir)
+                   :let [text (contained-path/read-inside dir p)]
+                   :when text]
+               [p text]))
     {}))
 
 (defn written-since
@@ -352,8 +357,9 @@
         ;; `converse!` already keeps every call it made, so collecting them is
         ;; a filter rather than new machinery.
         notes (into [] (comp (filter #(= "note" (:name %)))
+                             (remove :error?)
                              (map #(get-in % [:args :text]))
-                             (filter (complement str/blank?)))
+                             (filter #(and (string? %) (not (str/blank? %)))))
                     calls)
         costs (keep :cost steps)
         complete? (and (seq steps) (= (count costs) (count steps)))

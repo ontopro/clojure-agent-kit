@@ -471,3 +471,11 @@
           (is (:error? r))
           (is (not (fs/exists? (fs/path dir "real" "inner.txt"))))))
       (finally (fs/delete-tree dir)))))
+
+;; Argon direct's fourth hypothesis (the tool-calls flow): a note whose text is not a string threw here,
+;; and again in runner/outcome, which took the dispatch down
+(deftest a-note-is-text
+  (doseq [text [42 true ["a"] {:a 1} nil "  "]]
+    (let [r (tools/invoke {:dir "." :targets []} {:id "n" :name "note" :args {:text text}})]
+      (is (:error? r) (pr-str text))))
+  (is (not (:error? (tools/invoke {:dir "." :targets []} {:id "n" :name "note" :args {:text "the contract is silent"}})))))

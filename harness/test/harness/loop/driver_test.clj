@@ -1340,3 +1340,17 @@
   (is (= 2 (:unoffered (loop/dispatch-event :reviewer :reviewer {} {:status :done :runner/meta {:unoffered 2}}))))
   (is (not (contains? (loop/dispatch-event :reviewer :reviewer {} {:status :done :runner/meta {:unoffered 0}}) :unoffered))
       "none, nothing said"))
+
+(deftest final-reads-only-inside-the-run-folder
+  (let [outer (fs/create-temp-dir {:prefix "kit-final"})
+        final (fs/path outer "run" "final")]
+    (try
+      (fs/create-dirs (fs/path final "src" "app"))
+      (fs/create-dirs (fs/path final "as-written" "src" "app"))
+      (spit (str (fs/path outer "host-secret")) "HOST SECRET")
+      (fs/create-sym-link (fs/path final "src" "app" "x.clj") (fs/path outer "host-secret"))
+      (fs/create-sym-link (fs/path final "as-written" "src" "app" "x.clj") (fs/path outer "host-secret"))
+      (let [spec {:files/impl ["src/app/x.clj" "../../host-secret"] :files/test []}]
+        (is (= {} (loop/final-files spec final)))
+        (is (= {} (loop/files-as-written spec final))))
+      (finally (fs/delete-tree outer)))))

@@ -29,8 +29,8 @@
   else, so a triage verdict is reproducible from the prompt in the run
   directory. Upstream shelled out to a CLI and scraped its JSON."
   (:require
-   [babashka.fs :as fs]
    [clojure.string :as str]
+   [harness.contained-path :as contained-path]
    [harness.contract.packet :as packet]
    [harness.loop.driver :as driver]
    [harness.models.agent :as agent]
@@ -141,10 +141,11 @@
 (defn- file-section [worktree label paths]
   (str/join "\n"
             (for [rel paths
-                  :let [f (when worktree (fs/path worktree rel))]]
+                  ;; read only inside the worktree: what is sent to the triage model is the role's file
+                  :let [text (when worktree (contained-path/read-inside worktree rel))]]
               (str "--- " label ": " rel " ---\n"
-                   (if (and f (fs/exists? f))
-                     (clipped (slurp (str f)) max-file-chars)
+                   (if text
+                     (clipped text max-file-chars)
                      "[not on disk — this role has not written it]")))))
 
 (defn- failing-output [gate-result]

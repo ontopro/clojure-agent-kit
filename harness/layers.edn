@@ -57,7 +57,7 @@
 
  ;; models and money
  harness.models.agent #{harness.models.adapter harness.models.provenance harness.models.tools}
- harness.models.runner #{harness.gates.repair harness.models.agent harness.models.tools harness.rules}
+ harness.models.runner #{harness.contained-path harness.gates.repair harness.models.agent harness.models.tools harness.rules}
  harness.models.runner-check #{harness.contract.shapes harness.models.runner}
  harness.models.security-review-tools #{harness.contained-path harness.models.tools}
  harness.models.security-review-sandbox #{}
@@ -81,7 +81,7 @@
                        harness.loop.provision harness.models.profile harness.models.provenance harness.models.runner
                        harness.money.balance harness.money.report harness.money.reprice harness.rules harness.setup.plan
                        harness.setup.workspace}
- harness.loop.triage #{harness.contract.packet harness.loop.driver harness.models.agent harness.rules}
+ harness.loop.triage #{harness.contained-path harness.contract.packet harness.loop.driver harness.models.agent harness.rules}
  harness.loop.orchestrate #{harness.contract.shapes harness.loop.driver harness.loop.log harness.loop.run-lock harness.loop.triage harness.models.profile harness.money.balance
                             harness.money.report harness.setup.workspace}
 
@@ -99,7 +99,7 @@
  harness.setup.stage-amend #{harness.setup.next harness.setup.stages harness.setup.workspace}
  harness.setup.where #{harness.money.stage-report harness.setup.next harness.setup.stages harness.setup.workspace}
  harness.setup.roadmap-page #{harness.setup.next harness.setup.where harness.setup.workspace}
- harness.setup.template-upgrade #{harness.gates.boundary harness.gates.run harness.loop.driver harness.rules harness.setup.app
+ harness.setup.template-upgrade #{harness.contained-path harness.gates.boundary harness.gates.run harness.loop.driver harness.rules harness.setup.app
                                   harness.setup.template harness.setup.workspace}
  harness.setup.upgrade-run #{harness.setup.doctor harness.setup.front-door harness.setup.init harness.setup.skills harness.setup.stage-move harness.setup.stages harness.setup.template
                              harness.setup.template-upgrade harness.setup.upgrade harness.setup.workspace}

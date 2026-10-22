@@ -161,7 +161,7 @@
                 (throw (ex-info (str "git " (str/join " " args) " failed: " (str/trim (:err r))) {:source (str source)})))
               (:out r)))]
     (fs/create-dirs (fs/parent dest))
-    (g (fs/parent dest) "clone" "-q" "--single-branch" "--branch" branch "--no-tags" (str source) (str dest))
+    (g (fs/parent dest) "clone" "-q" "--no-hardlinks" "--single-branch" "--branch" branch "--no-tags" (str source) (str dest))
     (g dest "tag" "base" (str/trim (g dest "rev-list" "--max-parents=0" "HEAD")))
     (g dest "remote" "remove" "origin")
     (str dest)))
@@ -411,7 +411,7 @@
   ignored is not in it. Returns the short commit."
   [kit dest]
   (fs/create-dirs (fs/parent dest))
-  (git (fs/parent dest) "clone" "-q" "--no-tags" (str kit) (str dest))
+  (git (fs/parent dest) "clone" "-q" "--no-hardlinks" "--no-tags" (str kit) (str dest))
   (git dest "remote" "remove" "origin")
   (str/trim (git dest "rev-parse" "--short" "HEAD")))
 

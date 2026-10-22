@@ -354,8 +354,10 @@
   never missing — one early Coder said the contract was silent about dividing 7
   by 2, in prose, in a final message nothing reads."
   [_ctx {:keys [text]}]
-  (if (str/blank? text)
-    (err "text is required")
+  ;; a string, refused otherwise: a number as `text` threw in `str/blank?` here and again in
+  ;; `runner/outcome`, which collects every note, and the second took the whole dispatch down
+  (if (or (not (string? text)) (str/blank? text))
+    (err "text is required, as a string")
     (ok "noted — this will reach whoever is dispatched next")))
 
 (def specs

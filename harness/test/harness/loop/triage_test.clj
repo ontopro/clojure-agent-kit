@@ -495,3 +495,17 @@
     (is (= :human (:route r)))
     (is (true? (:refused? r)))
     (is (str/includes? (:triage/fallback r) "declined to answer"))))
+
+(deftest the-file-section-reads-only-inside-the-worktree
+  (let [outer (fs/create-temp-dir {:prefix "kit-triage-files"})
+        wt (fs/path outer "wt")]
+    (try
+      (fs/create-dirs (fs/path wt "src"))
+      (spit (str (fs/path outer "host-secret")) "HOST SECRET")
+      (spit (str (fs/path wt "src" "a.clj")) "(ns a)")
+      (fs/create-sym-link (fs/path wt "src" "b.clj") (fs/path outer "host-secret"))
+      (let [s (#'triage/file-section (str wt) "impl" ["src/a.clj" "src/b.clj" "../host-secret"])]
+        (is (str/includes? s "(ns a)"))
+        (is (not (str/includes? s "HOST SECRET")))
+        (is (= 2 (count (re-seq #"not on disk" s)))))
+      (finally (fs/delete-tree outer)))))

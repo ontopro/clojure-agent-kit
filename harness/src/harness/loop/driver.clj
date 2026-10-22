@@ -663,18 +663,19 @@
   (let [paths (concat (:files/impl spec) (:files/test spec))
         dupes (->> paths (group-by fs/file-name) (keep (fn [[n ps]] (when (next ps) n))) set)]
     (into (sorted-map)
+          ;; read only inside `final/`, as `record` writes there (row 179)
           (for [path paths
-                :let [by-path (fs/path final-dir path)
-                      f (cond
-                          (fs/exists? by-path) by-path
-                          (contains? dupes (fs/file-name path))
-                          (throw (ex-info (str "two files named " (fs/file-name path)
-                                               " would overwrite each other in final/")
-                                          {:run-loop/error :final-name-collision
-                                           :names (vec dupes)}))
-                          :else (fs/path final-dir (fs/file-name path)))]
-                :when (fs/exists? f)]
-            [path (slurp (str f))]))))
+                :let [by-path (contained-path/read-inside final-dir path)
+                      text (cond
+                             by-path by-path
+                             (contains? dupes (fs/file-name path))
+                             (throw (ex-info (str "two files named " (fs/file-name path)
+                                                  " would overwrite each other in final/")
+                                             {:run-loop/error :final-name-collision
+                                              :names (vec dupes)}))
+                             :else (contained-path/read-inside final-dir (str (fs/file-name path))))]
+                :when text]
+            [path text]))))
 
 (defn files-as-written
   "The spec's paths for which `final/as-written/` holds the role's own bytes —
@@ -682,9 +683,9 @@
   [spec final-dir]
   (into (sorted-map)
         (for [path (concat (:files/impl spec) (:files/test spec))
-              :let [f (fs/path final-dir "as-written" path)]
-              :when (fs/exists? f)]
-          [path (slurp (str f))])))
+              :let [text (contained-path/read-inside (fs/path final-dir "as-written") path)]
+              :when text]
+          [path text])))
 
 ;; ---------------------------------------------------------------------------
 ;; effects: the run directory's state
@@ -1329,12 +1330,13 @@
         gate-dir (:worktree/path (:gate s))
         own-dir (:worktree/path (get s role))]
     (when (and gate-dir own-dir (gated-since-written? (:events @(:state ctx)) role))
+      ;; each worktree's own file, inside it: a path or a link that leads out is not synced
       (let [synced (vec (for [path (case role :coder (:files/impl sp) :tester (:files/test sp))
-                              :let [gated (fs/path gate-dir path)
-                                    own (fs/path own-dir path)]
-                              :when (and (fs/exists? gated)
-                                         (or (not (fs/exists? own))
-                                             (not= (slurp (str gated)) (slurp (str own)))))]
+                              :let [gated-text (contained-path/read-inside gate-dir path)
+                                    gated (fs/path gate-dir path)
+                                    own (when (contained-path/as-written? own-dir path) (fs/path own-dir path))]
+                              :when (and gated-text own
+                                         (not= gated-text (contained-path/read-inside own-dir path)))]
                           (do (fs/create-dirs (fs/parent own))
                               (fs/copy gated own {:replace-existing true})
                               path)))]
@@ -1657,9 +1659,10 @@
              :let [existing (fn [p] (when (and p (fs/exists? p)) p))
                    written (existing (some-> (get (sessions ctx) role) :worktree/path (contained-path/inside path)))
                    gated (when gated? (existing (contained-path/inside gate-wt path)))
-                   as-written (fs/path final-dir "as-written" path)]
-             :when (and (contained-path/inside final-dir path) (or gated written))]
-       (copy-into! (or gated written) (fs/path final-dir path))
+                   to (contained-path/inside final-dir path)
+                   as-written (contained-path/inside (fs/path final-dir "as-written") path)]
+             :when (and to as-written (or gated written))]
+       (copy-into! (or gated written) to)
        (if (and gated written (not= (slurp (str gated)) (slurp (str written))))
          (copy-into! written as-written)
          (fs/delete-if-exists as-written)))

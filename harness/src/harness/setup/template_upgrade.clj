@@ -29,6 +29,7 @@
    [clojure.edn :as edn]
    [clojure.pprint :as pp]
    [clojure.string :as str]
+   [harness.contained-path :as contained-path]
    [harness.gates.boundary :as boundary]
    [harness.gates.run :as gates]
    [harness.loop.driver :as driver]
@@ -375,7 +376,13 @@
   (let [state @(:state ctx)
         wt (get-in state [:sessions :gate :worktree/path])
         id (:run/id (:config state))
-        app (:workspace/app ws)]
+        app (:workspace/app ws)
+        root (fs/path (:workspace/work ws) "worktrees")]
+    ;; THE WORKTREE IS THE WORKSPACE'S: a state naming one elsewhere is not checked out there again
+    (when-not (and wt (contained-path/inside root (str (fs/relativize root (fs/normalize (fs/absolutize wt))))))
+      (refuse (str "the run " id " names its worktree " wt ", not under " root " - remove " run-dir
+                   " to abandon the run, then `bb template-upgrade` again")
+              {:run id :run-dir run-dir :worktree wt}))
     (when-not (fs/exists? wt)
       ;; THE BRANCH GONE TOO IS A RUN ABANDONED BY HAND, and the way out is said: a resume that
       ;; threw git's words at every call blocked the command until someone found the run directory

@@ -168,7 +168,7 @@
   (let [scratch (str (fs/create-temp-dir {:prefix "kit-score"}))
         clone (str (fs/path scratch "app"))]
     (try
-      (sh scratch "git" "clone" "-q" "--single-branch" "--branch" branch "--no-tags" app-dir clone)
+      (sh scratch "git" "clone" "-q" "--no-hardlinks" "--single-branch" "--branch" branch "--no-tags" app-dir clone)
       ;; written only inside the clone, as read only inside the record's folder (row 177)
       (doseq [[rel text] files
               :let [p (contained-path/inside clone rel)]

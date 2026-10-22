@@ -2,6 +2,7 @@
   (:require
    [babashka.fs :as fs]
    [babashka.http-client]
+   [babashka.process]
    [cheshire.core :as json]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
@@ -95,3 +96,19 @@
           (is (not (str/includes? (pr-str (get-in result [:runner/meta :transcript])) secret)) "the transcript")
           (is (not (str/includes? (pr-str event) secret)) "the event the run's record keeps")))
       (finally (fs/delete-tree dir)))))
+
+;; Argon direct's hypotheses (the tool-calls flow): the snapshot, the triage file section and the record's
+;; final/ were read wherever a path or a link led
+(deftest a-worktree-snapshot-reads-only-inside-the-worktree
+  (let [outer (fs/create-temp-dir {:prefix "kit-snapshot"})
+        wt (fs/path outer "wt")]
+    (try
+      (fs/create-dirs wt)
+      (spit (str (fs/path outer "host-secret")) "HOST")
+      (babashka.process/shell {:dir (str wt) :out :string :err :string} "git" "init" "-q")
+      (spit (str (fs/path wt "mine.clj")) "(ns mine)")
+      (fs/create-sym-link (fs/path wt "leak.clj") (fs/path outer "host-secret"))
+      (let [snap (runner/worktree-snapshot (str wt))]
+        (is (= "(ns mine)" (get snap "mine.clj")))
+        (is (not (contains? snap "leak.clj"))))
+      (finally (fs/delete-tree outer)))))

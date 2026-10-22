@@ -64,6 +64,31 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-21 (plan 6.11)
 
+### Hygiene: every read of a worktree or `final/` inside it (plan 6.11, item 12, step 11, no rows)
+
+Argon direct's tool-calls hypotheses, and the record step's and the resumed upgrade's reads. Each
+needs a role that can plant a link where only the KIT writes, so none is a row. Each is now one
+check:
+- **Through `read-inside`:** triage's file section (what reaches the triage model), the runner's
+  worktree snapshot, `final-files` and `files-as-written`.
+- **Through `inside` and `as-written?`:** `sync-from-gate!` reads the gate's copy and writes the
+  role's own, and `record!` writes `final/<path>` and `final/as-written/<path>`.
+- **The resumed upgrade:** a template-upgrade run whose state names a worktree outside
+  `<work>/worktrees` is refused before anything is checked out there.
+- **The clones:** the three review clones are made with `--no-hardlinks`, so a clone shares no
+  object file with the repository it came from.
+- **A note's text:** it must be a string. A number had thrown in `tools/note` and again in
+  `runner/outcome`, which now skips an errored or non-string note, and the second throw took the
+  dispatch down.
+
+Tests cover the snapshot, the file section, `final/`, and the note; the first three fail without the
+fix. The sync, the resume and the clone flag have none beyond the suites they pass.
+
+Not taken, said here: the boundary gate reads the `ns` form and `require` calls (row 196), not
+`in-ns`, `requiring-resolve` or `load`, so a namespace can reach another without the gate seeing it.
+Holding a layer's code to its declared surface is the rule source's business (plan 7.0), not a
+check this gate can complete.
+
 ### Names and destinations: a target is a file, a record's name a name (plan 6.11, item 12, register rows 188 and 206)
 
 Step 10's lows, in one commit.
