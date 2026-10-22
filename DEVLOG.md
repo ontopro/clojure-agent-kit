@@ -62,6 +62,20 @@ tested" stays information for an adopter, never a block.
 
 ---
 
+## 2026-10-22 (plan 6.11)
+
+### A test of the review's own is a file, not a link (plan 6.11, item 12, register row 207)
+
+Argon direct's security-review record, verified on HEAD. `write_test` lets the review rewrite a
+test it wrote itself, and judged the path, not what it landed on. A test running in the sandbox,
+which mounts the clone writable, could replace that file with a link to an application's test, and
+the next `write_test` changed the application's test through it. `test-path-problem` now refuses a
+path that is not `contained-path/as-written?`, as row 188 does for the file tools. The record's
+test, adapted, fails without the fix.
+
+Not taken, said here: collecting only the files `write_test` wrote. A file a test planted in the
+clone still reaches the record; the read-only clone of plan 7.0's draft is the fix.
+
 ## 2026-10-21 (plan 6.11)
 
 ### Hygiene: every read of a worktree or `final/` inside it (plan 6.11, item 12, step 11, no rows)

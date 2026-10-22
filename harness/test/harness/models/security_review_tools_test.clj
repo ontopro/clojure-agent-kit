@@ -305,3 +305,24 @@
         (is (:error? r))
         (is (not (fs/exists? (fs/path elsewhere "app" "x_test.clj")))))
       (finally (fs/delete-tree outer)))))
+
+;; From the KIT's own security review (Gemini 4 Argon direct, the security-review flow, 2026-10-21): a
+;; test of the review's own, replaced by a link to the application's test while the tests ran, was
+;; written again through the link
+(deftest a-test-of-its-own-replaced-by-a-link-is-not-written-through
+  (let [outer (fs/create-temp-dir {:prefix "kit-review-own-link"})
+        ws (fs/path outer "clone")
+        app-test (fs/path ws "test" "app" "existing_test.clj")
+        mine (fs/path ws "test" "app" "mine_test.clj")
+        ctx {:dir (str ws) :written (atom #{})}]
+    (try
+      (fs/create-dirs (fs/parent app-test))
+      (spit (str app-test) "(ns app.existing-test)\n")
+      (is (false? (:error? (call ctx "write_test" {:path "test/app/mine_test.clj" :content a-test}))))
+      (fs/delete mine)
+      (fs/create-sym-link mine app-test)
+      (let [r (call ctx "write_test" {:path "test/app/mine_test.clj" :content a-test})]
+        (is (:error? r))
+        (is (str/includes? (:content r) "is a link, not a file")))
+      (is (= "(ns app.existing-test)\n" (slurp (str app-test))) "the application's test is unchanged")
+      (finally (fs/delete-tree outer)))))

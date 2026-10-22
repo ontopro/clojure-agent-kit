@@ -124,6 +124,10 @@
     (cond
       (str/blank? path) "path is required"
       (not under-test?) (str path " is not below test/ - a test is the only thing you may write")
+      ;; a test is a file: a test of its own, replaced by a link to the application's while the tests
+      ;; ran in the sandbox, had let a second write change the application's test through it
+      (not (contained-path/as-written? dir (str path)))
+      (str path " is a link, not a file, or under one - a test is a file; nothing was written")
       (not (str/ends-with? (str p) "_test.clj")) (str path " does not end in _test.clj")
       ;; the path as it resolves, so `test/app/../app/x_test.clj` is the file it names
       (not (test-path? rel)) (str path " is not a test namespace's path - test/ then parts of letters, digits and _, each starting with a letter")
