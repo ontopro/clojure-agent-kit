@@ -19,6 +19,7 @@
    [clojure.edn :as edn]
    [clojure.pprint :as pprint]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [harness.money.stage-report :as stage-report]
    [harness.setup.next :as next]
    [harness.setup.stages :as stages]
@@ -514,12 +515,26 @@
                    at (:run/started-at r)]]
          {:date (when at (subs (str (.toInstant ^java.util.Date at)) 0 10)) :status (:status s) :cost (:cost s)})))
 
+(defn- plain-edn
+  "`m` with every `Instant` in it as its ISO-8601 text. The readers below keep times as instants to
+  compare them - a stage's readings, since row 170 - and an `Instant` prints as `#object[...]`, which
+  no reader takes back: the map is plain EDN at its edge, whatever a reader adds."
+  [m]
+  (walk/postwalk #(if (instance? java.time.Instant %) (str %) %) m))
+
+(declare where-map)
+
 (defn where-data
   "Where the project in workspace `ws` stands, as one map of plain data (the design's Part A):
   `:workspace` `:generated` `:phases` `:stages` `:current` `:headline` (the block's first line)
   `:next` `:open` `:waits-on-the-person`
   `:since` `:money` `:terms`. `opts`: `:at` and `:plan-commit`, the clock and the build's commit,
   passed in; `:since`, the date `--since` named. Outside a workspace: `{:workspace nil :next ..}`."
+  [ws opts]
+  (plain-edn (where-map ws opts)))
+
+(defn- where-map
+  "`where-data`'s map, before its times are text."
   [ws {:keys [at plan-commit since]}]
   (let [wf (next/where-facts ws)
         nxt (next/next-action wf)]

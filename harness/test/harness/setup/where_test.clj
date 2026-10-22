@@ -148,7 +148,9 @@
                    :run/steps [{:step/kind :dispatch :step/name "coder" :step/cost 1.0}] :run/events []}))
     (spit (str (fs/path s1 "stage-1-plan.md")) "# Stage 1\n\n**Kind:** increment\n")
     (spit (str (fs/path s1 "stage-1-gates.edn")) (pr-str {:stage/id "1" :stage/approved {:date "2026-10-14" :cap "$15" :by "Ada"}}))
-    (spit (str (fs/path s1 "reviews" "plan-review.edn")) (pr-str {:cost 0.25}))
+    ;; with its time, as a reading has carried one since row 170: a time is an instant inside `bb next`
+    (spit (str (fs/path s1 "reviews" "plan-review.edn")) (pr-str {:cost 0.25 :at "2026-10-14T09:00:00Z"}))
+    (spit (str (fs/path s1 "reviews" "blueprint-review.edn")) (pr-str {:cost 0 :at "2026-10-14T10:00:00Z"}))
     ws))
 
 (deftest the-map-is-read-from-the-builds-files

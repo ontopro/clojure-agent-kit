@@ -64,6 +64,15 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-22 (plan 6.11)
 
+### The where map is plain EDN again (plan 6.11, item 11, register row 209)
+
+The sandbox proof's first run found it: `bb next --where --edn` on the first KIT project printed
+six `#object[java.time.Instant ...]`, and the map no longer read back. Row 170 gave `bb next` a
+stage's reading times as instants to compare. `where-data` now turns every `Instant` into ISO-8601
+text at its edge, so the map is plain EDN whatever a reader later adds, and `bb next` still compares
+instants inside. The read-back test passed before because its fixture had no reading. The fixture
+now carries a plan reading and a blueprint reading, and the test fails without the fix.
+
 ### Two nits from Fable's reads of row 208 and the three nits (plan 6.11, item 12)
 
 - **`score!` given a bare file name.** It took the record's folder as `(fs/parent tests-dir)`, which
