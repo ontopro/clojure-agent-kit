@@ -48,9 +48,22 @@
     (is (= #{".local" "harness/.local"}
            (set (map #(str (fs/relativize dir %)) (ks/local-dirs dir)))))))
 
-(deftest the-plan-is-named-by-the-branch
-  (is (= "/r/.local/plans/kit-plan-v6.2.md" (str (ks/plan-file "/r" "plan-v6.2"))))
-  (is (nil? (ks/plan-file "/r" "main"))))
+(deftest the-plan-is-named-by-the-branch-in-its-familys-folder
+  (let [dir (fs/create-temp-dir)
+        plans (fs/path dir ".local" "plans")
+        at (fn [branch] (str (fs/relativize dir (ks/plan-file dir branch))))]
+    (testing "no plan written yet: its family's folder, where it goes"
+      (is (= ".local/plans/v7/kit-plan-v7.0.md" (at "plan-v7.0")))
+      (is (= ".local/plans/v6/kit-plan-v6.md" (at "plan-v6"))))
+    (testing "a plan still at .local/plans/ itself is read there"
+      (fs/create-dirs plans)
+      (spit (str (fs/path plans "kit-plan-v6.2.md")) "# Plan\n")
+      (is (= ".local/plans/kit-plan-v6.2.md" (at "plan-v6.2"))))
+    (testing "the family's folder wins when both have it"
+      (fs/create-dirs (fs/path plans "v6"))
+      (spit (str (fs/path plans "v6" "kit-plan-v6.2.md")) "# Plan\n")
+      (is (= ".local/plans/v6/kit-plan-v6.2.md" (at "plan-v6.2"))))
+    (is (nil? (ks/plan-file dir "main")))))
 
 (deftest a-commit-is-read-when-its-task-status-line-marks-it
   (let [plan (str "# Plan\n\n## Task Status\n\n**Next:** Item 3\n\n"

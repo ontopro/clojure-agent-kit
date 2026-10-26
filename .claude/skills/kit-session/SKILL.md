@@ -13,7 +13,8 @@ commands that check each step. Nothing here is shipped: `bb init` copies `skills
 
 1. `git status`, `git log -1`, the branch. Work happens on the plan's branch (`plan-vN`), cut once
    from the last tag; never a branch per item.
-2. The plan the branch names: `.local/plans/kit-plan-v<N>.md`. Read its `## Task Status` - the
+2. The plan the branch names: `.local/plans/v<major>/kit-plan-v<N>.md` (`v6/kit-plan-v6.11.md`;
+   one at `.local/plans/` itself is read there). Read its `## Task Status` - the
    `**Next:**` line says what is next, since the order differs from the numbering - and the last
    entry of its Sessions log.
 3. `bb hooks-install` once per clone if `git config core.hooksPath` is not `.githooks`.

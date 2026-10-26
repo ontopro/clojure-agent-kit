@@ -7,7 +7,7 @@
   the same tree since the last version tag (flaky, from the gates' kept run
   records); the register's rows opened since the last tag that are still open
   or on watch; the plan's Sessions log older than the last commit (the plan
-  named by the branch: `plan-v6.2` -> `.local/plans/kit-plan-v6.2.md`); and a
+  named by the branch: `plan-v6.2` -> `.local/plans/v6/kit-plan-v6.2.md`); and a
   `.local/` folder without its `README.md`, or an entry in one that its README
   never names; the toolchain's pins with a newer release
   (`harness.gates.toolchain-newer`); and the commits since the last tag that carry no read mark on
@@ -95,9 +95,16 @@
                                                  :else :continue)))})
     @found))
 
-(defn plan-file [root branch]
+(defn plan-file
+  "The plan the branch names, in its family's folder: `plan-v6.11` ->
+  `.local/plans/v6/kit-plan-v6.11.md`. A plan still kept at `.local/plans/` itself, as every
+  plan was before the folders, is read there; nil off a plan branch."
+  [root branch]
   (when-let [[_ v] (some->> branch (re-matches #"plan-v(.+)"))]
-    (fs/path root ".local/plans" (str "kit-plan-v" v ".md"))))
+    (let [nm (str "kit-plan-v" v ".md")
+          family (fs/path root ".local/plans" (str "v" (first (str/split v #"\."))) nm)
+          flat (fs/path root ".local/plans" nm)]
+      (if (and (not (fs/exists? family)) (fs/exists? flat)) flat family))))
 
 (defn- report [title lines]
   (println (str "\n" title))

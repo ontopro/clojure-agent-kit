@@ -158,7 +158,7 @@
     (is (= sb/stale-argv (first @seen)))
     (is (= [["docker" "run" "--rm"] ["docker" "run" "-d"] ["docker" "exec" (:name s)]]
            (mapv #(vec (take 3 %)) (rest @seen))))
-    (is (nil? (:request s)) "nothing is served")
+    (is (not (contains? s :request)) "nothing is served")
     ((:stop! s))
     (is (= ["docker" "rm" "-f" (:name s)] (last @seen)))))
 
