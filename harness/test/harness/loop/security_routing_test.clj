@@ -1,10 +1,10 @@
 (ns harness.loop.security-routing-test
   (:require
    [babashka.fs :as fs]
-   [clojure.edn :as edn]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
-   [harness.loop.security-routing :as routing]))
+   [harness.loop.security-routing :as routing]
+   [harness.money.stage-report :as sr]))
 
 (deftest a-finding-s-where-names-its-files
   (is (= ["src/app/web.clj" "src/app/accounts.clj"]
@@ -85,20 +85,44 @@
         "who routed it, its maker and how it was reached: the money by provider places the call")
     (is (= ["C"] (map :title (:hypotheses r))))
     (testing "the routing is recorded, and the coder's finding drafted"
-      (let [rec (edn/read-string (slurp (str (fs/path dir "security-routing.edn"))))]
+      (let [rec (first (sr/routing-records dir))]
         (is (= ["A" "B"] (map (comp :title :finding) (:routed rec))))
         (is (= ["C"] (map :title (:hypotheses rec)))))
-      (let [fixes (slurp (str (fs/path dir "security-fixes.md")))]
+      (let [fixes (slurp (str (first (fs/glob dir "security-fixes-*.md"))))]
         (is (str/includes? fixes "### fix-01 — A"))
         (is (not (str/includes? fixes "— B")) "an architect route is not drafted")
         (is (str/includes? fixes (str (fs/path dir "rev-1-tests" "test/app/a_test.clj"))))))))
+
+;; A RUN IS A RECORD. The first KIT project routed stage 6 four times ($0.08, $0.24, $0.49, $0.57),
+;; each run writing over the last, and its stage report counted $0.57 against the cap.
+(deftest every-routing-run-is-kept-and-the-report-sums-them
+  (let [{:keys [dir clone record]} (review-dir)
+        at (fn [s] (java.time.ZonedDateTime/parse s))
+        run! (fn [t cost route] (routing/route! {:review-file record :clone clone :architecture nil :out dir :at (at t)
+                                                 :triage-fn (fn [_] {:route route :reason "r" :cost cost})}))]
+    (spit (str (fs/path dir "security-routing.edn"))
+          (pr-str {:review "rev-1.edn" :routed [{:verdict {:route :human :cost 0.08}}] :hypotheses []}))
+    (run! "2026-10-26T10:00:00-05:00[America/Chicago]" 0.12 :coder)
+    (run! "2026-10-26T11:30:00-05:00[America/Chicago]" 0.25 :human)
+    (run! "2026-10-26T11:30:00-05:00[America/Chicago]" 0.25 :human)
+    (testing "one file per run, by its time, and a second in the same second is a file of its own"
+      (is (= ["security-routing-20261026-100000.edn" "security-routing-20261026-113000-2.edn"
+              "security-routing-20261026-113000.edn" "security-routing.edn"]
+             (sort (map (comp str fs/file-name) (fs/glob dir "security-routing*.edn"))))))
+    (testing "each carries its time; the bare file from before is the first run"
+      (let [rs (sr/routing-records dir)]
+        (is (= 4 (count rs)))
+        (is (nil? (:at (first rs))) "the bare file, from before each run kept its own")
+        (is (= "2026-10-26T10:00-05:00[America/Chicago]" (:at (second rs))))))
+    (testing "a run that drafted fixes keeps its drafts; a later run with none leaves them its own"
+      (is (= ["security-fixes-20261026-100000.md"] (map (comp str fs/file-name) (fs/glob dir "security-fixes*.md")))))))
 
 (deftest no-fix-file-when-nothing-was-routed-coder
   (let [{:keys [dir clone record]} (review-dir)
         r (routing/route! {:review-file record :clone clone :architecture nil
                            :triage-fn (fn [_] {:route :human :reason "accept"}) :out dir})]
     (is (= 1 (count (:files r))))
-    (is (not (fs/exists? (fs/path dir "security-fixes.md"))))))
+    (is (empty? (fs/glob dir "security-fixes*.md")))))
 
 ;; From the KIT's own security review (Gemini 4 Argon, 2026-10-21): its test, in the KIT's names
 (deftest a-finding-s-paths-are-read-only-inside-the-clone-and-its-test-folder
@@ -120,7 +144,7 @@
       (let [payload (:payload (first @seen))]
         (is (nil? (:test-text payload)) "a :test outside the test folder is not read")
         (is (empty? (:files payload)) "a :where outside the clone is not read, nor listed")
-        (is (not (str/includes? (slurp (str (fs/path work "security-routing.edn"))) "OUTSIDE"))
+        (is (not (str/includes? (pr-str (sr/routing-records work)) "OUTSIDE"))
             "and nothing of it reaches the routing record the build commits"))
       (finally (fs/delete-tree outer)))))
 
@@ -160,5 +184,5 @@
       (routing/route! {:review-file (str record) :clone (str clone) :architecture nil :out (str work)
                        :triage-fn (fn [t] (swap! seen conj t) {:route :human :reason "r"})})
       (is (nil? (get-in (first @seen) [:payload :test-text])))
-      (is (not (str/includes? (slurp (str (fs/path work "security-routing.edn"))) "HOST FILE")))
+      (is (not (str/includes? (pr-str (sr/routing-records work)) "HOST FILE")))
       (finally (fs/delete-tree outer)))))

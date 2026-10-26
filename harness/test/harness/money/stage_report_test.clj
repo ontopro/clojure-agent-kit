@@ -228,6 +228,9 @@
     (spit (str (fs/path s1 "stage-1-security-review" "security-routing.edn"))
           (pr-str {:review "m-2.edn" :routed [{:verdict {:route :coder :cost 0.125}} {:verdict {:route :architect :cost 0.125}}]
                    :hypotheses []}))
+    ;; a later routing run of its own, by its time: the report sums every run, never the last alone
+    (spit (str (fs/path s1 "stage-1-security-review" "security-routing-20261026-100000.edn"))
+          (pr-str {:at "2026-10-26T10:00-05:00" :review "security-panel.edn" :routed [{:verdict {:route :human :cost 0.5}}] :hypotheses []}))
     (spit (str (fs/path s1 "stage-1-security-deps.edn"))
           (pr-str {:security/at "2026-10-08T12:30" :scan :deps :counts {:ok 1 :warn 0 :fail 0 :skipped 0} :ok? true :rows []}))
     (spit (str (fs/path s1 "stage-1-security.edn"))
@@ -240,10 +243,10 @@
     (is (nil? (sr/summary-for build records 2)) "no blueprint, nothing to roll up")
     (let [s (sr/summary-for build records 1)]
       (is (= ["t1" "t2"] (mapv :task/id (:runs s))) "the records of the blueprint's packets, in its order; w0 is stage 0's")
-      (is (= [["blueprint review" 1.5 2 0] ["security review" 1.25 2 0] ["security routing" 0.25 2 0] ["spec reviews" 0.75 3 0]]
+      (is (= [["blueprint review" 1.5 2 0] ["security review" 1.25 2 0] ["security routing calls" 0.75 3 0] ["spec reviews" 0.75 3 0]]
              (:readings s))
           "the history's readings; no plan review for this stage; two security reviews, the -tests folder's file
-           none and the routing file its own reading: two findings triaged")
+           none and the routing runs their own reading: three triage calls over two runs, the bare file the first")
       (is (= "$20" (:cap s)))
       (testing "the money by role is the same items: its rows add up to the stage's money"
         (is (== (:money s) (reduce + (map :cost (sr/cost-rows build records 1)))))

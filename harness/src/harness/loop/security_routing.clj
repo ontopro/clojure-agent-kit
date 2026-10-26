@@ -115,11 +115,20 @@
   entry carries the members that reproduced it (`:by`).
   `triage-fn` is `(fn [trigger])` -> a verdict, `triage-role` the profile's role it calls (its
   `:family` and `:endpoint` recorded on each verdict, with the provider that answered, so a cost
-  table can place the call), `architecture` the text of the architecture's security sections. Writes `security-routing.edn` and, when a finding was routed `coder`,
-  `security-fixes.md` into `out`. Returns `{:routed [{:finding :verdict}] :hypotheses [finding]
-  :files [written]}`."
-  [{:keys [review-file clone architecture triage-fn triage-role out]}]
-  (let [review-file (str (fs/normalize (fs/absolutize review-file)))
+  table can place the call), `architecture` the text of the architecture's security sections. Writes
+  `security-routing-<stamp>.edn` and, when a finding was routed `coder`, `security-fixes-<stamp>.md`
+  into `out`, `<stamp>` the run's local time (`at`, now by default). Returns `{:routed [{:finding
+  :verdict}] :hypotheses [finding] :files [written]}`.
+
+  A RUN IS A RECORD, AND A RECORD IS NEVER OVERWRITTEN. Each run wrote one `security-routing.edn`
+  over the last, and the stage report priced the file on disk: the first KIT project's stage 6 routed
+  four times, $1.38, and its report counted $0.57 against the cap. Each run now has its own file,
+  named by its time as the panel members' records beside it are, and carries its `:at`; the report
+  sums them all (`stage-report`), a project's earlier bare `security-routing.edn` its first run."
+  [{:keys [review-file clone architecture triage-fn triage-role out at]}]
+  (let [at (or at (java.time.ZonedDateTime/now))
+        stamp (.format at (java.time.format.DateTimeFormatter/ofPattern "yyyyMMdd-HHmmss"))
+        review-file (str (fs/normalize (fs/absolutize review-file)))
         review (edn/read-string (slurp review-file))
         dir (fs/parent review-file)
         ;; a panel row's :record names a file of this folder by construction; the table is a build's file,
@@ -158,10 +167,13 @@
                      (mapv :finding (:hypotheses review))
                      (vec (remove #(= :reproduced (:kind %)) (:findings review))))
         coders (filter #(= :coder (get-in % [:verdict :route])) routed)
-        routing-file (str (fs/path out "security-routing.edn"))
-        fixes-file (str (fs/path out "security-fixes.md"))]
+        ;; a second run in the same second is a second file, never the first one again
+        fresh (fn [base ext] (first (remove fs/exists? (for [i (range)] (str (fs/path out (str base (when (pos? i) (str "-" (inc i))) ext)))))))
+        routing-file (fresh (str "security-routing-" stamp) ".edn")
+        fixes-file (fresh (str "security-fixes-" stamp) ".md")]
     (fs/create-dirs out)
-    (spit routing-file (with-out-str (pp/pprint {:review (str review-file)
+    (spit routing-file (with-out-str (pp/pprint {:at (str (.truncatedTo at java.time.temporal.ChronoUnit/SECONDS))
+                                                 :review (str review-file)
                                                  :routed routed
                                                  :hypotheses hypotheses})))
     (when (seq coders)

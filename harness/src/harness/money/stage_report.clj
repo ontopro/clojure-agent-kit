@@ -312,9 +312,9 @@
       [label (reduce + 0 (keep :cost rs)) (count rs) (count (remove :cost rs))])))
 
 (def ^:private routing-file
-  "What `bb security-route` writes into a stage's security review folder, beside the
-  review records: triage's verdict on each reproduced finding, which is not a review.
-  Counted as one, it made one review read as two."
+  "The one routing file `bb security-route` wrote into a stage's security review folder before
+  each run kept its own (`security-routing-<stamp>.edn`, `routing-records`): triage's verdict on
+  each reproduced finding, which is not a review. Counted as one, it made one review read as two."
   "security-routing.edn")
 
 (declare security-review-records)
@@ -343,20 +343,33 @@
   (if (fs/directory? dir)
     (vec (for [f (sort (map str (fs/glob dir "*.edn")))
                :let [nm (str (fs/file-name f))]
-               :when (not (#{routing-file "security-panel.edn"} nm))
+               :when (not (or (str/starts-with? nm "security-routing") (= "security-panel.edn" nm)))
                :let [rec (try (edn/read-string {:default tagged-literal} (slurp f)) (catch Exception _ nil))]
                :when (map? rec)]
            {:file nm :record rec}))
     []))
 
+(defn routing-records
+  "Every routing run's record in a stage's security review folder, oldest first: one
+  `security-routing-<stamp>.edn` per run, and a bare `security-routing.edn` - a run from before
+  each run kept its own - read as the first. A run is a record and never overwritten, so a stage
+  routed four times is four records, and its money all of theirs."
+  [dir]
+  (if (fs/directory? dir)
+    (let [nm (comp str fs/file-name)
+          files (filter #(str/starts-with? (nm %) "security-routing") (fs/glob dir "security-routing*.edn"))]
+      (vec (keep read-edn (sort-by #(if (= routing-file (nm %)) "" (nm %)) files))))
+    []))
+
 (defn- routing-reading
-  "`[label cost n unpriced]` for the routing file in `dir`: a triage call per finding routed,
-  each verdict carrying its cost; nil when there is no routing file. Its money was in
-  no reading before."
+  "`[label cost n unpriced]` over every routing run in `dir`: a triage CALL per finding routed in
+  each run - a run routes every row again, so `n` counts calls, not findings - each verdict
+  carrying its cost; nil when no run routed. Its money was in no reading before."
   [label dir]
-  (when-let [{:keys [routed]} (read-edn (fs/path dir routing-file))]
-    [label (reduce + 0 (keep #(get-in % [:verdict :cost]) routed)) (count routed)
-     (count (remove #(get-in % [:verdict :cost]) routed))]))
+  (let [routed (mapcat :routed (routing-records dir))]
+    (when (seq (routing-records dir))
+      [label (reduce + 0 (keep #(get-in % [:verdict :cost]) routed)) (count routed)
+       (count (remove #(get-in % [:verdict :cost]) routed))])))
 
 (defn- records-for
   "The run records under `records-dir` that are stage `id`'s (`stages/record-stage` over `infos`)
@@ -385,7 +398,7 @@
                        (reading "stage plan review" (fs/path reviews "plan-review.edn"))
                        (reading "blueprint review" (fs/path reviews "blueprint-review.edn"))
                        (folder-reading "security review" (stages/document build id "-security-review"))
-                       (routing-reading "security routing" (stages/document build id "-security-review"))]))))
+                       (routing-reading "security routing calls" (stages/document build id "-security-review"))]))))
 
 (defn stage-facts
   "What `stage-summary` needs for stage `id` of the build at `build` with the
@@ -477,7 +490,7 @@
                   (row :plan-reviewer x))
                 (for [x (readings-of (read-edn (fs/path reviews "blueprint-review.edn")))] (row :blueprint-reviewer x))
                 (for [{:keys [record]} (security-review-records sec)] (row :security-reviewer record))
-                (for [{:keys [verdict]} (:routed (read-edn (fs/path sec routing-file)))]
+                (for [{:keys [verdict]} (mapcat :routed (routing-records sec))]
                   (row :security-routing verdict)))))))
 
 (defn summary-for

@@ -1,12 +1,12 @@
 (ns harness.models.security-panel-test
   (:require
    [babashka.fs :as fs]
-   [clojure.edn :as edn]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [harness.loop.security-routing :as routing]
    [harness.models.security-panel :as panel]
-   [harness.models.security-review :as review]))
+   [harness.models.security-review :as review]
+   [harness.money.stage-report :as sr]))
 
 (defn- finding [title where & [kind]]
   {:title title :kind (or kind :reproduced) :test "test/app/x_test.clj" :where where :why "w"})
@@ -95,7 +95,7 @@
         (is (= 1 (count @calls)))
         (is (= "(ns x) ;; astra's" (get-in (first @calls) [:payload :test-text])))
         (is (= ["astra" "glm"] (:by (first (:routed r)))))
-        (is (str/ends-with? (:review (edn/read-string (slurp (str (fs/path dir "security-routing.edn"))))) "security-panel.edn"))))))
+        (is (str/ends-with? (:review (last (sr/routing-records dir))) "security-panel.edn"))))))
 
 (deftest one-members-two-findings-at-one-place-keep-both-titles
   (let [{:keys [rows]} (panel/combine [{:file "a.edn" :record (rec "astra" (finding "one" "src/app/web.clj: h")

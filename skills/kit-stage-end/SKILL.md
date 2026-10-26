@@ -101,7 +101,7 @@ never 5; say whether fewer would do, from the history and what changed since eac
 chooses. A member that declined or left no answer is said as that and is not a clean review; a finding counts by
 its own failing test, never by how many members found it. Read `security-panel.md` and the routing with the
 person, and put one decision on each row to them - fix and retest, the Architect, or their own review - triage's
-route being its proposal: a `coder` route's draft in `security-fixes.md` is completed into this stage's Blueprint as a packet,
+route being its proposal: a `coder` route's draft in the run's `security-fixes-<stamp>.md` is completed into this stage's Blueprint as a packet,
 signed and run, and the stage does not close until the security reviewer's test kept beside it passes on the merged
 tip; an `architect` route is a change to the design - `docs/02-architecture.md`, the Blueprint, a decision - and
 then a packet, or a risk accepted in its words; a `human` route is a line of §15 the person accepts or declines; and
@@ -143,8 +143,8 @@ person"), written by the person, before its
 `:stage/closed` with the time, written by the person; the tag `stage-N` on the application's
 merged tip. Not this skill's: the run records and `RUNS.md` (`record` writes them per run) and
 the screenshots (the work folder, uncommitted); the security review's folder
-`docs/stages/stage-N/stage-N-security-review/` - its record, the tests it wrote, `security-routing.edn` and any
-`security-fixes.md` - is the commands', committed with the stage; the security pack's records
+`docs/stages/stage-N/stage-N-security-review/` - its record, the tests it wrote, a `security-routing-<stamp>.edn`
+and any `security-fixes-<stamp>.md` per routing run, never one over another - is the commands', committed with the stage; the security pack's records
 `docs/stages/stage-N/stage-N-security.edn`, `-security-deps.edn` and `-security-secrets.edn` are the
 pack's, committed with the stage. Then say the next step: `bb next`, and "Type `/kit-stage-plan`
 to plan stage N+1" for the stage pulled, in a fresh session if the person likes.
