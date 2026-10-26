@@ -60,16 +60,17 @@
 (try
   (let [{:keys [widths paths]} (parse-args *command-line-args*)]
     (ensure-out!)
-    (let [problems (vec (for [w widths
-                              :let [rows (shoot-all w paths)]
-                              row (do (spit (out (str "measurements-" w ".edn"))
-                                            (pr-str {:at (now) :width w :pages rows
-                                                     :overflowing (mapv :path (filter :overflows? rows))}))
-                                      (println (count rows) "page(s) at" w "wide;" (count (filter :overflows? rows)) "overflow")
-                                      (filter :problem rows))]
-                          (str (:path row) " at " w ": " (:problem row))))]
-      (when (seq problems)
-        (println (str "not measured at the width asked - " (str/join "; " problems)))
+    (let [problems (atom [])]
+      (doseq [w widths]
+        (let [rows (shoot-all w paths)]
+          (spit (out (str "measurements-" w ".edn"))
+                (pr-str {:at (now) :width w :pages rows
+                         :overflowing (mapv :path (filter :overflows? rows))}))
+          (println (count rows) "page(s) at" w "wide;" (count (filter :overflows? rows)) "overflow")
+          (doseq [row (filter :problem rows)]
+            (swap! problems conj (str (:path row) " at " w ": " (:problem row))))))
+      (when (seq @problems)
+        (println (str "not measured at the width asked - " (str/join "; " @problems)))
         (System/exit 1))))
   (catch clojure.lang.ExceptionInfo e
     (println (str "screenshots: " (ex-message e)))
