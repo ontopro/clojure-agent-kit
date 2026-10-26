@@ -37,6 +37,10 @@ rest to Opus 5.5, the other model reading.
 | **The reading session** (reads) | reads a design before code and a diff after - the verdict first, findings ranked by severity with file, line and the fix it suggests, the writer's questions answered; may draft a design as `.local/plans/v<major>/<topic>-design.md`; appends to the plan's memory file | edits a tracked file, the plan file or anything the gates read; runs what writes in the checkout (a read-only `bb -e` in `harness/` is fine, the rest in a scratch copy); proposes what the person deferred; names a tag or a plan number; takes a relayed message for the person's words |
 | **The person** | names the item and its models; says go on a design and on a read's fix; decides a declined finding; merges, tags, pushes | - |
 
+A plan's items: defects and enhancements are separate items, and a new small one joins the running
+plan's defects or enhancements item. An item with parts has them as sub-tasks numbered `N.M` - the
+same numbers in the plan's items and its Task Status, each sub-task a line of its own there.
+
 An item, in order:
 
 1. The person names the item and its models, written on its Task Status line:
@@ -52,7 +56,7 @@ An item, in order:
    of `0ec404d`"), whichever model read. A finding declined, or left by the person, goes in the
    item's Sessions entry with the reason. Nothing is left only in a message.
 6. The read mark, written by the writer as each read arrives: every commit of the branch but a
-   merge on its item's Task Status line, each followed by its read - `` `sha` (read: holds) ``,
+   merge on its item's Task Status line (its sub-task's, where the item has them), each followed by its read - `` `sha` (read: holds) ``,
    `` `sha` (read: 1 low → `fix-sha`) ``, `` `sha` (read: declined - Sessions) ``. A fix commit
    carries its own mark.
 
