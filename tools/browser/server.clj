@@ -25,7 +25,8 @@
   (or (System/getProperty (str "browser-check." k)) (System/getenv k) default))
 
 (def base (setting "APP_BASE" "http://localhost:8000"))
-(def port (or (some-> (re-find #":(\d+)" base) second parse-long) 80))
+;; the scheme's own port when the base names none: 443 for https, never 80 for every base
+(def port (let [u (java.net.URI. base) p (.getPort u)] (if (pos? p) p (if (= "https" (.getScheme u)) 443 80))))
 (def health-path (setting "HEALTH_PATH" "/health"))
 (def serve-cmd (setting "SERVE_CMD" "bb serve"))
 

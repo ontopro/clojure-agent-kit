@@ -3,6 +3,7 @@
   responses: each row passes what it should and fails what it should. The probe itself - the
   socket, the serving - is tried against a running application, by `bb health`."
   (:require
+   [clojure.set]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [security-check :as sc]))
@@ -134,6 +135,27 @@
 (deftest a-request-that-got-no-answer-fails-its-row
   (is (= :fail (:status (sc/csrf-row {:method "POST" :path "/" :error "Connection refused"} true))))
   (is (= :fail (:status (sc/error-row {:method "GET" :path "/x" :error "Read timed out"} "a page that does not exist")))))
+
+(deftest a-base-with-no-port-is-probed-on-its-schemes-port
+  (is (= {:host "139-59-11-35.sslip.io" :port 443 :https? true} (sc/target "https://139-59-11-35.sslip.io")))
+  (is (= {:host "localhost" :port 80 :https? false} (sc/target "http://localhost")))
+  (is (= 8000 (:port (sc/target "http://localhost:8000"))))
+  (is (= 8443 (:port (sc/target "https://example.org:8443/")))))
+
+(defn- top-level-names
+  "The names a file's top-level `def` forms define, read off the lines that open them."
+  [path]
+  (set (map second (re-seq #"(?m)^\(def[a-z-]*\s+(?:\^\S+\s+)?([^\s\[\]()]+)" (slurp path)))))
+
+;; ONE NAMESPACE, TWO FILES. Each pack's check.bb load-files the browser pack's server.clj into its
+;; own namespace, so a name both define is whichever loaded last: the security pack's `port` became
+;; server.clj's, 80 for an https base with none written, and every request to a deploy failed.
+(deftest no-check-script-defines-a-name-the-server-file-defines
+  (let [server (top-level-names "../tools/browser/server.clj")]
+    (is (contains? server "port") "the reader still finds server.clj's names")
+    (doseq [script ["../tools/security/check.bb" "../tools/browser/check.bb"]]
+      (testing script
+        (is (empty? (clojure.set/intersection server (top-level-names script))))))))
 
 (deftest nothing-answered-is-refused-with-the-first-requests-error
   (let [no (fn [path] {:method "GET" :path path :error "SSLException: Unsupported or unrecognized SSL message"})

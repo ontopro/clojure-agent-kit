@@ -21,7 +21,7 @@
          '[clojure.pprint :as pp]
          '[babashka.process :as p]
          '[clojure.string :as str])
-(import '(java.net Socket URI InetSocketAddress)
+(import '(java.net Socket InetSocketAddress)
         '(javax.net.ssl SSLSocketFactory SSLSocket SSLSession))
 
 (def pack-dir (str (fs/parent (fs/absolutize *file*))))
@@ -57,11 +57,16 @@
 
 (def opts (with-own-port (parse-args *command-line-args*)))
 
-(def base (or (get-in opts [:env "APP_BASE"]) (System/getenv "APP_BASE") "http://localhost:8000"))
-(def uri (URI. base))
-(def https? (= "https" (.getScheme uri)))
-(def host (.getHost uri))
-(def port (let [p (.getPort uri)] (if (pos? p) p (if https? 443 80))))
+;; THE PROBE'S OWN NAMES. This file and the browser pack's server.clj share one namespace - both are
+;; load-file'd into it - and server.clj defines `base` and `port`. A `port` here was redefined when
+;; server.clj loaded, from a base with no port written to 80, so every request to an https deploy
+;; went TLS to port 80 and failed (the first KIT project's stage 6, register row 214). Nothing here
+;; takes a name server.clj defines; `security-check-test` holds it.
+(def target-base (or (get-in opts [:env "APP_BASE"]) (System/getenv "APP_BASE") "http://localhost:8000"))
+(def target (sc/target target-base))
+(def https? (:https? target))
+(def target-host (:host target))
+(def target-port (:port target))
 
 (def route-defaults
   "What the probe tries when the routes file does not say: the Stack Lite template's static
@@ -96,12 +101,12 @@
           params (.getSSLParameters s)]
       (.setEndpointIdentificationAlgorithm params "HTTPS")
       (.setSSLParameters s params)
-      (.connect s (InetSocketAddress. host (int port)) 5000)
+      (.connect s (InetSocketAddress. ^String target-host (int target-port)) 5000)
       (.setSoTimeout s 15000)
       (.startHandshake s)
       s)
     (doto (Socket.)
-      (.connect (InetSocketAddress. host (int port)) 5000)
+      (.connect (InetSocketAddress. ^String target-host (int target-port)) 5000)
       (.setSoTimeout 15000))))
 
 (defn- parse-response [^bytes raw]
@@ -123,7 +128,7 @@
      (with-open [s (open-socket)]
        (let [payload (some-> body (.getBytes "UTF-8"))
              head (str method " " path " HTTP/1.0\r\n"
-                       "Host: " host (when-not (#{80 443} port) (str ":" port)) "\r\n"
+                       "Host: " target-host (when-not (#{80 443} target-port) (str ":" target-port)) "\r\n"
                        "User-Agent: kit-security-check\r\n"
                        "Accept: text/html,*/*\r\n"
                        (when payload (str "Content-Type: " content-type "\r\nContent-Length: " (alength payload) "\r\n"))
@@ -198,7 +203,7 @@
   (let [rows (sc/rows (probe) routes https?)
         counts (sc/counts rows)
         record {:security/at (str (java.time.OffsetDateTime/now))
-                :base base
+                :base target-base
                 :routes (:routes opts)
                 :kit (kit-commit)
                 :counts counts
@@ -207,11 +212,11 @@
         dir (out-dir)
         edn-text (str ";; Written by the KIT's security pack (`tools/security/`). Do not edit; run it again.\n"
                       (with-out-str (pp/pprint record)))]
-    (println (str "\n  security checks against " base "\n"))
+    (println (str "\n  security checks against " target-base "\n"))
     (println (sc/table rows))
     (fs/create-dirs dir)
     (spit (str (fs/path dir "security.edn")) edn-text)
-    (spit (str (fs/path dir "security.md")) (sc/markdown {:base base :at (:security/at record)} rows))
+    (spit (str (fs/path dir "security.md")) (sc/markdown {:base target-base :at (:security/at record)} rows))
     (when-let [f (:record opts)]
       (some-> (fs/parent f) fs/create-dirs)
       (spit f edn-text))

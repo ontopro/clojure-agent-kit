@@ -49,6 +49,15 @@
   [response nm]
   (some->> (seq (header-values response nm)) (str/join ", ")))
 
+(defn target
+  "Where the probe goes, from the base URL: `{:host :port :https?}`, the port the scheme's own when
+  the URL names none - 443 for https, 80 for http."
+  [base]
+  (let [u (java.net.URI. base)
+        https? (= "https" (.getScheme u))
+        p (.getPort u)]
+    {:host (.getHost u) :port (if (pos? p) p (if https? 443 80)) :https? https?}))
+
 (defn answered
   "The responses that came, without the requests that got no answer."
   [responses]
