@@ -225,17 +225,19 @@
                                              :run (fn [dir _env argv]
                                                     (reset! seen {:dir dir :argv argv})
                                                     (let [out (second (drop-while #(not= "--out" %) argv))
-                                                          f (fs/path out "1440" "home.png")]
-                                                      (fs/create-dirs (fs/parent f))
-                                                      (spit (str f) "png")
-                                                      {:exit 0 :out "/   1440x900 scrollWidth 1440\n1 page(s) at 1440 wide; 0 overflow\nstopped\n" :err ""}))})]
+                                                          fs-at (mapv #(fs/path out % "home.png") ["1440" "390"])]
+                                                      (doseq [f fs-at] (fs/create-dirs (fs/parent f)) (spit (str f) "png"))
+                                                      {:exit 0 :out (str "/   1440x900 scrollWidth 1440\n1 page(s) at 1440 wide; 0 overflow\n"
+                                                                         "/   390x900 scrollWidth 390\n1 page(s) at 390 wide; 0 overflow\nstopped\n") :err ""}))})]
         (is (true? (:ok? r)))
         (is (not (:skipped? r)))
-        (is (= ["bb" "--config" "/k/tools/browser/bb.edn" "check" "--only" "screenshots" "--out"] (vec (take 7 (:argv @seen))))
+        (is (= ["bb" "--config" "/k/tools/browser/bb.edn" "check" "--only" "screenshots"] (vec (take 6 (:argv @seen))))
             "the KIT's pack from the clone given, screenshots only")
         (is (= "/" (last (:argv @seen))) "the home page")
         (is (= (:dir subject) (:dir @seen)))
-        (is (str/includes? (:detail r) "scrollWidth 1440") "the measure line travels into the detail")))
+        (is (= ["--width" "1440" "--width" "390"] (vec (take 4 (drop 6 (:argv @seen))))) "both widths, 390 a frame's")
+        (is (str/includes? (:detail r) "scrollWidth 1440") "the measure lines travel into the detail")
+        (is (str/includes? (:detail r) "scrollWidth 390"))))
     (testing "failed when the task exits non-zero, or exits 0 with no screenshot"
       (let [r (health/check-browser subject {:available? (constantly true)
                                              :run (fn [_ _ _] {:exit 1 :out "" :err "Firefox did not start: timeout"})})]
@@ -246,7 +248,7 @@
       (let [r (health/check-browser subject {:available? (constantly true)
                                              :run (fn [_ _ _] {:exit 0 :out "" :err ""})})]
         (is (false? (:ok? r)))
-        (is (str/includes? (:detail r) "no screenshot written"))))
+        (is (str/includes? (:detail r) "a screenshot not written"))))
     (testing "the availability test: geckodriver and a Firefox where the driver looks"
       (is (health/browser-available? #{"geckodriver" "firefox"} (constantly false)))
       (is (health/browser-available? #{"geckodriver"} #{"/Applications/Firefox.app/Contents/MacOS/firefox"}))

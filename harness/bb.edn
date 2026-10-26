@@ -30,15 +30,16 @@
 
   test {:doc "Run the test suites"
         ;; dev/ too: dev/example.clj has its own test through `bb example`. And the security
-        ;; pack's judgements, which are pure and tested here: the pack runs on its own bb.edn; and the SVG
+        ;; pack's judgements, which are pure and tested here: the pack runs on its own bb.edn; the browser
+        ;; pack's judgement of a measured page, likewise; and the SVG
         ;; pack's trace, whose fitting is pure (its command reads PNGs on the JVM)
-        :extra-paths ["test" "dev" "../tools/security/src" "../tools/svg/src"]
+        :extra-paths ["test" "dev" "../tools/security/src" "../tools/browser/src" "../tools/svg/src"]
         ;; a failure throws with the failing tests by name, which `gates` writes into its record
         :requires ([harness.gates.record :as record])
         :task (record/run-tests! (test-nses))}
 
   fmt {:doc "Format with cljfmt"
-       :task (shell "cljfmt fix src test dev ../tools/security/src ../tools/svg/src")}
+       :task (shell "cljfmt fix src test dev ../tools/security/src ../tools/browser/src ../tools/svg/src")}
 
   ;; Gate 0 for work done beside the loop. NOT part of `gates` — gate 0 runs
   ;; before the gate sequence, not inside it.
@@ -88,10 +89,10 @@
                :task (apply health/sync-main *command-line-args*)}
 
   fmt-check {:doc "Check formatting (no changes)"
-             :task (shell "cljfmt check src test dev ../tools/security/src ../tools/svg/src")}
+             :task (shell "cljfmt check src test dev ../tools/security/src ../tools/browser/src ../tools/svg/src")}
 
   lint {:doc "Lint with clj-kondo"
-        :task (shell "clj-kondo --lint src test dev ../tools/security/src ../tools/svg/src")}
+        :task (shell "clj-kondo --lint src test dev ../tools/security/src ../tools/browser/src ../tools/svg/src")}
 
   rules-sync {:doc "Regenerate every rule mirror - resources/rule-mirrors.edn, ../rule-mirrors.edn and the workspace's, where they exist - or the paths given, from resources/agent-rules.edn. [--workspace <dir>] for a KIT kept outside its workspace (or KIT_WORKSPACE)"
               :requires ([harness.rules :as rules])

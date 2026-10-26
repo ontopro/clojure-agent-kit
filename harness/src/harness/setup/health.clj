@@ -518,10 +518,11 @@
 
 (defn check-browser
   "The KIT's browser pack, `bb --config <kit>/tools/browser/bb.edn check --only
-  screenshots /`, run in the application: it serves, opens the page in a
-  headless Firefox through geckodriver, screenshots it as tall as it is,
-  measures it, and stops the server. Ok when the task exits 0 and the
-  screenshot exists. The pack is the KIT's, not the template's, so this
+  screenshots --width 1440 --width 390 /`, run in the application: it serves, opens the
+  page in a headless Firefox through geckodriver, screenshots it as tall as it is at each
+  width - 390 in a frame that wide, since headless Firefox keeps no window under 500 -
+  measures it, and stops the server. Ok when the task exits 0 and both screenshots exist:
+  the pack fails a width it did not measure, so a 390 that came out 500 is a red check. The pack is the KIT's, not the template's, so this
   certifies the KIT with the browser on this machine, whatever the application.
 
   A PROBE THAT PERFORMS. `geckodriver --version` passes on a machine where no
@@ -549,20 +550,20 @@
                     "skipped: no geckodriver on the PATH, or no Firefox - the KIT's browser pack needs both (`bb doctor` has the row)")
             :skipped? true)
      (let [out-dir (str (fs/create-temp-dir {:prefix "kit-health-browser"}))
-           shot (fs/path out-dir "1440" "home.png")
+           shots (mapv #(fs/path out-dir % "home.png") ["1440" "390"])
            [{:keys [exit out err]} ms]
            (timed #(try (run dir {} ["bb" "--config" (str (fs/path kit "tools" "browser" "bb.edn"))
-                                     "check" "--only" "screenshots" "--out" out-dir "/"])
+                                     "check" "--only" "screenshots" "--width" "1440" "--width" "390" "--out" out-dir "/"])
                         (catch Exception e {:exit -1 :out "" :err (ex-message e)})))
-           ok? (and (= 0 exit) (fs/exists? shot) (pos? (fs/size shot)))
+           ok? (and (= 0 exit) (every? #(and (fs/exists? %) (pos? (fs/size %))) shots))
            tail (str/join "\n" (take-last 6 (str/split-lines (str out err))))]
        (fs/delete-tree out-dir)
        (result :browser subject ok? ms
                (if ok?
-                 (str "served, Firefox opened /, a screenshot as tall as the page and its measure; stopped"
-                      (let [line (last (filter #(str/includes? % "scrollWidth") (str/split-lines (str out))))]
-                        (when line (str "\n" (str/trim line)))))
-                 (str "the browser pack's check exited " exit (when-not (fs/exists? shot) ", no screenshot written")
+                 (str "served, Firefox opened / at 1440 and 390, a screenshot as tall as the page and its measure at each; stopped"
+                      (let [lines (filter #(str/includes? % "scrollWidth") (str/split-lines (str out)))]
+                        (when (seq lines) (str "\n" (str/join "\n" (map str/trim lines))))))
+                 (str "the browser pack's check exited " exit (when-not (every? fs/exists? shots) ", a screenshot not written")
                       (when (str/includes? (str out err) "did not start")
                         (str "; Firefox did not start - the application this runs in is not allowed to use it. "
                              "On macOS: System Settings > Privacy & Security > Files & Folders (or Full Disk Access) > "

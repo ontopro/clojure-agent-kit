@@ -27,6 +27,15 @@ whatever starts it.
 | `screenshots [--width N]... [path ...]` | one screenshot per page and width, as tall as the page; `scrollWidth` against `innerWidth` | `<width>/<slug>.png`, `measurements-<width>.edn` |
 | `accessibility [path ...]` | an axe-core scan of each page | `accessibility.edn`, `accessibility.md` |
 
+> [!IMPORTANT]
+> A width under 500 is measured in a frame that wide. Headless Firefox keeps no window narrower
+> than 500 px - asked for 390 it stays 500 - so a phone width is a frame's inside a wider window,
+> its screenshot the frame's own. A page whose viewport is not the width asked fails the run
+> (exit 1, after its measurements are written), and a page that will not load in a frame of its
+> own origin (`X-Frame-Options: DENY`, `frame-ancestors 'none'`) is refused by name: neither
+> passes as the width named. Measurements written before this frame recorded every narrow width
+> as 500 (`measurements-<width>.edn`'s `:innerWidth`).
+
 Where it writes: `--out`, else `BROWSER_OUT`, else the workspace's `work/browser/<app>/` when
 the application is in a KIT workspace (scratch, in no repository), else `.local/browser/`.
 The outputs a committed document cites are copied beside it, not left there: a published
@@ -34,8 +43,9 @@ figure nobody can find is a claim.
 
 `driver.clj` is the shared driver, and a project's own interaction checks stand on it too:
 `(load-file "<kit>/tools/browser/driver.clj")` gives `with-firefox`, `open-page` (waits for
-the document and, where the page loads them, HTMX and Alpine), `measure`, `fit-height!` and
-the places the scripts write. `server.clj` is the serve-check-stop skeleton a stage-end script
+the document and, where the page loads them, HTMX and Alpine), `measure`, `fit-height!`, their
+narrow-width forms `open-framed!`, `measure-framed` and `fit-framed-height!`, and the places the
+scripts write. `server.clj` is the serve-check-stop skeleton a stage-end script
 of any kind stands on: `with-server` starts, waits, runs, stops - the process tree first, then
 whatever still listens on the port.
 

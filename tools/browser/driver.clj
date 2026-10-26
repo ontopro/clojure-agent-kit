@@ -122,6 +122,50 @@
     (e/wait 0.3)
     (measure d)))
 
+(defn open-framed!
+  "Opens `path` in a frame `width` wide - headless Firefox keeps no window narrower than 500 px,
+  so a narrower width is a frame's (`browser-measure/framed?`) - and waits as `open-page` does,
+  inside it. The page opens whole first, so the frame is the window's own origin and can be
+  measured. A page that will not load in a frame of its own origin - `X-Frame-Options: DENY`,
+  `frame-ancestors 'none'` - is a refusal, thrown, never measured as something else."
+  [d path width]
+  (open-page d path)
+  (e/js-execute d (str "var f = document.createElement('iframe'); f.id = 'kit-frame';"
+                       " f.src = arguments[0]; f.width = arguments[1]; f.height = 900;"
+                       " f.style.border = '0'; f.style.display = 'block';"
+                       " document.body.style.margin = '0'; document.body.replaceChildren(f);")
+                path width)
+  (try
+    (e/wait-predicate
+     #(e/js-execute d (str "try { var w = document.getElementById('kit-frame').contentWindow, doc = w.document;"
+                           " if (!doc || doc.readyState !== 'complete' || doc.location.href === 'about:blank') return false;"
+                           " var wantsHtmx = !!doc.querySelector('script[src*=\"htmx\"]');"
+                           " var wantsAlpine = !!doc.querySelector('script[src*=\"alpine\"]');"
+                           " return (!wantsHtmx || !!w.htmx) && (!wantsAlpine || !!w.Alpine); } catch (e) { return false; }"))
+     {:timeout 20 :interval 0.1})
+    (catch Exception _
+      (throw (ex-info (str path " did not load in a frame of its own origin (X-Frame-Options DENY or "
+                           "frame-ancestors 'none'?): a width under 500 px is measured in one, so it cannot be here")
+                      {:path path :width width})))))
+
+(defn measure-framed
+  "What the frame's viewport and document measure, as `measure` says them for the window."
+  [d]
+  (e/js-execute d (str "var w = document.getElementById('kit-frame').contentWindow, doc = w.document;"
+                       " return {innerWidth: w.innerWidth, innerHeight: w.innerHeight,"
+                       " scrollWidth: doc.documentElement.scrollWidth,"
+                       " scrollHeight: doc.documentElement.scrollHeight}")))
+
+(defn fit-framed-height!
+  "Makes the frame as tall as its page and the window tall enough to hold it, as `fit-height!`
+  does for the window; returns the frame's measure after."
+  [d window-width]
+  (let [h (max 600 (min 11900 (:scrollHeight (measure-framed d))))]
+    (e/js-execute d "document.getElementById('kit-frame').height = arguments[0];" h)
+    (e/set-window-size d {:width window-width :height (+ 85 h)})
+    (e/wait 0.3)
+    (measure-framed d)))
+
 (defn slug-of
   "A file name for a path: `/` is home, `/pages/my-page` is my-page."
   [path]
