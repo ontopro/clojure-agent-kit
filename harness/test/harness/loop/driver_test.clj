@@ -929,13 +929,20 @@
       (is (= :tester (:owner (loop/propose-routing spec deps (red :fmt "test/sandbox/render_test.clj has incorrect formatting"))))))
     (testing "a failure only in the Coder's file is the Coder's"
       (is (= :coder (:owner (loop/propose-routing spec deps (red :lint "src/sandbox/render.clj:3:1: warning"))))))
-    (testing "a dependent no role owns has no owner: the contract or the Coder"
+    (testing "a dependent no role owns has no owner: the contract or the Coder - and is said as a dependent"
       (let [r (loop/propose-routing spec deps (red :test "ERROR in (round-trips) (property_test.clj:9)"))]
         (is (nil? (:owner r)))
         (is (= :coder (:retry-role r)))
         (is (= ["test/sandbox/property_test.clj"] (:files-named r)))
         (is (= [:architect :gate] (:sources r)))
-        (is (re-find #"amend" (:advice r)))))
+        (is (str/includes? (:advice r) "a dependent of this packet fails (test/sandbox/property_test.clj)"))
+        (is (str/includes? (:advice r) "`amend` it into :files/test with a target, then `retry tester`"))
+        (is (str/includes? (:advice r) "`retry coder`") "the Coder's way out stays")
+        (is (not (str/includes? (:advice r) "no role owns, or none named")))))
+    (testing "a dependent the spec has since taken into :files/test is the Tester's file, not a dependent"
+      (let [moved (update spec :files/test conj "test/sandbox/property_test.clj")
+            r (loop/propose-routing moved deps (red :lint "test/sandbox/property_test.clj:3:1: warning: unused binding"))]
+        (is (= :tester (:owner r)))))
     (testing "a test gate whose every failing namespace is nobody's in the run is the tooling's"
       (let [r (loop/propose-routing spec deps (red :test "FAIL in sandbox.util-test/clamp-above-hi-spec (util_test.clj:46)\nexpected true\n  actual false"))]
         (is (= :tooling (:owner r)))

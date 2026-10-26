@@ -594,6 +594,15 @@
                        "a file only the Tester owns that did not read, compile or pass format or lint: `retry tester` with the gate output as :gate feedback — after checking it names no implementation"
                        (= :coder owner)
                        "a file only the Coder owns: `retry coder` with the gate output as :gate feedback"
+                       ;; A DEPENDENT IS NAMED, NOT "NO ROLE". The first KIT project read "a file no
+                       ;; role owns" over a dependent test that pinned the packet's change (a route
+                       ;; count): the run knew the file was a dependent and did not say so.
+                       (and (seq dep-hit) (empty? impl-hit) (empty? test-hit))
+                       (str "a dependent of this packet fails (" (str/join ", " dep-hit) ") - a file `start` found "
+                            "requiring what the packet changes, no role's own. If it pins what the packet changes on "
+                            "purpose (a count, a whole page), the contract missed it: `amend` it into :files/test with "
+                            "a target, then `retry tester`. If the Coder broke what it should keep working: `retry coder` "
+                            "with the gate output as :gate feedback")
                        :else
                        "a file no role owns, or none named: the contract or the Coder. `amend`, then `retry coder` with :architect and :gate feedback; or `retry coder` with :gate feedback alone")}
       (seq foreign) (assoc :foreign-namespaces foreign))))
