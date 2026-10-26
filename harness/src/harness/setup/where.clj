@@ -347,12 +347,35 @@
   (str "From the run records' priced steps and spec reviews and the stage folders' readings, as the stage "
        "reports count them. Not counted: the interactive sessions - the Architect's and any other - which no record holds."))
 
+(defn- stage-ranges
+  "Stage ids as the table says them: a run of consecutive stages `S1->S4`, the rest one by one,
+  `S1->S2, S4`. An id that is no number stands alone."
+  [ids]
+  (->> ids
+       (reduce (fn [runs id]
+                 (let [prev (peek (peek runs))]
+                   (if (and (integer? id) (integer? prev) (= id (inc prev)))
+                     (conj (pop runs) (conj (peek runs) id))
+                     (conj runs [id]))))
+               [])
+       (map #(if (= 1 (count %)) (str "S" (first %)) (str "S" (first %) "->S" (peek %))))
+       (str/join ", ")))
+
 (defn models-by-stage
-  "A role's models, stage by stage: `S2 gemini-3.8-flash + gemini-4-argon; S3 ...`. A stage whose
-  records name no model - a reading written before readings kept theirs - says so."
+  "A role's models, summarized: each model once, the stages it ran in after it, in the order the
+  models were first used - `claude-sonnet-5.5 (S0); gemini-4-argon (S1->S4); gemini-3.8-flash (S2)`
+  (the person, 2026-10-26: the stage-by-stage list was hard to read). One model across every stage
+  the role has is its name alone. A stage whose records name no model - a reading written before
+  readings kept theirs - is `not recorded (S3)`."
   [by-stage]
-  (str/join "; " (for [[id {:keys [models]}] by-stage]
-                   (str "S" id " " (if (seq models) (str/join " + " models) "not recorded")))))
+  (let [uses (for [[id {:keys [models]}] by-stage
+                   m (if (seq models) models ["not recorded"])]
+               [m id])
+        order (distinct (map first uses))
+        stages (reduce (fn [acc [m id]] (update acc m (fnil conj []) id)) {} uses)]
+    (if (and (= 1 (count order)) (not= "not recorded" (first order)))
+      (first order)
+      (str/join "; " (for [m order] (str m " (" (stage-ranges (distinct (stages m))) ")"))))))
 
 (defn- money-by-md
   "The fuller account's two tables, `## Money by provider` and `## Money by role`, from `money-by`."

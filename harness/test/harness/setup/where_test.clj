@@ -244,5 +244,27 @@
         (is (str/includes? s "## Since you last looked\n\nNo date to count from: no stage closed and no last look recorded."))))))
 
 (deftest a-stage-whose-records-name-no-model-says-so
-  (is (= "S3 gemini-4-argon; S4 not recorded"
+  (is (= "gemini-4-argon (S3); not recorded (S4)"
          (where/models-by-stage [[3 {:models ["gemini-4-argon"]}] [4 {:models []}]]))))
+
+;; THE PERSON'S SUMMARY. Stage by stage - `S0 claude-sonnet-5.5; S1 gemini-4-argon; S2
+;; gemini-3.8-flash + gemini-4-argon; ...` - was hard to read; each model once, with its stages.
+(deftest a-roles-models-are-summarized-each-once-with-its-stages
+  (testing "the person's two rows"
+    (is (= "claude-sonnet-5.5 (S0); gemini-4-argon (S1->S4); gemini-3.8-flash (S2)"
+           (where/models-by-stage [[0 {:models ["claude-sonnet-5.5"]}] [1 {:models ["gemini-4-argon"]}]
+                                   [2 {:models ["gemini-3.8-flash" "gemini-4-argon"]}] [3 {:models ["gemini-4-argon"]}]
+                                   [4 {:models ["gemini-4-argon"]}]])))
+    (is (= "gemini-3.8-flash (S0); claude-sonnet-5.5 (S1->S4)"
+           (where/models-by-stage [[0 {:models ["gemini-3.8-flash"]}] [1 {:models ["claude-sonnet-5.5"]}]
+                                   [2 {:models ["claude-sonnet-5.5"]}] [3 {:models ["claude-sonnet-5.5"]}]
+                                   [4 {:models ["claude-sonnet-5.5"]}]]))))
+  (testing "one model in every stage the role has: its name alone"
+    (is (= "gpt-6.1-sol" (where/models-by-stage [[0 {:models ["gpt-6.1-sol"]}] [1 {:models ["gpt-6.1-sol"]}]
+                                                 [3 {:models ["gpt-6.1-sol"]}]]))))
+  (testing "a gap is listed, a single stage is no range"
+    (is (= "gemini-4-argon (S1->S2, S4); claude-sonnet-5.5 (S3)"
+           (where/models-by-stage [[1 {:models ["gemini-4-argon"]}] [2 {:models ["gemini-4-argon"]}]
+                                   [3 {:models ["claude-sonnet-5.5"]}] [4 {:models ["gemini-4-argon"]}]]))))
+  (testing "only unrecorded stages are still said as such"
+    (is (= "not recorded (S0->S1)" (where/models-by-stage [[0 {:models []}] [1 {:models []}]])))))
