@@ -6,6 +6,7 @@
    [clojure.set]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [harness.gates.forms :as forms]
    [security-check :as sc]))
 
 (def good-headers
@@ -143,9 +144,13 @@
   (is (= 8443 (:port (sc/target "https://example.org:8443/")))))
 
 (defn- top-level-names
-  "The names a file's top-level `def` forms define, read off the lines that open them."
+  "The names a file's top-level `def` forms define, read as the forms gate reads a file
+  (`forms/table`: metadata, `defn-` and a name on the next line included); nil when it does not parse."
   [path]
-  (set (map second (re-seq #"(?m)^\(def[a-z-]*\s+(?:\^\S+\s+)?([^\s\[\]()]+)" (slurp path)))))
+  (some->> (forms/table (slurp path))
+           (filter #(str/starts-with? (:kind %) "def"))
+           (keep :name)
+           set))
 
 ;; ONE NAMESPACE, TWO FILES. Each pack's check.bb load-files the browser pack's server.clj into its
 ;; own namespace, so a name both define is whichever loaded last: the security pack's `port` became
@@ -155,7 +160,9 @@
     (is (contains? server "port") "the reader still finds server.clj's names")
     (doseq [script ["../tools/security/check.bb" "../tools/browser/check.bb"]]
       (testing script
-        (is (empty? (clojure.set/intersection server (top-level-names script))))))))
+        (let [names (top-level-names script)]
+          (is (seq names) "the script parses")
+          (is (empty? (clojure.set/intersection server names))))))))
 
 (deftest nothing-answered-is-refused-with-the-first-requests-error
   (let [no (fn [path] {:method "GET" :path path :error "SSLException: Unsupported or unrecognized SSL message"})
