@@ -34,7 +34,7 @@ the pack picks and tells the server through `PORT` - never the person's 8000; `-
 
 | Check | What is sent | Fails when |
 |---|---|---|
-| `headers` | read on every answer below | `X-Content-Type-Options: nosniff`, `X-Frame-Options` (or a CSP `frame-ancestors`), a `Referrer-Policy` that is not `unsafe-url` missing; `Strict-Transport-Security` missing on an https base; `X-XSS-Protection: 1` is a warn |
+| `headers` | read on every answer below | `X-Content-Type-Options: nosniff`, `X-Frame-Options` (or a CSP `frame-ancestors`), a `Referrer-Policy` that is not `unsafe-url` missing; `Strict-Transport-Security` missing on an https base; `X-XSS-Protection: 1` is a warn. `SAMEORIGIN` or `frame-ancestors 'self'` keeps the browser pack's narrow widths, which it measures in a frame of the page's own origin; `DENY` passes here and gives them up |
 | `csp` | the same answers | a policy lets scripts come from anywhere (`*`, a bare scheme, no `script-src` and no `default-src`); no policy is a warn, or a fail when the routes file says `:csp :required` |
 | `server` | the same answers | never: a `Server` header naming a version is a warn |
 | `cookies` | every `Set-Cookie` seen | no `HttpOnly`, no `SameSite`, `SameSite=None` without `Secure`; no `Secure` on an https base |

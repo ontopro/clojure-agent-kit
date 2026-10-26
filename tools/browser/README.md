@@ -33,7 +33,8 @@ whatever starts it.
 > its screenshot the frame's own. A page whose viewport is not the width asked fails the run
 > (exit 1, after its measurements are written), and a page that will not load in a frame of its
 > own origin (`X-Frame-Options: DENY`, `frame-ancestors 'none'`) is refused by name: neither
-> passes as the width named. Measurements written before this frame recorded every narrow width
+> passes as the width named. `SAMEORIGIN` - the template's - or `frame-ancestors 'self'` keeps the
+> narrow measure; `DENY`, which the security pack also passes, gives it up. Measurements written before this frame recorded every narrow width
 > as 500 (`measurements-<width>.edn`'s `:innerWidth`).
 
 Where it writes: `--out`, else `BROWSER_OUT`, else the workspace's `work/browser/<app>/` when
