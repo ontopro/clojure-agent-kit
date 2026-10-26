@@ -4,7 +4,8 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [harness.loop.security-routing :as routing]
-   [harness.money.stage-report :as sr]))
+   [harness.money.stage-report :as sr]
+   [harness.setup.stages :as stages]))
 
 (deftest a-finding-s-where-names-its-files
   (is (= ["src/app/web.clj" "src/app/accounts.clj"]
@@ -99,12 +100,12 @@
   (let [{:keys [dir clone record]} (review-dir)
         at (fn [s] (java.time.ZonedDateTime/parse s))
         run! (fn [t cost route] (routing/route! {:review-file record :clone clone :architecture nil :out dir :at (at t)
-                                                 :triage-fn (fn [_] {:route route :reason "r" :cost cost})}))]
+                                                 :triage-fn (fn [_] {:route route :reason "r" :result {:cost cost}})}))]
     (spit (str (fs/path dir "security-routing.edn"))
           (pr-str {:review "rev-1.edn" :routed [{:verdict {:route :human :cost 0.08}}] :hypotheses []}))
     (run! "2026-10-26T10:00:00-05:00[America/Chicago]" 0.12 :coder)
     (run! "2026-10-26T11:30:00-05:00[America/Chicago]" 0.25 :human)
-    (run! "2026-10-26T11:30:00-05:00[America/Chicago]" 0.25 :human)
+    (run! "2026-10-26T11:30:00-05:00[America/Chicago]" 0.3 :human)
     (testing "one file per run, by its time, and a second in the same second is a file of its own"
       (is (= ["security-routing-20261026-100000.edn" "security-routing-20261026-113000-2.edn"
               "security-routing-20261026-113000.edn" "security-routing.edn"]
@@ -113,9 +114,16 @@
       (let [rs (sr/routing-records dir)]
         (is (= 4 (count rs)))
         (is (nil? (:at (first rs))) "the bare file, from before each run kept its own")
-        (is (= "2026-10-26T10:00-05:00[America/Chicago]" (:at (second rs))))))
+        (is (= "2026-10-26T10:00-05:00" (:at (second rs))) "the form every :at in a build has, which stages/parse-at reads")
+        (is (some? (stages/parse-at (:at (second rs)))))
+        (is (= [nil "2026-10-26T10:00-05:00" "2026-10-26T11:30-05:00" "2026-10-26T11:30-05:00"] (mapv :at rs)))
+        (is (= 0.3 (get-in (last rs) [:routed 0 :verdict :cost])) "oldest first: the second run of a second is last")))
     (testing "a run that drafted fixes keeps its drafts; a later run with none leaves them its own"
-      (is (= ["security-fixes-20261026-100000.md"] (map (comp str fs/file-name) (fs/glob dir "security-fixes*.md")))))))
+      (is (= ["security-fixes-20261026-100000.md"] (map (comp str fs/file-name) (fs/glob dir "security-fixes*.md")))))
+    (testing "a run's two files share its name: a third run of one second drafts beside its own routing file"
+      (run! "2026-10-26T11:30:00-05:00[America/Chicago]" 0.4 :coder)
+      (is (fs/exists? (fs/path dir "security-routing-20261026-113000-3.edn")))
+      (is (fs/exists? (fs/path dir "security-fixes-20261026-113000-3.md")) "not security-fixes-20261026-113000.md"))))
 
 (deftest no-fix-file-when-nothing-was-routed-coder
   (let [{:keys [dir clone record]} (review-dir)

@@ -358,7 +358,7 @@
   (if (fs/directory? dir)
     (let [nm (comp str fs/file-name)
           files (filter #(str/starts-with? (nm %) "security-routing") (fs/glob dir "security-routing*.edn"))]
-      (vec (keep read-edn (sort-by #(if (= routing-file (nm %)) "" (nm %)) files))))
+      (vec (keep read-edn (sort-by #(if (= routing-file (nm %)) "" (fs/strip-ext (nm %))) files))))
     []))
 
 (defn- routing-reading
@@ -366,8 +366,9 @@
   each run - a run routes every row again, so `n` counts calls, not findings - each verdict
   carrying its cost; nil when no run routed. Its money was in no reading before."
   [label dir]
-  (let [routed (mapcat :routed (routing-records dir))]
-    (when (seq (routing-records dir))
+  (let [runs (routing-records dir)
+        routed (mapcat :routed runs)]
+    (when (seq runs)
       [label (reduce + 0 (keep #(get-in % [:verdict :cost]) routed)) (count routed)
        (count (remove #(get-in % [:verdict :cost]) routed))])))
 

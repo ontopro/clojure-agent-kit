@@ -167,12 +167,14 @@
                      (mapv :finding (:hypotheses review))
                      (vec (remove #(= :reproduced (:kind %)) (:findings review))))
         coders (filter #(= :coder (get-in % [:verdict :route])) routed)
-        ;; a second run in the same second is a second file, never the first one again
-        fresh (fn [base ext] (first (remove fs/exists? (for [i (range)] (str (fs/path out (str base (when (pos? i) (str "-" (inc i))) ext)))))))
-        routing-file (fresh (str "security-routing-" stamp) ".edn")
-        fixes-file (fresh (str "security-fixes-" stamp) ".md")]
+        ;; a second run in the same second is a second file, never the first one again; the fixes
+        ;; file takes the routing file's name, so a run's two files always pair
+        run-id (first (remove #(fs/exists? (fs/path out (str "security-routing-" % ".edn")))
+                              (cons stamp (for [i (range 2 Long/MAX_VALUE)] (str stamp "-" i)))))
+        routing-file (str (fs/path out (str "security-routing-" run-id ".edn")))
+        fixes-file (str (fs/path out (str "security-fixes-" run-id ".md")))]
     (fs/create-dirs out)
-    (spit routing-file (with-out-str (pp/pprint {:at (str (.truncatedTo at java.time.temporal.ChronoUnit/SECONDS))
+    (spit routing-file (with-out-str (pp/pprint {:at (str (.toOffsetDateTime (.truncatedTo at java.time.temporal.ChronoUnit/SECONDS)))
                                                  :review (str review-file)
                                                  :routed routed
                                                  :hypotheses hypotheses})))
