@@ -555,8 +555,9 @@
   test is the Coder\". The first live proposal against a real red gate WAS the
   Tester, and was right, for a reason no rule sees: the test mis-encoded an
   ambiguous target. That stays a triage decision, and the advice says so."
-  [{:keys [files/impl files/test]} dependents gate-result]
-  (let [{:keys [gate out]} (first (filter #(= :fail (:status %)) (:gates/report gate-result)))
+  [{:keys [files/impl files/test] :as spec} dependents gate-result]
+  (let [dependents (sigs/live-dependents spec dependents)
+        {:keys [gate out]} (first (filter #(= :fail (:status %)) (:gates/report gate-result)))
         out (str out)
         impl-hit (names-in out impl)
         test-hit (names-in out test)
@@ -762,6 +763,12 @@
   [ctx]
   (effective-spec (edn/read-string (slurp (str (fs/path (:run-dir ctx) "spec.edn"))))
                   @(:state ctx)))
+
+(defn run-dependents
+  "The run's dependents as they stand: those `start` computed, less any the spec has since
+  taken into `:files/impl` or `:files/test` by an amendment (`sigs/live-dependents`)."
+  [ctx]
+  (sigs/live-dependents (spec-of ctx) (:dependents @(:state ctx))))
 
 (defn- sessions [ctx] (:sessions @(:state ctx)))
 
@@ -1460,6 +1467,10 @@
                                  (str/join "\n" (map #(str "    " (subs (str (:key %)) 1) " " (pr-str (:entry %)) " — " (:reason %)) bad))
                                  "\n  fix spec.edn, then `amend` again")
                             {:run-loop/error :precondition :entries (mapv :entry bad)})))
+        ;; a dependent the amendment names in :files/impl or :files/test is that role's now
+        ;; (`sigs/live-dependents`): said, and kept in the record, since `start` computed it
+        moved (let [deps (:dependents @(:state ctx))]
+                (vec (remove (set (sigs/live-dependents after deps)) deps)))
         slice-changed? (not= (:blueprint/slice before) (:blueprint/slice after))
         tester (:tester (sessions ctx))
         ;; A CHANGED SLICE MEANS A CHANGED STUB. The Tester prototypes against the
@@ -1479,9 +1490,12 @@
                          :property-targets/after (:property-targets after)
                          :slice-changed? slice-changed?}
                   restubbed (assoc :stub-rewritten restubbed)
+                  (seq moved) (assoc :dependents/moved moved)
                   uncount? (assoc :not-counted {:role (:role last-round) :attempt (:attempt last-round) :reason reason})))
     (println "recorded amendment"
              (if restubbed (str "— the slice changed, so the Tester's stub was regenerated at " restubbed) ""))
+    (when (seq moved)
+      (println (str "  no longer a dependent - the spec names it as a role's own: " (str/join ", " moved))))
     (when uncount?
       (println (str "  " (role-name (:role last-round)) "'s round " (:attempt last-round)
                     " is not counted against the cap: " (role-rounds @(:state ctx) (:role last-round)) " counted now")))))

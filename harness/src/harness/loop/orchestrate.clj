@@ -351,7 +351,7 @@
         events (:events state)]
     {:trigger kind
      :spec (driver/spec-of ctx)
-     :dependents (:dependents state)
+     :dependents (driver/run-dependents ctx)
      :worktrees {:coder (:worktree/path (:coder s)) :tester (:worktree/path (:tester s))}
      :payload (case kind
                 :red-gate {:gate-result (:last-gates state)}

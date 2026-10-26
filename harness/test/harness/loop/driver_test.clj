@@ -873,6 +873,30 @@
         (is (not (fs/exists? stub)))
         (is (nil? (:stub-rewritten (last (:events @(:state ctx))))))))))
 
+;; THE CONTRACT CORRECTING ITSELF. A dependent test pinned what the packet changed (a route
+;; count); the Architect's fix was to take it into :files/test with a target, and `amend`
+;; refused it as a file in two lists - it was context only because `start` had computed it a
+;; dependent. The first KIT project's only way on was a new run, paid again.
+(deftest an-amendment-takes-a-dependent-into-a-roles-own-list
+  (let [run-dir (str (fs/create-temp-dir))
+        before-file (str (fs/path run-dir "spec.v1.edn"))
+        v1 {:task/id "t" :files/impl ["src/app/routes.clj"] :files/test ["test/app/routes_new_test.clj"]
+            :blueprint/slice {:shapes [] :interfaces '[(f [x])]}}
+        v2 (update v1 :files/test conj "test/app/routes_test.clj")
+        ctx {:run-dir run-dir
+             :state (atom {:started-ms (System/currentTimeMillis) :events []
+                           :dependents ["test/app/routes_test.clj" "src/app/views.clj"] :sessions {}})}]
+    (spit before-file (pr-str v1))
+    (spit (str (fs/path run-dir "spec.edn")) (pr-str v2))
+    (is (str/includes? (with-out-str (loop/amend! ctx before-file "the route count's test pins the change"))
+                       "no longer a dependent - the spec names it as a role's own: test/app/routes_test.clj")
+        "accepted, and said")
+    (is (= ["test/app/routes_test.clj"] (:dependents/moved (last (:events @(:state ctx))))) "the move is in the record")
+    (let [sp (loop/spec-of ctx)]
+      (is (= ["test/app/routes_new_test.clj" "test/app/routes_test.clj"] (:files/test sp)))
+      (is (= ["src/app/views.clj"] (:files/context sp)) "the other dependent stays context"))
+    (is (= ["src/app/views.clj"] (loop/run-dependents ctx)))))
+
 (deftest packets-see-the-dependents-start-computed
   (let [spec {:task/id "t" :files/context ["src/a.clj"]}]
     (is (= ["src/a.clj" "test/p_test.clj"]

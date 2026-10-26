@@ -415,18 +415,33 @@
   (let [own-tests (set (map #(str (fs/normalize %)) (:files/test spec)))]
     (vec (remove own-tests (dependents dir (:files/impl spec))))))
 
+(defn live-dependents
+  "The dependents `start` computed that `spec` does not itself name in `:files/impl` or
+  `:files/test`, in their order.
+
+  THE ARCHITECT'S WORD WINS. The dependents are computed once, at `start`; an amendment that
+  takes one into `:files/test` - a dependent test pinning what the packet changes, given a
+  target - made it a role's own file, and kept as a dependent it was in two lists, which the
+  one-role rule refuses (`stub/check-files`). The first KIT project's only way on was a new run."
+  [spec deps]
+  (let [named (set (concat (:files/impl spec) (:files/test spec)))]
+    (vec (remove named deps))))
+
 (defn with-dependents
   "`spec` with `deps` added to its `:files/context`: the Architect's entries
-  first, then the dependents, each file once. Unchanged when there are none.
+  first, then the dependents, each file once - but never one the spec names
+  in `:files/impl` or `:files/test` (`live-dependents`). Unchanged when there
+  are none.
 
   Into `:files/context` rather than `:files/target`: a dependent is something
   a role must keep working and may read, not something it may edit. Every
   packet carries `:files/context`, so the Coder, the Tester and the code reviewer all
   see them, and `tester-packet` still strips the implementation."
   [spec deps]
-  (if (seq deps)
-    (update spec :files/context #(vec (distinct (concat % deps))))
-    spec))
+  (let [live (live-dependents spec deps)]
+    (if (seq live)
+      (update spec :files/context #(vec (distinct (concat % live))))
+      spec)))
 
 (defn read-spec
   "A spec's `text` as `{:spec spec}`, or `{:refused why}` when it is not EDN. EDN, never

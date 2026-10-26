@@ -331,6 +331,15 @@
     (is (= spec (sigs/with-dependents spec [])) "no dependents, no change")
     (is (= spec (sigs/with-dependents spec nil)))))
 
+(deftest a-dependent-the-spec-names-as-a-roles-own-is-not-context
+  (let [spec {:files/impl ["src/app/render.clj"] :files/test ["test/app/render_test.clj"]
+              :files/context ["src/app/store.clj"]}
+        deps ["test/app/render_test.clj" "src/app/api.clj" "src/app/render.clj"]]
+    (is (= ["src/app/api.clj"] (sigs/live-dependents spec deps)))
+    (is (= ["src/app/store.clj" "src/app/api.clj"] (:files/context (sigs/with-dependents spec deps)))
+        "the Architect's word wins: a file is one role's")
+    (is (= spec (sigs/with-dependents spec ["test/app/render_test.clj"])) "nothing left to add, no change")))
+
 ;; ---------------------------------------------------------------------------
 ;; what the implementation defines that the Tester never saw
 ;; ---------------------------------------------------------------------------
