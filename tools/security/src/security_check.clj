@@ -338,6 +338,13 @@
   [{:keys [pages not-found malformed throws forms protected listings traversals tls]} routes https?]
   (let [all (concat pages [not-found] throws (map first forms) protected listings
                     (map #(assoc % :odd? true) (cons malformed traversals)))]
+    ;; NOTHING ANSWERED IS A REFUSAL, NOT A TABLE. Every row judges what came back; with nothing
+    ;; back the header rows said "all 0 responses" ok and the CSP row threw on a nil policy - the
+    ;; first KIT project's deploy check died there with no word of why. The first request's error
+    ;; is the why.
+    (when (empty? (answered all))
+      (throw (ex-info (str "no request was answered: " (or (some :error all) "no request was sent"))
+                      {:security/unanswered (count all)})))
     (accept
      (vec (concat (header-rows all https?)
                   [(csp-row all (= :required (:csp routes)))

@@ -135,6 +135,17 @@
   (is (= :fail (:status (sc/csrf-row {:method "POST" :path "/" :error "Connection refused"} true))))
   (is (= :fail (:status (sc/error-row {:method "GET" :path "/x" :error "Read timed out"} "a page that does not exist")))))
 
+(deftest nothing-answered-is-refused-with-the-first-requests-error
+  (let [no (fn [path] {:method "GET" :path path :error "SSLException: Unsupported or unrecognized SSL message"})
+        probes {:pages [(no "/")] :not-found (no "/nope") :malformed (no "/%zz%") :throws []
+                :forms [[{:method "POST" :path "/" :error "SSLException: x"} true]] :protected []
+                :listings [(no "/assets/")] :traversals [(no "/assets/../config.edn")] :tls {:error "x"}}
+        e (try (sc/rows probes {:csp :optional} true) nil (catch clojure.lang.ExceptionInfo e e))]
+    (is (some? e) "a refusal, not a table - and never a NullPointerException")
+    (is (= "no request was answered: SSLException: Unsupported or unrecognized SSL message" (ex-message e)))
+    (testing "one answer is enough for a table"
+      (is (seq (sc/rows (assoc probes :not-found (resp "/nope" 404)) {:csp :optional} true))))))
+
 (deftest the-whole-table-counts-and-only-a-fail-fails
   (let [probes {:pages [(resp "/" 200)] :not-found (resp "/nope" 404) :malformed (resp "/%zz%" 400)
                 :throws [] :forms [[{:method "POST" :path "/" :status 405 :headers good-headers :body ""} true]]

@@ -26,6 +26,8 @@ the pack picks and tells the server through `PORT` - never the person's 8000; `-
 > Only a failing row fails the run (exit 1). A warn is a choice the project has not made yet,
 > or a weakness that is not the application's; a skip says what was not tried and why. Read
 > both - a skipped CSRF row on an application with forms means the routes file is missing them.
+> When no request is answered at all there is no table: the run stops, exit 1, with "no request
+> was answered:" and the first request's error.
 > An accepted row is a fail or a warn the project read and accepted in the routes file.
 
 ## The rows
