@@ -221,7 +221,7 @@
         (is (str/includes? (:detail r) "skipped"))))
     (testing "ok when the template's task exits 0 and wrote the screenshot"
       (let [seen (atom nil)
-            r (health/check-browser subject {:available? (constantly true)
+            r (health/check-browser subject {:available? (constantly true) :update-state (constantly {:policy? true})
                                              :run (fn [dir _env argv]
                                                     (reset! seen {:dir dir :argv argv})
                                                     (let [out (second (drop-while #(not= "--out" %) argv))
@@ -239,13 +239,13 @@
         (is (str/includes? (:detail r) "scrollWidth 1440") "the measure lines travel into the detail")
         (is (str/includes? (:detail r) "scrollWidth 390"))))
     (testing "failed when the task exits non-zero, or exits 0 with no screenshot"
-      (let [r (health/check-browser subject {:available? (constantly true)
+      (let [r (health/check-browser subject {:available? (constantly true) :update-state (constantly {:policy? true})
                                              :run (fn [_ _ _] {:exit 1 :out "" :err "Firefox did not start: timeout"})})]
         (is (false? (:ok? r)))
         (is (str/includes? (:detail r) "Firefox did not start"))
         (is (str/includes? (:detail r) "Privacy & Security > Files & Folders"))
         (is (str/includes? (:detail r) "run `bb health` again")))
-      (let [r (health/check-browser subject {:available? (constantly true)
+      (let [r (health/check-browser subject {:available? (constantly true) :update-state (constantly {:policy? true})
                                              :run (fn [_ _ _] {:exit 0 :out "" :err ""})})]
         (is (false? (:ok? r)))
         (is (str/includes? (:detail r) "a screenshot not written"))))
@@ -254,6 +254,38 @@
       (is (health/browser-available? #{"geckodriver"} #{"/Applications/Firefox.app/Contents/MacOS/firefox"}))
       (is (not (health/browser-available? #{"firefox"} (constantly true))) "no geckodriver, no check")
       (is (not (health/browser-available? #{"geckodriver"} (constantly false))) "no Firefox, no check"))))
+
+;; AN UPDATE STAGED BY THE EVERYDAY BROWSER, APPLIED BY A CHECK'S. geckodriver turns a profile's
+;; own update check off; the install's staged update is the machine's, and the first KIT
+;; project's Firefox was replaced mid-run by one.
+(deftest the-browser-check-warns-when-firefox-may-update-from-under-it
+  (testing "the machine's word on updates"
+    (is (health/policy-disables-updates? "{\"policies\": {\"DisableAppUpdate\": true}}"))
+    (is (health/policy-disables-updates? "{\"policies\":{\"DisableAppUpdate\" :true,\"x\":1}}"))
+    (is (not (health/policy-disables-updates? "{\"policies\": {\"DisableAppUpdate\": false}}")))
+    (is (not (health/policy-disables-updates? nil)))
+    (is (health/staged-update? "pending\n"))
+    (is (health/staged-update? "applied-service"))
+    (is (not (health/staged-update? "succeeded")))
+    (is (not (health/staged-update? "failed: 7"))))
+  (testing "the warning: a staged update first, then no policy, else none"
+    (is (nil? (health/firefox-update-warning {:policy? true})))
+    (is (str/starts-with? (health/firefox-update-warning {:policy? false}) "warn: no DisableAppUpdate policy"))
+    (is (str/includes? (health/firefox-update-warning {:policy? false}) "DisableAppUpdate -bool TRUE") "names the macOS way")
+    (is (str/includes? (health/firefox-update-warning {:policy? false}) "/etc/firefox/policies/") "and the policies.json way")
+    (is (str/starts-with? (health/firefox-update-warning {:policy? true :staged "/c/updates/0/update.status"})
+                          "warn: a Firefox update is staged (/c/updates/0/update.status)")
+        "staged is said even where the policy now stops the next download"))
+  (testing "a line of the detail, never a failure"
+    (let [subject {:subject :app :dir "/app" :kit "/k"}
+          run (fn [_ _ argv]
+                (let [out (second (drop-while #(not= "--out" %) argv))]
+                  (doseq [w ["1440" "390"]] (fs/create-dirs (fs/path out w)) (spit (str (fs/path out w "home.png")) "png"))
+                  {:exit 0 :out "/   390x900 scrollWidth 390\n" :err ""}))
+          r (health/check-browser subject {:available? (constantly true) :run run
+                                           :update-state (constantly {:policy? false})})]
+      (is (true? (:ok? r)))
+      (is (str/includes? (:detail r) "warn: no DisableAppUpdate policy")))))
 
 (deftest a-skipped-check-is-in-the-record-and-the-readme-row-says-so
   (let [skipped {:subject :app :check :browser :ok? true :ms 0 :skipped? true :detail "skipped: no geckodriver"}

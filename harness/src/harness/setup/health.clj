@@ -516,6 +516,61 @@
                      (some exists? ["/Applications/Firefox.app/Contents/MacOS/firefox"
                                     "/usr/bin/firefox" "/usr/local/bin/firefox" "/snap/bin/firefox"]))))))
 
+;; FIREFOX UPDATES ITSELF FROM UNDER A CHECK. geckodriver already writes
+;; `app.update.disabledForTesting` into every profile it starts, so the packs' Firefox never
+;; checks for an update. But an update is staged per INSTALL, shared by every profile, and the
+;; next Firefox to start applies it - the person's everyday browser staged one, a browser check's
+;; launch applied it, Firefox.app was replaced mid-run and had to be reinstalled (the first KIT
+;; project, 2026-10-22). Only the machine can stop it, so the check says when nothing does.
+
+(def firefox-update-fix
+  "How a person turns Firefox's updates off for the machine - the warning's second half."
+  (str "Turn it off for the machine: on macOS `sudo defaults write /Library/Preferences/org.mozilla.firefox "
+       "EnterprisePoliciesEnabled -bool TRUE` and `sudo defaults write /Library/Preferences/org.mozilla.firefox "
+       "DisableAppUpdate -bool TRUE`; anywhere, a `policies.json` of `{\"policies\": {\"DisableAppUpdate\": true}}` "
+       "in Firefox's `distribution/` folder (on Linux, `/etc/firefox/policies/`)."))
+
+(defn policy-disables-updates?
+  "Whether a Firefox `policies.json`'s text turns app updates off."
+  [text]
+  (boolean (re-find #"\"DisableAppUpdate\"\s*:\s*true" (str text))))
+
+(defn staged-update?
+  "Whether an `update.status` file's text says an update waits to be applied at the next start."
+  [text]
+  (boolean (re-matches #"(pending|applied)(-service|-elevate)?" (str/trim (str text)))))
+
+(defn firefox-update-warning
+  "The browser check's warning, or nil: `{:policy? :staged}` - whether the machine turns
+  Firefox's updates off, and the `update.status` file of an update staged, if one is. A staged
+  update is said first: it is applied at the next start whatever the policy says now.
+  Information, never a failure."
+  [{:keys [policy? staged]}]
+  (cond staged (str "warn: a Firefox update is staged (" staged ") - the next Firefox to start applies it, a "
+                    "browser check's included, and it can replace Firefox mid-run. " firefox-update-fix)
+        (not policy?) (str "warn: no DisableAppUpdate policy on this machine - an update your everyday Firefox "
+                           "stages is applied by the next Firefox to start, a browser check's included. " firefox-update-fix)))
+
+(defn firefox-update-state
+  "What this machine says about Firefox's updates, for `firefox-update-warning`: the policy -
+  macOS's `defaults` domain, or a `policies.json` where Firefox is installed - and an update
+  staged under the caches Firefox keeps them in."
+  []
+  (let [mac? (str/starts-with? (System/getProperty "os.name") "Mac")
+        defaults? (and mac?
+                       (let [{:keys [exit out]} (p/shell {:out :string :err :string :continue true}
+                                                         "defaults" "read" "/Library/Preferences/org.mozilla.firefox"
+                                                         "DisableAppUpdate")]
+                         (and (zero? exit) (= "1" (str/trim out)))))
+        policies ["/Applications/Firefox.app/Contents/Resources/distribution/policies.json"
+                  "/etc/firefox/policies/policies.json" "/usr/lib/firefox/distribution/policies.json"]
+        statuses (concat (when mac?
+                           (let [dir (fs/path (System/getProperty "user.home") "Library" "Caches" "Mozilla" "updates")]
+                             (when (fs/directory? dir) (fs/glob dir "**/updates/0/update.status"))))
+                         (filter fs/exists? [(fs/path "/usr/lib/firefox/updates/0/update.status")]))]
+    {:policy? (boolean (or defaults? (some #(and (fs/exists? %) (policy-disables-updates? (slurp %))) policies)))
+     :staged (some #(when (staged-update? (slurp (str %))) (str %)) statuses)}))
+
 (defn check-browser
   "The KIT's browser pack, `bb --config <kit>/tools/browser/bb.edn check --only
   screenshots --width 1440 --width 390 /`, run in the application: it serves, opens the
@@ -537,10 +592,12 @@
   no browser. The record carries the skip; the README's row prints it; `ok?`
   stays true so the run is healthy, and nobody reads a browser check that did
   not run as one that passed. `run` is `(fn [dir env argv] -> {:exit :out})`,
-  for a test."
+  for a test; `update-state` is `firefox-update-state`'s, for one too - its warning
+  (`firefox-update-warning`) is a line of the detail, never a failure."
   ([subject] (check-browser subject {}))
-  ([{:keys [dir kit] :as subject} {:keys [available? run]
+  ([{:keys [dir kit] :as subject} {:keys [available? run update-state]
                                    :or {available? browser-available?
+                                        update-state firefox-update-state
                                         run (fn [dir env argv]
                                               (apply p/shell {:dir dir :out :string :err :string :continue true
                                                               :extra-env env :timeout browser-timeout-ms}
@@ -556,19 +613,22 @@
                                      "check" "--only" "screenshots" "--width" "1440" "--width" "390" "--out" out-dir "/"])
                         (catch Exception e {:exit -1 :out "" :err (ex-message e)})))
            ok? (and (= 0 exit) (every? #(and (fs/exists? %) (pos? (fs/size %))) shots))
-           tail (str/join "\n" (take-last 6 (str/split-lines (str out err))))]
+           tail (str/join "\n" (take-last 6 (str/split-lines (str out err))))
+           warning (firefox-update-warning (update-state))]
        (fs/delete-tree out-dir)
        (result :browser subject ok? ms
                (if ok?
                  (str "served, Firefox opened / at 1440 and 390, a screenshot as tall as the page and its measure at each; stopped"
                       (let [lines (filter #(str/includes? % "scrollWidth") (str/split-lines (str out)))]
-                        (when (seq lines) (str "\n" (str/join "\n" (map str/trim lines))))))
+                        (when (seq lines) (str "\n" (str/join "\n" (map str/trim lines)))))
+                      (when warning (str "\n" warning)))
                  (str "the browser pack's check exited " exit (when-not (every? fs/exists? shots) ", a screenshot not written")
                       (when (str/includes? (str out err) "did not start")
                         (str "; Firefox did not start - the application this runs in is not allowed to use it. "
                              "On macOS: System Settings > Privacy & Security > Files & Folders (or Full Disk Access) > "
                              "the application the session runs in (Terminal, iTerm, the IDE, the Claude app) > allow it, "
                              "or run the check once from that application and answer the prompt; then run `bb health` again"))
+                      (when warning (str "\n" warning))
                       "\n" tail)))))))
 
 ;; ---------------------------------------------------------------------------
