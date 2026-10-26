@@ -535,6 +535,20 @@
   [text]
   (boolean (re-find #"\"DisableAppUpdate\"\s*:\s*true" (str text))))
 
+(def firefox-defaults-domains
+  "Where macOS keeps Firefox's policies: the machine's (`sudo defaults write`) and the user's.
+  `defaults` does not merge them, so each is read."
+  ["/Library/Preferences/org.mozilla.firefox" "org.mozilla.firefox"])
+
+(defn defaults-disable-updates?
+  "Whether a macOS `defaults` domain turns Firefox's updates off: `read` is `(fn [domain key]
+  -> the value's text, or nil)`. Firefox reads the domain's policies only when
+  `EnterprisePoliciesEnabled` is on, so `DisableAppUpdate` alone is a policy it ignores."
+  [read]
+  (boolean (some (fn [domain] (every? #(= "1" (some-> (read domain %) str/trim))
+                                      ["EnterprisePoliciesEnabled" "DisableAppUpdate"]))
+                 firefox-defaults-domains)))
+
 (defn staged-update?
   "Whether an `update.status` file's text says an update waits to be applied at the next start."
   [text]
@@ -558,10 +572,11 @@
   []
   (let [mac? (str/starts-with? (System/getProperty "os.name") "Mac")
         defaults? (and mac?
-                       (let [{:keys [exit out]} (p/shell {:out :string :err :string :continue true}
-                                                         "defaults" "read" "/Library/Preferences/org.mozilla.firefox"
-                                                         "DisableAppUpdate")]
-                         (and (zero? exit) (= "1" (str/trim out)))))
+                       (defaults-disable-updates?
+                        (fn [domain k]
+                          (let [{:keys [exit out]} (p/shell {:out :string :err :string :continue true}
+                                                            "defaults" "read" domain k)]
+                            (when (zero? exit) out)))))
         policies ["/Applications/Firefox.app/Contents/Resources/distribution/policies.json"
                   "/etc/firefox/policies/policies.json" "/usr/lib/firefox/distribution/policies.json"]
         statuses (concat (when mac?

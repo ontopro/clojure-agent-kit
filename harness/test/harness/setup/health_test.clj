@@ -264,6 +264,21 @@
     (is (health/policy-disables-updates? "{\"policies\":{\"DisableAppUpdate\" :true,\"x\":1}}"))
     (is (not (health/policy-disables-updates? "{\"policies\": {\"DisableAppUpdate\": false}}")))
     (is (not (health/policy-disables-updates? nil)))
+    (let [machine "/Library/Preferences/org.mozilla.firefox"
+          user "org.mozilla.firefox"
+          reading (fn [m] (fn [domain k] (get m [domain k])))]
+      (is (health/defaults-disable-updates? (reading {[machine "EnterprisePoliciesEnabled"] "1\n"
+                                                      [machine "DisableAppUpdate"] "1\n"}))
+          "the machine's domain, as `sudo defaults write` sets it")
+      (is (health/defaults-disable-updates? (reading {[user "EnterprisePoliciesEnabled"] "1"
+                                                      [user "DisableAppUpdate"] "1"}))
+          "the user's, set without sudo")
+      (is (not (health/defaults-disable-updates? (reading {[machine "DisableAppUpdate"] "1"})))
+          "DisableAppUpdate alone: Firefox reads no policy without EnterprisePoliciesEnabled")
+      (is (not (health/defaults-disable-updates? (reading {[machine "EnterprisePoliciesEnabled"] "1"
+                                                           [user "DisableAppUpdate"] "1"})))
+          "the two keys in one domain, not one in each")
+      (is (not (health/defaults-disable-updates? (reading {})))))
     (is (health/staged-update? "pending\n"))
     (is (health/staged-update? "applied-service"))
     (is (not (health/staged-update? "succeeded")))
