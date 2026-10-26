@@ -424,8 +424,10 @@
   target - made it a role's own file, and kept as a dependent it was in two lists, which the
   one-role rule refuses (`stub/check-files`). The first KIT project's only way on was a new run."
   [spec deps]
-  (let [named (set (concat (:files/impl spec) (:files/test spec)))]
-    (vec (remove named deps))))
+  ;; both sides normalised, as `task-dependents` does: `./test/x_test.clj` names `test/x_test.clj`
+  (let [norm #(str (fs/normalize %))
+        named (set (map norm (concat (:files/impl spec) (:files/test spec))))]
+    (vec (remove (comp named norm) deps))))
 
 (defn with-dependents
   "`spec` with `deps` added to its `:files/context`: the Architect's entries

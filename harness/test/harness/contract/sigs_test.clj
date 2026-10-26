@@ -338,7 +338,10 @@
     (is (= ["src/app/api.clj"] (sigs/live-dependents spec deps)))
     (is (= ["src/app/store.clj" "src/app/api.clj"] (:files/context (sigs/with-dependents spec deps)))
         "the Architect's word wins: a file is one role's")
-    (is (= spec (sigs/with-dependents spec ["test/app/render_test.clj"])) "nothing left to add, no change")))
+    (is (= spec (sigs/with-dependents spec ["test/app/render_test.clj"])) "nothing left to add, no change")
+    (testing "a path written another way names the same file"
+      (is (= [] (sigs/live-dependents {:files/test ["./test/app/render_test.clj"]} ["test/app/render_test.clj"])))
+      (is (= [] (sigs/live-dependents {:files/test ["test/app/render_test.clj"]} ["./test/app/render_test.clj"]))))))
 
 ;; ---------------------------------------------------------------------------
 ;; what the implementation defines that the Tester never saw
