@@ -144,6 +144,7 @@
     (put "docs/stages/stage-1/stage-1-plan.md" "# Stage 1\n\n**Kind:** increment\n\nafter `../stage-0/stage-0-spike.md`\n")
     (put "docs/stages/stage-2/stage-2-credits.md" "# a brief, no kind\n")
     (put "docs/stages/stage-N-template.md" "# template\n\n**Kind:** <kind>\n")
+    (put "docs/01-requirements.md" "# Requirements\n")
     (git b "init" "-q" "-b" "main")
     (git b "add" "-A")
     (git b "commit" "-q" "-m" "a build with stage 0's plan by its old name")
@@ -156,6 +157,7 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"uncommitted edits" (sm/rename! (str b) "KIT 0.7.0: a stage plan is stage-N-plan.md")))
       (is (fs/exists? (fs/path b "docs/stages/stage-0/stage-0-spike.md")))
       (git b "checkout" "--" "docs/00-overview.md"))
+    (spit (str (fs/path b "docs" "01-requirements.md")) "edited, and naming nothing it renames\n" :append true)
     (let [{:keys [renamed detail]} (sm/rename! (str b) "KIT 0.7.0: a stage plan is stage-N-plan.md")]
       (is (= 1 renamed))
       (is (str/includes? detail "docs/stages/stage-2/ has no stage-2-plan.md and stage-2-credits.md"))
@@ -170,5 +172,6 @@
       (is (re-find #"R\d+\tdocs/stages/stage-0/stage-0-spike.md\tdocs/stages/stage-0/stage-0-plan.md"
                    (git b "show" "--name-status" "-M" "--format=" "HEAD"))
           "a rename git sees")
-      (is (= "" (git b "status" "--porcelain")) "every change committed"))
+      (is (= "M docs/01-requirements.md" (git b "status" "--porcelain"))
+          "every change committed; a document it does not touch neither stops it nor is committed"))
     (is (= 0 (:renamed (sm/rename! (str b) "again"))) "again: nothing to rename")))

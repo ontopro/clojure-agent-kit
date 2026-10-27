@@ -265,26 +265,26 @@
         said (when (seq unsure) (str "; " (unsure-text unsure)))]
     (if (empty? renames)
       {:renamed 0 :rewritten [] :unsure unsure :detail (str "every stage plan is stage-N-plan.md" said)}
-      (let [docs (build-docs-md build)
-            dirty (->> (distinct (concat (map first renames) docs))
+      (let [names (mapv (fn [[a b]] [(str (fs/file-name a)) (str (fs/file-name b))]) renames)
+            ;; THE NEW TEXTS READ BEFORE ANYTHING MOVES, under the names they have now: `[old new after]`
+            texts (vec (for [d (build-docs-md build)
+                             :let [before (slurp (str (fs/path build d)))
+                                   after (reduce (fn [t [a b]] (rewrite-name t a b)) before names)]
+                             :when (not= before after)]
+                         [d (or (some (fn [[a b]] (when (= a d) b)) renames) d) after]))
+            ;; ONLY WHAT IT WOULD TOUCH: a plan it renames, a document whose text it changes
+            dirty (->> (distinct (concat (map first renames) (map first texts)))
                        (filter #(not (str/blank? (:out (git build "status" "--porcelain" "--untracked-files=no" "--" %))))))]
         (when (seq dirty)
           (throw (ex-info (str (str/join ", " dirty) " in " build " " (if (next dirty) "have" "has")
                                " uncommitted edits: commit or set them aside, then `bb upgrade --after-pull` again - nothing was renamed")
                           {:upgrade/error :uncommitted :paths (vec dirty)})))
-        (let [names (mapv (fn [[a b]] [(str (fs/file-name a)) (str (fs/file-name b))]) renames)
-              ;; THE NEW TEXTS READ BEFORE ANYTHING MOVES, under the names they have now
-              texts (vec (for [d docs
-                               :let [before (slurp (str (fs/path build d)))
-                                     after (reduce (fn [t [a b]] (rewrite-name t a b)) before names)]
-                               :when (not= before after)]
-                           [(or (some (fn [[a b]] (when (= a d) b)) renames) d) after]))
-              tracked-renames (vec (filter (fn [[from]] (tracked? build from)) renames))]
+        (let [tracked-renames (vec (filter (fn [[from]] (tracked? build from)) renames))]
           (doseq [[from to] renames]
             (if (some #{[from to]} tracked-renames)
               (git! build "mv" from to)
               (fs/move (fs/path build from) (fs/path build to))))
-          (let [rewritten (vec (for [[rel after] texts] (do (spit (str (fs/path build rel)) after) rel)))
+          (let [rewritten (vec (for [[_ rel after] texts] (do (spit (str (fs/path build rel)) after) rel)))
                 touched (distinct (concat (mapcat identity tracked-renames) (filter #(tracked? build %) rewritten)))]
             (when (seq touched)
               (apply git! build "commit" "-q" "-m" message "--" touched))

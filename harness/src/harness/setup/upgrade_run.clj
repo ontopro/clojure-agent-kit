@@ -541,9 +541,12 @@
                                    (str (count moves) " entries to move into " (str/join ", " (map #(str "docs/stages/stage-" % "/") ids)))
                                    "nothing flat to move"))
              "; " (let [{:keys [renames]} (stage-move/plan-renames (:workspace/build ws))]
-                    (if (seq renames)
-                      (str (str/join ", " (map first renames)) " to rename stage-N-plan.md")
-                      "no stage plan to rename")))
+                    (str (if (seq renames)
+                           (str (str/join ", " (map first renames)) " to rename stage-N-plan.md")
+                           "no stage plan to rename")
+                         ;; READ BEFORE THE MOVE: a flat build's plans are not in their folders yet
+                         (when (seq (:moves (stage-move/plan (:workspace/build ws))))
+                           " in a folder now - after the move, a plan kept under another name is renamed too"))))
         (say "build-docs: " (count files) " file" (when (not= 1 (count files)) "s") " changed: " (str/join ", " (map #(subs (:path %) (count "build-docs/")) files)))
         (say "loop-edn: " (if (second (rewrite-kit-path (slurp (str (fs/path (:workspace/build ws) "loop.edn"))))) "a literal KIT path to rewrite" "nothing to rewrite"))
         (say "build-ignore: " (let [f (fs/path (:workspace/build ws) ".gitignore")
