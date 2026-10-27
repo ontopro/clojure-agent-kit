@@ -24,6 +24,7 @@
    [harness.loop.driver :as driver]
    [harness.loop.log :as log]
    [harness.loop.orchestrate :as orch]
+   [harness.loop.review-repl :as review-repl]
    [harness.models.runner :as runner]
    [harness.rules :as rules]))
 
@@ -83,6 +84,8 @@
                           :nrepl/cmd stub-nrepl
                           ;; the loop reviews a spec before start; these tests are about what follows
                           :spec-review/run? false
+                          ;; no review sandbox: these tests start no container
+                          :review/repl? false
                           :worktrees/dir "wt"}
                          config)))
     (str d)))
@@ -121,7 +124,7 @@
       (@#'driver/step! ctx {:step/name step-name :step/kind :dispatch
                             :step/status (if (= :done (:status r)) :done :fail)
                             :step/ms 10 :step/model "fake-1" :step/cost (:cost r)})
-      (driver/event! ctx (driver/dispatch-event step-name role pkt r))
+      (driver/event! ctx (merge (driver/dispatch-event step-name role pkt r) (:dispatch/event ctx)))
       r)))
 
 (def ^:private green-writes
@@ -187,6 +190,52 @@
           (is (= impl-src (get (:run/files r) impl-path)) "the gated bytes"))))
     (teardown! rd)))
 
+;; plan 7.0, item 6.6 A: the code reviewer's REPL, a sandbox per review round
+(defn- review-with [sandbox]
+  (let [repo (scratch-repo)
+        rd (run-dir! repo {:config {:review/repl? true}})
+        seen (atom nil)
+        stopped (atom [])
+        res (with-redefs-fn {#'driver/dispatch! (let [fake (fake-dispatch green-writes {})]
+                                                  (fn [ctx step role pkt]
+                                                    (when (= :reviewer role) (reset! seen pkt))
+                                                    (fake ctx step role pkt)))
+                             #'review-repl/stop! (fn [sb & _] (swap! stopped conj (:name sb)))}
+              #(quietly (fn [] (orch/run-task! rd {:repl-probe (constantly false) :triage-fn a-person
+                                                   :review-repl (fn [_] sandbox)}))))
+        review (last (filter #(and (= :dispatch (:event/kind %)) (= :reviewer (:role %))) (events rd)))]
+    {:rd rd :res res :pkt @seen :stopped @stopped :event review}))
+
+(deftest the-code-reviewer-gets-a-repl-in-a-sandbox-and-it-is-stopped-after-the-verdict
+  (let [clone "/tmp/review-clone"
+        {:keys [rd res pkt stopped event]} (review-with {:name "kit-review-t" :port 51234 :clone clone :sandbox-ms 1500})]
+    (is (= :reviewed (:stop/kind res)) "the host probe is not asked of the sandbox's port: it would say dead")
+    (is (= {:repl/port 51234 :repl/worktree clone :repl/sandbox "kit-review-t"}
+           (select-keys pkt [:repl/port :repl/worktree :repl/sandbox])))
+    (is (nil? (shapes/explain-packet pkt)) "the reviewer's packet with its sandbox validates")
+    (is (= ["kit-review-t"] stopped) "stopped after the verdict")
+    (is (= {:sandbox-ms 1500} (:review/repl event)) "the record says it had one, and its cost in time")
+    (teardown! rd))
+  (testing "no sandbox: the review runs as before, and the record says why"
+    (let [{:keys [rd res pkt stopped event]} (review-with {:none "the review REPL: docker: not found"})]
+      (is (= :reviewed (:stop/kind res)))
+      (is (nil? (:repl/sandbox pkt)))
+      (is (nil? (:repl/port pkt)))
+      (is (= [] stopped) "nothing to stop: start! removed what it made")
+      (is (= {:none "the review REPL: docker: not found"} (:review/repl event)))
+      (teardown! rd))))
+
+(deftest the-review-repl-off-in-loop-edn-starts-nothing
+  (let [repo (scratch-repo)
+        rd (run-dir! repo)
+        res (with-redefs-fn {#'driver/dispatch! (fake-dispatch green-writes {})}
+              #(quietly (fn [] (orch/run-task! rd {:repl-probe (constantly true) :triage-fn a-person
+                                                   :review-repl (fn [_] (throw (ex-info "started" {})))}))))]
+    (is (= :reviewed (:stop/kind res)))
+    (is (= {:none ":review/repl? false in loop.edn"}
+           (:review/repl (last (filter #(= :reviewer (:role %)) (filter #(= :dispatch (:event/kind %)) (events rd)))))))
+    (teardown! rd)))
+
 (deftest a-run-whose-directory-is-in-no-repository-works-on-the-workspace-s-application
   ;; A workspace: a plain folder, the application's repository inside it, and the run directory
   ;; under work/ - in NO repository. The project used to be wherever the run directory was, so
@@ -201,7 +250,7 @@
     (spit (str (fs/path rd "spec.edn")) (pr-str spec))
     (spit (str (fs/path rd "loop.edn"))
           (pr-str {:run/id "ws-test" :profile "resources/profiles/claude.edn"
-                   :gates [[:ok "true"]] :nrepl/cmd stub-nrepl :spec-review/run? false}))
+                   :gates [[:ok "true"]] :nrepl/cmd stub-nrepl :spec-review/run? false :review/repl? false}))
     (let [res (drive! (str rd) {})
           cfg (:config (edn/read-string (slurp (str (fs/path rd "state.edn")))))]
       (is (= :reviewed (:stop/kind res)) "the whole loop, to the merge stop")

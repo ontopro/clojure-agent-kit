@@ -81,7 +81,16 @@
   :group :non-negotiable
   :audience #{:reviewer :human}
   :title "Review produces findings, not edits."
-  :text "You write nothing. You have a diff, a green gate report and read-only context — no `:files/target` and no REPL. An edge case you surface returns to the Tester as a new case and to the Coder for the fix; naming it is your job, fixing it is not."}
+  :text "You write nothing. You have a diff, a green gate report, read-only context and no `:files/target` - and, when the loop could give you one, a REPL over a copy of the code nobody merges, with no network: evaluate in it, and write nothing with it. An edge case you surface returns to the Tester as a new case and to the Coder for the fix; naming it is your job, fixing it is not."}
+
+ ;; Set by a person, 2026-10-27 (plan 7.0, item 6.6 A), from the first KIT project's stage 4: a code
+ ;; reviewer rejected one packet three times on one wrong belief about `clojure.string/trim`, which
+ ;; one evaluated form ends. The reviewer now has a REPL in a sandbox when Docker is there.
+ {:id :evaluate-before-you-assert
+  :group :non-negotiable
+  :audience #{:reviewer :human}
+  :title "Evaluate before you assert."
+  :text "A claim about what a library or the code does - what a function returns for an input, what a middleware drops - is evaluated before it is a finding: with `nrepl_eval` when you have it, the form and its result in the finding. Without a REPL, say the claim is unevaluated."}
 
  {:id :review-scope
   :group :non-negotiable

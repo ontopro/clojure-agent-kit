@@ -82,7 +82,8 @@
 
 (defn reviewer-packet
   "Code reviewer: diff + slice + the green gate report. Read-only — no target,
-  no REPL port. The diff and gate report come from the loop, not the spec."
+  no REPL port; the loop adds the review sandbox's (`:repl/sandbox`) when it starts
+  one. The diff and gate report come from the loop, not the spec."
   [spec session diff gate-report]
   (validate!
    (-> (base spec session)

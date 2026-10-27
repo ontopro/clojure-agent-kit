@@ -58,7 +58,8 @@
 
  ;; models and money
  harness.models.agent #{harness.models.adapter harness.models.provenance harness.models.tools}
- harness.models.runner #{harness.contained-path harness.gates.repair harness.models.agent harness.models.tools harness.rules}
+ harness.models.code-review-tools #{harness.models.tools}
+ harness.models.runner #{harness.contained-path harness.gates.repair harness.models.agent harness.models.code-review-tools harness.models.tools harness.rules}
  harness.models.runner-check #{harness.contract.shapes harness.models.runner}
  harness.models.security-review-tools #{harness.contained-path harness.models.tools}
  harness.models.security-review-sandbox #{}
@@ -77,7 +78,8 @@
  harness.setup.blueprint-review #{harness.contained-path harness.models.agent harness.models.profile harness.setup.plan harness.setup.plan-review harness.setup.stages harness.setup.workspace}
 
  ;; the loop
- harness.loop.driver #{harness.contained-path harness.loop.library-claims harness.contract.packet harness.contract.shapes harness.contract.sigs harness.contract.spec-review
+ harness.loop.review-repl #{harness.models.code-review-tools harness.models.security-review-sandbox}
+ harness.loop.driver #{harness.contained-path harness.loop.library-claims harness.loop.review-repl harness.contract.packet harness.contract.shapes harness.contract.sigs harness.contract.spec-review
                        harness.contract.stub harness.contract.targets harness.gates.repair harness.gates.run harness.loop.log
                        harness.loop.provision harness.models.profile harness.models.provenance harness.models.runner
                        harness.money.balance harness.money.report harness.money.reprice harness.rules harness.setup.plan

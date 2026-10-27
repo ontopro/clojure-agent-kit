@@ -36,7 +36,8 @@
   :reads ["harness/src/harness/models/security_review.clj" "harness/src/harness/models/security_review_sandbox.clj"
           "harness/src/harness/models/security_review_tools.clj" "harness/src/harness/models/security_score.clj"
           "harness/src/harness/models/security_panel.clj" "harness/src/harness/models/security_bake_off.clj"
-          "harness/src/harness/loop/security_routing.clj" "harness/resources/security-review/"]
+          "harness/src/harness/loop/security_routing.clj" "harness/resources/security-review/"
+          "harness/src/harness/loop/review_repl.clj" "harness/src/harness/models/code_review_tools.clj"]
   :asks "Can a security reviewer - a model running tests as root in the sandbox - reach the host, the shared caches, other reviews or the records through what the review does before, during and after the sandbox?"}
 
  {:name "setup-and-upgrade"

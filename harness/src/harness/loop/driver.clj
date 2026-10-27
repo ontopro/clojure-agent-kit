@@ -98,6 +98,7 @@
    [harness.loop.library-claims :as claims]
    [harness.loop.log :as log]
    [harness.loop.provision :as prov]
+   [harness.loop.review-repl :as review-repl]
    [harness.models.profile :as profile]
    [harness.models.provenance :as provenance]
    [harness.models.runner :as runner]
@@ -818,7 +819,9 @@
   reaches triage through the same seam as a red gate, and throws: nothing is
   dispatched, and the next role is not dispatched either."
   [ctx step-name role pkt]
-  (when-let [port (:repl/port pkt)]
+  ;; NOT THE REVIEW SANDBOX'S: its port is inside a container with no network, and
+  ;; `review-repl/start!` probed it there before handing it over
+  (when-let [port (when-not (:repl/sandbox pkt) (:repl/port pkt))]
     (let [probe (get ctx :repl-probe repl-alive?)]
       (when-not (probe (:repl/worktree pkt) port)
         (let [gr (gates/failure :repl (str "the worktree nREPL on port " port
@@ -831,7 +834,27 @@
           (throw (ex-info (str "the " (name role) "'s nREPL on port " port " did not answer a probe")
                           {:run-loop/error :repl-dead :role role :port port})))))))
 
-(defn- dispatch! [ctx step-name role pkt]
+(defn- review-sandbox!
+  "The code reviewer's REPL for this round (`review-repl/start!`, or the ctx's `:review-repl`
+  in tests): `{:name :port :clone :sandbox-ms}`, or `{:none why}` - said, and the review runs
+  without one. Off by `:review/repl? false` in `loop.edn`."
+  [ctx gate]
+  (let [cfg (:config ctx)]
+    (if (false? (:review/repl? cfg))
+      {:none ":review/repl? false in loop.edn"}
+      (let [sb ((get ctx :review-repl review-repl/start!)
+                {:kit (:kit/root cfg) :worktree (:worktree/path gate) :run-dir (:run-dir ctx)
+                 :cmd (:nrepl/cmd cfg)})]
+        (if (:port sb)
+          (println (format "\n  the code reviewer's REPL: port %s in a sandbox with no network (%.1fs)"
+                           (:port sb) (/ (:sandbox-ms sb 0) 1000.0)))
+          (println (str "\n  the code reviewer has no REPL this round - " (:none sb))))
+        sb))))
+
+(defn- dispatch!
+  ;; `:dispatch/event` on the ctx is merged onto this dispatch's event - the review's REPL, said
+  ;; there; on the ctx and not an argument, so every stand-in for this keeps its four
+  [ctx step-name role pkt]
   (probe-repl! ctx step-name role pkt)
   (spit (run-file ctx (str (name step-name) ".packet.edn")) (with-out-str (pp/pprint pkt)))
   (println (format "\n  dispatching %s (attempt %d)…" (name step-name) (:task/attempt pkt 1)))
@@ -843,7 +866,7 @@
     ;; (`rebuild-from-log`): the state is rewritten whole by every command.
     (let [step (report/dispatch-step step-name r ms)]
       (step! ctx step)
-      (event! ctx (dispatch-event step-name role pkt r) {:step step}))
+      (event! ctx (merge (dispatch-event step-name role pkt r) (:dispatch/event ctx)) {:step step}))
     (println (format "  %-12s %ss  %s  iters=%s capped?=%s files=%s notes=%d cost=%s%s"
                      (name step-name) (quot ms 1000) (:model m) (:iterations m) (:capped? m)
                      (pr-str (:files r)) (count (:notes r)) (:cost r)
@@ -968,7 +991,17 @@
                                          (:events @(:state ctx))))
                     nm (reviewer-step-name prior)]
                 (spit (run-file ctx (str (name nm) ".diff")) diff)
-                (dispatch! ctx nm :reviewer (packet/reviewer-packet sp (:gate s) diff (:gates/report gr))))))
+                ;; THE REVIEWER'S REPL, a sandbox per round: started after green gates, stopped
+                ;; after the verdict whatever it was (plan 7.0, item 6.6 A)
+                (let [sb (review-sandbox! ctx (:gate s))
+                      pkt (cond-> (packet/reviewer-packet sp (:gate s) diff (:gates/report gr))
+                            (:port sb) (assoc :repl/port (:port sb) :repl/worktree (:clone sb)
+                                              :repl/sandbox (:name sb)))]
+                  (try
+                    (dispatch! (assoc ctx :dispatch/event
+                                      {:review/repl (if (:port sb) {:sandbox-ms (:sandbox-ms sb)} (select-keys sb [:none]))})
+                               nm :reviewer pkt)
+                    (finally (when (:name sb) (review-repl/stop! sb))))))))
           (let [fb (:feedback (gates-event gr))
                 routing (propose-routing sp (:dependents @(:state ctx)) gr)]
             (spit (run-file ctx "last-gate-feedback.edn") (with-out-str (pp/pprint fb)))

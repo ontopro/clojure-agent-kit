@@ -354,7 +354,7 @@
                    ;; no spec review: the trivial task's contract is the KIT's; no plan check: the
                    ;; generated plan is the template as shipped, unfilled on purpose - the health
                    ;; check proves the machine, not a plan
-                   :gates gates :nrepl/cmd cmd :spec-review/run? false :plan-check/run? false
+                   :gates gates :nrepl/cmd cmd :spec-review/run? false :plan-check/run? false :review/repl? false
                    :architecture {:from "arch" :files [boundary/file-name]}}))
     (let [[res ms] (timed (fn []
                             (try

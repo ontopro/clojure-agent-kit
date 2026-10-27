@@ -21,6 +21,7 @@
    [harness.contained-path :as contained-path]
    [harness.gates.repair :as repair]
    [harness.models.agent :as agent]
+   [harness.models.code-review-tools :as code-review-tools]
    [harness.models.tools :as tools]
    [harness.rules :as rules]))
 
@@ -294,7 +295,15 @@
           retry
           "Your workspace is " (:repl/worktree packet)
           " and every path below is relative to it.\n\n"
-          (get deliverables role) "\n\n"
+          (cond-> (get deliverables role)
+            ;; A REVIEWER WITH A REPL IS TOLD SO, and what it is for (plan 7.0, item 6.6 A)
+            (and (= :reviewer role) (:repl/sandbox packet))
+            (str/replace "You write nothing and you have no REPL."
+                         (str "You write nothing. You have a REPL, nrepl_eval, over a copy of the code under "
+                              "review that nobody merges, with no network: a claim about what a library or "
+                              "the code does is evaluated there before it is a finding, and the finding "
+                              "carries the form and its result.")))
+          "\n\n"
          ;; ONE SENTENCE ON HOW TO CHANGE A FILE, for the roles that write. With
          ;; write_file alone a fix to one lint warning was a whole rewrite, and
          ;; the tool's description alone did not stop it: a model reaches for
@@ -466,13 +475,17 @@
                     (packet-prompt packet {:existing-targets existing})
                     {:dir (:repl/worktree packet)
                      :targets (vec (:files/target packet))
-                     :port (:repl/port packet)}
+                     :port (:repl/port packet)
+                     :sandbox (:repl/sandbox packet)}
                     ;; THE ROUNDS LIMIT IS THE ROLE'S, when the profile sets one. The loop
                     ;; builds this runner with no options, so until the profile carried the
                     ;; number nothing in a project reached `converse!`'s cap: a Tester on a
                     ;; contract of fifty targets ended on the harness's default three times.
                     (cond-> (assoc opts :tools (tools/for-role role))
-                      (:max-rounds cfg) (assoc :max-iterations (:max-rounds cfg))))
+                      (:max-rounds cfg) (assoc :max-iterations (:max-rounds cfg))
+                      ;; the code reviewer's REPL lives in a sandbox: its own registry
+                      (and (= :reviewer role) (:repl/sandbox packet))
+                      (assoc :tools code-review-tools/offered :registry code-review-tools/registry)))
                    cfg
                    before))
         {:status :failed :files [] :cost nil

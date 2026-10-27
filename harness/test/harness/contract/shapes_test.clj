@@ -15,7 +15,8 @@
   (testing "the defaults are the literal ones only, and a required key has none"
     (let [d (shapes/loop-defaults)]
       (is (= {:repo/allow-dirty? false :project/subdir nil :nrepl/cmd ["clojure" "-Srepro" "-M:nrepl"]
-              :architecture nil :spec-review/run? true :spec-review/max 2 :plan-check/run? true :notes/pause? true}
+              :architecture nil :spec-review/run? true :spec-review/max 2 :plan-check/run? true :notes/pause? true
+              :review/repl? true}
              d))
       (is (not (contains? d :run/id)))
       (is (not (contains? d :gates)) "computed in resolve-config")))

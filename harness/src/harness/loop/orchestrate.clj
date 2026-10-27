@@ -496,7 +496,7 @@
   a typed decision goes through."
   ([run-dir] (run-task! run-dir nil))
   ([run-dir deps]
-   (let [ctx (merge (driver/context run-dir) (select-keys deps [:repl-probe]))
+   (let [ctx (merge (driver/context run-dir) (select-keys deps [:repl-probe :review-repl]))
          finish! (fn [action]
                    (let [state @(:state ctx)]
                      (driver/event! ctx (assoc (select-keys action [:stop/kind :route :reason :run/status :triage])

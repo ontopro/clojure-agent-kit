@@ -154,13 +154,16 @@
     [:files/target [:vector {:min 1} :string]]]))
 
 (def ReviewerPacket
-  "Read-only: diff + slice + the green gate report. No :files/target, and no
-  REPL — the code reviewer does not eval and does not write."
+  "Read-only: diff + slice + the green gate report. No :files/target; a REPL only
+  in the review sandbox (`:repl/sandbox`, `harness.loop.review-repl`), over a copy nobody
+  merges - the code reviewer evaluates there and writes nothing."
   (-> PacketBase
       (mu/dissoc :repl/port)
       (mu/merge
        [:map
         [:repl/port {:optional true} [:int {:min 1024 :max 65535}]]
+        ;; the review sandbox's container, when the loop could give the code reviewer a REPL
+        [:repl/sandbox {:optional true} [:string {:min 1}]]
         [:review/diff [:string {:min 1}]]
         [:review/gate-report :any]])))
 
@@ -596,6 +599,8 @@
     :doc "read the spec cold before the first dispatch; off only where the spec was reviewed another way (the health check)"}
    {:key :spec-review/max :type :int :default 2 :reader 'harness.loop.driver
     :doc "spec reviews that found something before a person reads them"}
+   {:key :review/repl? :type :boolean :default true :reader 'harness.loop.driver
+    :doc "give the code reviewer a REPL over a copy of the tree in a Docker sandbox with no network; without Docker the review runs without one, and the record says why"}
    {:key :plan-check/run? :type :boolean :default true :reader 'harness.setup.plan
     :doc "check the plan once per workspace before the first dispatch; off only where there is no plan (the health check)"}
    {:key :notes/pause? :type :boolean :default true :reader 'harness.loop.driver

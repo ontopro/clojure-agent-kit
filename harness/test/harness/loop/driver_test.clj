@@ -702,7 +702,7 @@
               :worktrees/dir (str (fs/create-temp-dir)) :project/subdir nil
               :nrepl/cmd ["x"] :gates [] :notes/pause? true
               ;; the loop reviews a spec with a model before start; not here
-              :spec-review/run? false}
+              :spec-review/run? false :review/repl? false}
          ctx {:run-dir run-dir :config cfg :state (atom nil)}
          fakes (merge {#'harness.loop.provision/provision!
                        (fn [o] (swap! calls conj [:provision (:task/role o)])
