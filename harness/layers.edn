@@ -96,6 +96,7 @@
  harness.setup.stage-progress #{harness.contract.blueprint harness.money.stage-report harness.setup.next harness.setup.stages
                                harness.setup.workspace}
  harness.setup.ws-gates #{harness.setup.next harness.setup.workspace}
+ harness.setup.packet-tests #{harness.contract.blueprint harness.setup.stages harness.setup.workspace}
  harness.setup.stage-amend #{harness.setup.next harness.setup.stages harness.setup.workspace}
  harness.setup.where #{harness.money.stage-report harness.setup.next harness.setup.stages harness.setup.workspace}
  harness.setup.roadmap-page #{harness.setup.next harness.setup.where harness.setup.workspace}

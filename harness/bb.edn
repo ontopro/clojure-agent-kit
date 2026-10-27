@@ -236,6 +236,9 @@
         :task (apply sigs/-main (workspace/sigs-args *command-line-args*))}
 
   ;; Where a spec.edn comes from: the Blueprint's packet, its named shapes inlined from §1.
+  packet-tests {:doc "bb packet-tests <task-id> [--workspace <dir>]: the application's test files that read what a packet changes, before it is cut - each requiring the namespace of its :files/impl (exact, from the ns form) or naming, as a string literal, a route its targets quote (a string match, said so); the packet the latest stage's blueprint carrying the id. Information, exit 0, so :files/test names each one the change breaks, to be edited, not rewritten"
+                :requires ([harness.setup.packet-tests :as packet-tests])
+                :task (apply packet-tests/-main *command-line-args*)}
   spec-from-blueprint {:doc "bb spec-from-blueprint <blueprint.md> <task-id> [<out.edn>]: the task's packet out of a Blueprint written to the template, every shape it names inlined from §1, validated and written as the spec.edn a run starts from; without <out.edn> the spec goes to stdout (pipe into bb sigs) and the report to stderr"
                        :requires ([harness.contract.blueprint :as blueprint])
                        :task (apply blueprint/-main *command-line-args*)}

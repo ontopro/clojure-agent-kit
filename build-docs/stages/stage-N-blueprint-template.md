@@ -80,7 +80,7 @@
                                  (<var>)]               ; a VAR to define: the one-element form
                     :deps-sigs  [(<dep-ns>/<dep-fn> [<args>])]}  ; upstream signatures it may CALL, qualified - never their source
  :files/impl       ["src/app/<ns>.clj"]                 ; the Coder's target: ONE file - a second namespace is a second task
- :files/test       ["test/app/<ns>_test.clj"]           ; the Tester's target
+ :files/test       ["test/app/<ns>_test.clj"]           ; the Tester's target, and each existing test the change breaks, to edit (`bb packet-tests t-NN` lists them)
  :files/context    ["src/app/<dep>.clj"]                ; read-only, to every role; the Tester's omits :files/impl
  :layer/name       :<layer>                             ; the boundary gate's layer for :files/impl
  :property-targets ["<one promise, checkable, in full>"] ; method §06's rules; every role receives them
