@@ -628,14 +628,14 @@
 
 (defn- runs
   "Every run record under `records`, as `{:date :at :status :cost}` - `:at` the instant it started,
-  which `since-row` counts by; the cost as the stage report counts it, never `:run/cost`, which one
+  which `since-row` counts by, nil when the record's time cannot be read (the run is kept, not counted); the cost as the stage report counts it, never `:run/cost`, which one
   record format carries as a map."
   [records]
   (vec (for [r (->> (when (and records (fs/directory? records)) (fs/glob records "*.edn"))
                     (keep read-edn) (filter :run/id))
              :let [s (stage-report/run-summary r)
-                   at (:run/started-at r)]]
-         {:date (when at (subs (str (stages/parse-at at)) 0 10)) :at (stages/parse-at at) :status (:status s) :cost (:cost s)})))
+                   at (stages/parse-at (:run/started-at r))]]
+         {:date (some-> at str (subs 0 10)) :at at :status (:status s) :cost (:cost s)})))
 
 (defn- plain-edn
   "`m` with every `Instant` in it as its ISO-8601 text. The readers below keep times as instants to

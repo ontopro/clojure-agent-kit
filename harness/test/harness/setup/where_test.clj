@@ -243,6 +243,16 @@
           (is (= 0 (:runs s)) "w0 started the day before"))))
     (is (= [8 "the Architect's session"] ((juxt :step :owner) (:next d))) "the next step is next-action's: stage 1's blueprint")))
 
+(deftest a-run-whose-start-time-cannot-be-read-is-kept-and-not-counted-since
+  (let [ws (workspace-on-disk)
+        w (workspace/find-workspace ws)
+        opts {:at "2026-10-17T12:00:00Z" :plan-commit "abc1234"}]
+    (spit (str (fs/path ws "xyx-build" "runs" "w1.edn"))
+          (pr-str {:run/id "w1" :task/id "w1" :run/status :merged :run/started-at "2026-10-14 morning"
+                   :run/steps [{:step/kind :dispatch :step/name "coder" :step/cost 0.5}] :run/events []}))
+    (where/report! w {:at "2026-10-13T23:00:00Z"})
+    (is (= 0 (get-in (where/where-data w opts) [:since :runs])) "read, not thrown on; no time to count it by")))
+
 (deftest a-money-total-is-rounded-once
   ;; four stages of 0.2925 each are $1.17, where the sum of their rounded cells said $1.16
   (let [rows [{:role :security-reviewer :model "m" :maker "OpenAI" :channel "OpenRouter" :cost 0.2925}]
