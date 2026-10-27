@@ -7,10 +7,10 @@
   is read from the folder name, once, here - four namespaces had each read it
   from a file name, in four ways.
 
-  The files inside keep the names they had (`stage-1-<slug>.md`,
+  The files inside are named for their stage (`stage-1-plan.md`,
   `stage-1-gates.edn`, `stage-1-blueprint.md`, `stage-1-security*.edn`,
   `stage-1-security-review/`), so a grep for a stage still finds its files and
-  what keys on a suffix still reads. The whole plan's own reading is not a
+  what keys on a suffix still reads; `folder-names` is the one table of them. The whole plan's own reading is not a
   stage's: it stays at `reviews/plan-review.edn` in the build.
 
   A workspace made before this has its stage documents flat in `docs/stages/`
@@ -18,7 +18,8 @@
   (`harness.setup.stage-move`)."
   (:require
    [babashka.fs :as fs]
-   [clojure.edn :as edn]))
+   [clojure.edn :as edn]
+   [clojure.string :as str]))
 
 (defn stages-dir [build] (fs/path build "docs" "stages"))
 
@@ -76,6 +77,43 @@
   [path]
   (let [p (fs/absolutize path)]
     (= (str (fs/file-name p)) (str (fs/file-name (fs/parent p)) "-plan.md"))))
+
+(def folder-names
+  "THE ONE TABLE OF A STAGE FOLDER'S NAMES: what `docs/stages/stage-N/` holds at its top level, by
+  role, `N` the stage's number and a name ending `/` a folder. The governing documents; the records
+  the exit criteria cite; the KIT packs' own outputs, each pack in a folder of its own; the working
+  documents' folder. A project adds its own names in `docs/stages/stage-names.edn`
+  (`registered-names`). `build-docs/README.md`'s tree shows every one."
+  [{:name "stage-N-plan.md" :role :governing :what "the stage plan"}
+   {:name "stage-N-blueprint.md" :role :governing :what "the blueprint"}
+   {:name "stage-N-gates.edn" :role :governing :what "the gates record"}
+   {:name "reviews/" :role :record :what "the stage plan's and the blueprint's readings"}
+   {:name "stage-N-security.edn" :role :record :what "the security pack's checks"}
+   {:name "stage-N-security-deps.edn" :role :record :what "the security pack's dependency scan"}
+   {:name "stage-N-security-secrets.edn" :role :record :what "the security pack's secrets scan"}
+   {:name "stage-N-security-review/" :role :record :what "the security review's records"}
+   {:name "stage-N-browser/" :role :pack :what "the browser pack's outputs a document cites"}
+   {:name "notes/" :role :working :what "the stage's working documents"}])
+
+(defn names-file
+  "Where a project registers its own names in a stage folder: `docs/stages/stage-names.edn`."
+  [build]
+  (fs/path (stages-dir build) "stage-names.edn"))
+
+(defn registered-names
+  "A project's own names in a stage folder, from `names-file`: patterns as `folder-names` writes
+  them (`stage-N-rehearsal.md`); [] when there is no file, or it is not a vector of strings."
+  [build]
+  (let [f (names-file build)
+        v (when (fs/exists? f) (try (edn/read-string (slurp (str f))) (catch Exception _ nil)))]
+    (if (and (vector? v) (every? string? v)) v [])))
+
+(defn known-names
+  "Every name stage `id`'s folder may hold at its top level, the table's and the project's, with
+  its number in place of `N`: a set, a folder's name ending `/`."
+  [build id]
+  (into #{} (map #(str/replace % "stage-N" (folder-name id)))
+        (concat (map :name folder-names) (registered-names build))))
 
 (defn of-document
   "For a document at `<build>/docs/stages/stage-N/<file>`: `{:build :id :dir}`;

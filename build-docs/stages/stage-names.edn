@@ -1,0 +1,4 @@
+;; This project's own names in a stage folder, beyond the KIT's table (docs/README.md, "A stage
+;; folder's names"): a string each, N the stage's number, a name ending "/" a folder - for example
+;; "stage-N-rehearsal.md". A working document goes in the stage's notes/ instead.
+[]

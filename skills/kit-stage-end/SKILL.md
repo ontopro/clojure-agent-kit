@@ -61,7 +61,8 @@ is offered, not given unasked`).
 
 Then the exit criteria of the stage plan - the section whose heading starts `Exit criteria` - one at a time, each with its evidence: the command
 and its result, the browser pack's screenshots (run `bb --config <kit>/tools/browser/bb.edn
-check` against the local server; the README's three things say what it does and does not
+check` against the local server, and copy what a criterion cites into
+`docs/stages/stage-N/stage-N-browser/`; the README's three things say what it does and does not
 prove), the security pack's table (run `bb --config <kit>/tools/security/bb.edn check --routes
 docs/security-routes.edn --record docs/stages/stage-N/stage-N-security.edn` from the application's
 folder, the routes file where the project has one; a pre-release stage runs it against the

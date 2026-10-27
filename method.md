@@ -432,7 +432,9 @@ resolutions, nothing else. A stage's **working documents** - a brief for an amen
 draft - go in its folder's `notes/`, named `stage-N-q<n>-<topic>.md` for an amendment (its Q row of
 `source.md` §3) and `stage-N-<topic>.md` otherwise. They are not governing documents: no check reads
 them, nothing takes one for the stage plan, and one is retired once the governing documents hold what
-it says, with no checklist of its own. Two of the documents, `02-architecture.md` and `03-method-and-tooling.md`,
+it says, with no checklist of its own. What a stage folder holds is one table, in `build-docs/README.md`
+("A stage folder's names"), which the KIT reads too; a project adds its own names to
+`docs/stages/stage-names.edn`. Two of the documents, `02-architecture.md` and `03-method-and-tooling.md`,
 come half-written — in three parts, *given* (what adopting the KIT fixed, stated as references),
 *chosen* (decided once, in stage 0's plan) and *theirs* (the domain) — and only the last two are filled.
 

@@ -39,8 +39,9 @@ whatever starts it.
 
 Where it writes: `--out`, else `BROWSER_OUT`, else the workspace's `work/browser/<app>/` when
 the application is in a KIT workspace (scratch, in no repository), else `.local/browser/`.
-The outputs a committed document cites are copied beside it, not left there: a published
-figure nobody can find is a claim.
+The outputs a committed document cites are copied into the stage's folder of them,
+`docs/stages/stage-N/stage-N-browser/` in the build, not left there: a published figure nobody can
+find is a claim.
 
 `driver.clj` is the shared driver, and a project's own interaction checks stand on it too:
 `(load-file "<kit>/tools/browser/driver.clj")` gives `with-firefox`, `open-page` (waits for

@@ -16,6 +16,7 @@ repository's first commit, the way it generates `<name>-app/` from the KIT's app
     04-decision-log.md        ← living; the mechanism by which everything else evolves
     05-lessons.md             ← one section per stage, written at its end, read first when the next stage plan is written
     stages/                   ← the stage templates, and a folder per stage, made when the stage is pulled
+      stage-names.edn         ← this project's own names in a stage folder, beyond the KIT's (the table below)
       stage-0/
         stage-0-plan.md       ← the stage 0 plan, the spike's, from stage-0-spike-template.md; every stage's plan is stage-N-plan.md, its kind in its **Kind:** line
       stage-N/
@@ -23,6 +24,7 @@ repository's first commit, the way it generates `<name>-app/` from the KIT's app
         stage-N-blueprint.md  ← the stage's blueprint, the Architect's output; signed off by the person
         stage-N-gates.edn     ← the stage's human gates as a record (a pre-release stage's fourth, its threat model signed), from stage-N-gates-template.edn; `bb next` reads it
         stage-N-security*.edn ← the security pack's records at the stage's end, and stage-N-security-review/ the security review's
+        stage-N-browser/      ← the browser pack's outputs the stage's documents cite, copied there from where it writes
         reviews/              ← the stage plan's and the blueprint's readings
         notes/                ← the stage's working documents - a brief, a handout, a draft: stage-N-q<n>-<topic>.md for an amendment, stage-N-<topic>.md otherwise; read by no check, retired once the governing documents hold them
   reviews/                    ← the project plan review's raw material, outside the governing documents
@@ -38,6 +40,25 @@ loop's `record` copies the first record there) and `RUNS.md` (its header; the re
 the records); `reviews/` appears with the project plan review and `bake-offs/` with the first
 `bb bake-off new`. All of it is the rest of what a project decides or produces: the build
 repository holds all of it, and the KIT's clone none.
+
+**A stage folder's names.** What `docs/stages/stage-N/` holds at its top level is this table, `N` the
+stage's number and a name ending `/` a folder; the KIT reads the same table
+(`harness.setup.stages/folder-names`). A file of the project's own that belongs beside the stage plan
+is added to `stages/stage-names.edn` in the same form (`"stage-N-rehearsal.md"`); anything else goes in
+`notes/`.
+
+| Name | Role | What |
+|---|---|---|
+| `stage-N-plan.md` | governing | the stage plan |
+| `stage-N-blueprint.md` | governing | the blueprint |
+| `stage-N-gates.edn` | governing | the gates record |
+| `reviews/` | record | the stage plan's and the blueprint's readings |
+| `stage-N-security.edn` | record | the security pack's checks |
+| `stage-N-security-deps.edn` | record | the security pack's dependency scan |
+| `stage-N-security-secrets.edn` | record | the security pack's secrets scan |
+| `stage-N-security-review/` | record | the security review's records |
+| `stage-N-browser/` | KIT pack | the browser pack's outputs a document cites |
+| `notes/` | working | the stage's working documents |
 
 **Order of writing.** Scoping first, before any of this is written: the brief, which the `kit-scoping`
 skill writes to `work/brief.md` and `bb brief` files (`method.md` §03, scope). Then source → requirements (the scope lists; stage 1's

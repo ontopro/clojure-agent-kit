@@ -13,6 +13,22 @@
     (is (nil? (stages/folder-id "stage-x"))))
   (is (= "docs/stages/stage-2/stage-2-gates.edn" (stages/rel 2 "-gates.edn"))))
 
+(deftest a-stage-folders-names-are-one-table-the-builds-readme-shows
+  (let [build (str (fs/real-path (fs/create-temp-dir {:prefix "stages-"})))
+        readme (slurp "../build-docs/README.md")
+        rows (set (map second (re-seq #"(?m)^\| `([^`]+)` \| [a-zA-Z ]+ \| [^|]+ \|$" readme)))]
+    (is (= (set (map :name stages/folder-names)) rows) "the README's table is the code's, row for row")
+    (is (= [] (stages/registered-names build)) "no file: none")
+    (fs/create-dirs (stages/stages-dir build))
+    (spit (str (stages/names-file build)) (slurp "../build-docs/stages/stage-names.edn"))
+    (is (= [] (stages/registered-names build)) "the shipped file registers none")
+    (spit (str (stages/names-file build)) "[\"stage-N-rehearsal.md\" \"stage-N-interactions.edn\"]")
+    (is (= 12 (count (stages/known-names build 6))) "the table's ten and the project's two")
+    (is (every? (stages/known-names build 6) ["stage-6-plan.md" "stage-6-rehearsal.md" "stage-6-browser/" "notes/"]))
+    (is (not (contains? (stages/known-names build 6) "stage-6-credits-plan.md")) "a brief is no name of the folder")
+    (spit (str (stages/names-file build)) "{:not \"a vector\"}")
+    (is (= [] (stages/registered-names build)) "a file of another shape registers none")))
+
 (deftest the-folders-the-plan-and-where-a-document-belongs
   (let [build (str (fs/real-path (fs/create-temp-dir {:prefix "stages-"})))
         dir (stages/stages-dir build)]

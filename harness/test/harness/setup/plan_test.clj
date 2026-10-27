@@ -47,6 +47,7 @@
           "source.md" 10
           "stages/stage-0-spike-template.md" 12
           "stages/stage-N-blueprint-template.md" 8
+          "stages/stage-names.edn" 0
           "stages/stage-N-gates-template.edn" 1
           "stages/stage-N-template.md" 26
           "stages/stage-prerelease-template.md" 14
