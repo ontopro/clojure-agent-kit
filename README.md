@@ -114,7 +114,7 @@ At this point you are all set to build your application.
 
 ### Where it was last shown to work
 
-Rendered by `bb health-sync` from `harness/health/records/`, one record per platform, each
+Rendered by `bb health-sync` from `harness/health/records/`, one record per platform - its latest run, every run kept beside it under `records/<platform>/` - each
 written by `bb health --record` after a run in which every check passed: the selfcheck project and an
 application generated from the pinned template, gates green, every gate failed on purpose, one
 task through the loop, the application served, a headless Firefox opening it through KIT's browser

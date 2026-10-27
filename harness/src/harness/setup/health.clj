@@ -796,15 +796,29 @@
       ;; a tag's records come from the pushed pin, never with KIT_TEMPLATE_LOCAL set
       local-root (assoc :template/local-root local-root))))
 
+(defn run-path
+  "Where this run of `rec` is kept: `health/records/<platform>/<as-of>-<kit short sha>.edn`, and
+  `-2`, `-3` for a second run of the same commit on the same day - every run kept (the person,
+  2026-10-27: the health records kept per run; plan 7.0, item 11)."
+  [{:keys [platform kit] :health/keys [as-of]}]
+  (let [dir (fs/path records-dir (:key platform))
+        base (str as-of "-" (:short kit))]
+    (str (first (remove fs/exists? (cons (fs/path dir (str base ".edn"))
+                                         (map #(fs/path dir (str base "-" % ".edn")) (range 2 100))))))))
+
 (defn write-record!
-  "`health/records/<platform>.edn` - one per platform, the latest run - and
+  "`health/records/<platform>.edn` - one per platform, the latest run, what the README block, the
+  tag check and the status read - and the run itself kept at `run-path`; and
   `resources/known-good.edn` from the same tools, so what the doctor shows as
   known-good is what a health run saw and not what someone typed."
   [{:keys [platform tools] :as rec}]
-  (let [path (fs/path records-dir (str (:key platform) ".edn"))]
-    (fs/create-dirs records-dir)
-    (spit (str path) (str ";; Written by `bb health --record`; rendered into the README by `bb health-sync`. Do not edit.\n"
-                          (with-out-str (pp/pprint rec))))
+  (let [path (fs/path records-dir (str (:key platform) ".edn"))
+        run (run-path rec)
+        text (str ";; Written by `bb health --record`; rendered into the README by `bb health-sync`. Do not edit.\n"
+                  (with-out-str (pp/pprint rec)))]
+    (fs/create-dirs (fs/parent run))
+    (spit run text)
+    (spit (str path) text)
     (spit known-good-path
           (str ";; WRITTEN BY `bb health --record` from the health run named below - the versions that were\n"
                ";; actually run together through the KIT's gates, `bb init`, the loop and the generated\n"

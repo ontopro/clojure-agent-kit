@@ -168,9 +168,11 @@
                                              "bb doctor --tier loop\n"
                                              "bb health --record\n"
                                              (tree-clean "harness/health/records" "harness/resources/known-good.edn")
-                                             "cp $(git ls-files --others --modified -- harness/health/records) /out/\n")
+                                             ;; the paths kept: the run's own record is under records/<platform>/
+                                             "git ls-files --others --modified -- harness/health/records | tar -cf - -T - | tar -xf - -C /out\n")
                                         (str "-v " out ":/out"))
-                         (doseq [f (fs/glob out "*.edn")]
-                           (let [dest (fs/path "harness/health/records" (fs/file-name f))]
+                         (doseq [f (fs/glob out "harness/health/records/**.edn")]
+                           (let [dest (fs/path "harness/health/records" (fs/relativize (fs/path out "harness/health/records") f))]
+                             (fs/create-dirs (fs/parent dest))
                              (fs/move f dest {:replace-existing true})
                              (println "recorded:" (str dest) "- commit it, then `bb health-sync` renders the README block"))))}}}

@@ -320,6 +320,11 @@
                   health/known-good-path (str (fs/path dir "known-good.edn"))]
       (health/write-record! rec)
       (is (= rec (edn/read-string (slurp (str (fs/path dir "health" "test-arm64.edn"))))))
+      (is (= rec (edn/read-string (slurp (str (fs/path dir "health" "test-arm64" "2026-09-22-x.edn")))))
+          "the run kept beside the latest (plan 7.0, item 11)")
+      (health/write-record! rec)
+      (is (fs/exists? (fs/path dir "health" "test-arm64" "2026-09-22-x-2.edn")) "a second run never over the first")
+      (is (= 1 (count (fs/glob (fs/path dir "health") "*.edn"))) "the readers' glob still sees one record a platform")
       (is (= {:as-of "2026-09-22" :platform "Test arm64" :tools {:bb "1.13.223"}}
              (edn/read-string (slurp (str (fs/path dir "known-good.edn")))))
           "the doctor's known-good set is what the run saw"))))
