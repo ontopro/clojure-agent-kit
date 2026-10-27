@@ -41,7 +41,9 @@ Where it writes: `--out`, else `BROWSER_OUT`, else the workspace's `work/browser
 the application is in a KIT workspace (scratch, in no repository), else `.local/browser/`.
 The outputs a committed document cites are copied into the stage's folder of them,
 `docs/stages/stage-N/stage-N-browser/` in the build, not left there: a published figure nobody can
-find is a claim.
+find is a claim. One folder per run, named by its time - `stage-N-browser/<yyyyMMdd-HHmmss>/`, the
+measurements and the screenshots together - and a later run beside it, never over it: a record is
+only ever added to, and a document cites the run by its folder.
 
 `driver.clj` is the shared driver, and a project's own interaction checks stand on it too:
 `(load-file "<kit>/tools/browser/driver.clj")` gives `with-firefox`, `open-page` (waits for

@@ -148,7 +148,7 @@
               :requires ([harness.gates.kit-status :as kit-status])
               :task (kit-status/-main)}
 
-  docker-gates {:doc "The fresh-machine check: build the toolchain image from the Dockerfile (every version from harness/resources/known-good.edn), clone HEAD inside from a read-only mount, run bb gates there, require a clean tree after. Log: .local/gates/docker-gates.log; record (the commit, the exit), red or green: .local/gates/docker-gates.edn, which `bb tag-check` reads. Needs Docker running"
+  docker-gates {:doc "The fresh-machine check: build the toolchain image from the Dockerfile (every version from harness/resources/known-good.edn), clone HEAD inside from a read-only mount, run bb gates there, require a clean tree after. Log: .local/gates/docker-gates.log; record (the commit, the exit), red or green: .local/gates/docker-gates.edn, the newest, which `bb tag-check` reads, and every run kept under .local/gates/docker-gates/. Needs Docker running"
                 :requires ([harness.gates.tag-check :as tag-check])
                 :task (tag-check/docker-recorded!
                        (fn []

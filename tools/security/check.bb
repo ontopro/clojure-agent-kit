@@ -217,13 +217,12 @@
     (fs/create-dirs dir)
     (spit (str (fs/path dir "security.edn")) edn-text)
     (spit (str (fs/path dir "security.md")) (sc/markdown {:base target-base :at (:security/at record)} rows))
-    (when-let [f (:record opts)]
-      (some-> (fs/parent f) fs/create-dirs)
-      (spit f edn-text))
-    (println (format "\n  %d ok, %d warn, %d fail, %d skipped%s - %s/security.md%s"
-                     (:ok counts) (:warn counts) (:fail counts) (:skipped counts)
-                     (if (:accepted counts) (str ", " (:accepted counts) " accepted") "") dir
-                     (if-let [f (:record opts)] (str ", recorded to " f) "")))
+    ;; KEPT, NEVER WRITTEN OVER: a later run beside the first, stamped (`sc/write-record!`)
+    (let [recorded (some-> (:record opts) (sc/write-record! edn-text))]
+      (println (format "\n  %d ok, %d warn, %d fail, %d skipped%s - %s/security.md%s"
+                       (:ok counts) (:warn counts) (:fail counts) (:skipped counts)
+                       (if (:accepted counts) (str ", " (:accepted counts) " accepted") "") dir
+                       (if recorded (str ", recorded to " recorded) ""))))
     (:ok? record)))
 
 ;; three top-level forms, as in the browser pack: the server file is loaded before the form

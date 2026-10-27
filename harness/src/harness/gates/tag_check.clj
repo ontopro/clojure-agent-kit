@@ -56,8 +56,13 @@
 (def records-dir "harness/health/records")
 
 (def docker-gates-path
-  "The record `bb docker-gates` writes, red or green."
+  "The record `bb docker-gates` writes, red or green: the newest run, read by `tag-check`."
   ".local/gates/docker-gates.edn")
+
+(def docker-gates-runs-dir
+  "Every docker-gates run kept, one file per run named by its start, as the gates record keeps
+  `runs/` - the folder is gitignored, so this is its only history (plan 7.0, item 11.2)."
+  ".local/gates/docker-gates")
 
 ;; ---------------------------------------------------------------- pure checks
 
@@ -280,7 +285,8 @@
 
 (defn docker-recorded!
   "Run `f` (the docker-gates container) and write its record - the commit the
-  container cloned, the exit, start and end - red or green; then exit as it did."
+  container cloned, the exit, start and end - red or green, kept under `docker-gates-runs-dir`
+  and as the newest at `docker-gates-path`; then exit as it did."
   [f]
   (let [root (or (git "." "rev-parse" "--show-toplevel") ".")
         head (git root "rev-parse" "HEAD")
@@ -288,10 +294,13 @@
         started (str (java.time.Instant/now))
         exit (try (f) 0
                   (catch Exception e (or (:exit (ex-data e)) 1)))
-        out (fs/path root docker-gates-path)]
-    (fs/create-dirs (fs/parent out))
-    (spit (str out) (with-out-str (pprint/pprint {:commit head :exit exit :dirty? dirty?
-                                                  :started started :ended (str (java.time.Instant/now))})))
+        out (fs/path root docker-gates-path)
+        run (fs/path root docker-gates-runs-dir (str (str/replace started ":" "-") ".edn"))
+        text (with-out-str (pprint/pprint {:commit head :exit exit :dirty? dirty?
+                                           :started started :ended (str (java.time.Instant/now))}))]
+    (fs/create-dirs (fs/parent run))
+    (spit (str run) text)
+    (spit (str out) text)
     (println (str "docker-gates record: " docker-gates-path (if (zero? exit) " (green)" " (RED)")
                   (when dirty? " - uncommitted changes were NOT in the container")))
     (when-not (zero? exit) (System/exit exit))))

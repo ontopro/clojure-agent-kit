@@ -417,9 +417,9 @@
          :records (records-for records-dir packets id (stages/stage-infos build #(mapv :task/id (blueprint/packets %))))
          :readings (stage-readings build id)
          :gates (read-edn (doc "-gates.edn"))
-         :checks (read-edn (doc "-security.edn"))
-         :scans {:deps (read-edn (doc "-security-deps.edn"))
-                 :secrets (read-edn (doc "-security-secrets.edn"))}}))))
+         :checks (some-> (stages/latest-record build id "-security.edn") read-edn)
+         :scans {:deps (some-> (stages/latest-record build id "-security-deps.edn") read-edn)
+                 :secrets (some-> (stages/latest-record build id "-security-secrets.edn") read-edn)}}))))
 
 (defn maker
   "Who made a model, from its name: `anthropic/…` or `claude-…` is Anthropic, `google/…` or

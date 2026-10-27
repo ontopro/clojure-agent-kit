@@ -57,8 +57,13 @@ is added to `stages/stage-names.edn` in the same form (`"stage-N-rehearsal.md"`)
 | `stage-N-security-deps.edn` | record | the security pack's dependency scan |
 | `stage-N-security-secrets.edn` | record | the security pack's secrets scan |
 | `stage-N-security-review/` | record | the security review's records |
-| `stage-N-browser/` | KIT pack | the browser pack's outputs a document cites |
+| `stage-N-browser/` | KIT pack | the browser pack's outputs a document cites, one folder per run |
 | `notes/` | working | the stage's working documents |
+
+A record is only ever added to. The security pack's three records keep every run: the first under
+its name, each later one beside it stamped - `stage-N-security-20261027-123005.edn` - and the
+current is the latest; the browser pack's runs are folders under `stage-N-browser/`, each named by
+its time. A document cites a run by its stamp, never by the bare name.
 
 **Order of writing.** Scoping first, before any of this is written: the brief, which the `kit-scoping`
 skill writes to `work/brief.md` and `bb brief` files (`method.md` §03, scope). Then source → requirements (the scope lists; stage 1's

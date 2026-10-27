@@ -9,7 +9,32 @@
   `:skipped`, or `:accepted` - a fail or a warn the project read and accepted, by its exact
   text, in the routes file (`accept`); only a `:fail` makes the run fail, and a warn, a skip or an
   acceptance says why in `:says`."
-  (:require [clojure.string :as str]))
+  (:require [babashka.fs :as fs]
+            [clojure.string :as str]))
+
+;; ---------------------------------------------------------------------------
+;; the record a run leaves: kept, never written over (plan 7.0, item 11.2)
+;; ---------------------------------------------------------------------------
+
+(defn record-path
+  "Where a run's record goes when `--record` names `f`: `f` itself the first time, and every run
+  after beside it as `<name>-<yyyyMMdd-HHmmss>.edn`, stamped by `now` - a record is only ever
+  added to (the person, 2026-10-26). A second run within the same second takes `-2`, `-3`."
+  [f now]
+  (if-not (fs/exists? f)
+    (str f)
+    (let [base (str/replace (str f) #"\.edn$" "")
+          stamp (.format (java.time.format.DateTimeFormatter/ofPattern "yyyyMMdd-HHmmss") now)
+          tries (cons (str base "-" stamp ".edn") (map #(str base "-" stamp "-" % ".edn") (range 2 100)))]
+      (first (remove fs/exists? tries)))))
+
+(defn write-record!
+  "Write `text` as the run's record for `--record f` (`record-path`), and return the path written."
+  [f text]
+  (let [p (record-path f (java.time.LocalDateTime/now))]
+    (some-> (fs/parent p) fs/create-dirs)
+    (spit p text)
+    p))
 
 ;; ---------------------------------------------------------------------------
 ;; what fixes a row, in the pinned template's terms

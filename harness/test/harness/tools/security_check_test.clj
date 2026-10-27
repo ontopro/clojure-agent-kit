@@ -3,6 +3,7 @@
   responses: each row passes what it should and fails what it should. The probe itself - the
   socket, the serving - is tried against a running application, by `bb health`."
   (:require
+   [babashka.fs :as fs]
    [clojure.set]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
@@ -235,3 +236,19 @@
         (is (zero? (:fail (sc/counts rows))))
         (is (= 1 (:accepted (sc/counts rows))))
         (is (str/includes? (sc/markdown {:base "b" :at "now"} rows) "| errors | accepted |"))))))
+
+;; plan 7.0, item 11.2: a record is only ever added to
+(deftest a-second-run-is-recorded-beside-the-first-never-over-it
+  (let [dir (fs/create-temp-dir)
+        f (str (fs/path dir "stage-2-security.edn"))
+        now (java.time.LocalDateTime/of 2026 10 27 12 30 5)]
+    (is (= f (sc/record-path f now)) "the first run takes the bare name")
+    (spit f "{:run 1}")
+    (is (= (str (fs/path dir "stage-2-security-20261027-123005.edn")) (sc/record-path f now)))
+    (spit (sc/record-path f now) "{:run 2}")
+    (is (= (str (fs/path dir "stage-2-security-20261027-123005-2.edn")) (sc/record-path f now))
+        "a second run in the same second")
+    (let [p (sc/write-record! f "{:run 3}")]
+      (is (= "{:run 3}" (slurp p)))
+      (is (= "{:run 1}" (slurp f)) "the first run untouched"))
+    (fs/delete-tree dir)))

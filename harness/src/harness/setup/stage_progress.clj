@@ -229,8 +229,8 @@
      :preconditions (if bp-text (next/preconditions bp-text) [])
      :packets (if bp-text (mapv :task/id (blueprint/packets bp-text)) [])
      :records (:records f)
-     :checks (read-edn (doc "-security.edn"))
-     :scans {:deps (read-edn (doc "-security-deps.edn")) :secrets (read-edn (doc "-security-secrets.edn"))}
+     :checks (some-> (stages/latest-record build id "-security.edn") read-edn)
+     :scans {:deps (some-> (stages/latest-record build id "-security-deps.edn") read-edn) :secrets (some-> (stages/latest-record build id "-security-secrets.edn") read-edn)}
      ;; each record with the time its file name carries, to tell one from before an amendment
      :review-records (mapv (fn [{:keys [file record]}] (assoc record ::at (stages/stamp-instant file)))
                            (sr/security-review-records (doc "-security-review")))

@@ -29,6 +29,28 @@
     (spit (str (stages/names-file build)) "{:not \"a vector\"}")
     (is (= [] (stages/registered-names build)) "a file of another shape registers none")))
 
+(deftest a-records-runs-are-read-in-order-and-the-latest-is-current
+  ;; plan 7.0, item 11.2: the security pack keeps every run beside the first
+  (let [build (str (fs/create-temp-dir))
+        dir (stages/stage-dir build 2)
+        put (fn [nm] (fs/create-dirs dir) (spit (str (fs/path dir nm)) "{}"))]
+    (is (= [] (stages/record-runs build 2 "-security.edn")))
+    (is (nil? (stages/latest-record build 2 "-security.edn")))
+    (doseq [nm ["stage-2-security.edn" "stage-2-security-20261027-123005.edn"
+                "stage-2-security-20261027-123005-2.edn" "stage-2-security-20261026-090000.edn"
+                "stage-2-security-deps.edn" "stage-2-security-deps-20261027-130000.edn"]]
+      (put nm))
+    (is (= ["stage-2-security.edn" "stage-2-security-20261026-090000.edn"
+            "stage-2-security-20261027-123005.edn" "stage-2-security-20261027-123005-2.edn"]
+           (mapv #(str (fs/file-name %)) (stages/record-runs build 2 "-security.edn")))
+        "the bare name first, then by stamp; the deps scan's runs are not the checks'")
+    (is (= "stage-2-security-deps-20261027-130000.edn" (str (fs/file-name (stages/latest-record build 2 "-security-deps.edn")))))
+    (testing "a later run is no stray; a stamp beside a name the table does not give is"
+      (put "stage-2-plan.md")
+      (put "stage-2-rehearsal-20261027-123005.edn")
+      (is (= ["stage-2/stage-2-rehearsal-20261027-123005.edn"] (stages/strays build))))
+    (fs/delete-tree build)))
+
 (deftest a-name-no-table-gives-is-a-stray
   (let [build (str (fs/real-path (fs/create-temp-dir {:prefix "stages-"})))
         s5 (stages/stage-dir build 5)

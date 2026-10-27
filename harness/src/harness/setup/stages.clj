@@ -92,7 +92,7 @@
    {:name "stage-N-security-deps.edn" :role :record :what "the security pack's dependency scan"}
    {:name "stage-N-security-secrets.edn" :role :record :what "the security pack's secrets scan"}
    {:name "stage-N-security-review/" :role :record :what "the security review's records"}
-   {:name "stage-N-browser/" :role :pack :what "the browser pack's outputs a document cites"}
+   {:name "stage-N-browser/" :role :pack :what "the browser pack's outputs a document cites, one folder per run"}
    {:name "notes/" :role :working :what "the stage's working documents"}])
 
 (defn names-file
@@ -108,12 +108,42 @@
         v (when (fs/exists? f) (try (edn/read-string (slurp (str f))) (catch Exception _ nil)))]
     (if (and (vector? v) (every? string? v)) v [])))
 
+(def ^:private run-stamp
+  "What a run of a record after its first carries beside the bare name: `-yyyyMMdd-HHmmss`, and
+  `-2`… for a second run in the same second (the security pack's `record-path`)."
+  "-\\d{8}-\\d{6}(?:-\\d+)?")
+
+(defn record-runs
+  "The runs of stage `id`'s record `suffix` (`-security.edn`, `-security-deps.edn` …), in the
+  order they were made: the first by its bare name, each later one beside it stamped - a record
+  is only ever added to (plan 7.0, item 11.2)."
+  [build id suffix]
+  (let [dir (stage-dir build id)
+        base (str (folder-name id) (str/replace suffix #"\.edn$" ""))
+        re (re-pattern (str (java.util.regex.Pattern/quote base) "(" run-stamp ")?\\.edn"))]
+    (->> (when (fs/directory? dir) (fs/list-dir dir))
+         (keep #(when-let [[_ stamp] (re-matches re (str (fs/file-name %)))] [(or stamp "") (str %)]))
+         (sort-by first)
+         (mapv second))))
+
+(defn latest-record
+  "The current run of stage `id`'s record `suffix`: the last `record-runs` gives, or nil."
+  [build id suffix]
+  (last (record-runs build id suffix)))
+
 (defn known-names
   "Every name stage `id`'s folder may hold at its top level, the table's and the project's, with
   its number in place of `N`: a set, a folder's name ending `/`."
   [build id]
   (into #{} (map #(str/replace % "stage-N" (folder-name id)))
         (concat (map :name folder-names) (registered-names build))))
+
+(defn- later-run?
+  "Is `nm` a later run of a record the folder's table names - `stage-2-security-20261027-120000.edn`
+  beside `stage-2-security.edn`?"
+  [known nm]
+  (boolean (when-let [[_ base] (re-matches (re-pattern (str "(.+)" run-stamp "\\.edn")) nm)]
+             (known (str base ".edn")))))
 
 (defn strays
   "What a stage folder holds at its top level that `known-names` does not name, over every stage
@@ -124,7 +154,7 @@
              :let [known (known-names build id)]
              e (sort (map str (fs/list-dir dir)))
              :let [nm (str (fs/file-name e) (when (fs/directory? e) "/"))]
-             :when (not (or (str/starts-with? nm ".") (known nm)))]
+             :when (not (or (str/starts-with? nm ".") (known nm) (later-run? known nm)))]
          (str (folder-name id) "/" nm))))
 
 (defn of-document

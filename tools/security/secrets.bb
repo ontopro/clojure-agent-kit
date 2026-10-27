@@ -70,10 +70,9 @@
   (fs/create-dirs dir)
   (spit (str (fs/path dir "security-secrets.edn")) edn-text)
   (spit (str (fs/path dir "security-secrets.md")) (sc/markdown {:base (str "secrets in " rev-range) :at (:security/at record)} rows))
-  (when-let [f (:record opts)]
-    (some-> (fs/parent f) fs/create-dirs)
-    (spit f edn-text))
-  (println (format "\n  %d ok, %d warn, %d fail, %d skipped - %s/security-secrets.md%s"
-                   (:ok counts) (:warn counts) (:fail counts) (:skipped counts) dir
-                   (if-let [f (:record opts)] (str ", recorded to " f) "")))
+  ;; KEPT, NEVER WRITTEN OVER: a later run beside the first, stamped (`sc/write-record!`)
+  (let [recorded (some-> (:record opts) (sc/write-record! edn-text))]
+    (println (format "\n  %d ok, %d warn, %d fail, %d skipped - %s/security-secrets.md%s"
+                     (:ok counts) (:warn counts) (:fail counts) (:skipped counts) dir
+                     (if recorded (str ", recorded to " recorded) ""))))
   (when-not (:ok? record) (System/exit 1)))
