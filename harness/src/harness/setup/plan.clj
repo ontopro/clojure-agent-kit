@@ -105,10 +105,13 @@
   security pack's and the interactions' `.edn` beside a stage plan, the
   readings under a stage folder's `reviews/`, and a
   stage's `*-security-review/` folder, Markdown included, whose record quotes
-  the application's files and so whatever brackets they hold."
+  the application's files and so whatever brackets they hold. Nor a stage's
+  working documents, `stages/stage-N/notes/` - a brief or a draft, retired once
+  the governing documents hold what it says."
   [rel]
   (and (not= rel "README.md")
        (not (re-find #"(^|/)[^/]*-security-review/" rel))
+       (not (re-find #"^stages/stage-\d+/notes/" rel))
        (not (str/ends-with? rel "-template.md"))
        (or (str/ends-with? rel ".md")
            (boolean (re-matches #"stages/stage-(\d+)/stage-\1-gates\.edn" rel)))))

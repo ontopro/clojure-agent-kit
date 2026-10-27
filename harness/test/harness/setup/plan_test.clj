@@ -96,6 +96,8 @@
   (is (plan/governing? "stages/stage-1/stage-1-gates.edn") "a stage's record, once copied, is read like a stage plan")
   (is (not (plan/governing? "stages/stage-1/stage-2-gates.edn")) "a stage's record is its own folder's")
   (is (plan/governing? "stages/stage-1/stage-1-foundation.md") "a stage document written from the template is read")
+  (is (not-any? plan/governing? ["stages/stage-6/notes/stage-6-q3-credits.md" "stages/stage-6/notes/stage-6-handout.md"])
+      "a stage's working documents are not")
   (is (not (plan/governing? "stages/stage-N-template.md")))
   (is (plan/governing? "api-notes/a-library.md") "an Architect's note is a plan document")
   (testing "a record a KIT tool writes is never read"

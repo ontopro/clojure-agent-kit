@@ -24,6 +24,7 @@ repository's first commit, the way it generates `<name>-app/` from the KIT's app
         stage-N-gates.edn     ← the stage's human gates as a record (a pre-release stage's fourth, its threat model signed), from stage-N-gates-template.edn; `bb next` reads it
         stage-N-security*.edn ← the security pack's records at the stage's end, and stage-N-security-review/ the security review's
         reviews/              ← the stage plan's and the blueprint's readings
+        notes/                ← the stage's working documents - a brief, a handout, a draft: stage-N-q<n>-<topic>.md for an amendment, stage-N-<topic>.md otherwise; read by no check, retired once the governing documents hold them
   reviews/                    ← the project plan review's raw material, outside the governing documents
   rules.edn                   ← this project's rules over the KIT's rule source: its placeholders, filled here
   profile.edn                 ← the models per role and the seat; bb profile checks it

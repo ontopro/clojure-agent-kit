@@ -19,7 +19,8 @@ before the blueprint is cut.
 first whether it serves the stage's goal, fits the cap or needs it raised, and comes before the close; if not,
 it is deferred, and the scope's deferred list says to which stage. If it is amended: the person's words as a Q
 row of `docs/source.md` §3, then `bb stage-amend Q-n` - it opens the pass in the gates record, and is run
-before anything is read again, so the readings come after it. Then amend the stage plan (its requirements,
+before anything is read again, so the readings come after it. A brief for it, if one is written, goes in
+`docs/stages/stage-N/notes/stage-N-q<n>-<topic>.md`, never beside the stage plan. Then amend the stage plan (its requirements,
 its packets, its cap) and run `bb plan-review` over it again; the person approves again with the cap
 (`:approved` in the pass, `:by` their name); amend the blueprint and run `bb blueprint-review` again; the
 person signs off again (`:signed`). `bb next` asks for each, with a ready `:at`. A whole new pass for a
