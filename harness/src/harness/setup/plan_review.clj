@@ -53,7 +53,7 @@
   a time gets wrong - and the rest recur in any plan."
   ["requirement-for-stage-not-pulled" "risk-without-owning-stage" "lesson-unanswered"
    "contradiction" "status-inconsistency" "copy-paste" "missing-nfr" "no-execution-model"
-   "deferred-without-owner" "compliance-scope-implicit" "accuracy-semantics"
+   "deferred-without-owner" "security-deferral-without-cost" "compliance-scope-implicit" "accuracy-semantics"
    "broken-cross-reference" "decided-too-early"])
 
 (def system-prompt

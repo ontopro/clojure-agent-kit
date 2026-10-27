@@ -484,6 +484,7 @@ The findings that recur, worth checking for by name:
 - **Missing non-functional requirements.** Availability and recoverability, observability, security engineering, and accessibility are the four most commonly absent — each is the kind of thing that is cheap to state now and structural to retrofit.
 - **Requirements with no execution model** — bulk or long-running operations specified as if they were synchronous request/response.
 - **Deferred decisions with no owner** — "decide later" with no named stage that will decide it. Every OPEN decision gets an owner or it isn't a decision, it's a hole.
+- **A security decision deferred without its cost** — a choice of `02-architecture.md` §8 put off to a later stage that does not say what the code grows against the default meanwhile and what switching then costs. In stage 0, read §4's "not given", §8, §15 and the stage map together for it: a strict content-security policy chosen at stage 0 costs nothing, and chosen at the pre-release stage rewrites every page the stages wrote.
 - **Compliance-scoping facts left implicit** — what the system deliberately does *not* hold or touch. Write it down as an assumption; it is load-bearing for scoping.
 - **Accuracy semantics for anything approximate** — a fuzzy match, a ranking, a confidence score with no threshold and no review path for low-confidence results.
 - **Broken cross-references** — a document pointing at a filename that doesn't exist.

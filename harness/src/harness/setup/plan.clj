@@ -295,7 +295,9 @@
   or `none yet`, any case - as `{:question :deferred [{:owner :grows :cost} …] :short?}`;
   `:short?` when a `deferred` or a `none yet` stands without its `deferral-line`. A deferral
   in other words (\"later\", \"from stage 6\") is not read here: the template's wording is
-  what the check holds, and the plan review reads for the rest."
+  what the check holds, and the plan review reads for the rest. The word is read wherever it
+  stands, so \"not deferred: chosen now\" reads as a deferral without its line: a choice made
+  is written without it."
   [text]
   (vec (keep deferral (security-rows text))))
 
