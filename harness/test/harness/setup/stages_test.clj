@@ -29,6 +29,22 @@
     (spit (str (stages/names-file build)) "{:not \"a vector\"}")
     (is (= [] (stages/registered-names build)) "a file of another shape registers none")))
 
+(deftest a-name-no-table-gives-is-a-stray
+  (let [build (str (fs/real-path (fs/create-temp-dir {:prefix "stages-"})))
+        s5 (stages/stage-dir build 5)
+        s6 (stages/stage-dir build 6)]
+    (doseq [d [(fs/path s5 "reviews") (fs/path s6 "notes") (fs/path s6 "stage-6-browser") (fs/path s6 "drafts")]] (fs/create-dirs d))
+    (doseq [f [(fs/path s5 "stage-5-plan.md") (fs/path s5 "accessibility.md") (fs/path s5 ".DS_Store")
+               (fs/path s6 "stage-6-plan.md") (fs/path s6 "stage-6-credits-plan.md") (fs/path s6 "stage-6-rehearsal.md")
+               (fs/path s6 "notes" "stage-6-q40-credits.md")]]
+      (spit (str f) "x"))
+    (is (= ["stage-5/accessibility.md" "stage-6/drafts/" "stage-6/stage-6-credits-plan.md" "stage-6/stage-6-rehearsal.md"]
+           (stages/strays build))
+        "the two the first project's plan lookup took, a folder, a project's own name; a dotfile, notes/ and what is in it are none")
+    (spit (str (stages/names-file build)) "[\"stage-N-rehearsal.md\"]")
+    (is (= ["stage-5/accessibility.md" "stage-6/drafts/" "stage-6/stage-6-credits-plan.md"] (stages/strays build))
+        "registered, it is the folder's")))
+
 (deftest the-folders-the-plan-and-where-a-document-belongs
   (let [build (str (fs/real-path (fs/create-temp-dir {:prefix "stages-"})))
         dir (stages/stages-dir build)]

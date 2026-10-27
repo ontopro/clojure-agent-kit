@@ -45,7 +45,7 @@ repository holds all of it, and the KIT's clone none.
 stage's number and a name ending `/` a folder; the KIT reads the same table
 (`harness.setup.stages/folder-names`). A file of the project's own that belongs beside the stage plan
 is added to `stages/stage-names.edn` in the same form (`"stage-N-rehearsal.md"`); anything else goes in
-`notes/`.
+`notes/`, and `bb next` names one left at the top level beside its step.
 
 | Name | Role | What |
 |---|---|---|

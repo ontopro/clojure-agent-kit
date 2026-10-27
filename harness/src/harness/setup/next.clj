@@ -367,6 +367,17 @@
   (or (nil? stage)
       (and (zero? (:id stage)) (nil? (get-in stage [:gates :stage/approved])))))
 
+(defn- strays-line
+  "The line said beside the step when a stage folder holds a name the table does not: information,
+  never a stop - a brief or a pack's output there had been taken for the stage plan."
+  [strays]
+  (let [shown (take 6 strays)]
+    (str "docs/stages/ holds " (count strays) " name" (when (not= 1 (count strays)) "s")
+         " no stage folder's table gives - " (str/join ", " shown)
+         (when (> (count strays) (count shown)) (str " and " (- (count strays) (count shown)) " more"))
+         "; move a working document to its stage's notes/, or add a name of the project's own to "
+         "docs/stages/stage-names.edn (docs/README.md, \"A stage folder's names\")")))
+
 (defn- plan-beside
   "The line said beside a stage's own step when plan-check finds something: in a plan step, the
   plan being written; outside one, a plan document to fix - never step 2 of a stage that is past it."
@@ -378,7 +389,7 @@
            (str (first problems) " - fix it before stage " (inc id) "'s plan")))))
 
 (defn- step-action
-  [{:keys [workspace? brief? plan-problems stage upgrade]}]
+  [{:keys [workspace? brief? plan-problems stage upgrade strays]}]
   (cond
     (not workspace?)
     (action 0 person "in KIT's clone: bb self-check, then bb init; then a session in the workspace folder"
@@ -404,7 +415,9 @@
               nothing (update :also #(str/join "\n           " (remove nil? [% (blocking-nothing-line nothing (:blueprint stage))])))
               ;; WHAT THE LAST UPGRADE LEFT - the branch to merge, hunks and .new files to take by hand -
               ;; said beside the step, the Architect's, until it is resolved
-              (seq left) (update :also #(str/join "\n           " (remove nil? (cons % left))))))))
+              (seq left) (update :also #(str/join "\n           " (remove nil? (cons % left))))
+              ;; A NAME NO TABLE GIVES, in any stage folder: said beside the step, never instead of it
+              (seq strays) (update :also #(str/join "\n           " (remove nil? [% (strays-line strays)])))))))
 
 (defn- in-build
   "`s` with every `docs/` path put under the build folder `build`, so a command
@@ -494,6 +507,7 @@
                 (if (str/starts-with? r "..") (str k) r)))
        :brief? (and (fs/exists? source) (not (str/includes? (slurp (str source)) "<the brief>")))
        :plan-problems (:problems (plan/check build ws))
+       :strays (stages/strays build)
        :stage (when id
                 (merge files
                        {:id id

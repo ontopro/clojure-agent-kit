@@ -253,6 +253,17 @@
     (testing "nothing said when every open row names a packet"
       (is (nil? (:also (next/next-action (assoc-in s [:stage :preconditions 1 :blocks] "t-01"))))))))
 
+(deftest a-name-no-stage-folder-table-gives-is-said-beside-the-step
+  (let [s (with-stage {:blueprint "stage-1/stage-1-blueprint.md" :reviewed? true :packets ["t-01"]
+                       :gates {:stage/id "1" :stage/approved {:date "d" :cap 20 :by "Ada"} :blueprint/signed {:date "d" :by "Ada"}}})
+        a (next/next-action (assoc s :strays ["stage-1/stage-1-credits-plan.md" "stage-1/accessibility.md"]))]
+    (is (= (:step (next/next-action s)) (:step a)) "information beside the step, never instead of it")
+    (is (str/includes? (:also a) "docs/stages/ holds 2 names no stage folder's table gives - stage-1/stage-1-credits-plan.md, stage-1/accessibility.md; move a working document to its stage's notes/"))
+    (is (str/includes? (:also a) "docs/stages/stage-names.edn"))
+    (is (str/includes? (:also (next/next-action (assoc s :strays (mapv #(str "stage-1/f" % ".md") (range 8))))) "stage-1/f5.md and 2 more;")
+        "six named, the rest counted")
+    (is (nil? (:also (next/next-action (assoc s :strays [])))))))
+
 (deftest a-stage-plans-kind-is-its-kind-line
   (is (= "pre-release" (next/stage-kind "# Stage 5\n\n**Status:** PLANNED\n**Kind:** pre-release  \n**Version:** 0.1\n")))
   (is (= "walking skeleton" (next/stage-kind "**Kind:** walking skeleton\n")))

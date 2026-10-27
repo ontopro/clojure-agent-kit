@@ -115,6 +115,18 @@
   (into #{} (map #(str/replace % "stage-N" (folder-name id)))
         (concat (map :name folder-names) (registered-names build))))
 
+(defn strays
+  "What a stage folder holds at its top level that `known-names` does not name, over every stage
+  folder of the build: `stage-N/<name>` each, a folder's ending `/`, by stage then name. A dotfile
+  is none - the operating system's, not the project's."
+  [build]
+  (vec (for [[id dir] (folders (stages-dir build))
+             :let [known (known-names build id)]
+             e (sort (map str (fs/list-dir dir)))
+             :let [nm (str (fs/file-name e) (when (fs/directory? e) "/"))]
+             :when (not (or (str/starts-with? nm ".") (known nm)))]
+         (str (folder-name id) "/" nm))))
+
 (defn of-document
   "For a document at `<build>/docs/stages/stage-N/<file>`: `{:build :id :dir}`;
   nil for a path anywhere else."
