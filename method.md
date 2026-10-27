@@ -803,6 +803,16 @@ Fifteen rules, each paid for once by a round or a stop in the projects built on 
     One packet's target said the line names the method and the path, its test read exactly that
     string, and the line the backend wrote held the session secret and visitors' queries. The
     target names the backend's output - a test appender, the captured line - as what its test reads.
+17. **A target about a set of functions names each one, and the inputs each is given.** "Every
+    function that draws an icon" reads as the functions a packet adds, or every function in the
+    application that draws one, and as each function's own inputs or the inputs the page gives it:
+    one packet's spec review read such a target two ways, twice. The target lists the functions by
+    name and says what each is called with.
+18. **A target whose test edits a real fixture names the node by its path and asserts the edit
+    took.** A test that changes a real page's fixture to show the code reacts finds the node by the
+    path the data conventions give it, and first asserts the fixture changed: two tests that edited
+    a page's fixture changed nothing - the node was not where they looked - and failed on the
+    unchanged page, which read as the code being wrong.
 
 And one rule that is not about writing but about reading, set by a person after every model in the
 loop got it wrong on the same sentence: **types are followed as the language defines them.** A type

@@ -39,11 +39,13 @@
   "The findings a Blueprint read is for, as the `kind` the answer uses: the
   method's over-engineering question, then §06's rules for targets and shapes,
   then the two ways a Blueprint disagrees with its own stage document, then
-  a log line's target not read through the logging backend (rule 16)."
+  a log line's target not read through the logging backend (rule 16), a set of
+  functions not named one by one (17), a fixture edit not checked to have taken (18)."
   ["over-engineered" "target-two-promises" "target-not-checkable" "target-no-marker"
    "target-source-unnamed" "requirement-words-missing" "target-whole-hiccup"
    "shape-undefined" "shape-not-granted" "seam-unstated" "packet-task-mismatch"
-   "interface-malformed" "target-log-line-not-through-backend"])
+   "interface-malformed" "target-log-line-not-through-backend" "target-set-unnamed"
+   "fixture-edit-unchecked"])
 
 (def system-prompt
   (str "You review a stage's BLUEPRINT before the human signs it off - as an artifact, adversarially. "
@@ -74,7 +76,10 @@
        "stage the requirements assign it to - the words that requirement gives a person to read are quoted "
        "in a target; and a view's target names its words and its markers, never its whole Hiccup, which "
        "holds presentation to the contract. A target about a log line is tested through the logging "
-       "backend's own layout - what the backend wrote - never the string handed to the logger.\n\n"
+       "backend's own layout - what the backend wrote - never the string handed to the logger. A target "
+       "about a set of functions - every function that draws X - names each function and the inputs it "
+       "is given. A target whose test edits a real fixture names the node by the path the data "
+       "conventions give it, and its test asserts the edit took before it asserts anything else.\n\n"
        "The stack, the layering as the boundary file declares it, the roles, the packet, the gates and "
        "the retry cap are GIVEN by the method and are not the Blueprint's to have decided - do not report "
        "them. Report only what a reader could act on: name the section, the packet id or the target, quote "
