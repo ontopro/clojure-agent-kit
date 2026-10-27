@@ -112,7 +112,7 @@
   `<id>-tests/` beside it), reading the files it names from `clone`, the merged application.
   `review-file` may be a security reviewer panel's combined table (`security-panel.edn`): then
   one call per row, its test read from the member's record that carried the row, and each routed
-  entry carries the members that reproduced it (`:by`).
+  entry carries the readings that reproduced it (`:by`, `{:member :record}` each).
   `triage-fn` is `(fn [trigger])` -> a verdict, `triage-role` the profile's role it calls (its
   `:family` and `:endpoint` recorded on each verdict, with the provider that answered, so a cost
   table can place the call), `architecture` the text of the architecture's security sections. Writes

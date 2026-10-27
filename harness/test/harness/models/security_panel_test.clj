@@ -6,7 +6,8 @@
    [harness.loop.security-routing :as routing]
    [harness.models.security-panel :as panel]
    [harness.models.security-review :as review]
-   [harness.money.stage-report :as sr]))
+   [harness.money.stage-report :as sr]
+   [harness.setup.stages :as stages]))
 
 (defn- finding [title where & [kind]]
   {:title title :kind (or kind :reproduced) :test "test/app/x_test.clj" :where where :why "w"})
@@ -28,14 +29,14 @@
     (is (= 2 (count rows)))
     (testing "one row, both members, both titles, the first member's finding and record"
       (let [r (first rows)]
-        (is (= ["astra" "argon"] (:by r)))
-        (is (= ["glm"] (:not-by r)) "ran, answered and did not")
+        (is (= [{:member "astra" :record "a.edn"} {:member "argon" :record "b.edn"}] (:by r)))
+        (is (= [{:member "glm" :record "c.edn"}] (:not-by r)) "ran, answered and did not")
         (is (= [["astra" "logout keeps the session"] ["argon" "session outlives logout"]] (:titles r)))
         (is (= "a.edn" (:record r)))))
     (testing "another place is another row, though the same member found the first"
-      (is (= ["argon"] (:by (second rows))))
-      (is (= ["astra" "glm"] (:not-by (second rows)))))
-    (is (= [{:member "astra" :finding (finding "a guess" "src/app/web.clj" :hypothesis)}] hypotheses)
+      (is (= [{:member "argon" :record "b.edn"}] (:by (second rows))))
+      (is (= [{:member "astra" :record "a.edn"} {:member "glm" :record "c.edn"}] (:not-by (second rows)))))
+    (is (= [{:member "astra" :record "a.edn" :finding (finding "a guess" "src/app/web.clj" :hypothesis)}] hypotheses)
         "a claim no test showed is apart, never merged")))
 
 (deftest a-member-that-said-nothing-counts-for-nothing
@@ -94,7 +95,7 @@
                                :triage-fn (fn [trig] (swap! calls conj trig) {:route :architect :reason "a gap"})})]
         (is (= 1 (count @calls)))
         (is (= "(ns x) ;; astra's" (get-in (first @calls) [:payload :test-text])))
-        (is (= ["astra" "glm"] (:by (first (:routed r)))))
+        (is (= ["astra" "glm"] (mapv :member (:by (first (:routed r))))) "each reading, its member and record")
         (is (str/ends-with? (:review (last (sr/routing-records dir))) "security-panel.edn"))))))
 
 (deftest one-members-two-findings-at-one-place-keep-both-titles
@@ -110,12 +111,41 @@
     (is (= 2 (count rows)))))
 
 (deftest the-table-shows-every-title-and-a-member-that-said-nothing
-  (let [members [{:name "astra" :status :answered} {:name "argon" :status :answered} {:name "fable" :status :refused}]
+  (let [members [{:name "astra" :status :answered :record "a.edn"} {:name "argon" :status :answered :record "b.edn"}
+                 {:name "fable" :status :refused :record "c.edn"}]
         md (panel/render {:members members
-                          :rows [{:title "a" :by ["astra" "argon"] :not-by [] :titles [["astra" "a"] ["argon" "b"]]
+                          :rows [{:title "a" :by [{:member "astra" :record "a.edn"} {:member "argon" :record "b.edn"}] :not-by []
+                                  :titles [["astra" "a"] ["argon" "b"]]
                                   :finding {:test "t"} :record "r.edn"}]})]
     (is (str/includes? md "a (astra) / b (argon)"))
     (is (str/includes? md "| ✓ | ✓ | refused |"))))
+
+;; From the first KIT project's stage 6: Sol read twice, the second time after an amendment, and
+;; every Sol row carried a mark in both Sol columns - the columns had been looked up by name
+(deftest one-members-two-readings-keep-their-own-marks
+  (let [dir (str (fs/create-temp-dir))
+        build (str (fs/create-temp-dir))]
+    (write-rec! dir "20261020-100000-astra-tracer" (rec "astra" (finding "a" "src/app/a.clj: f")) {})
+    (write-rec! dir "20261020-110000-sol-tracer" (rec "sol" (finding "b" "src/app/b.clj: g") (finding "c" "src/app/c.clj: h")) {})
+    (write-rec! dir "20261023-090000-sol-tracer" (rec "sol" (finding "d" "src/app/d.clj: i") (finding "e" "src/app/e.clj: j")
+                                                      (finding "f" "src/app/f.clj: k")) {})
+    (let [t (panel/table! dir [{:name "astra"} {:name "sol"}] [] {})
+          md (slurp (str (fs/path dir "security-panel.md")))
+          row (fn [title] (first (filter #(str/starts-with? % (str "| " title " |")) (str/split-lines md))))]
+      (is (= ["astra" "sol" "sol"] (mapv :name (:members t))))
+      (is (= [[{:member "sol" :record "20261020-110000-sol-tracer.edn"}]
+              [{:member "sol" :record "20261023-090000-sol-tracer.edn"}]]
+             (mapv :by (filter #(#{"b" "d"} (:title %)) (:rows t))))
+          "a row names the reading that reproduced it, not the member")
+      (is (str/includes? md "| Finding | astra | sol (1) | sol (2) | Test |"))
+      (is (str/starts-with? (row "b") "| b | – | ✓ | – |") "the first reading's finding, not the second's")
+      (is (str/starts-with? (row "d") "| d | – | – | ✓ |") "the second reading's, not the first's")
+      (is (str/includes? md "| sol (1) | answered | 2 |"))
+      (is (str/includes? md "| sol (2) | answered | 3 |")))
+    (testing "the stage report counts the readings by record too: three, Sol's two apart"
+      (fs/create-dirs (stages/stage-dir build 6))
+      (fs/copy-tree dir (stages/document build 6 "-security-review"))
+      (is (= 3 (nth (first (filter #(= "security review" (first %)) (sr/stage-readings build 6))) 2))))))
 
 (deftest a-re-rendered-table-keeps-the-runs-facts
   (let [dir (str (fs/create-temp-dir))]

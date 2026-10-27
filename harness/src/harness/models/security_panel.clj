@@ -83,30 +83,32 @@
 
 (defn combine
   "The combined table from `records` - `[{:file :record}]`, in panel order: `{:rows [...] :hypotheses
-  [...]}`. A row: `:key`, `:by` (the members that reproduced it), `:not-by` (members that ran,
-  answered and did not), `:titles` every finding's `[member title]`, the first member's `:finding` and its `:record`."
+  [...]}`. A row: `:key`, `:by` (the readings that reproduced it), `:not-by` (readings that answered
+  and did not), `:titles` every finding's `[member title]`, the first member's `:finding` and its
+  `:record`. A READING IS ONE RECORD, `{:member :record}`: a member that read twice - a stage
+  amended after its first reading - is two readings, and one of them never shares the other's marks."
   [records]
   (let [answered (remove (comp said-nothing? :record) records)
-        names (mapv (comp record-member :record) answered)
+        readings (mapv (fn [{:keys [file record]}] {:member (record-member record) :record file}) answered)
         reproduced (for [[i {:keys [file record]}] (map-indexed vector answered)
                          [j f] (map-indexed vector (:findings record))
                          :when (= :reproduced (:kind f))]
                      {:member (record-member record) :file file :finding f :key (row-key f [i j])})
         grouped (reduce (fn [m r] (update m (:key r) (fnil conj []) r)) (array-map) reproduced)]
     {:rows (vec (for [[k rs] grouped
-                      :let [by (vec (distinct (map :member rs)))]]
+                      :let [by (vec (distinct (map (fn [r] {:member (:member r) :record (:file r)}) rs)))]]
                   {:key k
                    :title (:title (:finding (first rs)))
                    :by by
-                   :not-by (vec (remove (set by) names))
+                   :not-by (vec (remove (set by) readings))
                    ;; every finding's title, a member's two at one place included
                    :titles (mapv (fn [r] [(:member r) (:title (:finding r))]) rs)
                    :finding (:finding (first rs))
                    :record (:file (first rs))}))
-     :hypotheses (vec (for [{:keys [record]} answered
+     :hypotheses (vec (for [{:keys [file record]} answered
                             f (:findings record)
                             :when (not= :reproduced (:kind f))]
-                        {:member (record-member record) :finding f}))}))
+                        {:member (record-member record) :record file :finding f}))}))
 
 (defn next-member
   "The member a stage's end reads with by default: in `eligible` (names, panel order), the one after
@@ -125,14 +127,23 @@
 
 (defn cost-of [record] (:cost record))
 
+(defn- labels
+  "Each member's column label, in order: its name, numbered when the member read more than once."
+  [members]
+  (let [n (frequencies (map :name members))]
+    (second (reduce (fn [[seen acc] {nm :name}]
+                      (let [k (inc (get seen nm 0))]
+                        [(assoc seen nm k) (conj acc (if (> (n nm) 1) (str nm " (" k ")") nm))]))
+                    [{} []] members))))
+
 (defn render
-  "The combined table as `security-panel.md`."
+  "The combined table as `security-panel.md`: a column per reading, looked up by its record."
   [{:keys [members left-out rows hypotheses]}]
-  (let [names (mapv :name members)
-        status (into {} (map (juxt :name :status) members))
-        cell (fn [row n] (cond (some #{n} (:by row)) "✓"
-                               (some #{n} (:not-by row)) "–"
-                               (#{:refused :no-answer :failed} (status n)) (str/replace (name (status n)) "-" " ")
+  (let [names (labels members)
+        read? (fn [readings m] (some #(= (:record m) (:record %)) readings))
+        cell (fn [row m] (cond (read? (:by row) m) "✓"
+                               (read? (:not-by row) m) "–"
+                               (#{:refused :no-answer :failed} (:status m)) (str/replace (name (:status m)) "-" " ")
                                :else "not run"))
         title (fn [r] (if (> (count (:titles r)) 1)
                         (str/join " / " (for [[m t] (:titles r)] (str t " (" m ")")))
@@ -145,12 +156,12 @@
          (if (seq rows)
            (str "| Finding | " (str/join " | " names) " | Test |\n|---|" (str/join "" (repeat (count names) "---|")) "---|\n"
                 (str/join "\n" (for [r rows]
-                                 (str "| " (title r) " | " (str/join " | " (map #(cell r %) names)) " | `"
+                                 (str "| " (title r) " | " (str/join " | " (map #(cell r %) members)) " | `"
                                       (:test (:finding r)) "` (" (:record r) ") |")))
                 "\n")
            "No member reproduced a finding.\n")
          "\n| Member | Ran | Findings reproduced | Cost | Minutes |\n|---|---|---|---|---|\n"
-         (str/join "\n" (for [{nm :name :keys [status] :as m} members]
+         (str/join "\n" (for [[nm {:keys [status] :as m}] (map vector names members)]
                           (str "| " nm " | " (name status) " | " (or (:reproduced m) "—") " | " (money m) " | "
                                (if (:ms m) (format "%.1f" (/ (:ms m) 60000.0)) "—") " |")))
          "\n"

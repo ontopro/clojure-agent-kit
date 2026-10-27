@@ -100,7 +100,7 @@ their reason in a sentence - nothing runs. A stage amended after its review read
 record - or the skip is decided again over what the stage now changes. A pre-release stage offers 1 to 4 with all of them the default and
 never 5; say whether fewer would do, from the history and what changed since each member last read, and the person
 chooses. A member that declined or left no answer is said as that and is not a clean review; a finding counts by
-its own failing test, never by how many members found it. Read `security-panel.md` and the routing with the
+its own failing test, never by how many members found it; a member that read twice has a column per reading. Read `security-panel.md` and the routing with the
 person, and put one decision on each row to them - fix and retest, the Architect, or their own review - triage's
 route being its proposal: a `coder` route's draft in the run's `security-fixes-<stamp>.md` is completed into this stage's Blueprint as a packet,
 signed and run, and the stage does not close until the security reviewer's test kept beside it passes on the merged
