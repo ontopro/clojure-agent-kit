@@ -722,3 +722,18 @@
     (is (= [0.19 0.4] (mapv :cost (:reviews now)))))
   (is (= {:a 1} (report/current {:a 1})))
   (is (nil? (report/current nil))))
+
+(deftest a-run-s-spec-review-priced-at-record-time-is-read-through-current
+  ;; Fable 5.1's read of b813581: `record` prices the spec-review event as an entry, and a run's
+  ;; events were never read - every run recorded since reported its spec review unpriced
+  (let [run {:run/id "r" :run/cost 0.2 :run/steps [{:step/name :coder :step/kind :dispatch :step/cost 0.2}]
+             :run/events [{:event/kind :spec-review :findings 1 :count 1 :cost nil
+                           :repriced [{:at "t" :by "bb reprice" :cost 0.05 :cost-source :repriced}]
+                           :reviews [{:count 1 :cost nil :repriced [{:at "t" :by "bb reprice" :cost 0.05 :cost-source :repriced}]}]}
+                          {:event/kind :dispatch :role :coder}]}
+        now (report/current run)]
+    (is (= 0.05 (get-in now [:run/events 0 :reviews 0 :cost])) "with no :run/repriced too")
+    (is (= 0.05 (get-in now [:run/events 0 :cost])))
+    (is (= {:event/kind :dispatch :role :coder} (get-in now [:run/events 1])) "another event as it is")
+    (is (nil? (get-in run [:run/events 0 :reviews 0 :cost])) "the record as written, untouched")
+    (is (some #(str/includes? % "$0.05") (report/spec-review-lines now)) "and RUNS.md prices it")))

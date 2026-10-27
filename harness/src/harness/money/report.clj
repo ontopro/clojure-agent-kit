@@ -148,18 +148,11 @@
   [m fills]
   (reduce-kv (fn [acc k v] (if (and (some? v) (nil? (get acc k))) (assoc acc k v) acc)) m fills))
 
-(defn current
-  "A record as it stands now. A CORRECTION IS A SUPERSEDING ENTRY (plan 7.0, item 11.4): `bb
-  reprice` never edits what a record says; it appends what it fetched, and every reader reads the
-  record through this. A run: each step filled from `:run/repriced`'s entries - per field, the
-  latest entry's, only where the step has none - and `:run/cost` the steps' sum again when any was
-  filled. A reading: its `:cost` from its latest `:repriced` entry when its own is nil, each of its
-  `:reviews` the same. Any other map, or anything else, as it is."
+(defn- repriced-steps
+  "Run record `r` with its steps filled from `:run/repriced` (`current`'s run half)."
   [r]
-  (cond
-    (not (map? r)) r
-
-    (seq (:run/repriced r))
+  (if-not (seq (:run/repriced r))
+    r
     (let [fills (reduce (fn [m {:keys [steps]}]
                           (reduce (fn [m s] (update m (:step/name s) merge (dissoc s :step/name))) m steps))
                         {} (:run/repriced r))
@@ -170,7 +163,24 @@
                                   (assoc :step/cost-source (:step/cost-source f :repriced)))))
                       (:run/steps r))]
       (cond-> (assoc r :run/steps steps)
-        (not= steps (:run/steps r)) (assoc :run/cost (run-cost steps))))
+        (not= steps (:run/steps r)) (assoc :run/cost (run-cost steps))))))
+
+(defn current
+  "A record as it stands now. A CORRECTION IS A SUPERSEDING ENTRY (plan 7.0, item 11.4): `bb
+  reprice` never edits what a record says; it appends what it fetched, and every reader reads the
+  record through this. A run: each step filled from `:run/repriced`'s entries - per field, the
+  latest entry's, only where the step has none - and `:run/cost` the steps' sum again when any was
+  filled; and each of its events that is a reading (the spec review's) read as a reading is, so
+  a cost `record` priced at record time is there (Fable 5.1's read of b813581). A reading: its
+  `:cost` from its latest `:repriced` entry when its own is nil, each of its `:reviews` the same.
+  Any other map, or anything else, as it is."
+  [r]
+  (cond
+    (not (map? r)) r
+
+    (contains? r :run/steps)
+    (cond-> (repriced-steps r)
+      (seq (:run/events r)) (update :run/events (partial mapv #(if (or (seq (:repriced %)) (seq (:reviews %))) (current %) %))))
 
     (or (seq (:repriced r)) (seq (:reviews r)))
     (cond-> r
