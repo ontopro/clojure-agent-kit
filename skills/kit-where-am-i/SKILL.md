@@ -1,6 +1,6 @@
 ---
 name: kit-where-am-i
-description: Any time - where the project stands. The block first; then one offer of three - a line of the block to read into, guided; the fuller account - the whole road, what each stage has cost and taken, what waits on the person, what changed since they last looked, what is open; or the roadmap page, the road drawn as an HTML page opened in the browser. Use when the person asks "where are we", "where am I", "what is next", "what is open", "what does FR-8 mean", or opens a session cold.
+description: Any time - where the project stands. The block first; then one offer of three - a line of the block to read into, guided; the fuller account - the whole road, what each stage has cost and taken, what waits on the person, what changed since the last report, what is open; or the roadmap page, the road drawn as an HTML page opened in the browser. Use when the person asks "where are we", "where am I", "what is next", "what is open", "what does FR-8 mean", or opens a session cold.
 ---
 
 # kit-where-am-i - where the project stands, then the details
@@ -42,7 +42,7 @@ Nothing. Outside a workspace the block says setup is next, as `bb next` does; sh
    ```
    Do you want:
    1. one line of the block to read into (the stage goal, what's done, next, open, an ID, the stage map)
-   2. the fuller account (the whole road, what it has cost, what waits on you, what changed since you last looked)
+   2. the fuller account (the whole road, what it has cost, what waits on you, what changed since the last report)
    3. roadmap page (HTML, opens in your browser)
    ```
 
@@ -72,13 +72,13 @@ Nothing. Outside a workspace the block says setup is next, as `bb next` does; sh
 
 ## Writes
 
-Through the KIT's commands only, never by hand: `work/where/roadmap.svg` and `roadmap.html` when
-the person picks the roadmap page (`bb roadmap-page`); `work/where/last-look.edn` when the person
-says they know where the project stands (`bb last-look --by <their name>`, the name their sign-offs
-carry) - say that it was recorded, and that "since you last looked" counts from it. Nothing is
-committed.
+Through the KIT's commands only, never by hand: when the person picks the roadmap page, `bb
+roadmap-page` writes `work/where/roadmap-<stamp>.html` and `.svg` - each page kept under its time -
+with `roadmap.html` and `.svg` the newest copy, and adds a line to `work/where/reports.edn`: "since
+the last report" counts from that page, so only the roadmap page moves it; the fuller account reads
+it and writes nothing. Nothing is committed.
 
 ## Done when
 
-The person says they know where the project stands - the look recorded by `bb last-look` - or
-names the step to run, the block's `next:` line.
+The person says they know where the project stands, or names the step to run, the block's
+`next:` line.

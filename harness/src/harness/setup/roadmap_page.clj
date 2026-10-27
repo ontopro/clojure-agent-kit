@@ -132,16 +132,7 @@
   `at` in the zone `local`, and the project's own zone after it when `project-zone` (an IANA name)
   reads the clock differently - `(22:20 IST)`. Nil without `at`."
   [at local project-zone]
-  (when at
-    (let [inst (java.time.Instant/parse at)
-          in (fn [z] (.atZone inst (java.time.ZoneId/of (str z))))
-          here (in local)
-          day (java.time.format.DateTimeFormatter/ofPattern "d MMMM yyyy, HH:mm zzz" java.util.Locale/ENGLISH)
-          clock (java.time.format.DateTimeFormatter/ofPattern "HH:mm zzz" java.util.Locale/ENGLISH)
-          there (when (not-empty project-zone) (in project-zone))]
-      (str "Generated " (.format here day)
-           (when (and there (not= (.getOffset here) (.getOffset there)))
-             (str " (" (.format there clock) ")"))))))
+  (some->> (where/instant-text at local project-zone) (str "Generated ")))
 
 (defn render-svg
   "The drawing, from `where-data`'s map `d`; `up` is the path from the page's folder to the
@@ -291,8 +282,7 @@
         waits (:waits-on-the-person d)
         {:keys [decisions risks]} open
         dash "—"
-        num (fn [x] (str "<td class=\"num\">" x "</td>"))
-        ids (fn [xs] (if (seq xs) (str/join ", " (map #(str "stage " %) xs)) "none"))]
+        num (fn [x] (str "<td class=\"num\">" x "</td>"))]
     (str/join
      "\n"
      (concat
@@ -339,16 +329,12 @@
        "<p class=\"note\">Spent counts a stage's runs and its readings, its security review among them. Run minutes are the loop's wall time over the stage's runs; the days are calendar days, approval to close, both counted.</p>"]
       (money-by-html (where/money-by stages))
       [""
-       "<h2>Since you last looked</h2>"]
-      (if-not (:from since)
-        [(str "<p>No date to count from: " (esc (:why since)) ".</p>")]
-        [(str "<p>From <strong>" (esc (:from since)) "</strong>: " (esc (:why since)) ". <code>bb last-look</code> records a look; <code>--since</code> names another date.</p>")
-         "<ul>"
-         (str "  <li>Closed: " (ids (:stages-closed since)) " · approved: " (ids (:approved since)) " · blueprint signed: " (ids (:signed since)) ".</li>")
-         (str "  <li>Decisions settled: " (if (seq (:decisions-settled since)) (esc (str/join ", " (map :id (:decisions-settled since)))) "none dated")
-              (when (pos? (:settled-undated since)) (str "; " (:settled-undated since) " settled with no date, not counted")) ".</li>")
-         (str "  <li>Runs: " (:runs since) ", " (:merged since) " merged, " (usd (:run-money since)) " (runs only; a reading carries no date).</li>")
-         "</ul>"])
+       "<h2>Since the last report</h2>"]
+      ;; the fuller account's lines, as HTML: the base a paragraph, the rest a list
+      (let [[head & items] (where/since-lines since (java.time.ZoneId/systemDefault) (:time-zone workspace))]
+        (concat [(str "<p>" (esc head) "</p>")]
+                (when (seq items)
+                  (concat ["<ul>"] (for [i items] (str "  <li>" (esc (str/replace i #"^- " "")) "</li>")) ["</ul>"]))))
       ["" "<h2>Open</h2>" "<ul>"
        (str "  <li>Decisions PROVISIONAL or OPEN, " (count decisions) " - " (link up (str build "/docs/04-decision-log.md")))
        "    <ul>"]
@@ -378,18 +364,38 @@
 ;; ---------------------------------------------------------------------------
 
 (defn write!
-  "Write the roadmap page for workspace `ws` from `where-data`'s map `d` into `<work>/where/`:
-  `roadmap.svg` and `roadmap.html`. Returns the two paths."
+  "Write the roadmap page for workspace `ws` from `where-data`'s map `d` into `<work>/where/`: the
+  page kept under its time, `roadmap-<stamp>.svg` and `.html` (`<stamp>` the KIT's, the local time
+  to the second, `-2` on a second page of one second), then `roadmap.svg` and `roadmap.html`, the
+  newest copy, which the SVG pack and the skill open; and a line added to the reports log
+  (`where/report!`) with `d`'s `:generated` - the next page's baseline. Returns the kept pair.
+
+  A REPORT IS WHAT WAS TRUE AT A TIME, so it is never overwritten (the person, 2026-10-26; plan 7.0
+  item 11): the copies named `roadmap` are views of the newest, and the log, not a file name, says
+  when each was made."
   [ws d]
   (let [dir (fs/path (:workspace/work ws) "where")
         up (str (fs/relativize (fs/absolutize dir) (fs/absolutize (:workspace/dir ws))) "/")
-        svg (render-svg d up)
-        svg-file (fs/path dir "roadmap.svg")
-        html-file (fs/path dir "roadmap.html")]
+        svg (str (render-svg d up) "\n")
+        html (str (render-html d up svg) "\n")
+        ;; the page is named by the time the log records for it, in this machine's zone, as the KIT names
+        ;; its other records - the name a convenience, the log the record
+        stamp (.format (.atZone ^java.time.Instant (or (try (java.time.Instant/parse (str (get-in d [:generated :at]))) (catch Exception _ nil)) (java.time.Instant/now))
+                                (java.time.ZoneId/systemDefault))
+                       (java.time.format.DateTimeFormatter/ofPattern "yyyyMMdd-HHmmss"))
+        id (first (remove #(fs/exists? (fs/path dir (str "roadmap-" % ".html")))
+                          (cons stamp (for [i (range 2 Long/MAX_VALUE)] (str stamp "-" i)))))
+        kept-svg (fs/path dir (str "roadmap-" id ".svg"))
+        kept-html (fs/path dir (str "roadmap-" id ".html"))
+        rel #(str (fs/relativize (fs/absolutize (:workspace/dir ws)) (fs/absolutize %)))]
     (fs/create-dirs dir)
-    (spit (str svg-file) (str svg "\n"))
-    (spit (str html-file) (str (render-html d up svg) "\n"))
-    [(str svg-file) (str html-file)]))
+    (spit (str kept-svg) svg)
+    (spit (str kept-html) html)
+    (spit (str (fs/path dir "roadmap.svg")) svg)
+    (spit (str (fs/path dir "roadmap.html")) html)
+    (where/report! ws (assoc (select-keys (:generated d) [:at :plan-commit :kit-version])
+                             :files [(rel kept-html) (rel kept-svg)]))
+    [(str kept-svg) (str kept-html)]))
 
 (defn -main
   "bb roadmap-page [--workspace <dir>]
@@ -406,6 +412,8 @@
                                   :plan-commit (where/build-commit (:workspace/build ws))})
           rel #(str (fs/relativize (fs/absolutize (:workspace/dir ws)) (fs/absolutize %)))
           [svg html] (write! ws d)]
-      (println (str "wrote " (rel svg) " and " (rel html)))
-      (println (str "  open it:         open " (rel html)))
-      (println (str "  check the drawing: bb --config " (or (get-in d [:workspace :kit]) "KIT") "/tools/svg/bb.edn check " (rel svg))))))
+      (println (str "wrote " (rel html) " and " (rel svg) ", and the newest copy, work/where/roadmap.html and .svg"))
+      (println (str "  open it:         open " (rel (fs/path (fs/parent html) "roadmap.html"))))
+      (println (str "  check the drawing: bb --config " (or (get-in d [:workspace :kit]) "KIT") "/tools/svg/bb.edn check "
+                    (rel (fs/path (fs/parent svg) "roadmap.svg"))))
+      (println "  the next page counts \"since the last report\" from this one"))))

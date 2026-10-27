@@ -52,8 +52,19 @@
         svg (slurp svg-file)
         html (slurp html-file)
         tree (xml/parse-str svg)]
-    (is (= [(str (fs/path ws-dir "work" "where" "roadmap.svg")) (str (fs/path ws-dir "work" "where" "roadmap.html"))]
-           [svg-file html-file]))
+    (testing "kept under its time, the newest copy beside it, and the reports log a line longer"
+      (is (re-matches #".*/work/where/roadmap-\d{8}-\d{6}\.svg" svg-file))
+      (is (re-matches #".*/work/where/roadmap-\d{8}-\d{6}\.html" html-file))
+      (is (= svg (slurp (str (fs/path ws-dir "work" "where" "roadmap.svg")))))
+      (is (= html (slurp (str (fs/path ws-dir "work" "where" "roadmap.html")))))
+      (is (= [{:at "2026-10-17T12:00:00Z" :plan-commit "abc1234" :files [(str "work/where/" (fs/file-name html-file))
+                                                                         (str "work/where/" (fs/file-name svg-file))]}]
+             (mapv #(dissoc % :kit-version) (where/reports ws))))
+      (let [[svg2 html2] (page/write! ws d)]
+        (is (not= html-file html2) "a second page of one second is a page of its own, never the first again")
+        (is (fs/exists? html-file))
+        (is (= 2 (count (where/reports ws))))
+        (is (fs/exists? svg2))))
     (testing "the drawing: a lane a phase, a box a stage, a badge an open decision or risk on its stage"
       (is (= :svg (local (:tag tree))))
       (is (= 5 (count (filter #(and (= :rect (local (:tag %))) (= "88" (get-in % [:attrs :height])))
@@ -73,7 +84,7 @@
           (is (str/starts-with? h "../../") h)
           (is (fs/exists? (fs/path dir h)) h))))
     (testing "the page's sections, from the map"
-      (is (= ["Waits on you (2)" "Money and time" "Money by provider" "Money by role" "Since you last looked" "Open" "Next"]
+      (is (= ["Waits on you (2)" "Money and time" "Money by provider" "Money by role" "Since the last report" "Open" "Next"]
              (map second (re-seq #"<h2>([^<]+)</h2>" html))))
       (is (str/includes? html "<td class=\"num\">$0.25 (readings only)</td>"))
       (is (str/includes? html "Generated 2026-10-17T12:00:00Z from <code>xyx-build</code> at <code>abc1234</code>"))

@@ -64,13 +64,60 @@
   (is (not (where/names-the-person? ["Ada"] "Adam's call")) "a name as a word")
   (is (not (where/names-the-person? ["Ada"] "the pre-release stage"))))
 
-(deftest since-counts-from-the-flag-the-last-look-or-the-last-stage-approved
-  (let [rows [{:id 0 :state :closed :approved "2026-10-13"} {:id 1 :state :closed :approved "2026-10-16"} {:id 2 :state :next}]]
-    (is (= ["2026-10-01" "--since"] (where/since-from "2026-10-01" {:at "2026-10-15T09:00:00Z"} rows)))
-    (is (= ["2026-10-15" "your last look, by Ada"] (where/since-from nil {:at "2026-10-15T09:00:00Z" :by "Ada"} rows)))
-    (is (= ["2026-10-16" "stage 1 approved"] (where/since-from nil nil rows))
-        "the last closed stage's approval: its close date would hide a stage approved and closed on one day")
-    (is (= [nil "no stage closed and no last look recorded"] (where/since-from nil nil [{:id 0 :state :running}])))))
+;; THE PERSON'S WORDS: a look recorded or not was "mighty confusing" - with none recorded the page
+;; counted from the last closed stage's approval and said "From 2026-10-20: stage 5 approved", read
+;; as the state now. Since the last report, what happened.
+(deftest since-counts-from-the-flag-or-the-last-report
+  (let [inst #(java.time.Instant/parse %)]
+    (is (= {:kind :flag :flag "2026-10-01" :at (inst "2026-09-30T18:30:00Z") :day "2026-10-01"}
+           (where/since-from "2026-10-01" {:at "2026-10-15T09:00:00Z"} "Asia/Kolkata"))
+        "--since: that day's 00:00 in the project's zone, before any report")
+    (is (= {:kind :report :at (inst "2026-10-15T09:00:00Z") :day "2026-10-15"}
+           (where/since-from nil {:at "2026-10-15T09:00:00Z"} "America/Chicago")))
+    (is (= "2026-10-14" (:day (where/since-from nil {:at "2026-10-15T02:00:00Z"} "America/Chicago")))
+        "the base's day is the project's: 02:00 UTC is the evening before in Chicago")
+    (is (= {:kind :first} (where/since-from nil nil "UTC")) "no report before: the first")))
+
+(deftest since-the-last-report-each-stage-once-with-its-state-now
+  (let [inst #(java.time.Instant/parse %)
+        base {:kind :report :at (inst "2026-10-26T18:00:00Z") :day "2026-10-26"}
+        t (fn [at] {:at (inst at) :day (subs at 0 10) :day-only? false})
+        rows [{:id 3 :state :closed :times {:closed (t "2026-10-26T17:00:00Z")}}
+              {:id 4 :state :closed :times {:closed (t "2026-10-26T18:30:00Z")}}
+              {:id 5 :state :closed :times {:approved (t "2026-10-20T10:00:00Z")
+                                            :closed {:at (inst "2026-10-26T00:00:00Z") :day "2026-10-26" :day-only? true}}}
+              {:id 6 :state :running :times {:approved (t "2026-10-27T09:00:00Z")}}
+              {:id 7 :state :ahead :times {}}]
+        settled {:dated [{:id "D7" :on "2026-10-25"} {:id "D8" :on "2026-10-26"} {:id "D9" :on "2026-10-27"}] :undated 1}
+        run-rows [{:at (inst "2026-10-26T17:59:00Z") :status :merged :cost 1.0}
+                  {:at (inst "2026-10-26T19:00:00Z") :status :merged :cost 2.5}
+                  {:at (inst "2026-10-27T08:00:00Z") :status :stopped :cost 0.5}]
+        s (where/since-row base rows settled run-rows)]
+    (is (= [{:state "closed" :ids [4 5]} {:state "in progress" :ids [6]}] (:stages s))
+        "stage 3 closed an hour before the report: not since it; stage 5's day-only gate on the report's day: counted")
+    (is (= [{:id "D8" :on "2026-10-26" :same-day? true} {:id "D9" :on "2026-10-27"}] (:decisions-settled s))
+        "the decision log carries days: the report's day counted, marked")
+    (is (= [2 1 3.0] ((juxt :runs :merged :run-money) s)) "a run started a minute before the report is not since it")
+    (is (not (:nothing? s)))
+    (testing "made again with nothing new: nothing since"
+      (is (:nothing? (where/since-row (assoc base :at (inst "2026-10-28T00:00:00Z") :day "2026-10-28")
+                                      rows settled run-rows))))
+    (testing "no report before: each stage with its state now, nothing counted"
+      (let [f (where/since-row {:kind :first} rows settled run-rows)]
+        (is (:first? f))
+        (is (= [{:state "closed" :ids [3 4 5]} {:state "in progress" :ids [6]} {:state "ahead" :ids [7]}] (:stages f)))
+        (is (not (contains? f :runs)) "not counted from the project's start")))
+    (testing "the lines a person reads"
+      (is (= ["Since 26 October 2026, 18:00 UTC (23:30 IST):" "- stage 4, stage 5: closed" "- stage 6: in progress"
+              "- Decisions settled: D8 (same day), D9; 1 settled with no date, not counted"
+              "- Runs: 2, 1 merged, $3.00 (runs only; a reading carries no time)"]
+             (where/since-lines s "UTC" "Asia/Kolkata")))
+      (is (= ["Nothing since 28 October 2026, 00:00 UTC."]
+             (where/since-lines (where/since-row (assoc base :at (inst "2026-10-28T00:00:00Z") :day "2026-10-28") rows settled run-rows)
+                                "UTC" nil)))
+      (is (= ["First report - nothing to count from. Each stage now:" "- stage 3, stage 4, stage 5: closed"
+              "- stage 6: in progress" "- stage 7: ahead"]
+             (where/since-lines (where/since-row {:kind :first} rows settled run-rows) "UTC" nil))))))
 
 (deftest what-waits-on-the-person
   (let [w (where/waits {:next {:step 10 :name "sign-off" :owner "the person" :run "set :blueprint/signed"}
@@ -178,17 +225,22 @@
     (is (= [{:id "D1" :section "2" :status "OPEN" :subject "Hosting" :owner "the person"}] (get-in d [:open :decisions])))
     (is (= ["D1, Hosting" "R2, Publishing"] (mapv :what (:waits-on-the-person d)))
         "an owner \"the person\", and a spike naming a signer of the gates records")
-    (is (= {:from "2026-10-13" :why "stage 0 approved" :stages-closed [0] :approved [0 1] :signed [0]
-            :decisions-settled [{:id "D2" :on "2026-10-14"}] :settled-undated 1 :runs 1 :merged 1 :run-money 1.0}
-           (:since d)))
+    (is (= {:kind :first :first? true
+            :stages [{:state "closed" :ids [0]} {:state "in progress" :ids [1]} {:state "ahead" :ids [2]}]}
+           (:since d))
+        "no report made yet: each stage with its state now, nothing counted")
     (is (= {:spent 1.25 :caps-approved 35 :caps-proposed 0 :by-stage [[0 1.0 20] [1 0.25 15]]} (:money d)))
-    (testing "the last look, recorded, is where since counts from"
-      (is (= (str (fs/path ws "work" "where" "last-look.edn"))
-             (where/last-look! (workspace/find-workspace ws) "2026-10-14T09:00:00Z" "Ada")))
-      (is (= {:at "2026-10-14T09:00:00Z" :by "Ada"} (edn/read-string (slurp (str (fs/path ws "work" "where" "last-look.edn")))))
-          "its comment lines read past")
-      (let [s (:since (where/where-data (workspace/find-workspace ws) opts))]
-        (is (= ["2026-10-14" "your last look, by Ada" [1] 0] ((juxt :from :why :approved :runs) s)))))
+    (testing "the last report made, from the reports log, is where since counts from"
+      (let [w (workspace/find-workspace ws)]
+        (is (= (str (fs/path ws "work" "where" "reports.edn")) (where/report! w {:at "2026-10-13T23:00:00Z"})))
+        (where/report! w {:at "2026-10-14T09:30:00Z" :plan-commit "abc1234"})
+        (is (= ["2026-10-13T23:00:00Z" "2026-10-14T09:30:00Z"] (mapv :at (where/reports w))) "lines added, none rewritten")
+        (let [s (:since (where/where-data w opts))]
+          (is (= "2026-10-14T09:30:00Z" (:from s)) "the last line's time, exact")
+          (is (= [{:state "in progress" :ids [1]}] (:stages s))
+              "stage 1's gate carries a day alone, the report's day: counted; stage 0 closed the day before: not")
+          (is (= [{:id "D2" :on "2026-10-14" :same-day? true}] (:decisions-settled s)))
+          (is (= 0 (:runs s)) "w0 started the day before"))))
     (is (= [8 "the Architect's session"] ((juxt :step :owner) (:next d))) "the next step is next-action's: stage 1's blueprint")))
 
 (deftest a-money-total-is-rounded-once
@@ -206,7 +258,7 @@
         lines (str/split-lines (where/render-full d))
         after (fn [heading n] (take n (rest (drop-while #(not= heading %) lines))))]
     (is (= ["# Where the project stands - xyx-build" "Generated 2026-10-17 from xyx-build at abc1234, KIT 0.6.8."] (take 2 lines)))
-    (is (= ["## Where" "## The road" "## Money by provider" "## Money by role" "## Waits on you (2)" "## Since you last looked: 2026-10-13 (stage 0 approved)"
+    (is (= ["## Where" "## The road" "## Money by provider" "## Money by role" "## Waits on you (2)" "## Since the last report"
             "## Open" "## Next" "## Read more"]
            (filter #(str/starts-with? % "## ") lines))
         "the seven parts in order, the money by provider and by role after the road")
@@ -223,10 +275,8 @@
     (is (= ["" "- **D1, Hosting** - an open decision whose owner is the person: the person (xyx-build/docs/04-decision-log.md §2)"
             "- **R2, Publishing** - an open risk the person retires: no spike: Ada's, at the release (xyx-build/docs/00-overview.md §4a)"]
            (after "## Waits on you (2)" 3)))
-    (is (= ["" "- closed: stage 0 · approved: stage 0, stage 1 · blueprint signed: stage 0"
-            "- decisions settled: D2; 1 settled with no date, not counted"
-            "- runs: 1, 1 merged, $1.00 (runs only; a reading carries no date)"]
-           (after "## Since you last looked: 2026-10-13 (stage 0 approved)" 4)))
+    (is (= ["" "First report - nothing to count from. Each stage now:" "- stage 0: closed" "- stage 1: in progress" "- stage 2: ahead"]
+           (after "## Since the last report" 5)))
     (is (= ["" "Decisions PROVISIONAL or OPEN (1) - xyx-build/docs/04-decision-log.md"
             "- **D1** Hosting - OPEN (§2), owner: the person"
             "" "Risks OPEN (1) - xyx-build/docs/00-overview.md §4a"
@@ -238,10 +288,10 @@
     (is (= "- phase: KIT/method.md \"01 — The phase map\" · step n: KIT/workflow.md \"The steps, and what each produces\""
            (second (after "## Read more" 2))))
     (is (= "- the roadmap page, drawn: `bb roadmap-page`, then open work/where/roadmap.html" (last lines)))
-    (testing "nothing waiting, and no date to count from: each said"
-      (let [s (where/render-full (assoc d :waits-on-the-person [] :since {:from nil :why "no stage closed and no last look recorded"}))]
+    (testing "nothing waiting, and nothing since: each said"
+      (let [s (where/render-full (assoc d :waits-on-the-person [] :since {:kind :report :from "2026-10-17T11:00:00Z" :nothing? true}))]
         (is (str/includes? s "## Waits on you (0)\n\nNothing: no step, gate, prep row, decision or risk is the person's now."))
-        (is (str/includes? s "## Since you last looked\n\nNo date to count from: no stage closed and no last look recorded."))))))
+        (is (str/includes? s "## Since the last report\n\nNothing since 17 October 2026, "))))))
 
 (deftest a-stage-whose-records-name-no-model-says-so
   (is (= "gemini-4-argon (S3); not recorded (S4)"

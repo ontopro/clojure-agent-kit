@@ -571,7 +571,7 @@ When the Architect's session reports to the person - a stage plan for approval, 
 A long build loses its reader between visits, so at the three points a person most needs the whole
 road - a stage's end, a stage's pull, and a session opened cold - the Architect's session offers the
 fuller account after the block: `/kit-where-am-i`, which prints `bb next --where --full` - every stage
-with its state, cap, spend and days, what waits on the person, what changed since their last look,
+with its state, cap, spend and days, what waits on the person, what changed since the last report,
 what is open one line each - and draws the roadmap page (`bb roadmap-page`) when asked. Offered, not
 given: the report itself still opens with the short block, so it does not grow. The account and the
 page are renderings of one map, `bb next --where --edn`, read from the build's files; neither is

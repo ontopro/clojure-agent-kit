@@ -3,8 +3,8 @@
 
   `bb next --where` prints the block that opens the Architect's reports - terse, a step's
   boundary. A person back after a week needs more: the whole road with a mark where they are,
-  what each stage has cost and taken, what waits on them, and what changed since they last
-  looked. `where-data` reads all of it from the build's files, through the readers that already
+  what each stage has cost and taken, what waits on them, and what changed since the last
+  report was made. `where-data` reads all of it from the build's files, through the readers that already
   exist - `next/where-facts`, `next/next-action`, the stage report's figures - and returns plain
   data, every view a rendering of it: the fuller account and the roadmap page are drawn from
   this map, never from the documents a second time.
@@ -64,6 +64,14 @@
   (when x (/ (Math/round (* 100.0 (double x))) 100.0)))
 
 (defn- gate-date [g] (stages/gate-day g nil))
+
+(defn- gate-time
+  "When gate `g` was passed, to count it since a report: `{:at <Instant> :day \"YYYY-MM-DD\"
+  :day-only? bool}` - `:day-only?` a gate written with `:date` before gates carried a time, which
+  is counted by its day. Nil for no gate."
+  [g z]
+  (when (map? g)
+    {:at (stages/gate-instant g z) :day (stages/gate-day g z) :day-only? (not (contains? g :at))}))
 
 (defn ids-in
   "The decision and risk IDs a stage map cell names - `D7`, `S3`, `P0-8`, `RV-2`, `R5` - in the
@@ -194,8 +202,10 @@
 (defn stage-row
   "One stage of the road, from its stage map row `row`, its extra cells `extra`, its files
   `files` (`next/stage-files`), its figures `figures` (`{:summary :readings :minutes}`), and the
-  stage the person is at, `here`. Paths are the workspace's: `files`' `:build` before `docs/`."
-  [id row extra files figures here]
+  stage the person is at, `here`, the project's zone `z`. Paths are the workspace's: `files`'
+  `:build` before `docs/`. `:times` keeps each gate's instant (`gate-time`), which `since-row`
+  counts by: a day alone counted a stage approved an hour before a report as after it."
+  [id row extra files figures here z]
   (let [{:keys [gates plan blueprint build]} files
         approved (gate-date (:stage/approved gates))
         closed (gate-date (:stage/closed gates))
@@ -206,6 +216,10 @@
             :plan (some->> plan (str build "/docs/stages/")) :blueprint (some->> blueprint (str build "/docs/stages/"))
             :approved approved :signed (gate-date (:blueprint/signed gates)) :closed closed
             :days (days approved closed)
+            :times (into {} (for [[k g] {:approved :stage/approved :signed :blueprint/signed :closed :stage/closed}
+                                  :let [t (gate-time (get gates g) z)]
+                                  :when t]
+                              [k t]))
             :risks (:risks extra []) :decisions (:decisions extra [])}
            (select-keys c [:cap :cap-note])
            (if summary
@@ -276,32 +290,127 @@
   (str "- **" what "**" (when detail (str ": " detail)) " - " why (when run (str ". Run: " run)) " (" where ")"
        (apply str (for [i items] (str "\n  - " i)))))
 
+(def state-words
+  "A stage's state as the section says it, in the order it lists them."
+  (array-map :closed "closed" :running "in progress" :planned "planned" :next "next" :ahead "ahead"))
+
+(defn- by-state
+  "`stage-rows` as `[{:state \"closed\" :ids [4 5]} ...]`, each state once, in `state-words`' order."
+  [stage-rows]
+  (vec (for [[k word] state-words
+             :let [ids (vec (keep #(when (= k (:state %)) (:id %)) stage-rows))]
+             :when (seq ids)]
+         {:state word :ids ids})))
+
 (defn since-row
-  "What changed from the date `from`: the stages closed, approved and signed on or after it, the
-  decisions settled with a date on or after it and those settled with none, and the runs started
-  on or after it - `runs` as `[{:date :status :cost}]`. `:run-money` is the runs' alone: a
-  reading carries no date to count it by, so it is less than the stages' `:money` for the same days,
-  and a view says \"runs only\" beside it."
-  [from why stage-rows {:keys [dated undated]} run-rows]
-  (let [on-or-after #(and % from (>= (compare % from) 0))
-        ids-where (fn [k] (vec (keep #(when (on-or-after (k %)) (:id %)) stage-rows)))
-        rs (filter #(on-or-after (:date %)) run-rows)]
-    {:from from :why why
-     :stages-closed (ids-where :closed) :approved (ids-where :approved) :signed (ids-where :signed)
-     :decisions-settled (vec (filter #(on-or-after (:on %)) dated)) :settled-undated undated
-     :runs (count rs) :merged (count (filter #(= :merged (:status %)) rs))
-     :run-money (cents (reduce + 0 (keep :cost rs)))}))
+  "What changed since `base` (`since-from`'s): each stage that passed a gate since, once, with its
+  state now; the decisions settled on or after the base's day - the decision log carries a day
+  alone, so one settled on that day is counted and marked `:same-day?` - and those settled with no
+  date; the runs started since - `run-rows` as `[{:at :status :cost}]`. A stage's gate counts by
+  its instant, a gate written with a day alone by its day. `:run-money` is the runs' alone: a
+  reading carries no time to count it by, and a view says \"runs only\" beside it.
+
+  NO REPORT BEFORE THIS ONE: `:first?`, each stage with its state now, and nothing counted - not
+  counted from the project's start."
+  [{:keys [at day] :as base} stage-rows {:keys [dated undated]} run-rows]
+  (let [since? (fn [{t :at d :day day-only? :day-only?}]
+                 (if day-only?
+                   (boolean (and d (>= (compare d day) 0)))
+                   (boolean (and t (not (.isBefore ^java.time.Instant t ^java.time.Instant at))))))
+        changed (filter #(some since? (vals (:times %))) stage-rows)
+        rs (filter #(and (:at %) (since? {:at (:at %)})) run-rows)
+        settled (vec (for [d dated :when (>= (compare (:on d) day) 0)]
+                       (cond-> d (= (:on d) day) (assoc :same-day? true))))]
+    (if-not at
+      {:kind (:kind base) :first? true :stages (by-state stage-rows)}
+      (cond-> {:kind (:kind base) :from (str at) :day day
+               :stages (by-state changed)
+               :decisions-settled settled :settled-undated undated
+               :runs (count rs) :merged (count (filter #(= :merged (:status %)) rs))
+               :run-money (cents (reduce + 0 (keep :cost rs)))}
+        (:flag base) (assoc :flag (:flag base))
+        (and (empty? changed) (empty? settled) (empty? rs)) (assoc :nothing? true)))))
 
 (defn since-from
-  "The date \"since you last looked\" counts from, and why: the `--since` date; else the last look
-  recorded (`work/where/last-look.edn`, `{:at :by}`); else the approval date of the last stage
-  closed - its close date would show nothing of a stage approved and closed on one day; else nil."
-  [flag last-look stage-rows]
-  (let [last-closed (last (filter #(= :closed (:state %)) stage-rows))]
-    (cond flag [flag "--since"]
-          (:at last-look) [(subs (str (:at last-look)) 0 10) (str "your last look" (some->> (:by last-look) (str ", by ")))]
-          (:approved last-closed) [(:approved last-closed) (str "stage " (:id last-closed) " approved")]
-          :else [nil "no stage closed and no last look recorded"])))
+  "Where \"since the last report\" counts from (the person, 2026-10-26: what happened since the
+  report was last generated; a look recorded or not was \"mighty confusing\"): `--since`'s date,
+  that day's 00:00 in the project's zone `z`; else the last report's `:at`, from the reports log
+  (`reports`); else none - the first report. `{:kind :flag|:report|:first :at <Instant> :day}`,
+  `:day` the base's day in `z`, which a date-only record is counted by."
+  [flag last-report z]
+  (let [zid (stages/zone z)
+        day-of #(str (.toLocalDate (.atZone ^java.time.Instant % zid)))]
+    (if-let [inst (or (when flag (some-> (try (java.time.LocalDate/parse flag) (catch Exception _ nil))
+                                         (.atStartOfDay zid) .toInstant))
+                      (stages/parse-at (:at last-report)))]
+      (cond-> {:kind (if flag :flag :report) :at inst :day (if flag flag (day-of inst))}
+        flag (assoc :flag flag))
+      {:kind :first})))
+
+;; ---------------------------------------------------------------------------
+;; the reports log: when each roadmap page was made, which the next counts from
+;; ---------------------------------------------------------------------------
+
+(defn reports-file
+  "The workspace's reports log, `<work>/where/reports.edn`: one line per roadmap page made."
+  [ws]
+  (fs/path (:workspace/work ws) "where" "reports.edn"))
+
+(defn reports
+  "The reports log's entries, oldest first, `[{:at :plan-commit :kit-version :files}]`; a line that
+  does not read is passed over. [] when there is none."
+  [ws]
+  (let [f (reports-file ws)]
+    (if (fs/exists? f)
+      (vec (keep #(when-not (str/blank? %) (try (edn/read-string %) (catch Exception _ nil)))
+                 (str/split-lines (slurp (str f)))))
+      [])))
+
+(defn report!
+  "Append `entry` - `{:at :plan-commit :kit-version :files}` - to the reports log: a line added,
+  never one rewritten. A report is what was true at a time; its baseline is the line before."
+  [ws entry]
+  (let [f (reports-file ws)]
+    (fs/create-dirs (fs/parent f))
+    (spit (str f) (str (pr-str entry) "\n") :append true)
+    (str f)))
+
+(defn instant-text
+  "An instant for a person: `26 October 2026, 18:08 CDT`, in the zone `local`, and the project's
+  own zone after it when `project-zone` (an IANA name) reads the clock differently - `(04:38
+  IST)`. `at` is an `Instant` or its text. Nil without one."
+  [at local project-zone]
+  (when-let [inst (stages/parse-at (str at))]
+    (let [in (fn [z] (.atZone ^java.time.Instant inst (stages/zone z)))
+          here (in local)
+          day (java.time.format.DateTimeFormatter/ofPattern "d MMMM yyyy, HH:mm zzz" java.util.Locale/ENGLISH)
+          clock (java.time.format.DateTimeFormatter/ofPattern "HH:mm zzz" java.util.Locale/ENGLISH)
+          there (when (not-empty project-zone) (in project-zone))]
+      (str (.format here day)
+           (when (and there (not= (.getOffset here) (.getOffset there)))
+             (str " (" (.format there clock) ")"))))))
+
+(defn since-lines
+  "The section's lines under its heading, for a person - one view for the fuller account and the
+  roadmap page: the base, then each changed stage's state now, the decisions settled, the runs.
+  `local` the reader's zone, `project-zone` the workspace's."
+  [{:keys [kind first? nothing? from flag stages decisions-settled settled-undated runs merged run-money]} local project-zone]
+  (let [state-line (fn [{:keys [state ids]}] (str (str/join ", " (map #(str "stage " %) ids)) ": " state))
+        base (if (= :flag kind)
+               (str flag " (--since: 00:00, " (stages/zone project-zone) ")")
+               (instant-text from local project-zone))]
+    (cond
+      first? (cons "First report - nothing to count from. Each stage now:" (map #(str "- " (state-line %)) stages))
+      nothing? [(str "Nothing since " base ".")]
+      :else (concat
+             [(str "Since " base ":")]
+             (map #(str "- " (state-line %)) stages)
+             [(str "- Decisions settled: "
+                   (if (seq decisions-settled)
+                     (str/join ", " (map #(str (:id %) (when (:same-day? %) " (same day)")) decisions-settled))
+                     "none dated")
+                   (when (pos? (or settled-undated 0)) (str "; " settled-undated " settled with no date, not counted")))
+              (str "- Runs: " runs ", " merged " merged, " (format "$%.2f" (double run-money)) " (runs only; a reading carries no time)")]))))
 
 (defn- money [stage-rows]
   (let [approved (filter :approved stage-rows)
@@ -469,19 +578,8 @@
       (if (seq waits)
         (map wait-line waits)
         ["Nothing: no step, gate, prep row, decision or risk is the person's now."])
-      [""
-       (str "## Since you last looked" (if (:from since) (str ": " (:from since) " (" (:why since) ")") ""))
-       ""]
-      (if-not (:from since)
-        [(str "No date to count from: " (:why since) ".")]
-        (let [ids (fn [xs] (if (seq xs) (str/join ", " (map #(str "stage " %) xs)) "none"))
-              settled (:decisions-settled since)]
-          [(str "- closed: " (ids (:stages-closed since)) " · approved: " (ids (:approved since))
-                " · blueprint signed: " (ids (:signed since)))
-           (str "- decisions settled: " (if (seq settled) (str/join ", " (map :id settled)) "none dated")
-                (when (pos? (:settled-undated since)) (str "; " (:settled-undated since) " settled with no date, not counted")))
-           (str "- runs: " (:runs since) ", " (:merged since) " merged, " (format "$%.2f" (double (:run-money since)))
-                " (runs only; a reading carries no date)")]))
+      ["" "## Since the last report" ""]
+      (since-lines since (java.time.ZoneId/systemDefault) (:time-zone workspace))
       [""
        "## Open"
        ""
@@ -529,14 +627,15 @@
      :minutes (when f (Math/round (/ (reduce + 0 (keep :run/wall-ms (:records f))) 60000.0)))}))
 
 (defn- runs
-  "Every run record under `records`, as `{:date :status :cost}` - the cost as the stage report
-  counts it, never `:run/cost`, which one record format carries as a map."
+  "Every run record under `records`, as `{:date :at :status :cost}` - `:at` the instant it started,
+  which `since-row` counts by; the cost as the stage report counts it, never `:run/cost`, which one
+  record format carries as a map."
   [records]
   (vec (for [r (->> (when (and records (fs/directory? records)) (fs/glob records "*.edn"))
                     (keep read-edn) (filter :run/id))
              :let [s (stage-report/run-summary r)
                    at (:run/started-at r)]]
-         {:date (when at (subs (str (.toInstant ^java.util.Date at)) 0 10)) :status (:status s) :cost (:cost s)})))
+         {:date (when at (subs (str (stages/parse-at at)) 0 10)) :at (stages/parse-at at) :status (:status s) :cost (:cost s)})))
 
 (defn- plain-edn
   "`m` with every `Instant` in it as its ISO-8601 text. The readers below keep times as instants to
@@ -578,13 +677,13 @@
             rows (vec (for [id ids]
                         (stage-row id (get smap id) (get extra id {})
                                    (assoc (get files id {}) :kind (get kinds id) :build (:build wf))
-                                   (figures build records id) here)))
+                                   (figures build records id) here (:workspace/time-zone ws))))
             open {:decisions (if log (open-decisions log) []) :risks (if overview (open-risks overview) [])}
             names (vec (distinct (for [[_ {:keys [gates]}] files
                                        g (vals (or gates {}))
                                        :when (and (map? g) (string? (:by g)) (not (next/unnamed? g)))]
                                    (:by g))))
-            [from why] (since-from since (read-edn (fs/path (:workspace/work ws) "where" "last-look.edn")) rows)
+            base (since-from since (peek (reports ws)) (:workspace/time-zone ws))
             stage (:stage wf)]
         {:workspace (cond-> {:dir "." :build (:build wf) :app (rel ws :workspace/app) :kit (:kit wf) :work (rel ws :workspace/work)}
                       (:workspace/display-name ws) (assoc :display-name (:workspace/display-name ws))
@@ -598,7 +697,7 @@
          :next nxt
          :open open
          :waits-on-the-person (waits {:next nxt :current stage :open open :names names :kit (:kit wf) :build (:build wf)})
-         :since (since-row from why rows (if log (settled log) {:dated [] :undated 0}) (runs records))
+         :since (since-row base rows (if log (settled log) {:dated [] :undated 0}) (runs records))
          :money (money rows)
          :terms {:kit next/kit-terms :project-plan next/project-plan :ids next/id-kinds}}))))
 
@@ -630,46 +729,15 @@
           (not (or edn? full?)) {:error "--since needs --edn or --full: the block does not count since a date"}
           :else {:edn? edn? :full? full? :since d :args kept})))
 
-(defn last-look!
-  "Record the person's look at where the project stands - `{:at at :by by}`, `:by` left out when
-  nil - in `<work>/where/last-look.edn`, which `since-from` reads: \"since you last looked\" then
-  counts from it. Returns the file's path."
-  [ws at by]
-  (let [f (fs/path (:workspace/work ws) "where" "last-look.edn")]
-    (fs/create-dirs (fs/parent f))
-    (spit (str f) (str ";; The person's last look at where the project stands, written by `bb last-look`; `bb next\n"
-                       ";; --where --full` and the roadmap page count \"since you last looked\" from it. Not committed.\n"
-                       (pr-str (cond-> {:at at} (not (str/blank? by)) (assoc :by by))) "\n"))
-    (str f)))
-
-(defn last-look-main
-  "bb last-look [--by <name>] [--workspace <dir>]
-
-  Records that the person has looked at where the project stands, now - the `kit-where-am-i` skill
-  runs it on their word. The one file it writes is `work/where/last-look.edn`."
-  [& args]
-  (let [i (.indexOf ^java.util.List (vec args) "--by")
-        by (when (>= i 0) (get (vec args) (inc i)))
-        rest-args (if (>= i 0) (concat (take i args) (drop (+ i 2) args)) args)]
-    (when (and (>= i 0) (str/blank? by))
-      (println "--by needs a name after it")
-      (System/exit 1))
-    (let [ws (workspace/current-or-exit rest-args)]
-      (when-not ws
-        (println "last-look: no workspace here - run it from the workspace folder")
-        (System/exit 1))
-      (let [at (str (java.time.Instant/now))
-            f (last-look! ws at by)]
-        (println (str "recorded " (fs/relativize (fs/absolutize (:workspace/dir ws)) (fs/absolutize f)) ": " at
-                      (when by (str ", by " by)) " - since you last looked now counts from " (subs at 0 10)))))))
-
 (defn -main
   "bb next [--where [--edn | --full] [--since <YYYY-MM-DD>]] [--workspace <dir>]
 
   With `--where --edn`, where the project stands as one EDN map (`where-data`); with `--where
-  --full`, the same as the fuller account a person reads (`render-full`); `--since` names
-  the date \"since you last looked\" counts from. Every other form is `harness.setup.next`'s.
-  Information, and nothing written: exit 0, but 1 for a `--since` `parse-args` refuses."
+  --full`, the same as the fuller account a person reads (`render-full`). \"Since the last
+  report\" counts from the last roadmap page made (the reports log, which only `bb roadmap-page`
+  adds to), or `--since`'s date, its 00:00 in the project's zone. Every other form is
+  `harness.setup.next`'s. Information, and nothing written: exit 0, but 1 for a `--since`
+  `parse-args` refuses."
   [& args]
   (let [{:keys [edn? full? since error] rest-args :args} (parse-args args)
         data #(let [ws (workspace/current-or-exit (remove #{"--where"} rest-args))]
