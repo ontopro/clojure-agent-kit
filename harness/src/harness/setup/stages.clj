@@ -18,8 +18,7 @@
   (`harness.setup.stage-move`)."
   (:require
    [babashka.fs :as fs]
-   [clojure.edn :as edn]
-   [clojure.string :as str]))
+   [clojure.edn :as edn]))
 
 (defn stages-dir [build] (fs/path build "docs" "stages"))
 
@@ -65,17 +64,18 @@
           [id d])))
 
 (defn plan-file
-  "The stage plan in stage folder `dir`: its one `.md` that is neither the
-  blueprint nor a template, by name; nil when it has none."
+  "The stage plan in stage folder `dir`, by its one name, `stage-N-plan.md` for every kind (the kind
+  is its `**Kind:**` line): its file name, or nil when it is not written. A brief, a draft or a pack's
+  output beside it is never taken for it, whatever its name sorts before."
   [dir]
-  (->> (when (fs/directory? dir) (fs/list-dir dir))
-       (filter fs/regular-file?)
-       (map (comp str fs/file-name))
-       (filter #(and (str/ends-with? % ".md")
-                     (not (str/ends-with? % "-blueprint.md"))
-                     (not (str/includes? % "-template."))))
-       sort
-       first))
+  (let [nm (str (fs/file-name dir) "-plan.md")]
+    (when (fs/regular-file? (fs/path dir nm)) nm)))
+
+(defn plan-name?
+  "Whether `path` carries a stage plan's one name, its folder's: `stage-N/stage-N-plan.md`."
+  [path]
+  (let [p (fs/absolutize path)]
+    (= (str (fs/file-name p)) (str (fs/file-name (fs/parent p)) "-plan.md"))))
 
 (defn of-document
   "For a document at `<build>/docs/stages/stage-N/<file>`: `{:build :id :dir}`;

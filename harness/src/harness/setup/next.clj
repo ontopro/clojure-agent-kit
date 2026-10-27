@@ -237,15 +237,15 @@
 
       (and (nil? approved) (nil? plan))
       (action 7 architect "/kit-stage-plan"
-              (str "stage " id " is pulled (" (gates-file id) ") and docs/stages/stage-" id "/ has no plan"))
+              (str "stage " id " is pulled (" (gates-file id) ") and its plan, " (stages/rel id "-plan.md") ", is not written"))
 
       (nil? approved)
       (action 7 person (str "read docs/stages/" plan ", then set :stage/approved {" at " :cap :by <name>} in " (gates-file id))
               (str "stage " id "'s plan is written and not approved"))
 
       (nil? plan)
-      (action 6 architect "/kit-stage-plan (stage 0's plan, from the spike template)"
-              "stage 0 is approved and docs/stages/stage-0/ has no plan")
+      (action 6 architect (str "/kit-stage-plan (stage 0's plan, " (stages/rel 0 "-plan.md") ", from the spike template)")
+              (str "stage 0 is approved and its plan, " (stages/rel 0 "-plan.md") ", is not written"))
 
       (nil? blueprint)
       (action 8 architect (str "write " (stages/rel id "-blueprint.md") " from docs/stages/stage-N-blueprint-template.md"
@@ -442,8 +442,8 @@
 (defn stage-files
   "The stages under `docs/stages/`, by id - a folder `stage-N/` each
   (`harness.setup.stages`): `{id {:plan path :blueprint path :gates map}}`,
-  the paths from `docs/stages/` (`stage-1/stage-1-plan.md`). The plan is the
-  folder's `.md` that is not the blueprint; the gates record is
+  the paths from `docs/stages/` (`stage-1/stage-1-plan.md`). The plan is
+  `stage-N-plan.md` (`stages/plan-file`); the gates record is
   `stage-N-gates.edn`. A folder with none of them is a stage with nothing yet."
   [stages-dir]
   (into (sorted-map)

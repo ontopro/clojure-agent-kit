@@ -547,7 +547,7 @@
             {:keys [id build]} (stages/of-document path)
             ws (or (some-> build str workspace/find-workspace) ws)
             records (:workspace/records ws)]
-        (when-not (and (fs/exists? path) id)
+        (when-not (and (fs/exists? path) id (stages/plan-name? path))
           (println (str "stage-report: " path " is not a stage plan at <build>/docs/stages/stage-N/stage-N-plan.md"))
           (System/exit 2))
         (if-let [s (summary-for (str build) records id)]

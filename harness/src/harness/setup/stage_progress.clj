@@ -271,7 +271,7 @@
       (let [plan (str (fs/absolutize (first args)))
             id (stage-id-of build plan)]
         (if-not id
-          (do (println (str "stage-progress: " plan " is no stage plan of this workspace's build")) (System/exit 1))
+          (do (println (str "stage-progress: " plan " is no stage plan of this workspace's build - a stage plan is docs/stages/stage-N/stage-N-plan.md")) (System/exit 1))
           (let [text (slurp plan)]
             (spit plan (place text (render (facts build (:workspace/records ws) id))))
             (println (str "stage-progress: wrote the progress section of " (fs/file-name plan))))))

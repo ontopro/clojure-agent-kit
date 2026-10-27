@@ -17,7 +17,7 @@ repository's first commit, the way it generates `<name>-app/` from the KIT's app
     05-lessons.md             ← one section per stage, written at its end, read first when the next stage plan is written
     stages/                   ← the stage templates, and a folder per stage, made when the stage is pulled
       stage-0/
-        stage-0-<name>.md     ← the stage 0 plan, the spike's, from stage-0-spike-template.md
+        stage-0-plan.md       ← the stage 0 plan, the spike's, from stage-0-spike-template.md; every stage's plan is stage-N-plan.md, its kind in its **Kind:** line
       stage-N/
         stage-N-plan.md       ← the stage plan, written just-in-time when the stage is pulled, from stage-N-template.md (pre-release and release from their own templates)
         stage-N-blueprint.md  ← the stage's blueprint, the Architect's output; signed off by the person

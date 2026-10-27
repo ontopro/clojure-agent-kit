@@ -139,9 +139,11 @@
   [stage-plan-path]
   (let [sp (fs/absolutize stage-plan-path)
         {:keys [build]} (stages/of-document sp)]
-    (when-not (and (fs/exists? sp) build)
+    (when-not (and (fs/exists? sp) build (stages/plan-name? sp))
       (throw (ex-info (str "a stage plan lives at <build>/docs/stages/stage-N/stage-N-plan.md; " sp
-                           (if (fs/exists? sp) " is not there" " does not exist"))
+                           (cond (not (fs/exists? sp)) " does not exist"
+                                 (not build) " is not there"
+                                 :else " is another file of its stage"))
                       {:plan-review/error :no-stage-plan :path (str sp)})))
     (str (fs/normalize build))))
 

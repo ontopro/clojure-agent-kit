@@ -163,7 +163,11 @@
                           (pr/review! plan (str (fs/path plan "profile.edn")) method-path
                                       (str (fs/path plan "docs" "stages" "stage-2" "stage-2-missing.md")))))
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"a stage plan lives at"
-                          (pr/plan-dir-of (str (fs/path plan "docs" "source.md")))))))
+                          (pr/plan-dir-of (str (fs/path plan "docs" "source.md")))))
+    (let [brief (fs/path (fs/parent stage-plan) "stage-1-credits-plan.md")]
+      (spit (str brief) "# an amendment's brief")
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"is another file of its stage" (pr/plan-dir-of (str brief)))
+          "a brief beside the stage plan is not read as it"))))
 
 (deftest a-plan-with-no-documents-and-a-profile-with-no-plan-reviewer-are-refused-by-name
   (let [plan (scratch-plan "http://127.0.0.1:1")]
