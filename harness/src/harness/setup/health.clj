@@ -711,6 +711,72 @@
                           (when (seq rows) (cons expected-gaps rows)))))))))
 
 ;; ---------------------------------------------------------------------------
+;; XTDB: the KIT's tested version, on the tested JDK (plan 7.0, item 7.3)
+;; ---------------------------------------------------------------------------
+
+(def xtdb-timeout-ms 600000)
+
+(defn xtdb-dir [kit] (str (fs/path kit "harness" "health" "xtdb")))
+
+(defn xtdb-version
+  "The KIT's tested XTDB version: the probe's `deps.edn`, the one place it is written."
+  [kit]
+  (get-in (edn/read-string (slurp (str (fs/path (xtdb-dir kit) "deps.edn")))) [:deps 'com.xtdb/xtdb-core :mvn/version]))
+
+(defn xtdb-image [version] (str "ghcr.io/xtdb/xtdb:" version))
+
+(defn xtdb-subject [kit] {:subject :xtdb :kit kit :dir (xtdb-dir kit)})
+
+(defn- probe-line [out] (last (filter #(re-find #"^(ok |FAILED)" %) (str/split-lines (str out)))))
+
+(defn- default-shell [dir argv]
+  (try (apply p/shell {:dir dir :out :string :err :string :continue true :timeout xtdb-timeout-ms} argv)
+       (catch Exception e {:exit -1 :out "" :err (ex-message e)})))
+
+(defn check-xtdb-embedded
+  "An in-process XTDB node of the KIT's tested version on this JVM - the one `bb doctor` checked -
+  with `-Dio.netty.noUnsafe=false`, which JDK 25 needs: two puts of one document, read now and over
+  valid time (`health/xtdb/`'s probe). Its own JVM project, so the gates stay JVM-free; the first
+  run downloads XTDB and Arrow. `run` is `(fn [dir argv] -> {:exit :out :err})`, for a test."
+  ([subject] (check-xtdb-embedded subject {}))
+  ([{:keys [dir kit] :as subject} {:keys [run] :or {run default-shell}}]
+   (let [[{:keys [exit out err]} ms] (timed #(run dir ["clojure" "-M:probe"]))
+         line (probe-line out)]
+     (result :embedded subject (and (= 0 exit) (some-> line (str/starts-with? "ok "))) ms
+             (str "XTDB " (xtdb-version kit) ": "
+                  (or line (str "the probe exited " exit "\n" (str/join "\n" (take-last 6 (str/split-lines (str out err)))))))))))
+
+(defn check-xtdb-pgwire
+  "The XTDB server image of the tested version (`xtdb-image`), started with no port but its Postgres
+  wire on a free one of localhost, and reached through it by the same probe: two inserts, read over
+  valid time; the container removed after, whatever happened. Where Docker is not running, skipped
+  and said. `run` and `docker?` for a test; `sleep` between the tries while the server starts."
+  ([subject] (check-xtdb-pgwire subject {}))
+  ([{:keys [dir kit] :as subject} {:keys [run docker? sleep tries]
+                                   :or {run default-shell
+                                        docker? #(= 0 (:exit (default-shell "." ["docker" "info" "--format" "{{.ServerVersion}}"])))
+                                        sleep #(Thread/sleep 2000) tries 30}}]
+   (if-not (docker?)
+     (assoc (result :pgwire subject true 0 "skipped: Docker is not running - the image is tried where it is")
+            :skipped? true)
+     (let [image (xtdb-image (xtdb-version kit))
+           name (str "kit-health-xtdb-" (subs (str (random-uuid)) 0 8))
+           [line ms]
+           (timed (fn []
+                    (try
+                      (let [{:keys [exit err]} (run dir ["docker" "run" "-d" "--rm" "--name" name "-p" "127.0.0.1::5432" image])]
+                        (if-not (= 0 exit)
+                          (str "FAILED: docker run " image " exited " exit ": " (str/trim (str err)))
+                          (let [port (some->> (:out (run dir ["docker" "port" name "5432"])) str/split-lines first (re-find #":(\d+)$") second)]
+                            (loop [i 1]
+                              (let [l (probe-line (:out (run dir ["clojure" "-M:probe" "--pgwire" (str port)])))]
+                                (cond (some-> l (str/starts-with? "ok ")) (str l " (try " i ")")
+                                      (>= i tries) (or l "FAILED: the probe never answered")
+                                      :else (do (sleep) (recur (inc i)))))))))
+                      (finally (run dir ["docker" "rm" "-f" name])))))]
+       (result :pgwire subject (some-> line (str/starts-with? "ok ")) ms (str image ": " line))))))
+
+;; ---------------------------------------------------------------------------
 ;; the generated application
 ;; ---------------------------------------------------------------------------
 
@@ -790,6 +856,8 @@
                           doctor-results)
              ;; a skipped check says so in the record, so a row never reads it as passed
              :checks (mapv #(select-keys % [:subject :check :ok? :ms :skipped?]) checks)
+             ;; the store the KIT offers, as tried: its version and its server image (plan 7.0, item 7.3)
+             :xtdb {:version (xtdb-version kit) :image (xtdb-image (xtdb-version kit))}
              :ok? (every? :ok? checks)}
       ;; A RUN FROM A LOCAL CLONE SAYS SO IN THE RECORD, not only on the terminal: the pin above is
       ;; what the clone stood for, not what was generated, and `bb tag-check` refuses such a record -
@@ -824,7 +892,8 @@
                ";; actually run together through the KIT's gates, `bb init`, the loop and the generated\n"
                ";; application's gates. `bb doctor` shows it beside what is installed; newer is 'newer than\n"
                ";; tested', information and never a fault. Versions are floors; the JDK's is 21, 25 preferred.\n"
-               (with-out-str (pp/pprint {:as-of (:health/as-of rec) :platform (:label platform) :tools tools}))))
+               (with-out-str (pp/pprint (cond-> {:as-of (:health/as-of rec) :platform (:label platform) :tools tools}
+                                          (:xtdb rec) (assoc :xtdb (:xtdb rec)))))))
     (str path)))
 
 (defn load-records
@@ -974,7 +1043,9 @@
                        :loop (check-loop subject)
                        :serve (check-serve subject)
                        :browser (check-browser subject)
-                       :security (check-security subject))]]
+                       :security (check-security subject)
+                       :embedded (check-xtdb-embedded subject)
+                       :pgwire (check-xtdb-pgwire subject))]]
          (do (show r) r))))
 
 (defn -main
@@ -1016,7 +1087,9 @@
                       (say "\n  kept: " workspace)
                       (fs/delete-tree (fs/parent workspace)))
                     rs)))
-          all (concat selfcheck app)
+          ;; the store the KIT offers, on the tested JDK (plan 7.0, item 7.3)
+          xtdb (when-not (flags "--selfcheck-only") (run-subject! (xtdb-subject kit) [:embedded :pgwire]))
+          all (concat selfcheck app xtdb)
           bad (remove :ok? all)]
       (say "")
       (if (seq bad)

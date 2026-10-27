@@ -1,0 +1,14 @@
+;; `bb health`'s XTDB check (plan 7.0, item 7.3): the ONE place the KIT's tested XTDB version is
+;; written. `bb health --record` copies it, and the server image's tag beside it, into
+;; `resources/known-good.edn`. A JVM project of its own, never on the KIT's gates' path.
+{:paths ["src"]
+ :deps {org.clojure/clojure {:mvn/version "1.12.1"}
+        com.xtdb/xtdb-api {:mvn/version "2.2.0"}
+        com.xtdb/xtdb-core {:mvn/version "2.2.0"}
+        org.postgresql/postgresql {:mvn/version "42.7.10"}}
+ :aliases
+ {:probe {:jvm-opts ["--add-opens=java.base/java.nio=ALL-UNNAMED"
+                     "-Dio.netty.tryReflectionSetAccessible=true"
+                     ;; an in-process node on JDK 25 needs it (Netty turns Unsafe off from 25); harmless on 21
+                     "-Dio.netty.noUnsafe=false"]
+          :main-opts ["-m" "xtdb-probe"]}}}

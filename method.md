@@ -283,7 +283,7 @@ Five real deltas from the stock path, not hand-waved:
 - **Migrations mostly disappear.** Ragtime assumes traditional `ALTER TABLE` DDL against a fixed schema. XTDB is schema-flexible by design — treat `resources/migrations/` as optional, not mandatory, on this path.
 - **Writes need their own thin layer.** XTDB's DML has its own SQL extensions — a `RECORDS {…}` literal and an implicit `_id` primary key — that HoneySQL's standard helpers don't know. Reads look like ordinary SQL; expect to hand-write inserts and updates.
 - **Clients are stateless over pgwire**, which "precludes the use of interactive transactions" — you can't run a query in the middle of a multi-statement transaction. That constrains how connection pools and transaction-scoped code are written; check it against your access patterns before committing.
-- **The JDK is already held at 21** by the doctor, for this reason among others; record the XTDB version beside it.
+- **The KIT pins the version and tests it on the JDK it prefers.** XTDB 2.2.0 - `com.xtdb/xtdb-api` and `xtdb-core`, and the server image `ghcr.io/xtdb/xtdb:2.2.0` - is the KIT's tested set (`harness/resources/known-good.edn`, from `bb health`, which starts an in-process node and the image over pgwire). On JDK 25, the KIT's preferred, an in-process node needs `-Dio.netty.noUnsafe=false` in its `:jvm-opts` (Netty turns `Unsafe` off from 25, and the node fails at its first buffer without it; harmless on 21, XTDB's minimum). Record the version and the flag beside the JDK in the decision.
 - **Results are keywordized** in the Clojure API (`_id` → `:xt/id`, `_valid_from` → `:xt/valid-from`), which is a small but constant translation at the seam.
 
 > **Regardless of which store you pick:** put it behind a small protocol from the first commit — an `AppStore` or whatever your own domain calls it. That's what makes "swap the datastore later" a real option instead of a rewrite, and it costs nothing to do on day one. It is also what lets a PROVISIONAL datastore decision (§08) have a *real* fallback rather than a hoped-for one.
@@ -1216,7 +1216,7 @@ Two things to get right early because they're cheap now and expensive later: **a
 - [ ] Write the three scope lists — ships first, deferred with its stage, out of scope with its reason — and treat every exclusion as a decision
 - [ ] Rank the risks; name which ones stage 0 proves, each with a pass criterion and a fallback written before it runs
 - [ ] Put the candidate architecture in the log as PROVISIONAL entries gated by those criteria; open everything else OPEN-with-an-owner
-- [ ] Choosing XTDB v2 instead? Pin the library *and* the JDK, decide whether migrations are needed, write the thin SQL write layer, and check the stateless-transaction constraint against your access patterns
+- [ ] Choosing XTDB v2 instead? Take the KIT's tested version (2.2.0) and the `-Dio.netty.noUnsafe=false` flag with the JDK, decide whether migrations are needed, write the thin SQL write layer, and check the stateless-transaction constraint against your access patterns
 - [ ] Draw the stage map by kind — spike, skeleton, increments, pre-release, release — and cap stage 0 alone
 - [ ] Assign ID families; make "IDs are permanent" a written working agreement
 - [ ] Decide, honestly, whether this project's stakes justify a dedicated Tester

@@ -401,3 +401,56 @@
       (is (or (str/includes? (health/port-holder port) "pid ")
               (str/includes? (health/port-holder port) "lsof"))
           "the holder named, or lsof said absent"))))
+
+;; plan 7.0, item 7.3: the KIT's tested XTDB, on the tested JDK
+(deftest the-xtdb-version-is-written-once-in-the-probes-deps
+  (let [kit (str (fs/parent (fs/real-path ".")))]
+    (is (= "2.2.0" (health/xtdb-version kit)))
+    (is (= "ghcr.io/xtdb/xtdb:2.2.0" (health/xtdb-image (health/xtdb-version kit))))
+    (is (str/includes? (slurp (str (fs/path (health/xtdb-dir kit) "deps.edn"))) "-Dio.netty.noUnsafe=false")
+        "the flag JDK 25 needs, in the probe's own alias")))
+
+(deftest the-embedded-check-reads-the-probes-line
+  (let [kit (str (fs/parent (fs/real-path ".")))
+        subject (health/xtdb-subject kit)
+        ran (atom nil)
+        ok (health/check-xtdb-embedded subject {:run (fn [dir argv] (reset! ran [dir argv])
+                                                       {:exit 0 :out "WARNING: x\nok embedded node: two puts, read now and over valid time - java 25.0.5, 3497 ms\n"})})]
+    (is (:ok? ok))
+    (is (= [:xtdb :embedded] ((juxt :subject :check) ok)))
+    (is (= "XTDB 2.2.0: ok embedded node: two puts, read now and over valid time - java 25.0.5, 3497 ms" (:detail ok)))
+    (is (= [(health/xtdb-dir kit) ["clojure" "-M:probe"]] @ran) "the probe's own JVM project, never the gates'")
+    (let [bad (health/check-xtdb-embedded subject {:run (fn [_ _] {:exit 1 :out "FAILED: java.lang.UnsupportedOperationException: null\n"})})]
+      (is (not (:ok? bad)))
+      (is (str/includes? (:detail bad) "FAILED: java.lang.UnsupportedOperationException")))))
+
+(deftest the-pgwire-check-starts-the-image-waits-for-it-and-always-removes-it
+  (let [kit (str (fs/parent (fs/real-path ".")))
+        subject (health/xtdb-subject kit)]
+    (testing "no Docker: skipped, and said"
+      (let [r (health/check-xtdb-pgwire subject {:docker? (constantly false)})]
+        (is (:ok? r))
+        (is (:skipped? r))))
+    (testing "the server answers on the third try; the container removed"
+      (let [calls (atom [])
+            probes (atom 0)
+            run (fn [_ argv]
+                  (swap! calls conj argv)
+                  (cond (= ["docker" "run"] (take 2 argv)) {:exit 0 :out "abc\n"}
+                        (= ["docker" "port"] (take 2 argv)) {:exit 0 :out "127.0.0.1:55432\n"}
+                        (= "--pgwire" (nth argv 2 nil)) (if (< (swap! probes inc) 3) {:exit 1 :out "FAILED: refused\n"}
+                                                            {:exit 0 :out "ok server over pgwire: two inserts, read over valid time - java 25.0.5, 462 ms\n"})
+                        :else {:exit 0 :out ""}))
+            r (health/check-xtdb-pgwire subject {:run run :docker? (constantly true) :sleep (fn [])})]
+        (is (:ok? r))
+        (is (= "ghcr.io/xtdb/xtdb:2.2.0: ok server over pgwire: two inserts, read over valid time - java 25.0.5, 462 ms (try 3)" (:detail r)))
+        (is (some #(= ["clojure" "-M:probe" "--pgwire" "55432"] %) @calls))
+        (is (= ["docker" "rm" "-f"] (take 3 (last @calls))) "removed, last")))
+    (testing "an image that will not start: failed, and still removed"
+      (let [calls (atom [])
+            r (health/check-xtdb-pgwire subject {:run (fn [_ argv] (swap! calls conj argv)
+                                                        (if (= ["docker" "run"] (take 2 argv)) {:exit 125 :err "no such image"} {:exit 0 :out ""}))
+                                                 :docker? (constantly true) :sleep (fn [])})]
+        (is (not (:ok? r)))
+        (is (str/includes? (:detail r) "FAILED: docker run ghcr.io/xtdb/xtdb:2.2.0 exited 125: no such image"))
+        (is (= ["docker" "rm" "-f"] (take 3 (last @calls))))))))
