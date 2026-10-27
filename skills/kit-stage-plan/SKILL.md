@@ -24,7 +24,10 @@ before anything is read again, so the readings come after it. A brief for it, if
 its packets, its cap) and run `bb plan-review` over it again; the person approves again with the cap
 (`:approved` in the pass, `:by` their name); amend the blueprint and run `bb blueprint-review` again; the
 person signs off again (`:signed`). `bb next` asks for each, with a ready `:at`. A whole new pass for a
-change that touched only the blueprint too: the four gates are re-run whatever it touched.
+change that touched only the blueprint too: the four gates are re-run whatever it touched. No reading
+is skipped on a belief about what a command does - that it would overwrite the first record, that it
+needs something not there: its doc line (`<kit>/harness/bb.edn`) or its source is read first. A reading
+nearly skipped because it "would overwrite the first" appends; every review writes its own record.
 
 ## Reads
 
