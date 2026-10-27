@@ -113,7 +113,10 @@ the stop: <what stops the stage early - a figure, a stop named with the stage>. 
 `stage-N-gates.edn` beside this plan, as `bb next` reads it. The stage's figures - money by role,
 rounds, stops by owner, retries and rejections, the readings - against this cap and the stage before are `bb stage-report`'s: it
 renders them into this section from the run records as a block, and `--check` holds the block
-to the records, so the figures here are never typed by hand.
+to the records, so the figures here are never typed by hand. The cap holds the stage's security
+review at the last stage's figure or more - its readings line in `bb stage-report` - since the
+review's cost grows with the application, and one fix packet after it: a reproduced finding is a
+blocker, and its fix is a packet of this stage.
 
 - <a concrete user-visible behaviour>
 - <a concrete data behaviour, e.g. load v2, time-travel returns v1, diff lists changes>

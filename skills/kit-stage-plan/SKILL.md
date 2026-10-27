@@ -89,7 +89,10 @@ attestation kept on purpose as a record with its retention - never in the applic
 (`method.md`, `What a visitor submits: what a feature that takes it keeps is decided before it is
 built`).
 The exit criteria are things a person can check, "deployed locally" among them from stage 1
-on, and the cap is proposed to the person. Then run the stage plan review, `bb plan-review
+on, and the cap is proposed to the person - with the security review in it at the last stage's
+figure or more (the readings line of the last stage's `bb stage-report`; the review's cost grows
+with the application, and a pre-release stage's has every member read) and one fix packet after it,
+since a reproduced finding is fixed in the stage that found it. Then run the stage plan review, `bb plan-review
 <xyx>-build/docs/stages/stage-N/stage-N-plan.md`, and read the findings cold with the person, resolving each in
 the overview's findings table and the stage plan; then `bb plan-check`.
 

@@ -62,6 +62,8 @@
 ## 7. Exit criteria (the stage's gate), and the cap
 
 **Cap:** <$>, approved by <who approved - a name> on <YYYY-MM-DD>. Recorded in `stage-N-gates.edn`.
+It holds the security review with every member reading - each at the last stage's figure or more,
+from its readings line in `bb stage-report` - and one fix packet after it.
 
 - The deploy path rehearsed against the throwaway host, and the application answered there
 - A restore rehearsed: a backup taken, the data removed, the backup restored, the application
