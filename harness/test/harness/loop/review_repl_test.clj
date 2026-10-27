@@ -67,8 +67,10 @@
       (is (= 51234 (:port sb)))
       (is (str/starts-with? (:name sb) "kit-review-") "a killed run's container is cleared by the next review")
       (is (fs/exists? (fs/path (:clone sb) "deps.edn")))
-      (is (= ["ps" "run" "run" "exec" "exec" "exec"] (mapv second @calls))
-          "clear the stale, warm, start, the nREPL, its port, the probe")
+      (is (= ["ps" "ps" "run" "run" "exec" "exec" "exec"] (mapv second @calls))
+          "clear the exited, then the running an hour old, warm, start, the nREPL, its port, the probe")
+      (is (str/starts-with? (:name sb) "kit-review-repl-") "its own prefix: a security review's is never taken for one")
+      (is (= "img" (:image sb)) "the record says which image evaluated")
       (is (= ["docker" "exec" "-w" "/work/app" (:name sb) "clj-nrepl-eval" "-p" "51234" "(+ 1 1)"] (last @calls))))
     (fs/delete-tree wt)
     (fs/delete-tree rd)))
@@ -100,6 +102,16 @@
         (is (str/starts-with? (:none sb) "the review REPL: the nREPL on port 51234 did not answer (+ 1 1)"))))
     (fs/delete-tree wt)
     (fs/delete-tree rd)))
+
+(deftest a-review-repl-running-over-an-hour-is-a-killed-runs
+  ;; Fable 5.1's read of 014e30a: `clear-stale!` takes only the exited
+  (let [now (java.time.Instant/parse "2026-10-27T20:00:00Z")
+        out (str "kit-review-repl-a\t2026-10-27 18:30:00 +0000 UTC\n"
+                 "kit-review-repl-b\t2026-10-27 19:30:00 +0000 UTC\n"
+                 "kit-review-repl-c\t2026-10-27 12:10:00 -0700 PDT\n"
+                 "garbage\n")]
+    (is (= ["kit-review-repl-a"] (rr/stale-running out now)) "18:30 is over an hour; 19:30 and 12:10 PDT (19:10Z) are not"))
+  (is (some #{"name=^kit-review-repl-"} rr/stale-running-argv) "the review REPL's alone"))
 
 (deftest stop-removes-the-container-and-the-copy
   (let [clone (fs/create-temp-dir)

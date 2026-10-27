@@ -87,6 +87,23 @@
       (fs/copy from (fs/path clone rel) {:replace-existing true}))
     clone))
 
+(def stale-running-argv
+  "The review REPL's containers still running. A run killed between `start!` and `stop!` leaves one
+  running `sleep infinity` under a 4 GB cap; `clear-stale!` takes only the exited (Fable 5.1's read)."
+  ["docker" "ps" "--filter" "name=^kit-review-repl-" "--filter" "status=running"
+   "--format" "{{.Names}}\t{{.CreatedAt}}"])
+
+(defn stale-running
+  "The names of `out` (`stale-running-argv`'s lines) created more than an hour before `now`: no
+  review round runs that long, so one that old is a killed run's."
+  [out now]
+  (let [fmt (java.time.format.DateTimeFormatter/ofPattern "yyyy-MM-dd HH:mm:ss Z")]
+    (vec (for [line (str/split-lines (str out))
+               :let [[nm created] (str/split line #"\t")
+                     at (try (java.time.ZonedDateTime/parse (subs created 0 25) fmt) (catch Exception _ nil))]
+               :when (and nm at (.isBefore (.toInstant at) (.minusSeconds ^java.time.Instant now 3600)))]
+           nm))))
+
 (defn- default-run [argv opts]
   (try (apply p/shell (merge {:out :string :err :string :continue true} opts) argv)
        (catch Exception e {:exit 127 :out "" :err (ex-message e)})))
@@ -112,7 +129,9 @@
     :or {run default-run sleep #(Thread/sleep (long %)) timeout-ms 120000}}]
   (let [t0 (System/currentTimeMillis)
         clone (str (fs/path run-dir "review-clone"))
-        name (sbx/container-name)
+        ;; its own prefix under kit-review-: the exited are cleared with every review's, the
+        ;; running an hour old with the review REPL's alone - never a security review's
+        name (str "kit-review-repl-" (subs (str (random-uuid)) 0 8))
         sb {:name name :clone clone}
         step! (fn [what argv]
                 (let [r (run argv {})]
@@ -122,8 +141,13 @@
     (try
       (when (fs/exists? clone) (fs/delete-tree clone))
       (copy-tree! worktree clone)
-      (let [spec {:image (or image (sbx/image-tag kit)) :clone clone :name name :cmd cmd}]
-        (try (sbx/clear-stale! run) (catch Exception _ nil))
+      (let [image (or image (sbx/image-tag kit))
+            spec {:image image :clone clone :name name :cmd cmd}]
+        (try (sbx/clear-stale! run)
+             (doseq [n (stale-running (:out (run stale-running-argv {})) (java.time.Instant/now))]
+               (sbx/stop! n run)
+               (println (str "the review REPL: removed " n ", running for over an hour - a killed run's")))
+             (catch Exception _ nil))
         (step! "warming the dependency cache" (warm-argv spec))
         (step! "starting the container" (run-argv spec))
         (step! "starting the nREPL" (nrepl-argv name cmd))
@@ -137,7 +161,7 @@
               probe (run (crt/eval-argv name port "(+ 1 1)") {})]
           (when-not (and (zero? (:exit probe)) (str/includes? (str (:out probe)) "2"))
             (throw (ex-info (str "the nREPL on port " port " did not answer (+ 1 1): " (tail probe)) {})))
-          (assoc sb :port port :sandbox-ms (- (System/currentTimeMillis) t0))))
+          (assoc sb :port port :image image :sandbox-ms (- (System/currentTimeMillis) t0))))
       (catch Exception e
         (stop! sb run)
         {:none (str "the review REPL: " (ex-message e))}))))

@@ -93,6 +93,11 @@
              :findings "FINDING 1: `(widen x)` in src/scratch/x.clj never compares against hi."
              :notes ["the targets say nothing about NaN"]}})
 
+(deftest a-rejection-naming-an-unevaluated-library-claim-is-said-to-triage
+  (let [trg (assoc-in (rejection) [:payload :unevaluated] '[clojure.string/trim])]
+    (is (str/includes? (triage/render-prompt trg) "THE CODE REVIEWER NAMES clojure.string/trim AND EVALUATED NOTHING"))
+    (is (not (str/includes? (triage/render-prompt (rejection)) "EVALUATED NOTHING")))))
+
 (defn- block [m]
   (str "```json\n" (json/generate-string m) "\n```"))
 

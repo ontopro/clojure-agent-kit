@@ -195,7 +195,7 @@
            (str/join "\n" (map #(str "- " %) notes))))
 
     :rejection
-    (let [{:keys [verdict findings notes]} payload]
+    (let [{:keys [verdict findings notes unevaluated]} payload]
       (str "WHAT HAPPENED: every gate went GREEN — format, lint, the Tester's own tests, the "
            "layer check — and the code reviewer, who read the assembled diff, REJECTED the change.\n"
            "The tests pass, so whatever is wrong is something they do not catch. A defect in "
@@ -222,6 +222,11 @@
              "This project has stated no data conventions, so no input is out of reach.\n")
            "The code reviewer's reasons for rejecting:\n"
            (str/join "\n" (map #(str "- " %) (:reasons verdict)))
+           ;; A LIBRARY CLAIM NOBODY EVALUATED (plan 7.0, item 6.6): weighed as unchecked, never acted on
+           (when (seq unevaluated)
+             (str "\nTHE CODE REVIEWER NAMES " (str/join ", " unevaluated) " AND EVALUATED NOTHING: a finding "
+                  "that rests on what a library does is unchecked until the claim is evaluated on the JVM. "
+                  "Do not send a role to act on it; route it to the architect, who evaluates it first."))
            (when (seq notes)
              (str "\nThe code reviewer's note(s) about the contract:\n"
                   (str/join "\n" (map #(str "- " %) notes))))

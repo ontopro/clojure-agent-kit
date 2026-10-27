@@ -363,7 +363,8 @@
                 ;; "the targets do not say" is the architect's — which triage
                 ;; can only see if it is shown the note.
                 :rejection (let [r (current-review events)]
-                             {:verdict (:verdict r) :findings (:stdout r) :notes (:notes r)}))}))
+                             (cond-> {:verdict (:verdict r) :findings (:stdout r) :notes (:notes r)}
+                               (seq (:unevaluated r)) (assoc :unevaluated (:unevaluated r)))))}))
 
 (defn triage-step-name
   "`:triage` for the first call, `:triage-r1` after that — the same shape as
@@ -460,6 +461,8 @@
       (do
         ;; A REJECTION THE ARCHITECT OR THE PERSON READS may rest on a library claim: the rule, said where it is answered
         (when (and (= :rejection kind) (#{:architect :human} (:route v)))
+          (when-let [fns (seq (:unevaluated (current-review (:events @(:state ctx)))))]
+            (println (str "  the code reviewer names " (str/join ", " fns) " and evaluated nothing")))
           (println (str "  " claims/rule)))
         (assoc (stop (if (:routed v) :tester-leak (case kind :note :paused :red-gate :red-gate :rejection :rejected))
                      (:route v)

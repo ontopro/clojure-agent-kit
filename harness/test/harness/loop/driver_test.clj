@@ -916,6 +916,21 @@
                               "note:")))
       (is (nil? (:unevaluated (last (:events @(:state ctx)))))))))
 
+(deftest a-review-says-what-it-evaluated
+  ;; plan 7.0, item 6.6, the third commit: the record's count, and a rejection's unevaluated claim
+  (let [reject {:verdict :reject :reasons ["`clojure.string/trim` keeps U+2003, so blank? is wrong"]}
+        called (fn [& names] [{:text "" :calls (mapv #(hash-map :name %) names)}])]
+    (is (= {:review/repl {:sandbox-ms 4800 :image "i" :evaluations 2}}
+           (loop/review-facts {:sandbox-ms 4800 :image "i"}
+                              {:runner/meta {:verdict reject :transcript (called "nrepl_eval" "read_file" "nrepl_eval")}}))
+        "it evaluated: nothing unevaluated, the count kept")
+    (is (= {:review/repl {:sandbox-ms 4800 :evaluations 0} :unevaluated '[clojure.string/trim]}
+           (loop/review-facts {:sandbox-ms 4800} {:runner/meta {:verdict reject :transcript (called "read_file")}})))
+    (is (= {:review/repl {:none "off"} :unevaluated '[clojure.string/trim]}
+           (loop/review-facts {:none "off"} {:runner/meta {:verdict reject}}))
+        "no REPL: the claim is still unevaluated, and no count")
+    (is (= {} (loop/review-facts nil {:runner/meta {:verdict {:verdict :approve :reasons []}}})) "an approval names nothing")))
+
 (deftest packets-see-the-dependents-start-computed
   (let [spec {:task/id "t" :files/context ["src/a.clj"]}]
     (is (= ["src/a.clj" "test/p_test.clj"]

@@ -834,6 +834,21 @@
           (throw (ex-info (str "the " (name role) "'s nREPL on port " port " did not answer a probe")
                           {:run-loop/error :repl-dead :role role :port port})))))))
 
+(defn review-facts
+  "What a code review leaves on its dispatch event about evaluating: `repl` (the round's
+  `:review/repl`) with the number of `nrepl_eval` calls when it had a sandbox, and `:unevaluated` -
+  the functions a rejection's reasons name (`claims/named-functions`) when the review evaluated
+  nothing, which triage and the stop are shown."
+  [repl result]
+  (let [m (:runner/meta result)
+        evals (count (filter #(= "nrepl_eval" (:name %)) (mapcat :calls (:transcript m))))
+        {:keys [verdict reasons]} (:verdict m)
+        unevaluated (when (and (= :reject verdict) (zero? evals))
+                      (claims/named-functions (str/join "\n" reasons)))]
+    (cond-> {}
+      repl (assoc :review/repl (cond-> repl (:sandbox-ms repl) (assoc :evaluations evals)))
+      (seq unevaluated) (assoc :unevaluated unevaluated))))
+
 (defn- review-sandbox!
   "The code reviewer's REPL for this round (`review-repl/start!`, or the ctx's `:review-repl`
   in tests): `{:name :port :clone :sandbox-ms}`, or `{:none why}` - said, and the review runs
@@ -866,7 +881,9 @@
     ;; (`rebuild-from-log`): the state is rewritten whole by every command.
     (let [step (report/dispatch-step step-name r ms)]
       (step! ctx step)
-      (event! ctx (merge (dispatch-event step-name role pkt r) (:dispatch/event ctx)) {:step step}))
+      (event! ctx (merge (dispatch-event step-name role pkt r) (:dispatch/event ctx)
+                         (when (= :reviewer role) (review-facts (:review/repl (:dispatch/event ctx)) r)))
+              {:step step}))
     (println (format "  %-12s %ss  %s  iters=%s capped?=%s files=%s notes=%d cost=%s%s"
                      (name step-name) (quot ms 1000) (:model m) (:iterations m) (:capped? m)
                      (pr-str (:files r)) (count (:notes r)) (:cost r)
@@ -999,7 +1016,7 @@
                                               :repl/sandbox (:name sb)))]
                   (try
                     (dispatch! (assoc ctx :dispatch/event
-                                      {:review/repl (if (:port sb) {:sandbox-ms (:sandbox-ms sb)} (select-keys sb [:none]))})
+                                      {:review/repl (if (:port sb) (select-keys sb [:sandbox-ms :image]) (select-keys sb [:none]))})
                                nm :reviewer pkt)
                     (finally (when (:name sb) (review-repl/stop! sb))))))))
           (let [fb (:feedback (gates-event gr))
