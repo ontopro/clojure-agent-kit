@@ -131,3 +131,44 @@
     (testing "again: nothing flat, nothing to move"
       (is (= 0 (:moved (sm/move! b "again"))))
       (is (= "KIT 0.6.7: a folder per stage" (git b "log" "-1" "--format=%s"))))))
+
+(deftest a-stage-plan-kept-under-another-name-is-renamed-stage-n-plan
+  (let [b (fs/path (fs/real-path (fs/create-temp-dir {:prefix "stage-rename-"})) "xyx-build")
+        put (fn [rel s] (let [f (fs/path b rel)] (fs/create-dirs (fs/parent f)) (spit (str f) s)))
+        text #(slurp (str (fs/path b %)))]
+    (put "docs/00-overview.md" "Stage 0: `stages/stage-0/stage-0-spike.md` §7; not `stage-0-spike.md.bak`.\n")
+    (put "docs/stages/stage-0/stage-0-spike.md" "# Stage 0 plan\n\n**Kind:** spike\n")
+    (put "docs/stages/stage-0/stage-0-blueprint.md"
+         "# Blueprint\n\n**Input:** `stage-0-spike.md`, the stage plan, approved\n\n```clojure\n{:task/id \"t1\" :note \"stage-0-spike.md\"}\n```\n")
+    (put "docs/stages/stage-0/stage-0-security-review/r.md" "quotes stage-0-spike.md\n")
+    (put "docs/stages/stage-1/stage-1-plan.md" "# Stage 1\n\n**Kind:** increment\n\nafter `../stage-0/stage-0-spike.md`\n")
+    (put "docs/stages/stage-2/stage-2-credits.md" "# a brief, no kind\n")
+    (put "docs/stages/stage-N-template.md" "# template\n\n**Kind:** <kind>\n")
+    (git b "init" "-q" "-b" "main")
+    (git b "add" "-A")
+    (git b "commit" "-q" "-m" "a build with stage 0's plan by its old name")
+    (is (= {:renames [["docs/stages/stage-0/stage-0-spike.md" "docs/stages/stage-0/stage-0-plan.md"]]
+            :unsure [[2 ["stage-2-credits.md"]]]}
+           (sm/plan-renames (str b)))
+        "the one file with a kind line; a stage with a brief alone is named, never renamed")
+    (testing "an uncommitted edit stops it, nothing renamed"
+      (spit (str (fs/path b "docs" "00-overview.md")) "edited\n" :append true)
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"uncommitted edits" (sm/rename! (str b) "KIT 0.7.0: a stage plan is stage-N-plan.md")))
+      (is (fs/exists? (fs/path b "docs/stages/stage-0/stage-0-spike.md")))
+      (git b "checkout" "--" "docs/00-overview.md"))
+    (let [{:keys [renamed detail]} (sm/rename! (str b) "KIT 0.7.0: a stage plan is stage-N-plan.md")]
+      (is (= 1 renamed))
+      (is (str/includes? detail "docs/stages/stage-2/ has no stage-2-plan.md and stage-2-credits.md"))
+      (is (fs/exists? (fs/path b "docs/stages/stage-0/stage-0-plan.md")))
+      (is (str/includes? (text "docs/stages/stage-0/stage-0-blueprint.md") "**Input:** `stage-0-plan.md`, the stage plan") "the blueprint's header")
+      (is (str/includes? (text "docs/stages/stage-0/stage-0-blueprint.md") ":note \"stage-0-spike.md\"") "a packet untouched")
+      (is (= "Stage 0: `stages/stage-0/stage-0-plan.md` §7; not `stage-0-spike.md.bak`.\n" (text "docs/00-overview.md"))
+          "at a path's end, never inside a longer name")
+      (is (str/includes? (text "docs/stages/stage-1/stage-1-plan.md") "`../stage-0/stage-0-plan.md`"))
+      (is (= "quotes stage-0-spike.md\n" (text "docs/stages/stage-0/stage-0-security-review/r.md")) "a security review quotes, untouched")
+      (is (= "KIT 0.7.0: a stage plan is stage-N-plan.md" (git b "log" "-1" "--format=%s")))
+      (is (re-find #"R\d+\tdocs/stages/stage-0/stage-0-spike.md\tdocs/stages/stage-0/stage-0-plan.md"
+                   (git b "show" "--name-status" "-M" "--format=" "HEAD"))
+          "a rename git sees")
+      (is (= "" (git b "status" "--porcelain")) "every change committed"))
+    (is (= 0 (:renamed (sm/rename! (str b) "again"))) "again: nothing to rename")))

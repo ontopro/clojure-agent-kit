@@ -21,7 +21,11 @@
     stage-folders    a build made before the folder per stage brought into it: each stage's flat
                      documents in `docs/stages/` and its `reviews/stage-N/` moved into
                      `docs/stages/stage-N/` by `git mv`, the paths that named them rewritten,
-                     committed in the build (`harness.setup.stage-move`); nothing to move, said
+                     committed in the build (`harness.setup.stage-move`); nothing to move, said.
+                     Then a stage plan kept under another name - stage 0's `stage-0-<name>.md` -
+                     renamed `stage-N-plan.md` and its old name rewritten in the build's
+                     documents, the blueprint's `**Input:**` header among them; a folder with no
+                     one plan to choose is named, nothing guessed
     build-docs       the diff from the recorded KIT commit to HEAD over `build-docs/`, applied to
                      the build's `docs/` HUNK BY HUNK: a hunk that applies is applied; one that
                      does not is dropped as \"instruction already removed\" only when every line
@@ -308,9 +312,11 @@
     {:status :done :detail (str claude-r "; " role-r) :new new-files}))
 
 (defn- step-stage-folders! [{:keys [ws head version]}]
-  (let [{:keys [detail]} (stage-move/move! (:workspace/build ws)
-                                           (str "KIT " (or version (subs head 0 7)) ": a folder per stage - the stage documents and their readings moved into docs/stages/stage-N/"))]
-    {:status :done :detail detail}))
+  (let [kit (str "KIT " (or version (subs head 0 7)))
+        moved (stage-move/move! (:workspace/build ws)
+                                (str kit ": a folder per stage - the stage documents and their readings moved into docs/stages/stage-N/"))
+        renamed (stage-move/rename! (:workspace/build ws) (str kit ": a stage plan is stage-N-plan.md"))]
+    {:status :done :detail (str (:detail moved) "; " (:detail renamed))}))
 
 (defn- step-build-docs! [{:keys [ws kit dir from head version]}]
   (let [build (:workspace/build ws)
@@ -533,7 +539,11 @@
         (say "stage-folders: " (let [{:keys [moves ids]} (stage-move/plan (:workspace/build ws))]
                                  (if (seq moves)
                                    (str (count moves) " entries to move into " (str/join ", " (map #(str "docs/stages/stage-" % "/") ids)))
-                                   "nothing flat to move")))
+                                   "nothing flat to move"))
+             "; " (let [{:keys [renames]} (stage-move/plan-renames (:workspace/build ws))]
+                    (if (seq renames)
+                      (str (str/join ", " (map first renames)) " to rename stage-N-plan.md")
+                      "no stage plan to rename")))
         (say "build-docs: " (count files) " file" (when (not= 1 (count files)) "s") " changed: " (str/join ", " (map #(subs (:path %) (count "build-docs/")) files)))
         (say "loop-edn: " (if (second (rewrite-kit-path (slurp (str (fs/path (:workspace/build ws) "loop.edn"))))) "a literal KIT path to rewrite" "nothing to rewrite"))
         (say "build-ignore: " (let [f (fs/path (:workspace/build ws) ".gitignore")

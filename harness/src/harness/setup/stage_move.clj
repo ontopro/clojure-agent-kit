@@ -25,7 +25,12 @@
 
   DONE WHEN no flat `stage-N-` entry and no `reviews/stage-N/` is left: a workspace made by a
   KIT with the folders, or a re-run, has nothing to move and says so. A document with
-  uncommitted edits among those it would touch stops it by name before anything is written."
+  uncommitted edits among those it would touch stops it by name before anything is written.
+
+  THEN A STAGE PLAN BY ITS ONE NAME (`rename!`): a stage plan kept under another name than
+  `stage-N-plan.md` - stage 0's was `stage-0-<name>.md`, and the lookup before took any - renamed
+  to it, and the old name rewritten in the build's documents, the blueprint's `**Input:**` header
+  among them."
   (:require
    [babashka.fs :as fs]
    [babashka.process :as p]
@@ -200,3 +205,90 @@
                           (str/join ", " (map #(str "docs/stages/stage-" % "/") ids))
                           "; paths rewritten in " (count rewritten) " document" (when (not= 1 (count rewritten)) "s")
                           "; committed in the build")}))))))
+
+;; ---------------------------------------------------------------------------
+;; a stage plan by its one name, `stage-N-plan.md`
+;; ---------------------------------------------------------------------------
+
+(defn- kind-line? [text] (boolean (re-find #"(?m)^\*\*Kind:\*\*" text)))
+
+(defn plan-renames
+  "The stage plans the build at `build` keeps under another name: `{:renames [[from to] …] :unsure
+  [[id [name …]] …]}`, paths relative to the build. In a stage folder with no `stage-N-plan.md`,
+  the one top-level Markdown file with a `**Kind:**` line - what a plan written from a template
+  carries; never the blueprint, a template or a brief - is the plan to rename. A folder with
+  Markdown and not exactly one such file is `:unsure`, its files named, never guessed: a stage
+  pulled with only a brief has no plan to find."
+  [build]
+  (let [found (for [[id dir] (stages/folders (stages/stages-dir build))
+                    :when (not (stages/plan-file dir))
+                    :let [mds (->> (fs/list-dir dir)
+                                   (filter fs/regular-file?)
+                                   (map (comp str fs/file-name))
+                                   (filter #(and (str/ends-with? % ".md") (not (str/ends-with? % "-blueprint.md")) (not (template? %))))
+                                   sort vec)
+                          kinded (filterv #(kind-line? (slurp (str (fs/path dir %)))) mds)
+                          in-dir #(str "docs/stages/" (stages/folder-name id) "/" %)]
+                    :when (seq mds)]
+                (if (= 1 (count kinded))
+                  {:rename [(in-dir (first kinded)) (in-dir (str (stages/folder-name id) "-plan.md"))]}
+                  {:unsure [id mds]}))]
+    {:renames (vec (keep :rename found)) :unsure (vec (keep :unsure found))}))
+
+(defn rewrite-name
+  "`text` with the file name `from` written as `to` wherever it stands as a name - bare or at a
+  path's end, never inside a longer name - outside fenced blocks, where a blueprint's packets are."
+  [text from to]
+  (outside-fences text #(str/replace % (re-pattern (str "(?<![\\w.-])" (java.util.regex.Pattern/quote from) "(?![\\w-]|\\.\\w)")) to)))
+
+(defn- build-docs-md
+  "The build's Markdown under `docs/`, relative to the build, sorted - a template and a security
+  review's folder, whose files quote the application, aside."
+  [build]
+  (->> (fs/glob (fs/path build "docs") "**.md")
+       (map #(str (fs/relativize build %)))
+       (remove #(or (template? %) (re-find #"-security-review/" %)))
+       sort))
+
+(defn- unsure-text [unsure]
+  (str/join "; " (for [[id mds] unsure]
+                   (str "docs/stages/" (stages/folder-name id) "/ has no " (stages/folder-name id) "-plan.md and "
+                        (str/join ", " mds) " - rename its plan by hand if one of them is it"))))
+
+(defn rename!
+  "The renames of `plan-renames` in the build at `build`, committed there with `message`: each by
+  `git mv` when git tracks it, the old name rewritten in the build's Markdown. Returns `{:renamed n
+  :rewritten [rel …] :unsure […] :detail s}`; throws ex-info, writing nothing, when a path it would
+  touch has uncommitted edits. A folder that has `stage-N-plan.md` is never asked."
+  [build message]
+  (let [{:keys [renames unsure]} (plan-renames build)
+        said (when (seq unsure) (str "; " (unsure-text unsure)))]
+    (if (empty? renames)
+      {:renamed 0 :rewritten [] :unsure unsure :detail (str "every stage plan is stage-N-plan.md" said)}
+      (let [docs (build-docs-md build)
+            dirty (->> (distinct (concat (map first renames) docs))
+                       (filter #(not (str/blank? (:out (git build "status" "--porcelain" "--untracked-files=no" "--" %))))))]
+        (when (seq dirty)
+          (throw (ex-info (str (str/join ", " dirty) " in " build " " (if (next dirty) "have" "has")
+                               " uncommitted edits: commit or set them aside, then `bb upgrade --after-pull` again - nothing was renamed")
+                          {:upgrade/error :uncommitted :paths (vec dirty)})))
+        (let [names (mapv (fn [[a b]] [(str (fs/file-name a)) (str (fs/file-name b))]) renames)
+              ;; THE NEW TEXTS READ BEFORE ANYTHING MOVES, under the names they have now
+              texts (vec (for [d docs
+                               :let [before (slurp (str (fs/path build d)))
+                                     after (reduce (fn [t [a b]] (rewrite-name t a b)) before names)]
+                               :when (not= before after)]
+                           [(or (some (fn [[a b]] (when (= a d) b)) renames) d) after]))
+              tracked-renames (vec (filter (fn [[from]] (tracked? build from)) renames))]
+          (doseq [[from to] renames]
+            (if (some #{[from to]} tracked-renames)
+              (git! build "mv" from to)
+              (fs/move (fs/path build from) (fs/path build to))))
+          (let [rewritten (vec (for [[rel after] texts] (do (spit (str (fs/path build rel)) after) rel)))
+                touched (distinct (concat (mapcat identity tracked-renames) (filter #(tracked? build %) rewritten)))]
+            (when (seq touched)
+              (apply git! build "commit" "-q" "-m" message "--" touched))
+            {:renamed (count renames) :rewritten rewritten :unsure unsure
+             :detail (str (str/join ", " (map (fn [[a b]] (str a " renamed " (fs/file-name b))) renames))
+                          "; the old name rewritten in " (count rewritten) " document" (when (not= 1 (count rewritten)) "s")
+                          "; committed in the build" said)}))))))
