@@ -101,11 +101,12 @@
   gates record, `stages/stage-N/stage-N-gates.edn`. Never the template's own
   `README.md`, which explains the marks and so carries one; never the stage
   templates (`*-template.md`, `*-template.edn`), copied per stage with their
-  marks standing by design; and never a record a KIT tool writes - the
-  security pack's and the interactions' `.edn` beside a stage plan, the
-  readings under a stage folder's `reviews/`, and a
-  stage's `*-security-review/` folder, Markdown included, whose record quotes
-  the application's files and so whatever brackets they hold. Nor a stage's
+  marks standing by design; never a record a KIT tool writes - the security
+  pack's `.edn` beside a stage plan, the readings under a stage folder's
+  `reviews/`, and a stage's `*-security-review/` folder, Markdown included,
+  whose record quotes the application's files and so whatever brackets they
+  hold; and never a project's own `.edn` records, registered in
+  `stage-names.edn` (an interactions check's, say). Nor a stage's
   working documents, `stages/stage-N/notes/` - a brief or a draft, retired once
   the governing documents hold what it says."
   [rel]

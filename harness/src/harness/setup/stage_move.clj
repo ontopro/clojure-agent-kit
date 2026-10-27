@@ -4,7 +4,7 @@
 
   WHAT MOVES. Every flat entry of the build's `docs/stages/` whose name begins `stage-N-` and is
   not a template - the stage plan, the blueprint, the gates record, the security pack's records,
-  the browser pack's interactions, a security review's folder, whatever else a project put there
+  a project's own records (an interactions check's, registered in `stage-names.edn`), a security review's folder, whatever else a project put there
   under its stage's name - into `docs/stages/stage-N/`; and every `reviews/stage-N/` into
   `docs/stages/stage-N/reviews/`. The project plan review, `reviews/plan-review.edn`, is no
   stage's and stays. Each entry by `git mv` when git tracks it, so its history follows; an
