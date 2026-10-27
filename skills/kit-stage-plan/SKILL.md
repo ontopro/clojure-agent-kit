@@ -97,7 +97,9 @@ figure or more (the readings line of the last stage's `bb stage-report`; the rev
 with the application, and a pre-release stage's has every member read) and one fix packet after it,
 since a reproduced finding is fixed in the stage that found it. Then run the stage plan review, `bb plan-review
 <xyx>-build/docs/stages/stage-N/stage-N-plan.md`, and read the findings cold with the person, resolving each in
-the overview's findings table and the stage plan; then `bb plan-check`.
+the overview's findings table and the stage plan - a finding of a review that rests on a claim about
+what a library does answered after the claim is evaluated on the JVM, in the application's REPL, the
+form and its result in the resolution; then `bb plan-check`.
 
 ## Writes
 

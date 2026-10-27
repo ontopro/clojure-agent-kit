@@ -42,6 +42,7 @@
    [clojure.string :as str]
    [harness.contract.shapes :as shapes]
    [harness.loop.driver :as driver]
+   [harness.loop.library-claims :as claims]
    [harness.loop.log :as log]
    [harness.loop.run-lock :as run-lock]
    [harness.loop.triage :as triage]
@@ -456,10 +457,14 @@
                :triage (on-event v)))
 
       ;; :architect, :human — and the Tester shielded to :human
-      (assoc (stop (if (:routed v) :tester-leak (case kind :note :paused :red-gate :red-gate :rejection :rejected))
-                   (:route v)
-                   (str "triage: " (:reason v)))
-             :triage (on-event v)))))
+      (do
+        ;; A REJECTION THE ARCHITECT READS may rest on a library claim: the rule, said where it is answered
+        (when (and (= :rejection kind) (= :architect (:route v)))
+          (println (str "  " claims/rule)))
+        (assoc (stop (if (:routed v) :tester-leak (case kind :note :paused :red-gate :red-gate :rejection :rejected))
+                     (:route v)
+                     (str "triage: " (:reason v)))
+               :triage (on-event v))))))
 
 ;; ---------------------------------------------------------------------------
 ;; the loop

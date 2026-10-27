@@ -946,7 +946,10 @@ so the extraction is a command, and a test reads the template's packet as a spec
 Before a task is dispatched, its spec is read cold by one model with no tools — the code reviewer's
 family, not the Architect's — and asked one question: *every place a target can be read two ways,
 and every input the shapes allow that no target mentions.* The Architect reads the list and, per
-finding, fixes the contract or leaves it. Then `start`.
+finding, fixes the contract or leaves it. Then `start`. A finding that rests on a claim about what a
+library does - what a function returns for an input, what a middleware drops - is answered after the
+claim is evaluated on the JVM, in the application's REPL (`clojure -M:test:nrepl`, its port in
+`.nrepl-port`), and the answer carries the form and its result.
 
 It does not block anything, no dispatched role sees its output, and it decides nothing. What it
 gives is a list and a number: the finding count is the readiness signal, and a spec that draws ten
@@ -971,7 +974,11 @@ is reviewed again, except that a change to `:files/context` alone is not an edit
 **Every stop has an owner, and the loop says which.** A stop whose answer is an amendment to the
 contract — the spec review's list, and any stop triage routed `architect` — is the **Architect's**: the
 seat session handles it itself, reads, amends with `amend` (before and after are recorded) or leaves it,
-and carries on. Everything else is the **person's**: the cap, a missing verdict, a merge, a `human`
+and carries on. A finding that rests on a claim about what a library does is answered after the claim is
+evaluated on the JVM, and the answer - the amendment's reason, the retry's guidance - carries the form
+and its result: one code reviewer rejected a packet three times on one wrong belief about
+`clojure.string/trim`, which one evaluated form ends. `amend` and `retry` say a reason that names a
+function and shows no `=>`, and record it; they never refuse. Everything else is the **person's**: the cap, a missing verdict, a merge, a `human`
 route, a `tooling` route (the tooling is at fault, not the run - a merged file no role owns, the build,
 the harness; fixed outside the run), a dead REPL, a refused provider, and a spec that has drawn findings twice and is amended again
 (`:spec-review-limit`; `:spec-review/max` in `loop.edn`). That line is what lets a run be automated —

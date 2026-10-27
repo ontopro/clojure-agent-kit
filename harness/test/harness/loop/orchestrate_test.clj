@@ -420,6 +420,22 @@
       (is (nil? (shapes/explain-run (edn/read-string (slurp (str (fs/path rd "run.edn"))))))))
     (teardown! rd)))
 
+(deftest a-retry-whose-architect-guidance-names-a-function-unevaluated-is-said-and-recorded
+  ;; plan 7.0, item 6.6 B: the Architect's guidance is read, the triage's and the gate's are not
+  (let [repo (scratch-repo)
+        rd (run-dir! repo {:gates [[:red "false"]]})
+        triage (str (fs/path rd "triage.edn"))]
+    (is (= :red-gate (:stop/kind (drive! rd {}))))
+    (spit triage (pr-str {:decision "the reviewer misreads trim"
+                          :feedback [{:feedback/from :architect :feedback/text "`clojure.string/trim` keeps U+2003, so keep the target"}
+                                     {:feedback/from :gate :feedback/text "str/trim failed in (str/trim x)"}]}))
+    (let [out (with-redefs-fn {#'driver/dispatch! (fake-dispatch green-writes {})}
+                #(with-out-str (driver/retry! (driver/context rd) "coder" triage)))]
+      (is (str/includes? out "note: the reason names clojure.string/trim and shows no evaluation")))
+    (is (= '[clojure.string/trim] (:unevaluated (last (filter #(= :triage (:event/kind %)) (events rd)))))
+        "the Architect's text only - the gate's str/trim is not a claim anyone answered")
+    (teardown! rd)))
+
 (deftest the-cap-is-spent-per-role-and-the-stop-names-whose-rounds-are-spent
   ;; The cap is per role: the Coder's two retries spend its three rounds, the Tester's are
   ;; its own, and triage routing the Coder again is a stop that names the Coder.

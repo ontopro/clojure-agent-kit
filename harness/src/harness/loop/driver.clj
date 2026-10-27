@@ -95,6 +95,7 @@
    [harness.contract.targets :as targets]
    [harness.gates.repair :as repair]
    [harness.gates.run :as gates]
+   [harness.loop.library-claims :as claims]
    [harness.loop.log :as log]
    [harness.loop.provision :as prov]
    [harness.models.profile :as profile]
@@ -1169,7 +1170,7 @@
           (throw (ex-info (if no-block?
                             "spec review: the answer had no findings block, so nothing was recorded — `start` again to ask again"
                             (str "spec reviewed: " count " finding" (if (= 1 count) "" "s")
-                                 " — read them above (spec-review.edn); fix spec.edn or not, then `start` again"
+                                 " — read them above (spec-review.edn); fix spec.edn or not, then `start` again. " claims/rule
                                  " (edit spec.edn in place - `amend` is for a started run)"))
                           {:run-loop/error :spec-reviewed :findings count :run-dir (:run-dir ctx)})))))
     (reset! (:state ctx) {:started-ms (now) :steps [] :events [] :attempts {:coder 1 :tester 1}
@@ -1388,6 +1389,12 @@
         {:feedback (vec (concat (subvec feedback 0 at) items (subvec feedback at)))
          :terms (mapv :term named)}))))
 
+(defn- unevaluated-claims!
+  "Say, and return, the functions `text` names with no evaluation shown (`claims/warn!`), against
+  the application's REPL port - the Architect's, where the claim is settled."
+  [ctx text]
+  (claims/warn! text (some-> (:config ctx) :repo/root prov/read-port)))
+
 (defn retry-with!
   "`retry!` with the decision as data: `triage` is `{:decision \"...\"
   :feedback [Feedback ...]}`, `allow?` is `--allow-leak`, and `extra` is
@@ -1418,9 +1425,13 @@
                             feedback allow?)
         ;; AFTER the leak check: a definition is rule text every role already holds, and a
         ;; namespace it names is the project's contract, not the implementation leaking
-        {feedback :feedback quoted :terms} (quoted-definitions (rules/data-conventions) feedback)]
+        {feedback :feedback quoted :terms} (quoted-definitions (rules/data-conventions) feedback)
+        ;; A LIBRARY CLAIM IS EVALUATED BEFORE IT IS ANSWERED: said, never refused, and counted
+        unevaluated (vec (distinct (mapcat #(unevaluated-claims! ctx (:feedback/text %))
+                                           (filter #(= :architect (:feedback/from %)) feedback))))]
     (event! ctx (cond-> (merge extra {:event/kind :triage :role role :attempt attempt :decision decision})
                   checked (assoc :leak-check checked)
+                  (seq unevaluated) (assoc :unevaluated unevaluated)
                   (seq quoted) (assoc :quoted-terms quoted)))
     (when (seq quoted)
       (println (str "  guidance names " (str/join ", " quoted)
@@ -1494,13 +1505,15 @@
                              #(vec (distinct (conj (vec %) path))))
                       path))]
     (swap! (:state ctx) assoc :spec after)
-    (event! ctx (cond-> {:event/kind :amend :reason reason
-                         :property-targets/before (:property-targets before)
-                         :property-targets/after (:property-targets after)
-                         :slice-changed? slice-changed?}
-                  restubbed (assoc :stub-rewritten restubbed)
-                  (seq moved) (assoc :dependents/moved moved)
-                  uncount? (assoc :not-counted {:role (:role last-round) :attempt (:attempt last-round) :reason reason})))
+    (let [unevaluated (unevaluated-claims! ctx reason)]
+      (event! ctx (cond-> {:event/kind :amend :reason reason
+                           :property-targets/before (:property-targets before)
+                           :property-targets/after (:property-targets after)
+                           :slice-changed? slice-changed?}
+                    restubbed (assoc :stub-rewritten restubbed)
+                    (seq moved) (assoc :dependents/moved moved)
+                    uncount? (assoc :not-counted {:role (:role last-round) :attempt (:attempt last-round) :reason reason})
+                    (seq unevaluated) (assoc :unevaluated unevaluated))))
     (println "recorded amendment"
              (if restubbed (str "— the slice changed, so the Tester's stub was regenerated at " restubbed) ""))
     (when (seq moved)

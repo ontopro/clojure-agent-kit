@@ -897,6 +897,25 @@
       (is (= ["src/app/views.clj"] (:files/context sp)) "the other dependent stays context"))
     (is (= ["src/app/views.clj"] (loop/run-dependents ctx)))))
 
+;; A LIBRARY CLAIM IS EVALUATED BEFORE IT IS ANSWERED (plan 7.0, item 6.6 B): an amendment whose
+;; reason names a function and shows no result is said and recorded, never refused.
+(deftest an-amendment-naming-a-function-unevaluated-is-said-and-recorded
+  (let [run-dir (str (fs/create-temp-dir))
+        before-file (str (fs/path run-dir "spec.v1.edn"))
+        v1 {:task/id "t" :files/impl ["src/app/a.clj"] :files/test ["test/app/a_test.clj"]
+            :blueprint/slice {:shapes [] :interfaces '[(f [x])]} :property-targets ["trims"]}
+        ctx {:run-dir run-dir :config {:repo/root run-dir}
+             :state (atom {:started-ms (System/currentTimeMillis) :events [] :sessions {}})}]
+    (spit before-file (pr-str v1))
+    (spit (str (fs/path run-dir "spec.edn")) (pr-str (assoc v1 :property-targets ["blank?"])))
+    (is (str/includes? (with-out-str (loop/amend! ctx before-file "the reviewer is right: clojure.string/trim keeps U+2003"))
+                       "note: the reason names clojure.string/trim and shows no evaluation"))
+    (is (= '[clojure.string/trim] (:unevaluated (last (:events @(:state ctx))))))
+    (testing "with the form and its result, nothing is said or kept"
+      (is (not (str/includes? (with-out-str (loop/amend! ctx before-file "(clojure.string/trim \"\\u2003\") => \"\" - the reviewer is wrong"))
+                              "note:")))
+      (is (nil? (:unevaluated (last (:events @(:state ctx)))))))))
+
 (deftest packets-see-the-dependents-start-computed
   (let [spec {:task/id "t" :files/context ["src/a.clj"]}]
     (is (= ["src/a.clj" "test/p_test.clj"]
