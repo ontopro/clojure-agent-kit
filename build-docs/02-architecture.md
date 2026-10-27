@@ -84,9 +84,9 @@ Not given:
   needs every `x-data` object registered with `Alpine.data`, and an expression names that
   component's properties and methods by key, a dotted path allowed (its `advanced/csp.md` at
   3.14.8, the version the template fetches). So every inline `x-data` object the stages write, and
-  every expression that is more than a name - `open = true`, `move(1)` - is rewritten when the
-  policy changes: a cost that grows with each stage, which §8 either avoids in stage 0 or writes
-  down.
+  every expression that is more than a name or a dotted path into it - `open = true`, `move(1)` -
+  is rewritten when the policy changes: a cost that grows with each stage, which §8 either avoids
+  in stage 0 or writes down.
 - **No session expiry on the server, and no logout that ends one.** A session lasts until the
   browser closes, and a copied cookie is good until the secret changes: the session is the cookie
   and the server keeps no copy, so a logout that clears the browser's cookie leaves every copy a
