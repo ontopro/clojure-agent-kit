@@ -162,6 +162,14 @@ migrations: <Ragtime as shipped | optional under XTDB>
 > nothing private and has no accounts answers most rows in a few words - "none", "the public,
 > read-only" - and that is a decision too, written down so a later stage that adds an editor or a
 > form sees that it changed one. The application never decides these by default.
+>
+> A choice not made now is written as a deferral, in one line: "deferred to stage N: what grows
+> against it · the cost to switch" - the stage that decides it, by number or by kind (the
+> pre-release stage); what the code adds meanwhile against the default; and what switching then
+> rewrites. The `·` splits what grows from the cost. A strict content-security policy chosen in
+> stage 0 costs nothing; put off, every page the stages write grows against it, and the line says
+> how much. `bb plan-check` fails a row that says deferred or none yet without that line, and lists
+> the deferrals; the stage's end re-reads each.
 
 | Question | This project | Decision |
 |---|---|---|
@@ -169,7 +177,7 @@ migrations: <Ragtime as shipped | optional under XTDB>
 | Who reaches it | <the public, read-only · an owner · staff - and who writes> | D-n |
 | The auth model | <none · a shared secret · accounts: who creates them, how long a session lasts> | D-n |
 | Where it is deployed | <the host, and where TLS ends - the application or a proxy in front of it> | D-n |
-| Content-Security-Policy | <none yet, and the stage that adds it · the policy> | D-n |
+| Content-Security-Policy | <the policy, or deferred to stage N: what grows against it · the cost to switch> | D-n |
 
 ---
 

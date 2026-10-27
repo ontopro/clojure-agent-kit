@@ -61,6 +61,7 @@
    [harness.setup.doctor :as doctor]
    [harness.setup.front-door :as front-door]
    [harness.setup.init :as init]
+   [harness.setup.plan :as plan]
    [harness.setup.skills :as skills]
    [harness.setup.stage-move :as stage-move]
    [harness.setup.stages :as stages]
@@ -548,6 +549,15 @@
                          (when (seq (:moves (stage-move/plan (:workspace/build ws))))
                            " in a folder now - after the move, a plan kept under another name is renamed too"))))
         (say "build-docs: " (count files) " file" (when (not= 1 (count files)) "s") " changed: " (str/join ", " (map #(subs (:path %) (count "build-docs/")) files)))
+        (say "plan-check: " (let [f (fs/path (:workspace/build ws) "docs" "02-architecture.md")
+                                  short (when (fs/exists? f) (filterv :short? (plan/security-deferrals (slurp (str f)))))]
+                              ;; SAID BEFORE: a deferral the new check holds turns the workspace gates red
+                              ;; until its line is written - the person hears it here, not first from the gates
+                              (if (seq short)
+                                (str "§8's " (str/join ", " (map :question short)) " row" (when (> (count short) 1) "s")
+                                     " put" (when (= 1 (count short)) "s") " a choice off without its cost: the gates fail until it says"
+                                     " \"deferred to stage N: what grows against it · the cost to switch\"")
+                                "§8's deferrals each say their cost")))
         (say "loop-edn: " (if (second (rewrite-kit-path (slurp (str (fs/path (:workspace/build ws) "loop.edn"))))) "a literal KIT path to rewrite" "nothing to rewrite"))
         (say "build-ignore: " (let [f (fs/path (:workspace/build ws) ".gitignore")
                                     [_ added] (ignore-text (when (fs/exists? f) (slurp (str f))) init/build-ignored)]

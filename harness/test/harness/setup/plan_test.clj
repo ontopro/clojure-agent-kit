@@ -431,3 +431,60 @@
   (is (= [] (plan/reused-task-ids [{:id 0 :tasks #{"t-01"}} {:id 1 :tasks #{"t-02"}}])))
   (is (str/includes? (plan/report {:plan "p" :problems [] :documents 1 :workspace "w" :reused [["t-02-pages" [0 2]]]})
                      "reused task ids: 1 task id more than one stage's blueprint carries")))
+
+;; --- the security choices: one put off says what it costs ---------------------------
+
+(def ^:private section-8
+  (str "## 7. The datastore\n\n| a | b |\n|---|---|\n| deferred | not §8 |\n\n"
+       "## 8. Security choices\n\n> A note.\n\n"
+       "| Question | This project | Decision |\n|---|---|---|\n"
+       "| What it holds | public content | D9 |\n"
+       "| The auth model | none | D9 |\n"
+       "%s\n\n---\n\n## 15. Threat model\n\n| Threat | Answer |\n|---|---|\n| x | deferred |\n"))
+
+(defn- csp [cell] (format section-8 (str "| Content-Security-Policy | " cell " | D11 |")))
+
+(deftest a-security-choice-put-off-says-what-grows-against-it-and-what-switching-costs
+  (testing "the template's own mark is a mark, not a deferral (Fable 5.1's read)"
+    (let [text (slurp (str (fs/path template-dir "02-architecture.md")))]
+      (is (= [] (plan/security-deferrals text)))
+      (is (= [] (plan/deferral-problems "02-architecture.md" text)))
+      (is (= 5 (count (plan/security-rows text))) "the five questions, header and separator dropped")))
+  (testing "a whole line parses, and passes"
+    (let [text (csp "a policy with 'unsafe-eval'; the strict policy deferred to stage 6 (Q-34): every inline x-data object · rewriting each into a registered component; reviewed then")]
+      (is (= [{:question "Content-Security-Policy"
+               :deferred [{:owner "stage 6 (Q-34)" :grows "every inline x-data object" :cost "rewriting each into a registered component"}]
+               :short? false}]
+             (plan/security-deferrals text)))
+      (is (= [] (plan/deferral-problems "02-architecture.md" text)))))
+  (testing "deferred without its line, or none yet alone, fails by name; only §8 is read"
+    (doseq [cell ["a policy from stage 6; the strict policy deferred (Q-34)"
+                  "none yet"
+                  "deferred to stage 6: every page grows against it"
+                  "deferred to stage 6: pages · a rewrite; and the reporting deferred too"]]
+      (is (= ["docs/02-architecture.md §8: the Content-Security-Policy row defers without its cost - write \"deferred to stage N: what grows against it · the cost to switch\""]
+             (plan/deferral-problems "02-architecture.md" (csp cell)))
+          cell)))
+  (testing "any row is read the same, and another document is not this check's"
+    (let [text (format section-8 "| The auth model | deferred to the stage that adds an editor: forms posting without a login · a login on each | D12 |")]
+      (is (= [["The auth model" "the stage that adds an editor"]]
+             (for [{:keys [question deferred]} (plan/security-deferrals text) d deferred] [question (:owner d)])))
+      (is (= [] (plan/deferral-problems "01-requirements.md" (csp "none yet"))))))
+  (testing "no §8, nothing"
+    (is (= [] (plan/security-deferrals "# Architecture\n\n## 4. Security\n\n| a | deferred |\n")))))
+
+(deftest the-check-fails-a-short-deferral-and-lists-the-open-ones
+  (let [ws (workspace {:filled? true})
+        arch (str (fs/path ws "xyx-build" "docs" "02-architecture.md"))
+        filled (slurp arch)
+        row #"\| Content-Security-Policy \| [^|]* \|"]
+    (spit arch (str/replace filled row "| Content-Security-Policy | deferred (Q-34) |"))
+    (is (= ["docs/02-architecture.md §8: the Content-Security-Policy row defers without its cost - write \"deferred to stage N: what grows against it · the cost to switch\""]
+           (:problems (check ws))))
+    (spit arch (str/replace filled row "| Content-Security-Policy | deferred to the pre-release stage: every Alpine expression a page adds · a rewrite of each |"))
+    (let [r (check ws)]
+      (is (= [] (:problems r)))
+      (is (= [["Content-Security-Policy" "the pre-release stage"]] (:deferrals r)))
+      (is (str/includes? (plan/report r) "\n  security deferrals: 1 choice of docs/02-architecture.md §8 put off, re-read at every stage's end - Content-Security-Policy (to the pre-release stage)")))
+    (spit arch filled)
+    (is (= [] (:deferrals (check ws))))))

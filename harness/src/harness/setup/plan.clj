@@ -15,7 +15,9 @@
   THE CHECK IS THE GATE, and it is cheap: no mark left in the governing
   documents, none of the template's instructions left standing, every
   requirement citing an observation of `source.md` or marked as the
-  Architect's inference, the overlay's placeholders filled, and the given
+  Architect's inference, every security choice of the architecture's §8 put off
+  to a later stage saying what grows against it meanwhile and what switching
+  costs then, the overlay's placeholders filled, and the given
   parts intact - the KIT's rules unedited, the template's layers not
   loosened, the gate keys in the KIT's order. The model's reading of the plan
   (`harness.setup.plan-review`) is not a gate: it gives the Architect a list,
@@ -28,7 +30,10 @@
   list, not a failure: the observations of `source.md` that no governing
   document cites are the backlog nobody decided on, printed for the stage's
   end to revise the scope lists against; and the inferred requirements are
-  printed for the person, who is shown them at the stage's approval."
+  printed for the person, who is shown them at the stage's approval. The §8
+  choices put off are a list too, beside the sentence a short one fails: the
+  stage's end re-reads each with the person, its owner and what the stage
+  added against it."
   (:require
    [babashka.fs :as fs]
    [clojure.edn :as edn]
@@ -248,11 +253,68 @@
              :when (inferred? source)]
          [id rel])))
 
+;; ---------------------------------------------------------------------------
+;; the security choices: one put off says what grows against it and what switching costs
+;; ---------------------------------------------------------------------------
+
+(defn security-rows
+  "The rows of `02-architecture.md` §8's table in `text`, as `{:question :choice}`: the
+  table lines from the `## 8.` heading to the next heading or rule, its header and separator
+  dropped. `[]` when the document has no §8 - a plan written before it is not this check's."
+  [text]
+  (->> (str/split-lines text)
+       (drop-while #(not (re-find #"^## 8\." %)))
+       rest
+       (take-while #(not (re-find #"^(#{1,2} |---)" %)))
+       (filter table-line?)
+       rest
+       (remove #(re-matches #"[\s|:-]+" %))
+       (mapv (fn [line] (let [[q c] (cells line)] {:question q :choice (or c "")})))))
+
+(def deferral-line
+  "A §8 choice put off, as the template asks for it: `deferred to <owner>: <what grows
+  against it> · <the cost to switch>`. The `·` is the one separator between what grows and
+  the cost; the owner holds no colon (a parenthesis is fine: `stage 6 (Q-34)`); the cost ends
+  at the first `;`, where the cell's next choice starts."
+  #"(?i)\bdeferred to ([^:|]+?):\s*([^·]+?)\s*·\s*([^;]*[^;\s])")
+
+(defn- deferral [{:keys [question choice]}]
+  ;; MARKS OUT FIRST: the template's own mark reads as a whole line, and an unfilled plan
+  ;; would list a deferral to "stage N" (Fable 5.1's read)
+  (let [c (str/replace choice mark "")
+        said (re-seq deferral-line c)
+        words (count (re-seq #"(?i)\bdeferred\b" c))
+        none-yet? (re-find #"(?i)\bnone yet\b" c)]
+    (when (or (pos? words) none-yet?)
+      {:question question
+       :deferred (mapv (fn [[_ owner grows cost]] {:owner (str/trim owner) :grows grows :cost cost}) said)
+       :short? (boolean (or (< (count said) words) (and none-yet? (empty? said))))})))
+
+(defn security-deferrals
+  "The rows of §8 in `text` (`02-architecture.md`) that put a choice off - the word `deferred`
+  or `none yet`, any case - as `{:question :deferred [{:owner :grows :cost} …] :short?}`;
+  `:short?` when a `deferred` or a `none yet` stands without its `deferral-line`. A deferral
+  in other words (\"later\", \"from stage 6\") is not read here: the template's wording is
+  what the check holds, and the plan review reads for the rest."
+  [text]
+  (vec (keep deferral (security-rows text))))
+
+(defn deferral-problems
+  "One sentence for each §8 row of `text` that defers without what it costs; `[]` for any
+  document but `02-architecture.md`."
+  [rel text]
+  (if (= rel "02-architecture.md")
+    (vec (for [{:keys [question short?]} (security-deferrals text) :when short?]
+           (str "docs/" rel " §8: the " question " row defers without its cost - write"
+                " \"deferred to stage N: what grows against it · the cost to switch\"")))
+    []))
+
 (defn document-problems
   "What the governing documents under `docs-dir` still carry, as sentences:
   marks (`placeholders`), the template's instructions (`instructions-left`,
-  against `template-dir`), and requirements that rest on nothing
-  (`citation-problems`)."
+  against `template-dir`), requirements that rest on nothing
+  (`citation-problems`), and a security choice put off without its cost
+  (`deferral-problems`)."
   [docs-dir template-dir]
   (let [instructions (instruction-lines template-dir)]
     (vec (mapcat
@@ -270,7 +332,9 @@
                            " of the template's instructions still standing (first at line "
                            (first left) ") - delete each blockquote once it is acted on"))
                 :always
-                (into (citation-problems rel text)))))
+                (into (citation-problems rel text))
+                :always
+                (into (deferral-problems rel text)))))
           (governing docs-dir)))))
 
 (defn overlay-problems
@@ -436,6 +500,11 @@
                                       (catch clojure.lang.ExceptionInfo _ nil)))
                  [])
      :reused (reused-task-ids (stages/stage-infos plan #(mapv :task/id (blueprint/packets %))))
+     ;; the open deferrals, which the stage's end re-reads with the person
+     :deferrals (vec (for [[rel text] texts :when (= rel "02-architecture.md")
+                           {:keys [question deferred]} (security-deferrals text)
+                           {:keys [owner]} deferred]
+                       [question owner]))
      :uncited (if source
                 (uncited-observations source (map second (remove #(= "source.md" (first %)) texts)))
                 [])}))
@@ -443,8 +512,9 @@
 (defn report
   "The check's result as the lines `bb plan-check` prints: the verdict, then
   the inferred requirements for the person, the uncited observations for
-  the stage's end and the one-word defined terms, each only when there are any."
-  [{:keys [plan problems documents workspace inferred uncited one-word reused]}]
+  the stage's end, the one-word defined terms, the task ids reused and §8's
+  open security deferrals, each only when there are any."
+  [{:keys [plan problems documents workspace inferred uncited one-word reused deferrals]}]
   (str (if (seq problems)
          (str "plan-check: " (count problems) " thing" (when (> (count problems) 1) "s") " left in " plan "\n"
               (str/join "\n" (map #(str "  - " %) problems)))
@@ -468,7 +538,11 @@
        (when (seq reused)
          (str "\n  reused task ids: " (count reused) " task id" (when (> (count reused) 1) "s")
               " more than one stage's blueprint carries - a run records its stage, an older record is placed by date: "
-              (str/join ", " (for [[t ids] reused] (str t " (stages " (str/join ", " ids) ")")))))))
+              (str/join ", " (for [[t ids] reused] (str t " (stages " (str/join ", " ids) ")")))))
+       (when (seq deferrals)
+         (str "\n  security deferrals: " (count deferrals) " choice" (when (> (count deferrals) 1) "s")
+              " of docs/02-architecture.md §8 put off, re-read at every stage's end - "
+              (str/join ", " (for [[q owner] deferrals] (str q " (to " owner ")")))))))
 
 (defn -main
   "bb plan-check [<plan-dir>] [--workspace <dir>]
