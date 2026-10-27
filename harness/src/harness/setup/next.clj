@@ -172,15 +172,28 @@
   (`:preconditions`): a row still open that blocks it comes first, the person's; a `per run` row
   is named with the packet's step."
   [{:keys [id plan kind gates blueprint reviewed? packets merged runs preconditions now-at zone
-           plan-readings blueprint-readings]}]
+           plan-readings blueprint-readings merges]}]
   (let [{:stage/keys [approved closed] :blueprint/keys [signed]} gates
         at (at-text now-at)
         ;; A TIME THAT CANNOT BE READ IS SAID, NEVER THROWN: a bare date or a typo under `:at`
         unreadable-gate (first (filter #(stages/unreadable-at? (get gates %)) (conj signed-gates :stage/closed)))
         spike? (= 0 id)
-        unsigned-threat-model? (and (= "pre-release" kind) (nil? (stages/current-signing gates)))
-        sign-threat-model (str "every line of docs/02-architecture.md §15 answered with its evidence, then "
-                               ":security/signed {" at " :by <name>} in " (gates-file id))
+        signing (stages/current-signing gates)
+        ;; SIGNED ONCE, AT THE CLOSE, AFTER THE LAST AMENDMENT (the person, 2026-10-27): a signing
+        ;; from before an amendment's packets merged is kept, and asked again
+        stale (stages/stale-signing gates (map :at merges))
+        last-merge (last (sort-by :at merges))
+        unsigned-threat-model? (and (= "pre-release" kind) (or (nil? signing) (seq stale)))
+        sign-threat-model (if (seq stale)
+                            (str "the threat model was signed " (stages/gate-day signing zone) ", before "
+                                 (str/join " and " stale) " changed the application"
+                                 (when last-merge (str " (" (:task last-merge) " merged "
+                                                       (str (.toLocalDate (.atZone ^java.time.Instant (:at last-merge) (stages/zone zone)))) ")"))
+                                 " - every line of docs/02-architecture.md §15 read again with the change, then "
+                                 ":security/signed {" at " :by <name>} in " (:q (last (stages/amendments gates)))
+                                 "'s pass in :stage/amendments in " (gates-file id))
+                            (str "every line of docs/02-architecture.md §15 answered with its evidence, then "
+                                 ":security/signed {" at " :by <name>} in " (gates-file id)))
         ;; a pre-release stage's skip is refused outright below, never first asked for a name
         unnamed-gate (first (filter #(and (unnamed? (get gates %))
                                           (not (and (= "pre-release" kind) (= :security/skipped %))))
@@ -483,6 +496,17 @@
                  (if (= :merged (get m id)) m (assoc m id status)))
                {})))
 
+(defn run-merges
+  "`[{:task :at}]`: each record under `records-dir` that was merged, with when (`stages/merged-at`);
+  with `own?`, only the stage's own - the threat model's signing is held to the stage's last merge."
+  [records-dir & [own?]]
+  (->> (when (and records-dir (fs/directory? records-dir)) (fs/glob records-dir "*.edn"))
+       (keep read-edn)
+       (filter :task/id)
+       (filter (or own? any?))
+       (keep #(when-let [at (stages/merged-at %)] {:task (:task/id %) :at at}))
+       vec))
+
 (defn facts
   "The five facts, read from the workspace `ws` (nil outside one)."
   [ws]
@@ -522,6 +546,7 @@
                         :plan-readings (stages/reading-times (fs/path (stages/reviews-dir build id) "plan-review.edn"))
                         :blueprint-readings (stages/reading-times (fs/path (stages/reviews-dir build id) "blueprint-review.edn"))
                         :merged (into #{} (filter #(= :merged (statuses %))) packets)
+                        :merges (run-merges (:workspace/records ws) #(= id (stages/record-stage % infos)))
                         :runs (into {} (for [t packets :let [s (statuses t)] :when (and s (not= :merged s))] [t s]))}))
        :upgrade (upgrade/open-after-upgrade ws (read-edn (fs/path (:workspace/dir ws) workspace/file-name)))})))
 

@@ -28,6 +28,7 @@
  ;; writes :q and :opened - a KIT command, not a hand - and the two sign-offs inside are the
  ;; person's, as the gates above are. The first approval and sign-off stay as they were; the
  ;; latest re-approval's :cap is the stage's cap. `bb next` asks for each gate again in turn. A
- ;; pre-release stage's threat model signed again after an amendment goes in its pass as
- ;; :security/signed {:at :by} - never over the first; the latest pass's is the one that stands
+ ;; pre-release stage's threat model is signed once, at the close, after the last amendment: a
+ ;; signing from before an amendment's packets merged stays, and the new one goes in the last pass
+ ;; as :security/signed {:at :by} - never over the first; the latest by date stands
  :stage/amendments nil}

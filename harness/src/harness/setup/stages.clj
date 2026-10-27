@@ -293,12 +293,37 @@
     (when (and a (nil? (:signed a))) a)))
 
 (defn current-signing
-  "The threat model's signing that stands: the latest amendment pass's `:security/signed`, else the
-  stage's own - a signing again after an amendment is added to its pass, never written over the
-  first (plan 7.0, item 11.3). Nil when nothing is signed."
+  "The threat model's signing that stands: the latest by its `:at` among the stage's own
+  `:security/signed` and every amendment pass's - wherever it was written, a later one in the last
+  pass by convention, never over the first (plan 7.0, item 11.3, as amended). On a tie, or times
+  that cannot be read, the one written last. Nil when nothing is signed."
   [gates]
-  (or (some :security/signed (rseq (amendments gates)))
-      (:security/signed gates)))
+  (let [all (remove nil? (cons (:security/signed gates) (map :security/signed (amendments gates))))]
+    (when (seq all)
+      (apply max-key #(or (some-> (:at %) parse-at .toEpochMilli) Long/MIN_VALUE) all))))
+
+(defn merged-at
+  "When run record `record` was merged: its latest `:merged` event's `:at`, an `Instant`; nil when
+  it was not, or the time cannot be read."
+  [record]
+  (some->> (:run/events record) (filter #(= :merged (:event/kind %))) last :at parse-at))
+
+(defn stale-signing
+  "The amendments a pre-release stage's standing signing came before (`current-signing`), as their
+  Q ids, or nil when it stands. The threat model is signed ONCE, at the close, after the last
+  amendment (the person, 2026-10-27): a signing counts when it is dated after the stage's last
+  merge (`merged-ats`, the instants of its packets' merges), else - no merge readable - after the
+  last pass's sign-off. A stage with no amendment is held as it was: its one signing stands."
+  [gates merged-ats]
+  (let [ams (amendments gates)
+        s (current-signing gates)
+        at (some-> s :at parse-at)
+        anchor (when (seq ams)
+                 (or (last (sort (remove nil? merged-ats)))
+                     (some-> (last ams) :signed :at parse-at)))]
+    (when (and at anchor (.isBefore ^java.time.Instant at anchor))
+      (let [after (mapv :q (filter #(some-> % :opened parse-at (.isAfter at)) ams))]
+        (if (seq after) after [(:q (last ams))])))))
 
 (defn effective-approval
   "The approval the stage's cap stands on, the gate itself so its time comes with it: the latest

@@ -180,7 +180,12 @@
                 (scan-line "Secrets scan" (:secrets scans))
                 (review-line review-records (:security/skipped gates) last-signed)]
                (map prep-line tail)
-               (when (= "pre-release" kind) [(signed "Threat model signed" (stages/current-signing gates) nil)])
+               (when (= "pre-release" kind)
+                 (let [stale (stages/stale-signing gates (keep stages/merged-at records))]
+                   [(if (seq stale)
+                      (str "- [ ] Threat model signed - " (str/join ", " ((juxt :by #(stages/gate-day % nil)) (stages/current-signing gates)))
+                           ", before " (str/join " and " stale) " - signed again at the close")
+                      (signed "Threat model signed" (stages/current-signing gates) nil))]))
                [(str (box (:stage/closed gates)) "Stage closed" (when-let [c (:stage/closed gates)] (str " - " (stages/gate-day c nil))))]))))
 
 (defn place

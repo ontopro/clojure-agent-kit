@@ -157,6 +157,7 @@
      :approved (stages/gate-day (stages/effective-approval gates) nil)
      :kind kind
      :security (stages/current-signing gates)
+     :security-stale (stages/stale-signing gates (keep stages/merged-at records))
      :security-skipped (:security/skipped gates)
      :security-checks (when checks {:counts (:counts checks) :date (some-> (:security/at checks) str (subs 0 10))})
      :security-scans (into {} (for [[k rec] scans :when rec]
@@ -176,7 +177,7 @@
   stage, which says when it has none; and the two scans' lines the same way."
   [{:keys [id run-count merged money cap approved before by-role readings reading-money
            rounds retry-cost dispatch-money rejections stops stop-kinds packets kind security
-           security-checks security-scans security-skipped unpriced]}]
+           security-checks security-scans security-skipped security-stale unpriced]}]
   (->> [(str "Stage " id " report · " run-count " run" (when (not= 1 run-count) "s") ", " merged " merged · "
              (dollars money) (if cap (str " of cap " cap (when approved (str " (approved " approved ")")))
                                  " · cap: not recorded (no :stage/approved in the gates record)")
@@ -231,7 +232,9 @@
         (when (or security (= "pre-release" kind))
           (str "  Threat model: "
                (if security
-                 (str "signed " (stages/gate-day security nil) (some->> (:by security) (str " by ")))
+                 (str "signed " (stages/gate-day security nil) (some->> (:by security) (str " by "))
+                      (when (seq security-stale)
+                        (str ", before " (str/join " and " security-stale) " - signed again at the close")))
                  "not signed (a pre-release stage closes with :security/signed in its gates record)")))]
        flatten
        (remove nil?)

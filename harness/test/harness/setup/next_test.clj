@@ -136,6 +136,33 @@
     (is (= "/kit-stage-end" (:run (next/next-action (gate s :security/skipped {:date "d" :by "Ada" :reason "r"}))))
         "named: the stage's end goes on")))
 
+(deftest a-threat-model-is-signed-once-at-the-close-after-the-last-amendment
+  ;; plan 7.0, item 11.3 as amended (the person, 2026-10-27): a signing from before an amendment's
+  ;; packets merged is kept, and asked again once, at the close, in the last pass
+  (let [i #(java.time.Instant/parse %)
+        stage (fn [ams merges]
+                (-> (with-stage {:kind "pre-release" :blueprint "stage-6/stage-6-blueprint.md" :reviewed? true
+                                 :packets ["t-01" "t-04"] :merged #{"t-01" "t-04"} :merges merges
+                                 :now-at "2026-10-28T10:00-05:00" :zone "America/Chicago"
+                                 :plan-readings [(i "2026-10-26T16:00:00Z")] :blueprint-readings [(i "2026-10-26T17:00:00Z")]})
+                    (gate :stage/approved {:at "2026-10-15T10:00-05:00" :cap "$20" :by "Ada"})
+                    (gate :blueprint/signed {:at "2026-10-16T10:00-05:00" :by "Ada"})
+                    (gate :security/signed {:at "2026-10-23T09:21-05:00" :by "Ada"})
+                    (gate :stage/amendments ams)))
+        q40 {:q "Q-40" :opened "2026-10-26T09:00-05:00" :approved {:at "2026-10-26T10:00-05:00" :cap "$30" :by "Ada"}
+             :signed {:at "2026-10-26T11:00-05:00" :by "Ada"}}
+        merges [{:task "t-01" :at (i "2026-10-20T15:00:00Z")} {:task "t-04" :at (i "2026-10-27T18:25:00Z")}]]
+    (testing "signed before Q-40's packet merged: asked again at the close, naming the pass"
+      (let [x (next/next-action (stage [q40] merges))]
+        (is (= 14 (:step x)))
+        (is (str/includes? (:run x) "the threat model was signed 2026-10-23, before Q-40 changed the application (t-04 merged 2026-10-27)"))
+        (is (str/includes? (:run x) "in Q-40's pass in :stage/amendments"))))
+    (testing "signed again in the pass after the last merge: it stands"
+      (let [x (next/next-action (stage [(assoc q40 :security/signed {:at "2026-10-28T09:00-05:00" :by "Ada"})] merges))]
+        (is (not (str/includes? (:run x) "threat model")))))
+    (testing "no amendment: the one signing stands, as before"
+      (is (not (str/includes? (:run (next/next-action (stage nil merges))) "threat model was signed"))))))
+
 (deftest a-pre-release-stage-has-a-fourth-gate-its-threat-model-signed
   (let [all (-> (with-stage {:kind "pre-release" :blueprint "stage-1/stage-1-blueprint.md" :reviewed? true
                              :packets ["t1"] :merged #{"t1"}})

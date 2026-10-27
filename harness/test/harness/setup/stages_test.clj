@@ -42,6 +42,27 @@
         "a later pass not yet signed leaves the latest signing standing")
     (is (= first-sign (stages/current-signing {:security/signed first-sign :stage/amendments [{:q "Q-1"}]})))))
 
+(deftest the-standing-signing-is-the-latest-by-date-and-held-to-the-last-merge
+  ;; plan 7.0, item 11.3 as amended
+  (let [i #(java.time.Instant/parse %)
+        early {:at "2026-10-20T10:00-05:00" :by "Ada"}
+        late {:at "2026-10-28T10:00-05:00" :by "Ada"}
+        q (fn [n opened & [m]] (merge {:q n :opened opened :signed {:at opened :by "Ada"}} m))]
+    (is (= late (stages/current-signing {:security/signed early
+                                         :stage/amendments [(q "Q-1" "2026-10-22T09:00-05:00" {:security/signed late}) (q "Q-2" "2026-10-25T09:00-05:00")]}))
+        "by date, wherever written")
+    (is (nil? (stages/stale-signing {:security/signed early} [(i "2026-10-27T00:00:00Z")])) "no amendment, held as before")
+    (is (= ["Q-1" "Q-2"] (stages/stale-signing {:security/signed early :stage/amendments [(q "Q-1" "2026-10-22T09:00-05:00") (q "Q-2" "2026-10-25T09:00-05:00")]}
+                                               [(i "2026-10-26T00:00:00Z")])))
+    (is (nil? (stages/stale-signing {:security/signed late :stage/amendments [(q "Q-1" "2026-10-22T09:00-05:00")]}
+                                    [(i "2026-10-26T00:00:00Z")])))
+    (is (= ["Q-1"] (stages/stale-signing {:security/signed {:at "2026-10-22T12:00-05:00" :by "Ada"}
+                                          :stage/amendments [(q "Q-1" "2026-10-22T09:00-05:00")]}
+                                         [(i "2026-10-24T00:00:00Z")]))
+        "signed after the pass opened but before its packet merged: still that pass's")
+    (is (= ["Q-1"] (stages/stale-signing {:security/signed early :stage/amendments [(q "Q-1" "2026-10-22T09:00-05:00")]} []))
+        "no merge readable: the last pass's sign-off is the anchor")))
+
 (deftest a-records-runs-are-read-in-order-and-the-latest-is-current
   ;; plan 7.0, item 11.2: the security pack keeps every run beside the first
   (let [build (str (fs/create-temp-dir))
