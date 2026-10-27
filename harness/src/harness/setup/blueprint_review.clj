@@ -42,7 +42,7 @@
   ["over-engineered" "target-two-promises" "target-not-checkable" "target-no-marker"
    "target-source-unnamed" "requirement-words-missing" "target-whole-hiccup"
    "shape-undefined" "shape-not-granted" "seam-unstated" "packet-task-mismatch"
-   "interface-malformed"])
+   "interface-malformed" "target-log-line-not-through-backend"])
 
 (def system-prompt
   (str "You review a stage's BLUEPRINT before the human signs it off - as an artifact, adversarially. "
@@ -72,7 +72,8 @@
        "serves has its words in a target: where a packet builds what a requirement describes - whichever "
        "stage the requirements assign it to - the words that requirement gives a person to read are quoted "
        "in a target; and a view's target names its words and its markers, never its whole Hiccup, which "
-       "holds presentation to the contract.\n\n"
+       "holds presentation to the contract. A target about a log line is tested through the logging "
+       "backend's own layout - what the backend wrote - never the string handed to the logger.\n\n"
        "The stack, the layering as the boundary file declares it, the roles, the packet, the gates and "
        "the retry cap are GIVEN by the method and are not the Blueprint's to have decided - do not report "
        "them. Report only what a reader could act on: name the section, the packet id or the target, quote "
