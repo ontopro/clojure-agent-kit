@@ -160,9 +160,9 @@
      :security (stages/current-signing gates)
      :security-stale (stages/stale-signing gates (keep stages/merged-at records))
      :security-skipped (:security/skipped gates)
-     :security-checks (when checks {:counts (:counts checks) :date (some-> (:security/at checks) str (subs 0 10))})
+     :security-checks (when checks {:counts (:counts checks) :date (stages/run-time (:security/at checks))})
      :security-scans (into {} (for [[k rec] scans :when rec]
-                                [k {:counts (:counts rec) :date (some-> (:security/at rec) str (subs 0 10))}]))
+                                [k {:counts (:counts rec) :date (stages/run-time (:security/at rec))}]))
      :before before}))
 
 (defn- dollars [x] (format "$%.2f" (double (or x 0))))

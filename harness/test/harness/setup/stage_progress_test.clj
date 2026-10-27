@@ -38,7 +38,7 @@
       (is (str/includes? (nth lines (idx "t-02-counts")) "run `s4-t02-b`"))
       (is (str/ends-with? (nth lines (idx "t-02-counts")) "; 2 runs")))
     (is (some #{"- [ ] t-03-views - not run"} lines))
-    (is (some #{"- [x] Security pack: 9 ok, 2 warn, 0 fail (2026-10-20)"} lines))
+    (is (some #{"- [x] Security pack: 9 ok, 2 warn, 0 fail (2026-10-20T00:05)"} lines))
     (is (some #{"- [ ] Dependency scan: no record"} lines))
     (is (some #{"- [ ] Stage closed"} lines))
     (is (not-any? #(str/includes? % "Threat model") lines) "not a pre-release stage")))
@@ -83,7 +83,10 @@
                                             (assoc :gates {:stage/approved {:at "2026-10-19T21:00-05:00" :cap "$10" :by "Ada"}
                                                            :blueprint/signed {:at "2026-10-19T22:10-05:00" :by "Ada"}})
                                             (assoc :checks {:security/at "2026-10-20T00:05:11.5-05:00" :counts {:ok 9 :warn 2 :fail 0}}))))]
-    (is (= old new) "an :at renders the day a :date did; a scan's offset time the day its local time did")
+    (is (= (remove #(str/starts-with? % "- [x] Security pack") old) (remove #(str/starts-with? % "- [x] Security pack") new))
+        "an :at renders the day a :date did")
+    (is (some #{"- [x] Security pack: 9 ok, 2 warn, 0 fail (2026-10-20T00:05:11-05:00)"} new)
+        "a pack run by its time, the offset kept: two runs of one day told apart (plan 7.0, item 11.5)")
     (is (some #{"- [x] Stage plan approved - Ada, 2026-10-19 (cap $10)"} new))))
 
 (deftest each-amendment-is-listed-and-a-review-before-it-said

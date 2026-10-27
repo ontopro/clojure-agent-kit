@@ -93,7 +93,7 @@
 (defn- scan-line [label rec]
   (let [{:keys [ok warn fail]} (:counts rec)]
     (str (box (and rec (zero? (or fail 0)))) label
-         (if rec (str ": " ok " ok, " warn " warn, " fail " fail (" (day (:security/at rec)) ")") ": no record"))))
+         (if rec (str ": " ok " ok, " warn " warn, " fail " fail (" (stages/run-time (:security/at rec)) ")") ": no record"))))
 
 (defn- said-nothing? [r] (boolean (or (:refused? r) (:no-block? r) (= :failed (:status r)))))
 

@@ -131,6 +131,12 @@
   [build id suffix]
   (last (record-runs build id suffix)))
 
+(defn run-time
+  "A record's run as a person reads it: its `:at` to the second, the offset kept, the fraction
+  dropped - two runs of one day are told apart, now every run is kept (plan 7.0, item 11.5)."
+  [at]
+  (some-> at str (str/replace #"\.\d+" "")))
+
 (defn known-names
   "Every name stage `id`'s folder may hold at its top level, the table's and the project's, with
   its number in place of `N`: a set, a folder's name ending `/`."
