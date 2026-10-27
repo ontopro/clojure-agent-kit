@@ -24,6 +24,19 @@
                             "the file `src/app/search.clj` and `resources/icons/x.svg` are not routes"
                             "https://example.com/path is a URL, and / alone is the root"]))))
 
+(deftest a-route-keeps-its-extension-and-a-parameter-is-any-one-segment
+  ;; Fable 5.1's read of af8b27f: `/assets/css/site.css` had read as `/assets/css/site`, and
+  ;; `/pages/:slug` as `/pages`, so a test naming either was missed
+  (is (= ["/assets/css/site.css" "/pages/:slug" "/pages/:slug/edit"]
+         (pt/target-routes ["serves `/assets/css/site.css`, `/pages/:slug` and `/pages/:slug/edit`."])))
+  (let [spec {:property-targets ["`/pages/:slug` and `/assets/css/site.css`"]}]
+    (is (= ["a" "b"]
+           (mapv :file (pt/readers spec [["a" "(get \"/pages/about\")"]
+                                         ["b" "(get \"/assets/css/site.css?v=1\")"]
+                                         ["c" "(get \"/pages/about/x\")"]
+                                         ["d" "(get \"/pages\")"]])))
+        "a parameter is one segment: not two, not none")))
+
 (deftest a-test-reads-the-packet-by-its-namespace-or-a-route-it-names
   (let [spec {:files/impl ["src/app/routes.clj"]
               :files/test ["test/app/routes_test.clj"]

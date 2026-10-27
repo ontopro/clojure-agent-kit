@@ -64,17 +64,24 @@
 
 (defn target-routes
   "The route paths `targets` (a packet's `:property-targets`) quote, in order, each once: a
-  `/` not after a word character or another `/`, then a path. A file path's
-  inner `/` follows a word character, so `src/app` is not one; the root `/`
-  alone is not read."
+  `/` not after a word character or another `/`, then a path - a `.` inside it
+  (`/assets/css/site.css`), and a parameter segment (`/pages/:slug`). A file
+  path's inner `/` follows a word character, so `src/app` is not one; the root
+  `/` alone is not read."
   [targets]
-  (vec (distinct (map second (mapcat #(re-seq #"(?<![\w/:.])(/[a-z0-9][\w\-/]*[\w])" (str %)) targets)))))
+  (vec (distinct (map second (mapcat #(re-seq #"(?<![\w/:.])(/[a-z0-9](?:[\w\-/.]|/:[a-z])*[\w])" (str %)) targets)))))
 
-(defn- names-route?
-  "Does `text` hold `route` as a string literal - the path alone, or with a query string? A
-  longer path under it (`/pages/x` for `/pages`) is another route."
-  [text route]
-  (boolean (re-find (re-pattern (str "\"" (java.util.regex.Pattern/quote route) "[\"?]")) text)))
+(defn- route-pattern
+  "`route` as a string literal's pattern: the path alone or with a query string, each
+  parameter segment (`:slug`) any one segment - `/pages/:slug` is `/pages/about`. A longer
+  path under a route (`/pages/x` for `/pages`) is another route."
+  [route]
+  (re-pattern (str "\""
+                   (str/join "[^\"/?]+" (map #(java.util.regex.Pattern/quote %) (str/split route #":[\w-]+" -1)))
+                   "[\"?]")))
+
+(defn- names-route? [text route]
+  (boolean (re-find (route-pattern route) text)))
 
 (defn readers
   "The test files of `tests` (`[[rel text] …]`) that read what `spec` changes, as

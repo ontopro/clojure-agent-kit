@@ -458,8 +458,8 @@
 
       ;; :architect, :human — and the Tester shielded to :human
       (do
-        ;; A REJECTION THE ARCHITECT READS may rest on a library claim: the rule, said where it is answered
-        (when (and (= :rejection kind) (= :architect (:route v)))
+        ;; A REJECTION THE ARCHITECT OR THE PERSON READS may rest on a library claim: the rule, said where it is answered
+        (when (and (= :rejection kind) (#{:architect :human} (:route v)))
           (println (str "  " claims/rule)))
         (assoc (stop (if (:routed v) :tester-leak (case kind :note :paused :red-gate :red-gate :rejection :rejected))
                      (:route v)
