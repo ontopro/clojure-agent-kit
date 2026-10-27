@@ -1662,7 +1662,7 @@
 (defn- reconcile!
   "Hold `state.edn` to `events.log` before a record is written. They agree, or with
   `rebuild?` the state is rebuilt from the log (the old one kept as
-  `state.before-rebuild.edn`), or the record is refused with what the log has that the
+  `state.before-rebuild-<time>.edn`, every one kept), or the record is refused with what the log has that the
   state lacks."
   [ctx rebuild?]
   (let [state @(:state ctx)
@@ -1692,11 +1692,12 @@
           :else
           (let [{:keys [state steps]} (rebuild-from-log state logged)]
             (when (fs/exists? (state-file ctx))
-              (fs/copy (state-file ctx) (run-file ctx "state.before-rebuild.edn") {:replace-existing true}))
+              ;; kept, never written over: a second rebuild keeps the first's (plan 7.0, item 11.4)
+              (fs/copy (state-file ctx) (run-file ctx (str "state.before-rebuild-" (str/replace (str (java.time.Instant/now)) ":" "-") ".edn"))))
             (reset! (:state ctx) state)
             (persist! ctx)
             (println (str "  rebuilt from events.log: " (str/join ", " (map event-label missing))
-                          "; the old state kept as state.before-rebuild.edn"))
+                          "; the old state kept as state.before-rebuild-<time>.edn"))
             (doseq [s steps]
               (println (str "  step " (name (:step/name s)) " restored, "
                             (if-let [c (:step/cost s)]

@@ -20,7 +20,8 @@
             [clojure.string :as str]
             [harness.models.catalogue :as catalogue]
             [harness.models.profile :as profile]
-            [harness.models.provenance :as provenance]))
+            [harness.models.provenance :as provenance]
+            [harness.money.report :as report]))
 
 (defn read-data
   "An answer `{:status :body}` as its parsed `:data` map, or `{:unavailable reason}`. A provider
@@ -220,5 +221,5 @@
                     "the clone of a workspace whose plan has profile.edn"))
       (System/exit 1))
     (let [prof (profile/read-profile profile-path)
-          steps (mapcat #(let [m (edn/read-string (slurp %))] (or (:run/steps m) (:steps m))) files)]
+          steps (mapcat #(let [m (report/current (edn/read-string (slurp %)))] (or (:run/steps m) (:steps m))) files)]
       (println (line prof steps)))))

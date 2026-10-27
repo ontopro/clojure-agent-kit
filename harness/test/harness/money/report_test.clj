@@ -699,3 +699,26 @@
   (is (= {:error "x.edn is not a run record - not a map"} (report/read-record "[1 2]" "x.edn")))
   (testing "a record's tagged literals read, as report-check reads them"
     (is (:record (report/read-record "{:at #inst \"2026-10-13T00:00:00Z\"}" "r.edn")))))
+
+;; plan 7.0, item 11.4: a correction is a superseding entry, never an edit
+(deftest a-record-is-read-with-its-superseding-entries
+  (let [run {:run/id "r" :run/cost 0.2
+             :run/steps [{:step/name :coder :step/kind :dispatch :step/cost nil :step/cost-source :reported :step/provider "A"}
+                         {:step/name :tester :step/kind :dispatch :step/cost 0.2 :step/cost-source :reported}]
+             :run/repriced [{:at "t1" :by "bb reprice" :steps [{:step/name :coder :step/cost 0.3 :step/cost-source :repriced :step/provider "B"}]}
+                            {:at "t2" :by "bb reprice" :steps [{:step/name :coder :step/tokens 40}
+                                                               {:step/name :tester :step/cost 9.0}]}]}
+        now (report/current run)]
+    (is (= {:step/cost 0.3 :step/cost-source :repriced :step/provider "A" :step/tokens 40}
+           (select-keys (first (:run/steps now)) [:step/cost :step/cost-source :step/provider :step/tokens]))
+        "filled only where the step had nothing; what it recorded stands")
+    (is (= 0.2 (:step/cost (second (:run/steps now)))) "a priced step is never replaced")
+    (is (= 0.5 (:run/cost now)) "the run's cost the steps' sum again")
+    (is (= (dissoc run :run/repriced) (report/current (dissoc run :run/repriced))) "no entry, as it is"))
+  (let [reading {:cost nil :repriced [{:at "t" :by "bb reprice" :cost 0.21 :cost-source :repriced}]
+                 :reviews [{:cost nil :repriced [{:at "t" :cost 0.19 :cost-source :repriced}]} {:cost 0.4}]}
+        now (report/current reading)]
+    (is (= 0.21 (:cost now)))
+    (is (= [0.19 0.4] (mapv :cost (:reviews now)))))
+  (is (= {:a 1} (report/current {:a 1})))
+  (is (nil? (report/current nil))))

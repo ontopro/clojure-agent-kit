@@ -15,13 +15,15 @@
   WHAT IT CHANGES, AND WHAT IT LEAVES. Only a dispatch step with no cost and
   at least one id; only when EVERY id answered, because a partial sum
   presented as a step's cost is the understatement the footer exists to
-  prevent. A repriced step is marked `:cost-source :repriced` - the
-  endpoint's word, fetched later, not a list price - and `:run/cost` is the
-  steps' sum again. THE PROVIDER AND THE TOKENS COME WITH IT: a step whose
+  prevent. NOTHING THE RECORD SAID IS EDITED (plan 7.0, item 11.4): what was
+  fetched is appended as an entry - `:run/repriced`, a reading's `:repriced` -
+  marked `:cost-source :repriced`, the endpoint's word fetched later, not a list
+  price; `report/current` reads the record with it, `:run/cost` the steps' sum
+  again. THE PROVIDER AND THE TOKENS COME WITH IT: a step whose
   record lagged has neither, and the generation record names who served it
   and what it billed; the first real project's report said \"by provider
   unknown\" over three repriced steps whose records had the names. The
-  record is rewritten in place; a document that publishes its table then
+  record gains its entry; a document that publishes its table then
   fails `bb report-check` until the person re-renders it, which is the drift
   gate doing its job.
 
@@ -170,9 +172,9 @@
   `:cost-source :repriced`; else exactly as it was. Returns
   `{:reading m :changed? bool :line str-or-nil}`; the line says why nothing
   changed, and is nil when there was nothing to do."
-  [{:keys [cost generation-ids completions endpoint] :as m} {:keys [fetch-opts getenv profile routes] :or {getenv #(System/getenv %)}}]
+  [{:keys [generation-ids completions endpoint] :as m} {:keys [fetch-opts getenv profile routes] :or {getenv #(System/getenv %)}}]
   (cond
-    (some? cost) {:reading m :changed? false}
+    (some? (:cost (report/current m))) {:reading m :changed? false}
     (empty? generation-ids) {:reading m :changed? false
                              :line "no generation id on the reading (written before the ids were kept)"}
     (short-of-ids? completions generation-ids)
@@ -190,7 +192,10 @@
       (if (seq missing)
         {:reading m :changed? false :line (lagged fetched generation-ids missing)}
         (let [c (reduce + 0 (map :total_cost gens))]
-          {:reading (assoc m :cost c :cost-source :repriced) :changed? true
+          ;; a superseding entry, never an edit of :cost (plan 7.0, item 11.4)
+          {:reading (update m :repriced (fnil conj []) {:at (str (java.time.Instant/now)) :by "bb reprice"
+                                                        :cost c :cost-source :repriced})
+           :changed? true
            :line (str "cost " (format "$%.6f" (double c)) " (was —)")})))))
 
 (defn reprice-review
@@ -215,7 +220,7 @@
   `:getenv` (for the tests; `System/getenv` otherwise), `:routes` (`routes.edn`'s, otherwise)."
   [record {:keys [profile fetch-opts getenv routes] :or {getenv #(System/getenv %)}}]
   (let [routes (or routes (catalogue/routes))
-        targets (set (map :step/name (unpriced record)))
+        targets (set (map :step/name (unpriced (report/current record))))
         results (for [s (:run/steps record)]
                   (if-not (targets (:step/name s))
                     {:step s :line nil :changed? false}
@@ -254,10 +259,22 @@
                                 {:step step :changed? true
                                  :line (str "  " nm ": " fetched " generation record" (when (not= 1 fetched) "s")
                                             " fetched, " words " (was —)")}))))))))
-        steps (mapv :step results)
-        changed (count (filter :changed? results))]
-    {:record (cond-> (assoc record :run/steps steps)
-               (pos? changed) (assoc :run/cost (report/run-cost steps)))
+        changed (count (filter :changed? results))
+        ;; A SUPERSEDING ENTRY, never an edit: what was filled, per step, beside the steps as they
+        ;; were written - `report/current` reads the record with it (plan 7.0, item 11.4)
+        entry {:at (str (java.time.Instant/now)) :by "bb reprice"
+               :steps (vec (for [[before {:keys [step changed?]}] (map vector (:run/steps record) results)
+                                 :when changed?]
+                             (into {:step/name (:step/name step)}
+                                   (concat
+                                    (for [k [:step/cost :step/provider :step/tokens]
+                                          :when (and (nil? (get before k)) (some? (get step k)))]
+                                      [k (get step k)])
+                                    ;; the source travels with a cost filled
+                                    (when (and (nil? (:step/cost before)) (some? (:step/cost step)))
+                                      [[:step/cost-source (:step/cost-source step)]])))))}]
+    {:record (cond-> record
+               (pos? changed) (update :run/repriced (fnil conj []) entry))
      :changed changed
      :lines (vec (keep :line results))}))
 
@@ -269,7 +286,8 @@
     (doseq [l lines] (println l))
     (if (pos? changed)
       (do (spit path (with-out-str (pp/pprint record)))
-          (println (str "reprice: " changed " reading" (when (not= 1 changed) "s") " priced; " path " rewritten")))
+          (println (str "reprice: " changed " reading" (when (not= 1 changed) "s") " priced; " path
+                        " holds the cost as a :repriced entry beside what it said")))
       (println "reprice: nothing changed"))))
 
 (defn -main
@@ -293,7 +311,7 @@
         ;; A reading's record: one call, its ids beside its cost.
         reading? (reprice-reading-file! path record {:profile prof})
 
-        (empty? (unpriced record))
+        (empty? (unpriced (report/current record)))
         (println (str "reprice: nothing to reprice in " path " - every dispatch step has its cost, provider "
                       "and tokens, or the ones without carry no generation id (a record from before the ids were kept)"))
 
@@ -303,6 +321,7 @@
           (if (pos? changed)
             (do (spit path (pr-str record))
                 (println (str "reprice: " changed " step" (when (not= 1 changed) "s") " repriced; " path
-                              " rewritten, :run/cost is now " (format "$%.6f" (double (:run/cost record)))
+                              " holds them as a :run/repriced entry, the steps as they were written; the run's cost is now "
+                              (format "$%.6f" (double (:run/cost (report/current record))))
                               ". A document publishing this run's table now fails `bb report-check` until it is re-rendered.")))
             (println "reprice: nothing changed")))))))

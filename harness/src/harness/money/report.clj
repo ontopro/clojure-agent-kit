@@ -143,6 +143,42 @@
 (defn- fmt-tokens [t]
   (if (or (nil? t) (zero? t)) "—" (format "%,d" t)))
 
+(defn- fill-nil
+  "`m` with `fills`' values where `m` has none (nil or absent): a value written is never replaced."
+  [m fills]
+  (reduce-kv (fn [acc k v] (if (and (some? v) (nil? (get acc k))) (assoc acc k v) acc)) m fills))
+
+(defn current
+  "A record as it stands now. A CORRECTION IS A SUPERSEDING ENTRY (plan 7.0, item 11.4): `bb
+  reprice` never edits what a record says; it appends what it fetched, and every reader reads the
+  record through this. A run: each step filled from `:run/repriced`'s entries - per field, the
+  latest entry's, only where the step has none - and `:run/cost` the steps' sum again when any was
+  filled. A reading: its `:cost` from its latest `:repriced` entry when its own is nil, each of its
+  `:reviews` the same. Any other map, or anything else, as it is."
+  [r]
+  (cond
+    (not (map? r)) r
+
+    (seq (:run/repriced r))
+    (let [fills (reduce (fn [m {:keys [steps]}]
+                          (reduce (fn [m s] (update m (:step/name s) merge (dissoc s :step/name))) m steps))
+                        {} (:run/repriced r))
+          ;; THE COST BRINGS ITS SOURCE: a step that said :reported with no cost is :repriced once filled
+          steps (mapv (fn [s] (let [f (get fills (:step/name s))]
+                                (cond-> (fill-nil s (dissoc f :step/cost-source))
+                                  (and (nil? (:step/cost s)) (some? (:step/cost f)))
+                                  (assoc :step/cost-source (:step/cost-source f :repriced)))))
+                      (:run/steps r))]
+      (cond-> (assoc r :run/steps steps)
+        (not= steps (:run/steps r)) (assoc :run/cost (run-cost steps))))
+
+    (or (seq (:repriced r)) (seq (:reviews r)))
+    (cond-> r
+      (and (nil? (:cost r)) (seq (:repriced r))) (fill-nil (select-keys (last (:repriced r)) [:cost :cost-source]))
+      (seq (:reviews r)) (update :reviews #(mapv current %)))
+
+    :else r))
+
 (defn spec-review-lines
   "The report's lines about the spec review, or nil when the run had none.
 
@@ -784,7 +820,7 @@
 
       (let [records (into {} (for [f (fs/glob dir "*.edn")]
                                [(str/replace (fs/file-name f) #"\.edn$" "")
-                                (edn/read-string {:default tagged-literal} (slurp (fs/file f)))]))
+                                (current (edn/read-string {:default tagged-literal} (slurp (fs/file f))))]))
             problems (concat (drift (slurp md-path) records) (invalid-records records))]
         (if (seq problems)
           (do (println (str "report drift: " md-path " and " dir "/ disagree"))
@@ -826,7 +862,7 @@
     (cond (str/blank? text) {:error (str where " is empty")}
           (::error r) {:error (::error r)}
           (not (map? r)) {:error (str where " is not a run record - not a map")}
-          :else {:record r})))
+          :else {:record (current r)})))
 
 (defn -main
   "bb report <run.edn | run-dir | record.edn> - render a run record; with no path, from stdin.

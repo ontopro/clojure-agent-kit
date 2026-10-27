@@ -27,6 +27,7 @@
    [harness.contract.blueprint :as blueprint]
    [harness.loop.log :as log]
    [harness.models.provenance :as provenance]
+   [harness.money.report :as report]
    [harness.setup.stages :as stages]
    [harness.setup.workspace :as workspace]))
 
@@ -290,7 +291,8 @@
 ;; the edge: facts
 ;; ---------------------------------------------------------------------------
 
-(defn- read-edn [path] (try (edn/read-string (slurp (str path))) (catch Exception _ nil)))
+;; every record read as it stands now: a repriced cost from its superseding entry (`report/current`)
+(defn- read-edn [path] (try (report/current (edn/read-string (slurp (str path)))) (catch Exception _ nil)))
 
 (defn- stage-kind
   "A stage plan's kind, from its `**Kind:**` line, or nil."

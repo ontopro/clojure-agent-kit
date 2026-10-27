@@ -39,6 +39,7 @@
    [harness.loop.driver :as driver]
    [harness.models.agent :as agent]
    [harness.models.catalogue :as catalogue]
+   [harness.money.report :as report]
    [harness.money.reprice :as reprice]
    [harness.setup.blueprint-review :as blueprint-review]
    [harness.setup.plan :as plan]
@@ -206,7 +207,8 @@
   judges', by case."
   [dir]
   (let [rd (fs/path dir "records")
-        all (when (fs/exists? rd) (for [f (fs/glob rd "*.edn")] (read-edn f)))]
+        ;; each as it stands now: a repriced cost from its superseding entry (`report/current`)
+        all (when (fs/exists? rd) (for [f (fs/glob rd "*.edn")] (report/current (read-edn f))))]
     {:candidates (group-by :case (remove :judge? all))
      :judges (into {} (map (juxt :case identity)) (filter :judge? all))}))
 

@@ -169,7 +169,7 @@
           :requires ([harness.money.report :as report])
           :task (apply report/-main *command-line-args*)}
 
-  reprice {:doc "bb reprice <run.edn | review.edn> [--profile <profile.edn>]: fill the cost of every dispatch step a run record left unpriced - or of a reading (plan-review.edn, blueprint-review.edn, spec-review.edn) and its history - from the endpoint's generation records; rewrites the file"
+  reprice {:doc "bb reprice <run.edn | review.edn> [--profile <profile.edn>]: fill the cost of every dispatch step a run record left unpriced - or of a reading (plan-review.edn, blueprint-review.edn, spec-review.edn) and its history - from the endpoint's generation records; never edits what the record said: what it fetched is appended as a :run/repriced (a reading's :repriced) entry, which every reader reads through"
            :requires ([harness.money.reprice :as reprice])
            :task (apply reprice/-main *command-line-args*)}
 

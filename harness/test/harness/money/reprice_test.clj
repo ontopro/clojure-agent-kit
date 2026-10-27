@@ -40,6 +40,11 @@
       (with-redefs [reprice/key-env-for (fn [ep p r] (if (str/starts-with? (str ep) "http://127.0.0.1:") "REPRICE_TEST_KEY" (real ep p r)))]
         (t)))))
 
+;; plan 7.0, item 11.4: reprice appends an entry and edits nothing; every reader reads the record
+;; through `report/current`, so these read the result the same way
+(defn- reprice* [r opts] (update (reprice/reprice r opts) :record report/current))
+(defn- reprice-review* [r opts] (update (reprice/reprice-review r opts) :record report/current))
+
 (defn- record [endpoint]
   {:run/id "w7" :task/id "t" :run/attempts 1 :run/status :merged :run/started-at (java.util.Date.)
    :run/cost 0.2
@@ -56,7 +61,7 @@
 (deftest an-unpriced-step-is-priced-from-every-one-of-its-generation-records
   (let [[{:keys [record changed lines]} seen]
         (with-stub {"gen-a" {:total_cost 0.25} "gen-b" {:total_cost 0.125} "gen-c" {:total_cost 99}}
-          #(reprice/reprice (record %) {:fetch-opts fast :getenv {"REPRICE_TEST_KEY" "sk-test"}}))
+          #(reprice* (record %) {:fetch-opts fast :getenv {"REPRICE_TEST_KEY" "sk-test"}}))
         coder (nth (:run/steps record) 1)]
     (is (= 1 changed))
     (is (= 0.375 (:step/cost coder)) "the sum over both ids")
@@ -79,7 +84,7 @@
         [{:keys [record]} _]
         (with-stub {"gen-a" {:total_cost 0.25 :provider_name "Anthropic" :native_tokens_prompt 1000 :native_tokens_completion 200}
                     "gen-b" {:total_cost 0.125 :provider_name "Google Vertex" :native_tokens_prompt 500 :native_tokens_completion 50}}
-          #(reprice/reprice (bare %) {:fetch-opts fast :getenv {}}))
+          #(reprice* (bare %) {:fetch-opts fast :getenv {}}))
         coder (nth (:run/steps record) 1)]
     (is (= "Anthropic / Google Vertex" (:step/provider coder)) "both hosts, since the completions were split")
     (is (= 1750 (:step/tokens coder)) "the native counts, summed")
@@ -88,7 +93,7 @@
     (let [[{:keys [record]} _]
           (with-stub {"gen-a" {:total_cost 0.1 :provider_name "Other" :native_tokens_prompt 1}
                       "gen-b" {:total_cost 0.1 :provider_name "Other" :native_tokens_prompt 1}}
-            #(reprice/reprice (record %) {:fetch-opts fast :getenv {}}))]
+            #(reprice* (record %) {:fetch-opts fast :getenv {}}))]
       (is (= "Anthropic" (:step/provider (nth (:run/steps record) 1))))
       (is (= 100 (:step/tokens (nth (:run/steps record) 1))))))
   (testing "a step priced by the old command - a cost, no provider, no tokens - is a target, and its cost is left as it was"
@@ -100,7 +105,7 @@
       (let [[{:keys [record changed lines]} _]
             (with-stub {"gen-a" {:total_cost 0.25 :provider_name "Anthropic" :native_tokens_prompt 10}
                         "gen-b" {:total_cost 0.125 :provider_name "Anthropic" :native_tokens_prompt 10}}
-              #(reprice/reprice (old %) {:fetch-opts fast :getenv {}}))
+              #(reprice* (old %) {:fetch-opts fast :getenv {}}))
             coder (nth (:run/steps record) 1)]
         (is (= 1 changed))
         (is (= 0.3 (:step/cost coder)) "the cost it had, not the fetched sum")
@@ -112,14 +117,14 @@
     (let [bare (fn [ep] (assoc-in (record ep) [:run/steps 1 :step/tokens] nil))
           [{:keys [record]} _]
           (with-stub {"gen-a" {:total_cost 0.1 :native_tokens_prompt 1} "gen-b" {:total_cost 0.1}}
-            #(reprice/reprice (bare %) {:fetch-opts fast :getenv {}}))]
+            #(reprice* (bare %) {:fetch-opts fast :getenv {}}))]
       (is (nil? (:step/tokens (nth (:run/steps record) 1))))
       (is (= 0.2 (:step/cost (nth (:run/steps record) 1))) "the cost is still filled"))))
 
 (deftest a-step-with-one-record-missing-is-left-exactly-as-it-was
   (let [[{:keys [record changed lines]} _]
         (with-stub {"gen-a" {:total_cost 0.25}}
-          #(reprice/reprice (record %) {:fetch-opts fast :getenv {}}))]
+          #(reprice* (record %) {:fetch-opts fast :getenv {}}))]
     (is (zero? changed))
     (is (nil? (:step/cost (nth (:run/steps record) 1))) "a partial sum is not a cost")
     (is (= 0.2 (:run/cost record)) "the run's cost stays")
@@ -127,17 +132,17 @@
 
 (deftest a-record-that-kept-no-endpoint-takes-one-from-a-profile
   (let [bare (fn [ep] (update (record ep) :run/roles (fn [rs] (into {} (for [[k v] rs] [k (dissoc v :endpoint :key-env)])))))]
-    (let [[{:keys [changed lines]} _] (with-stub {} #(reprice/reprice (bare %) {:fetch-opts fast}))]
+    (let [[{:keys [changed lines]} _] (with-stub {} #(reprice* (bare %) {:fetch-opts fast}))]
       (is (zero? changed))
       (is (str/includes? (first lines) "no endpoint on the record's :run/roles for coder - pass --profile")))
     (let [[{:keys [changed]} _]
           (with-stub {"gen-a" {:total_cost 0.1} "gen-b" {:total_cost 0.1}}
-            #(reprice/reprice (bare %) {:fetch-opts fast :getenv {}
-                                        :profile {:roles {:coder {:endpoint % :key-env "X"}}}}))]
+            #(reprice* (bare %) {:fetch-opts fast :getenv {}
+                                 :profile {:roles {:coder {:endpoint % :key-env "X"}}}}))]
       (is (= 1 changed)))))
 
 (deftest an-endpoint-with-no-generation-record-is-said-not-fetched
-  (let [{:keys [changed lines]} (reprice/reprice (record "https://api.anthropic.com") {:fetch-opts fast :getenv {}})]
+  (let [{:keys [changed lines]} (reprice* (record "https://api.anthropic.com") {:fetch-opts fast :getenv {}})]
     (is (zero? changed))
     (is (str/includes? (first lines) "has no generation record to fetch"))))
 
@@ -156,7 +161,7 @@
                                     {:count 0 :cost nil :model "m" :at "t2" :generation-ids ["gen-r2"] :endpoint ep :key-env "REPRICE_TEST_KEY"}]})
         [{:keys [record changed lines]} seen]
         (with-stub {"gen-r1" {:total_cost 0.19} "gen-r2" {:total_cost 0.21}}
-          #(reprice/reprice-review (reading %) {:fetch-opts fast :getenv {"REPRICE_TEST_KEY" "sk-test"}}))]
+          #(reprice-review* (reading %) {:fetch-opts fast :getenv {"REPRICE_TEST_KEY" "sk-test"}}))]
     (is (= 3 changed) "the reading and both entries of its history")
     (is (= 0.21 (:cost record)))
     (is (= :repriced (:cost-source record)))
@@ -185,7 +190,10 @@
                     (with-redefs [provenance/defaults fast]
                       (with-out-str (try (reprice/-main path) (catch Exception _ nil))))))]
     (is (str/includes? out "1 reading priced"))
-    (is (= 0.22 (:cost (edn/read-string (slurp path)))) "the file is rewritten with the cost")))
+    (let [written (edn/read-string (slurp path))]
+      (is (nil? (:cost written)) "the reading as it was written - never edited (plan 7.0, item 11.4)")
+      (is (= 0.22 (:cost (first (:repriced written)))) "the cost as an entry beside it")
+      (is (= 0.22 (:cost (report/current written))) "and the reading as it stands"))))
 
 (deftest role-key-reads-the-role-off-a-retry-or-triage-step-name
   (is (= :coder (reprice/role-key :coder)))
@@ -202,8 +210,13 @@
                     (spit path (pr-str (record ep)))
                     (with-redefs [provenance/defaults fast]
                       (with-out-str (reprice/-main path)))))
-        after (read-string (slurp path))]
+        written (read-string (slurp path))
+        after (report/current written)]
     (is (str/includes? out "1 step repriced"))
+    (is (nil? (:step/cost (nth (:run/steps written) 1))) "the step as it was written - never edited (plan 7.0, item 11.4)")
+    (is (= 0.2 (:run/cost written)) "the cost it said")
+    (is (= [{:step/name :coder :step/cost 0.375 :step/cost-source :repriced}] (:steps (first (:run/repriced written))))
+        "what was fetched, as an entry beside it")
     (is (str/includes? out "fails `bb report-check` until it is re-rendered"))
     (is (= 0.375 (:step/cost (nth (:run/steps after) 1))))
     (is (= 0.575 (:run/cost after)))
@@ -214,7 +227,7 @@
         (is (= before (slurp path)))))))
 
 (deftest a-step-is-short-of-ids-by-its-completions-never-its-rounds
-  (let [run (fn [coder] #(reprice/reprice (update-in (record %) [:run/steps 1] merge coder) {:fetch-opts fast :getenv {}}))
+  (let [run (fn [coder] #(reprice* (update-in (record %) [:run/steps 1] merge coder) {:fetch-opts fast :getenv {}}))
         gens {"gen-a" {:total_cost 0.25} "gen-b" {:total_cost 0.125}}
         priced? (fn [[{:keys [record changed]} _]] (and (= 1 changed) (= 0.375 (:step/cost (nth (:run/steps record) 1)))))]
     (testing "a dispatch that failed after 2 completions has 3 rounds, 2 ids, and is priced"
@@ -250,15 +263,15 @@
                                              (swap! sent conj {:url url :auth? (boolean (get-in opts [:headers "Authorization"]))})
                                              {:status 200 :body "{\"data\":{\"total_cost\":0.1}}"})]
       (testing "an endpoint neither the profile nor routes.edn names is not fetched from"
-        (let [{:keys [changed lines]} (reprice/reprice (rec {:coder {:endpoint "https://collector.invalid/api/v1" :key-env "OPENROUTER_API_KEY"}})
-                                                       {:profile trusted :fetch-opts fast :getenv getenv})]
+        (let [{:keys [changed lines]} (reprice* (rec {:coder {:endpoint "https://collector.invalid/api/v1" :key-env "OPENROUTER_API_KEY"}})
+                                                {:profile trusted :fetch-opts fast :getenv getenv})]
           (is (= 0 changed))
           (is (empty? @sent) "no request at all, so no key")
           (is (str/includes? (first lines) "collector.invalid/api/v1 for coder is not an endpoint the profile or routes.edn names"))))
       (testing "a known endpoint takes the key the profile pairs with it, never the record's variable"
         (reset! asked [])
-        (reprice/reprice (rec {:coder {:endpoint "https://openrouter.ai/api/v1" :key-env "ANTHROPIC_API_KEY"}})
-                         {:profile trusted :fetch-opts fast :getenv getenv})
+        (reprice* (rec {:coder {:endpoint "https://openrouter.ai/api/v1" :key-env "ANTHROPIC_API_KEY"}})
+                  {:profile trusted :fetch-opts fast :getenv getenv})
         (is (= ["OPENROUTER_API_KEY"] (distinct @asked))))
       (testing "and a reading the same"
         (reset! sent [])
@@ -280,7 +293,7 @@
                                {:status 200 :body (json/generate-string
                                                    {:data {:total_cost 0.1 :native_tokens_prompt 1
                                                            :provider_name (get-in opts [:headers "Authorization"])}})})]
-                 (reprice/reprice record {:getenv (constantly secret) :fetch-opts {:attempts 1 :interval-ms 1 :timeout-ms 2000}}))]
+                 (reprice* record {:getenv (constantly secret) :fetch-opts {:attempts 1 :interval-ms 1 :timeout-ms 2000}}))]
     (is (= 0.1 (get-in result [:record :run/steps 0 :step/cost])) "the cost is still taken")
     (is (= "Bearer <OPENROUTER_API_KEY>" (get-in result [:record :run/steps 0 :step/provider]))
         "the mask names the variable the key came from, as every other redaction does")

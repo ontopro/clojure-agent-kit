@@ -20,6 +20,7 @@
    [clojure.pprint :as pprint]
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [harness.money.report :as report]
    [harness.money.stage-report :as stage-report]
    [harness.setup.next :as next]
    [harness.setup.stages :as stages]
@@ -610,7 +611,8 @@
 ;; the edge: reading the workspace
 ;; ---------------------------------------------------------------------------
 
-(defn- read-edn [path] (try (edn/read-string (slurp (str path))) (catch Exception _ nil)))
+;; a record as it stands now: a repriced cost from its superseding entry (`report/current`)
+(defn- read-edn [path] (try (report/current (edn/read-string (slurp (str path)))) (catch Exception _ nil)))
 
 (defn- text [docs f] (let [p (fs/path docs f)] (when (fs/exists? p) (slurp (str p)))))
 

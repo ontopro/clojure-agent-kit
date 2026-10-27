@@ -12,6 +12,7 @@
    [harness.models.bake-off :as bo]
    [harness.models.catalogue :as cat]
    [harness.models.catalogue-test :as cat-test]
+   [harness.money.report :as report]
    [harness.money.reprice :as reprice]
    [malli.core :as m]
    [org.httpkit.server :as srv]))
@@ -296,8 +297,8 @@
       (let [{:keys [changed lines]} (bo/reprice! dir opts)]
         (is (= 2 changed) "the unpriced candidate and the judge; the priced one and the one with no ids stay")
         (is (= #{"gen-a" "gen-j"} (set @seen)) "only what was unpriced and had ids was fetched")
-        (is (= 0.125 (:cost (edn/read-string (slurp (str (fs/path dir "records" "c1--a.edn")))))))
-        (is (= 0.5 (:cost (edn/read-string (slurp (str (fs/path dir "records" "c1--judge.edn")))))))
+        (is (= 0.125 (:cost (report/current (edn/read-string (slurp (str (fs/path dir "records" "c1--a.edn"))))))))
+        (is (= 0.5 (:cost (report/current (edn/read-string (slurp (str (fs/path dir "records" "c1--judge.edn"))))))))
         (is (= 0.25 (:cost (edn/read-string (slurp (str (fs/path dir "records" "c1--b.edn")))))) "a cost already there is not fetched again")
         (is (some #(str/includes? % "c1--old.edn: no generation id") lines) "a record from before the ids were kept says so")
         (is (fs/exists? (fs/path dir "TABLE.md")) "the table is re-rendered")

@@ -489,7 +489,7 @@
       (let [out (with-out-str (loop/record! ctx {:rebuild? true}))
             rec (clojure.edn/read-string (slurp (str (fs/path run-dir "run.edn"))))]
         (is (str/includes? out "step tester-r3 restored, $0.0736 at list price, its time not in the log"))
-        (is (fs/exists? (fs/path run-dir "state.before-rebuild.edn")))
+        (is (= 1 (count (fs/glob run-dir "state.before-rebuild-*.edn"))) "kept by its time, never over another")
         (is (= [:coder :tester-r3] (mapv :step/name (:run/steps rec))))))))
 
 (deftest a-dispatchs-log-line-carries-its-step-and-the-state-does-not

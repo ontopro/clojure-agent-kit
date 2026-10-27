@@ -512,7 +512,10 @@
    ;; Each role's rounds against the retry cap, and the cap - spent per role. Optional:
    ;; records before the cap was per role have neither, and the report derives the rounds.
    [:run/rounds {:optional true} [:map-of :keyword nat-int?]]
-   [:run/retry-cap {:optional true} pos-int?]])
+   [:run/retry-cap {:optional true} pos-int?]
+   ;; `bb reprice`'s superseding entries - what it fetched, per step, beside the steps as they were
+   ;; written; never an edit (plan 7.0, item 11.4). `harness.money.report/current` reads them.
+   [:run/repriced {:optional true} [:vector [:map [:at :string] [:by :string] [:steps [:vector :map]]]]]])
 
 ;; ---------------------------------------------------------------------------
 
