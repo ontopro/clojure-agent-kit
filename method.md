@@ -1063,13 +1063,6 @@ Group decisions by kind — architecture, method & tooling, schema, governance, 
 3. Reversing a Provisional decision triggers its pre-named fallback.
 4. Any other doc a decision materially touches gets updated in the same change.
 
-### Records are only ever added to
-
-> [!IMPORTANT]
-> A record is only ever added to; a view is made from records and never cited; working state is never cited.
-
-Every file a build keeps is one of three kinds. A **record** says what happened - a run, a reading, a triage verdict, a check's run, a signing, an amendment pass - and is only ever added to: each entry with its time and its source, the current one the latest, worked out by whoever reads it and never stored by writing over the one before; a correction is a new entry that supersedes, never an edit. A **view** - `RUNS.md`, the stage report's figures, `security-panel.md`, a stage plan's progress block, what `bb next` prints - is rendered from records and rewritten freely, and a document cites the records under it, never the view. **Working state** - a run's `state.edn`, `loop.edn` - changes as the work does, and nothing cites it. The KIT's commands keep to it: the security pack keeps each run beside the first, stamped by its time; the browser pack's runs are a folder each; `bb reprice` appends what it fetched as an entry; a threat model signed again goes in the last amendment pass; a routing run names the panel's member records and the table's time, not the table alone. A project's own checks are held by the same rule. One project's interaction check rewrote one file per run while its stage plan cited "90 of 90" and later "111/112" from it - figures nobody could re-derive once the next run wrote over them. Such a check writes a file per run, named by its time, and the plan cites the run.
-
 **Starter skeleton:**
 
 ```markdown
@@ -1132,6 +1125,13 @@ This ordering is **waste elimination**, in the lean sense (§00): rework is caug
 > **Gate 0 can also corrupt code, and you should know how.** A repair step that rewrites what an agent wrote is only safe on input it can read correctly. A bracket balancer handed a badly-indented multi-line form will close brackets in the *wrong* place — and then gate 0 has silently turned working code into something nobody wrote, before any gate that could have caught it runs. The mitigation is not to weaken gate 0; it is a formatting rule in the rule source (§06), so agents produce input the repair can read. Gates and rules are one system, not two: this gate is safe *because* that rule exists. And fail-on-warning, not just fail-on-error, is a deliberate strictness choice: it's the thing that keeps a weaker or cheaper model on the loop honest, because the gate won't let sloppy-but-passing output through.
 
 Run the gates in the **already-warm REPL** where you can, rather than paying a cold JVM start per attempt. In a loop that retries, that cost is paid over and over.
+
+### Records are only ever added to
+
+> [!IMPORTANT]
+> A record is only ever added to; a view is made from records and never cited; working state is never cited.
+
+Every file a build keeps is one of three kinds. A **record** says what happened - a run, a reading, a triage verdict, a check's run, a signing, an amendment pass - and is only ever added to: each entry with its time and its source, the current one the latest, worked out by whoever reads it and never stored by writing over the one before; a correction is a new entry that supersedes, never an edit. A **view** - `RUNS.md`, the stage report's figures, `security-panel.md`, a stage plan's progress block, what `bb next` prints - is rendered from records and rewritten freely, and a document cites the records under it, never the view. **Working state** - a run's `state.edn`, `loop.edn` - changes as the work does, and nothing cites it. The KIT's commands keep to it: the security pack keeps each run beside the first, stamped by its time; the browser pack's runs are a folder each; `bb reprice` appends what it fetched as an entry; a threat model signed again goes in the last amendment pass; a routing run names the panel's member records and the table's time, not the table alone. A project's own checks are held by the same rule. One project's interaction check rewrote one file per run while its stage plan cited "90 of 90" and later "111/112" from it - figures nobody could re-derive once the next run wrote over them. Such a check writes a file per run, named by its time, and the plan cites the run.
 
 ---
 
