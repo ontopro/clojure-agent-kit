@@ -156,7 +156,7 @@
      ;; the first approval's day read as that day's
      :approved (stages/gate-day (stages/effective-approval gates) nil)
      :kind kind
-     :security (:security/signed gates)
+     :security (stages/current-signing gates)
      :security-skipped (:security/skipped gates)
      :security-checks (when checks {:counts (:counts checks) :date (some-> (:security/at checks) str (subs 0 10))})
      :security-scans (into {} (for [[k rec] scans :when rec]

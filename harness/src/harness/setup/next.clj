@@ -178,7 +178,7 @@
         ;; A TIME THAT CANNOT BE READ IS SAID, NEVER THROWN: a bare date or a typo under `:at`
         unreadable-gate (first (filter #(stages/unreadable-at? (get gates %)) (conj signed-gates :stage/closed)))
         spike? (= 0 id)
-        unsigned-threat-model? (and (= "pre-release" kind) (nil? (:security/signed gates)))
+        unsigned-threat-model? (and (= "pre-release" kind) (nil? (stages/current-signing gates)))
         sign-threat-model (str "every line of docs/02-architecture.md §15 answered with its evidence, then "
                                ":security/signed {" at " :by <name>} in " (gates-file id))
         ;; a pre-release stage's skip is refused outright below, never first asked for a name
@@ -203,9 +203,9 @@
         on-day #(stages/gate-day {:at %} zone)
         since? (fn [readings t] (boolean (and t (some #(not (.isBefore ^java.time.Instant % t)) readings))))
         in-amendment (str " to " q " in :stage/amendments in " (gates-file id))
-        am-unreadable (when last-am (first (filter #(stages/unreadable-at? (get last-am %)) [:approved :signed])))
-        am-unnamed (when last-am (first (filter #(unnamed? (get last-am %)) [:approved :signed])))
-        am-step {:approved 7 :signed 10}
+        am-unreadable (when last-am (first (filter #(stages/unreadable-at? (get last-am %)) [:approved :signed :security/signed])))
+        am-unnamed (when last-am (first (filter #(unnamed? (get last-am %)) [:approved :signed :security/signed])))
+        am-step {:approved 7 :signed 10 :security/signed 14}
         start-packet (fn [t because]
                        (action 11 architect (str (when per-run (str "per run, first " (str/join ", " per-run) " (docs/stages/" blueprint " §0); then "))
                                                  "bb spec-from-blueprint docs/stages/" blueprint " " t " <run-dir>/spec.edn, then bb run-loop start <run-dir>")

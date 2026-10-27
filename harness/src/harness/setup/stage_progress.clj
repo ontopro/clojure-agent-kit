@@ -180,7 +180,7 @@
                 (scan-line "Secrets scan" (:secrets scans))
                 (review-line review-records (:security/skipped gates) last-signed)]
                (map prep-line tail)
-               (when (= "pre-release" kind) [(signed "Threat model signed" (:security/signed gates) nil)])
+               (when (= "pre-release" kind) [(signed "Threat model signed" (stages/current-signing gates) nil)])
                [(str (box (:stage/closed gates)) "Stage closed" (when-let [c (:stage/closed gates)] (str " - " (stages/gate-day c nil))))]))))
 
 (defn place

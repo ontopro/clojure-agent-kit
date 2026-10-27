@@ -292,6 +292,14 @@
   (let [a (last (amendments gates))]
     (when (and a (nil? (:signed a))) a)))
 
+(defn current-signing
+  "The threat model's signing that stands: the latest amendment pass's `:security/signed`, else the
+  stage's own - a signing again after an amendment is added to its pass, never written over the
+  first (plan 7.0, item 11.3). Nil when nothing is signed."
+  [gates]
+  (or (some :security/signed (rseq (amendments gates)))
+      (:security/signed gates)))
+
 (defn effective-approval
   "The approval the stage's cap stands on, the gate itself so its time comes with it: the latest
   re-approval carrying a `:cap`, else the first approval - a re-approval moves the cap, and one

@@ -150,7 +150,8 @@ made; `docs/01-requirements.md` with the scope lists revised and the index
 appended; `docs/00-overview.md` with the stage closed in the stage map, the risk register and
 the map re-ranked, the next stage named with its cap proposed; for a pre-release stage, the
 gates record's `:security/signed` with the time (`:at`, as `bb next` gives it) and the signer's name (`:by`, never "the
-person"), written by the person, before its
+person"), written by the person - signed again after an amendment, in that pass of `:stage/amendments`,
+never over the first - before its
 `:stage/closed` with the time, written by the person; the tag `stage-N` on the application's
 merged tip. Not this skill's: the run records and `RUNS.md` (`record` writes them per run) and
 the screenshots (the work folder, uncommitted); the security review's folder

@@ -586,6 +586,12 @@
                    (:because (a (amended read {:approved {:at "2026-10-21T10:30-05:00" :by "the person"}})))))
             (is (= [10 "the person"] ((juxt :step :owner) (a (amended read {:approved {:at "2026-10-21T10:30-05:00" :by "Ada"}
                                                                             :signed {:at "2026-10-21" :by "Ada"}})))))))))
+    (testing "a pass's threat-model signing that names no one is said at its step (plan 7.0, item 11.3)"
+      (let [x (a (amended base {:approved {:at "2026-10-21T10:30-05:00" :cap "$30" :by "Ada"}
+                                :signed {:at "2026-10-21T11:30-05:00" :by "Ada"}
+                                :security/signed {:at "2026-10-21T12:00-05:00" :by "the person"}}))]
+        (is (= 14 (:step x)))
+        (is (str/includes? (:because x) ":security/signed names no one"))))
     (testing "a run under way is finished first: the merge before the amendment"
       (let [x (a (-> (amended base) (update :stage merge {:packets ["t1" "t2" "t3"] :merged #{"t1" "t2"} :runs {"t3" :awaiting-merge}})))]
         (is (= [13 "the person"] ((juxt :step :owner) x)))))

@@ -29,6 +29,19 @@
     (spit (str (stages/names-file build)) "{:not \"a vector\"}")
     (is (= [] (stages/registered-names build)) "a file of another shape registers none")))
 
+(deftest a-signing-again-is-added-to-its-pass-and-the-latest-stands
+  ;; plan 7.0, item 11.3: never written over the first
+  (let [first-sign {:at "2026-10-20T10:00-05:00" :by "Ada"}
+        again {:at "2026-10-24T10:00-05:00" :by "Ada"}]
+    (is (nil? (stages/current-signing {})))
+    (is (= first-sign (stages/current-signing {:security/signed first-sign})))
+    (is (= again (stages/current-signing {:security/signed first-sign
+                                          :stage/amendments [{:q "Q-1" :security/signed again}]})))
+    (is (= again (stages/current-signing {:security/signed first-sign
+                                          :stage/amendments [{:q "Q-1" :security/signed again} {:q "Q-2"}]}))
+        "a later pass not yet signed leaves the latest signing standing")
+    (is (= first-sign (stages/current-signing {:security/signed first-sign :stage/amendments [{:q "Q-1"}]})))))
+
 (deftest a-records-runs-are-read-in-order-and-the-latest-is-current
   ;; plan 7.0, item 11.2: the security pack keeps every run beside the first
   (let [build (str (fs/create-temp-dir))
