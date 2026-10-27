@@ -176,6 +176,11 @@
     (fs/create-dirs out)
     (spit routing-file (with-out-str (pp/pprint {:at (str (.toOffsetDateTime (.truncatedTo at java.time.temporal.ChronoUnit/SECONDS)))
                                                  :review (str review-file)
+                                                 ;; NEVER A VIEW ALONE (plan 7.0, item 11.5): the panel's table is
+                                                 ;; rewritten per reading, so the run names the table's :at and the
+                                                 ;; member records it was made of - the records, which never change
+                                                 :review/at (:at review)
+                                                 :review/of (when panel? (mapv :record (:members review)))
                                                  :routed routed
                                                  :hypotheses hypotheses})))
     (when (seq coders)

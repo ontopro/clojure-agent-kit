@@ -85,6 +85,7 @@
       (is (= ["astra" "glm"] (mapv :name (:members t))) "the routing file is no member's record")
       (is (= 1 (count (:rows t))))
       (is (= :list-price (:cost-source (first (:members t)))) "the record says how its cost was got")
+      (is (= (mapv :record (:members t)) (:view/of t)) "a view, naming the member records it was made of (plan 7.0, item 11.5)")
       (let [md (slurp (str (fs/path dir "security-panel.md")))]
         (is (str/includes? md "~$1.00") "a computed cost is marked")
         (is (str/includes? md "Left out: argon, r"))))
@@ -96,7 +97,11 @@
         (is (= 1 (count @calls)))
         (is (= "(ns x) ;; astra's" (get-in (first @calls) [:payload :test-text])))
         (is (= ["astra" "glm"] (mapv :member (:by (first (:routed r))))) "each reading, its member and record")
-        (is (str/ends-with? (:review (last (sr/routing-records dir))) "security-panel.edn"))))))
+        (let [run (last (sr/routing-records dir))
+              table (read-string (slurp (str (fs/path dir "security-panel.edn"))))]
+          (is (str/ends-with? (:review run) "security-panel.edn"))
+          (is (= (:at table) (:review/at run)) "the table as it was when routed, by its :at (plan 7.0, item 11.5)")
+          (is (= (:view/of table) (:review/of run)) "and the member records, which never change"))))))
 
 (deftest one-members-two-findings-at-one-place-keep-both-titles
   (let [{:keys [rows]} (panel/combine [{:file "a.edn" :record (rec "astra" (finding "one" "src/app/web.clj: h")

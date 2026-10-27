@@ -124,7 +124,9 @@ blocker, and its fix is a packet of this stage.
 - **Deployed locally:** served by the project's own command from a clean checkout; the browser
   checks and the security pack run against it and its two scans over the source
   (`../../03-method-and-tooling.md` §17), the pack's records `stage-N-security.edn`,
-  `-security-deps.edn` and `-security-secrets.edn` beside this plan with no failing row; and then **the owner's walk
+  `-security-deps.edn` and `-security-secrets.edn` beside this plan with no failing row - a later run
+  beside each, stamped, never over it, and the run a criterion rests on cited by its stamp or its
+  `:security/at`, never by the bare name alone; and then **the owner's walk
   through every page the stage made**, with what they asked for done or written down - a
   first project's walk produced ten changes no target could have named
 - **Decision-log updates recorded:** spike outcomes noted against the decisions they gate;

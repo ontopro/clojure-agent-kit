@@ -200,7 +200,9 @@
                         :reproduced (count (filter #(= :reproduced (:kind %)) (:findings record)))}))
         old (read-edn (fs/path dir panel-file))
         t (merge (select-keys old [:stance :clone-tip]) extra
-                 {:at (str (java.time.Instant/now)) :members members :left-out left-out
+                 ;; A VIEW, SAID TO BE ONE (plan 7.0, item 11.5): rewritten per reading from the member
+                 ;; records it names; a document or a routing run cites those, or this table's :at
+                 {:at (str (java.time.Instant/now)) :view/of (mapv :file recs) :members members :left-out left-out
                   :rows rows :hypotheses hypotheses})]
     (spit (str (fs/path dir panel-file)) (with-out-str (pp/pprint t)))
     (spit (str (fs/path dir table-file)) (render t))
