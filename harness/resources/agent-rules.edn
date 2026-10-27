@@ -113,6 +113,16 @@
   :title "A request value is checked before it is used."
   :text "A value from a request - a form field, a query parameter, a path segment, a header - is checked to be the type its use expects (a string, a number) before it reaches a query, a file path or a page, and one that is not is refused as a bad request. A request can send more than strings: Ring's nested parameters make `name[x]=...` a map, and HoneySQL formats a map where a value belongs as SQL, not as a parameter. So a request value of the wrong type is never outside the domain: it can arrive."}
 
+ ;; Set by a person, 2026-10-27 (plan 7.0, item 5.6), from the first KIT project's own rule, kept as
+ ;; a project rule there and absent here: the template gives Alpine and htmx, which read some
+ ;; attributes as code or as the request to make, and Hiccup's escaping covers neither. Every
+ ;; project on the template has the hazard; the roles that write and review its views read it here.
+ {:id :request-values-never-in-alpine-or-htmx-attributes
+  :group :non-negotiable
+  :audience #{:coder :tester :reviewer :human}
+  :title "A request value is never written into an Alpine or htmx attribute."
+  :text "A value from a request is never written into an Alpine attribute - `x-*`, or one starting `:` or `@` - nor into an `hx-*` one. Alpine runs those attribute values as JavaScript; htmx runs `hx-on*`, and a `js:` value of `hx-vals` or `hx-headers`, as JavaScript, and reads the other `hx-*` attributes as the request it makes - a URL, a target. Hiccup escapes HTML, not JavaScript or a URL, so its escaping does not cover them. Put the value in a `data-*` attribute or the element's text, and read it from there."}
+
  ;; Set by a person, 2026-10-19, from the first project's stage that added search and from their
  ;; question about a box the law needs kept ("I am 18 or older"): the plan decides what of a
  ;; visitor's submission is kept - search's words counted and never who; a confirmation kept as a
