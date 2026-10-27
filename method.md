@@ -219,10 +219,10 @@ cd ..            # every session of the project, and KIT's commands, from here
 cd <xyx>-app && bb serve                                     # the application's own commands, in its folder: http://localhost:8000
 ```
 
-The three installs the doctor cannot do for you - JDK 21, the Clojure CLI, Babashka - are the
-first lines of the [root README](README.md). JDK 21 is the one exact constraint (XTDB, an optional
-store, documents a minimum of 21 and its early v2 releases failed at class-load on newer JDKs);
-every other version is a floor, and the doctor shows the machine's versions beside the KIT's dated
+The three installs the doctor cannot do for you - a JDK, the Clojure CLI, Babashka - are the
+first lines of the [root README](README.md). The JDK is 21 and newer, 25 preferred: XTDB, an
+optional store, documents a minimum of 21, and 2.2.0 runs on 25 with `-Dio.netty.noUnsafe=false`;
+the doctor says when the JDK in use is not 25, and every version is a floor, and the doctor shows the machine's versions beside the KIT's dated
 known-good set, calling newer *newer than tested* rather than wrong.
 
 `bb init --dry-run` prints the workspace it would make and writes nothing; `--app <folder>` and
@@ -1204,7 +1204,7 @@ Two things to get right early because they're cheap now and expensive later: **a
 ## 13 — Quick start
 
 **A · SETUP** *(§02: the machine and the workspace, before the first conversation)*
-- [ ] Install JDK 21, the Clojure CLI and Babashka
+- [ ] Install a JDK (21 or newer, 25 preferred), the Clojure CLI and Babashka
 - [ ] A project folder, KIT cloned into it as `KIT/`; `bb self-check` until the doctor says yes and the health check passes
 - [ ] `bb init` - the application generated and committed untouched, the build repository, the workspace, named after the folder
 - [ ] Open the session in the workspace folder; every session and KIT command of the project starts there

@@ -409,7 +409,10 @@
   (testing "what a release changes that a person wants said"
     (let [old [{:tool :java :req :required :major 21} {:tool :bb :req :required}]
           new [{:tool :java :req :required :major 25} {:tool :bb :req :required} {:tool :docker :req :required}]]
-      (is (= ["the JDK major changes: 21 -> 25" "newly required: docker"] (ur/significant-changes old new nil nil)))
+      (is (= ["the JDK changes: 21 exactly -> 25 exactly" "newly required: docker"] (ur/significant-changes old new nil nil)))
+      (is (= ["the JDK changes: 21 exactly -> 21 and newer, preferred 25"]
+             (ur/significant-changes old [{:tool :java :req :required :min "21" :prefer-major 25} {:tool :bb :req :required}] nil nil))
+          "plan 7.0's own move, said")
       (is (= [] (ur/significant-changes old old nil nil)))))
   (is (= ["bb" "--config" "KIT/harness/bb.edn" "upgrade" "--after-pull"] (ur/hand-over-command "KIT"))))
 

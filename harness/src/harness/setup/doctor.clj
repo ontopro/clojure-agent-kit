@@ -10,7 +10,7 @@
 
   `bb doctor` renders the table and TWO VERDICTS: *the KIT's gates can run
   here* (the Babashka tier - what `bb gates` needs, no JVM) and *a loop can run
-  here* (that plus JDK 21, the Clojure CLI and the nREPL bridge). `bb init`
+  here* (that plus a JDK of 21 or newer, 25 preferred, the Clojure CLI and the nREPL bridge). `bb init`
   refuses without the second; `bb gates` runs the doctor for the first only, so
   the KIT's own gates stay JVM-free. `--edn` emits a pins-shaped map worth
   pasting into the decision log.
@@ -19,11 +19,13 @@
   the command or page that fixes it, and nothing here runs one: run `bb doctor`,
   follow it, run it again.
 
-  VERSIONS ARE MINIMUMS, WITH ONE EXCEPTION. A pin in the nearest `.mise.toml`
-  (walking up), or a `:min` here, is a floor: older is `:too-old`, newer is fine
-  and said so. The exception is the JDK, `:major 21` on its entry: XTDB
-  documents a minimum of 21 and its early v2 releases failed at class-load on
-  newer JDKs, so the KIT holds to 21 until that is re-checked. Beside the floors
+  VERSIONS ARE MINIMUMS. A pin in the nearest `.mise.toml` (walking up), or a
+  `:min` here, is a floor: older is `:too-old`, newer is fine and said so. The
+  JDK is 21 and newer, 25 preferred (`:prefer-major` on its entry): 21 is XTDB's
+  documented minimum, and XTDB 2.2.0 runs on 25 with `-Dio.netty.noUnsafe=false`
+  (plan 7.0, item 7, proved before the pin moved) - another major above the floor
+  is said, never a fault. An entry may still hold an exact `:major`; none does
+  now - the JDK held one while XTDB's early v2 releases failed on newer JDKs. Beside the floors
   the report shows the KIT's dated KNOWN-GOOD SET (`resources/known-good.edn`) -
   the versions that were actually run together - and marks a newer one as
   *newer than tested*, which is information and never a fault. Three projects
@@ -230,7 +232,7 @@
   and the mise pin - is a MINIMUM. Newer than the pin, or than the known-good
   set, is a note."
   ([spec bbin-idx pins] (probe spec bbin-idx pins {}))
-  ([{:keys [tool via cmd min] exact :major :as spec} bbin-idx pins good]
+  ([{:keys [tool via cmd min] exact :major prefer :prefer-major :as spec} bbin-idx pins good]
    (let [nm (name tool)
          base (select-keys spec [:tool :req :tier :does :needed-for :install :major])
          path (some-> (fs/which nm) str)
@@ -265,6 +267,9 @@
                   :else :ok)
          notes (cond-> []
                  (= :java tool) (conj (java-home-mismatch version))
+                 ;; 21 AND NEWER, 25 PREFERRED (the person, 2026-10-26): another major is said, never a fault
+                 (and (= :ok status) prefer (major version) (not= prefer (major version)))
+                 (conj (str "major " prefer " is preferred, the one the KIT tests on; " (major version) " works - " min " and newer"))
                  pin-disagrees?
                  (conj (str (:source pin) " pins " (:pin pin) " but the KIT requires major " exact
                             " - change the pin, not the JDK"))
@@ -275,7 +280,9 @@
                  (and (= :ok status) (= :bbin via) good-version (not= version good-version))
                  (conj (str "not the tested commit (" good-version ")")))]
      (cond-> (assoc base :path path :version version :pin pin :known-good good-version :status status)
-       (seq (remove nil? notes)) (assoc :note (str/join "; " (remove nil? notes)))))))
+       (seq (remove nil? notes)) (assoc :note (str/join "; " (remove nil? notes)))
+       ;; said on a ready machine too: the one note a short report keeps
+       (and (= :ok status) prefer (major version) (not= prefer (major version))) (assoc :not-preferred? true)))))
 
 (defn report
   "Probe the whole toolchain. Shells `bbin ls` and reads the mise config and
@@ -357,7 +364,7 @@
          row (fn [{:keys [tool version known-good status pin] :as r}]
                (str (format (str "  %-" w "s  %-12s  %-12s  %s")
                             (name tool) (or version "—") (or known-good "—") (label r))
-                    (when (or (not= :ok status) pin)
+                    (when (or (not= :ok status) pin (:not-preferred? r))
                       (str "\n      " (detail r)))))
          {required true optional false} (group-by #(= :required (:req %)) results)]
      (str "\nClojure toolchain - required (KIT's gates and a loop need these)\n\n"

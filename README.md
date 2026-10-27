@@ -41,7 +41,7 @@ or two commands - then let `bb doctor` say what is still missing and what fixes 
 
 | Install | Version | Route |
 |---|---|---|
-| **JDK 21** | major 21, exactly - the one version KIT holds to (XTDB, an optional store, documents a minimum of 21 and its early v2 releases failed at class-load on newer JDKs) | [Temurin 21](https://adoptium.net/temurin/releases/?version=21); on macOS `brew install --cask temurin@21` |
+| **JDK 21 or newer, 25 preferred** | 21 and newer; 25 is the one KIT tests on (XTDB, an optional store, documents a minimum of 21, and 2.2.0 runs on 25 with `-Dio.netty.noUnsafe=false`) | [Temurin 25](https://adoptium.net/temurin/releases/?version=25); on macOS `brew install --cask temurin@25` |
 | **Clojure CLI** | any current release | [clojure.org/guides/install_clojure](https://clojure.org/guides/install_clojure); on macOS `brew install clojure/tools/clojure` |
 | **Babashka** | 1.12.212 or newer (bbin needs it) | [babashka.org](https://babashka.org) → install; on macOS `brew install borkdude/brew/babashka` |
 

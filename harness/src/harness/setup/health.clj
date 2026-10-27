@@ -823,7 +823,7 @@
           (str ";; WRITTEN BY `bb health --record` from the health run named below - the versions that were\n"
                ";; actually run together through the KIT's gates, `bb init`, the loop and the generated\n"
                ";; application's gates. `bb doctor` shows it beside what is installed; newer is 'newer than\n"
-               ";; tested', information and never a fault. Versions are floors except the JDK's major.\n"
+               ";; tested', information and never a fault. Versions are floors; the JDK's is 21, 25 preferred.\n"
                (with-out-str (pp/pprint {:as-of (:health/as-of rec) :platform (:label platform) :tools tools}))))
     (str path)))
 

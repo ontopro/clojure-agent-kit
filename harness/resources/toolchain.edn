@@ -11,7 +11,8 @@
 ;;   :via      :flag  - run :cmd and parse stdout+stderr
 ;;             :bbin  - look it up in `bbin ls` AND run it with --help
 ;;             :which - presence on PATH only
-;;   :min      a floor; :major an exact major, the one constraint with a reason
+;;   :min      a floor; :major an exact major (an entry with a reason for one; none holds one now)
+;;   :prefer-major the major the KIT tests and prefers: another, above the floor, is said - a note
 ;;   :install  what fixes a miss: a command where one is documented, else the page
 ;;
 ;; THE SAFETY RULE: a probe runs a tool only with a flag the tool documents (the doctor's
@@ -23,12 +24,12 @@
   :needed-for "The bb.edn task surface; bbin requires >= 1.12.212"
   :install "https://github.com/babashka/babashka#installation (brew install borkdude/brew/babashka)"}
 
- {:tool :java :via :flag :cmd ["java" "-version"] :req :required :tier :loop :major 21
+ {:tool :java :via :flag :cmd ["java" "-version"] :req :required :tier :loop :min "21" :prefer-major 25
   :does "JVM the project and its nREPL run on"
-  :needed-for "JDK 21, exactly that major: XTDB v2 documents a minimum of 21, and
-               2.0.0 and 2.1.0 failed at class-load on newer JDKs (not re-checked
-               on later releases). A .mise.toml pin is read too"
-  :install "Temurin 21: https://adoptium.net/temurin/releases/?version=21 (brew install --cask temurin@21)"}
+  :needed-for "JDK 21 and newer, 25 preferred: 21 is XTDB v2's documented minimum, and
+               XTDB 2.2.0 starts on 25 with -Dio.netty.noUnsafe=false (checked 2026-10-27:
+               `bb health` 9 of 9 on Temurin 25.0.5). A .mise.toml pin is read too, as a floor"
+  :install "Temurin 25: https://adoptium.net/temurin/releases/?version=25 (brew install --cask temurin@25)"}
 
  {:tool :clojure :via :flag :cmd ["clojure" "--version"] :req :required :tier :loop
   :does "Clojure CLI: deps, aliases, the nREPL server"

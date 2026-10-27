@@ -166,6 +166,25 @@
   (testing "no config at all is not an error — it means no constraints"
     (is (= {} (doctor/mise-pins (str (fs/create-temp-dir)))))))
 
+(deftest the-jdk-is-21-and-newer-and-25-is-preferred
+  ;; plan 7.0, item 7.2 (the person, 2026-10-26: "Java 21-and-newer | Java 25 preferred")
+  (let [spec (first (filter #(= :java (:tool %)) doctor/toolchain))
+        probe (fn [v & [pins]] (with-redefs [fs/which (constantly "/usr/bin/java")
+                                             doctor/java-home (constantly nil)
+                                             doctor/sh (constantly (str "openjdk version \"" v "\""))]
+                                 (doctor/probe spec {} (or pins {}))))]
+    (is (= {:min "21" :prefer-major 25} (select-keys spec [:min :prefer-major :major])) "the shipped entry: a floor and a preference, no exact major")
+    (is (= :ok (:status (probe "25.0.5"))))
+    (is (not (:not-preferred? (probe "25.0.5"))) "25: nothing to say")
+    (let [r (probe "21.0.13")]
+      (is (= :ok (:status r)) "21 works")
+      (is (:not-preferred? r) "and is said on a ready machine")
+      (is (str/includes? (:note r) "major 25 is preferred, the one the KIT tests on; 21 works - 21 and newer")))
+    (is (= :ok (:status (probe "27.0.1"))) "newer works")
+    (is (= :too-old (:status (probe "17.0.9"))) "below the floor")
+    (is (= :ok (:status (probe "25.0.5" {:java {:major 21 :pin "temurin-21" :version "21" :source ".mise.toml"}})))
+        "a project's pin of 21 is a floor 25 is above")))
+
 (deftest the-jdk-is-the-one-exact-major-and-a-pin-that-disagrees-is-the-pins-fault
   (let [spec {:tool :java :via :flag :cmd ["java" "-version"] :req :required :major 21
               :does "JVM" :needed-for "XTDB v2 needs 21"}
@@ -335,7 +354,7 @@
         (is (#{:gates :loop} tier) (str tool " names its tier"))
         (is (string? install) (str tool " names its fix"))))
     (testing "the one exact major and the one floor survive as data"
-      (is (= 21 (:major (first (filter #(= :java (:tool %)) from-text)))))
+      (is (= {:min "21" :prefer-major 25} (select-keys (first (filter #(= :java (:tool %)) from-text)) [:min :prefer-major :major])))
       (is (= "1.12.212" (:min (first (filter #(= :bb (:tool %)) from-text))))))
     (testing "the bbin tools' install lines carry the pinned tag"
       (doseq [t [:clj-nrepl-eval :clj-paren-repair :clj-paren-repair-claude-hook]]

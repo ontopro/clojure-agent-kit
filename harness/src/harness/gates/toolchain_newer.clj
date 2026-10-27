@@ -31,7 +31,7 @@
    {:tool :clojure :repo "clojure/brew-install" :tag #"(\d+\.\d+\.\d+\.\d+)" :pin [:known-good :clojure]}
    {:tool :git :repo "git/git" :tag #"v(\d+\.\d+\.\d+)" :pin [:known-good :git]}
    ;; the JDK's major is a constraint (toolchain.edn), so only 21's releases are asked
-   {:tool :java :repo "adoptium/temurin21-binaries" :tag #"jdk-(21\.\d+\.\d+(?:\.\d+)?)\+\d+" :pin [:known-good :java]}
+   {:tool :java :repo "adoptium/temurin25-binaries" :tag #"jdk-(25\.\d+\.\d+(?:\.\d+)?)\+\d+" :pin [:known-good :java]}
    {:tool :clojure-mcp-light :repo "bhauman/clojure-mcp-light" :tag #"v(\d+\.\d+\.\d+)" :pin [:dockerfile "MCP_LIGHT_TAG"]}
    {:tool :geckodriver :repo "mozilla/geckodriver" :tag #"v(\d+\.\d+\.\d+)" :pin [:dockerfile "GECKODRIVER_VERSION"]}
    {:tool :bbin :repo "babashka/bbin" :tag #"v(\d+\.\d+\.\d+)" :pin [:dockerfile "BBIN_VERSION"]}

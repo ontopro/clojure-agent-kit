@@ -35,7 +35,7 @@ bb example    # the whole loop shape in one run: no model calls, no network
 ## Prerequisites
 
 `bb`, `git`, `cljfmt`, `clj-kondo` and `clj-paren-repair` (via `bbin`) to run the gates - no
-JVM; JDK 21, the Clojure CLI and `clj-nrepl-eval` as well for a loop. `bb doctor` probes each one
+JVM; a JDK (21 or newer, 25 preferred), the Clojure CLI and `clj-nrepl-eval` as well for a loop. `bb doctor` probes each one
 (the bbin tools by running them), prints the command or page that fixes a miss, and gives one
 verdict per tier - run it first, and `bb doctor --tier gates` is what `bb gates` runs.
 The first `bb test` fetches malli into `~/.m2`; everything after that is offline.
@@ -353,9 +353,10 @@ cljfmt = "0.16.5"
 ```
 
 `bb doctor` reads the `[tools]` table of the nearest one (walking up) as FLOORS: older is *too
-old*, newer is *newer than the pin - fine*, and a calendar version is a date. The one exception is
-the JDK, held at major 21 by the doctor itself (XTDB v2's early releases failed at class-load on
-newer JDKs); a `.mise.toml` pinning another major is told *change the pin, not the JDK*. Beside
+old*, newer is *newer than the pin - fine*, and a calendar version is a date. The JDK is 21 and
+newer, 25 preferred: the doctor says when the one in use is not 25, a note and never a fault (XTDB
+2.2.0 runs on 25 with `-Dio.netty.noUnsafe=false`; its early v2 releases had failed on newer JDKs,
+when the KIT held 21 exactly). Beside
 the machine's versions the doctor shows the KIT's known-good set, `resources/known-good.edn`,
 written by `bb health --record` from a run that passed - *newer than tested* is information.
 The known-good set is also what the fresh-machine container is built from: `bb docker-gates`

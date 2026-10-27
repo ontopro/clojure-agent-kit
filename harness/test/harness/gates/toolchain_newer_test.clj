@@ -14,7 +14,7 @@
         java-pattern (:tag (first (filter #(= :java (:tool %)) tn/sources)))]
     (is (= "2.56.0" (tn/newest git-pattern ["v2.55.1" "v2.56.0" "v2.56.0-rc2" "v2.57.0-rc0"]))
         "a release candidate is never newest")
-    (is (= "21.0.12.1" (tn/newest java-pattern ["jdk-21.0.12+8" "jdk-21.0.12.1+1" "jdk-2023-06-08-16-57-beta"]))
+    (is (= "25.0.5" (tn/newest java-pattern ["jdk-25.0.4+7" "jdk-25.0.4.1+1" "jdk-25.0.5+8" "jdk-2023-06-08-16-57-beta"]))
         "the build number is not the version; a beta is not a release")
     (is (nil? (tn/newest git-pattern ["latest"])))))
 

@@ -651,7 +651,7 @@
 (def known-row-keys
   "What this version's probe reads of a toolchain row; a newer release's row with a key or a `:via`
   outside these is said as uncheckable here, never passed or failed by code that does not know it."
-  #{:tool :via :cmd :req :tier :min :major :does :needed-for :install})
+  #{:tool :via :cmd :req :tier :min :major :prefer-major :does :needed-for :install})
 
 (def known-vias #{:flag :bbin :which})
 
@@ -682,15 +682,20 @@
   (vec (vals (reduce (fn [m spec] (if (checkable? spec) (assoc m (:tool spec) spec) m)) {} (apply concat tables)))))
 
 (defn significant-changes
-  "What a release changes that a person wants said before taking it: the JDK's major, a new
+  "What a release changes that a person wants said before taking it: the JDK's, a new
   required tool, the template pin moved - from the two toolchains and the two pins files."
   [old-specs new-specs old-pins new-pins]
-  (let [major #(some (fn [s] (when (= :java (:tool s)) (:major s))) %)
+  (let [;; the JDK as a person reads it: an exact major, or a floor with the major preferred
+        jdk #(some (fn [s] (when (= :java (:tool s))
+                             (cond (:major s) (str (:major s) " exactly")
+                                   (:min s) (str (:min s) " and newer" (some->> (:prefer-major s) (str ", preferred ")))
+                                   :else nil)))
+                   %)
         required #(set (map :tool (filter (fn [s] (= :required (:req s))) %)))
         moved (when (and old-pins new-pins) (upgrade/pin-moved old-pins new-pins))]
     (cond-> []
-      (and (major old-specs) (major new-specs) (not= (major old-specs) (major new-specs)))
-      (conj (str "the JDK major changes: " (major old-specs) " -> " (major new-specs)))
+      (and (jdk old-specs) (jdk new-specs) (not= (jdk old-specs) (jdk new-specs)))
+      (conj (str "the JDK changes: " (jdk old-specs) " -> " (jdk new-specs)))
 
       (seq (set/difference (required new-specs) (required old-specs)))
       (conj (str "newly required: " (str/join ", " (map name (sort (set/difference (required new-specs) (required old-specs)))))))
