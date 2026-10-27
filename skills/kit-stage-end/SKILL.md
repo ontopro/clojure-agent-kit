@@ -109,7 +109,15 @@ then a packet, or a risk accepted in its words; a `human` route is a line of §1
 every hypothesis is read and written into §15, answered or open with the stage that answers it. Then the serve command for "deployed locally". Then the owner's walk, page by page or
 function by function: ask the person for every page or function the stage made what is wrong,
 record each thing said as one line, and settle each now - fixed before the stage closes, or
-moved to the deferred list with the stage that takes it. For a pre-release stage, then the
+moved to the deferred list with the stage that takes it; an open fault carried to the next stage
+has been read in the code first, and the reading is beside it on the list - a deferral says what is
+known. Then the security deferrals: `bb plan-check` lists each choice of `docs/02-architecture.md` §8
+put off, with the stage that owns it. For each, what this stage added against it, counted in the
+stage's diff by what its line says grows - for the content-security policy, the lines adding an
+Alpine attribute, `git diff stage-<N-1>..HEAD -- src/ | grep -c '^+.*:x-'` from the application's
+folder (at the first stage's end, which has no tag before it, the count in the tree) - and the
+person keeps it, its line revised to today's growth and cost, or pulls it into the next stage plan;
+a deferral this stage owns is decided now, its row the policy and its decision in the log. For a pre-release stage, then the
 threat model: every line of `docs/02-architecture.md` §15 read with the person, each with its
 answer and the evidence for it, a line that cannot be answered this release a decision that
 says so; the person signs it. For any stage that changed what the application holds or who
@@ -136,7 +144,8 @@ In this order, each to its template's place: the stage plan's exit-criteria sect
 criterion checked and its evidence, and the residual risks in the section after it; the walk's record, one line per thing said and
 its resolution, under the stage plan; `docs/05-lessons.md`'s section for the stage, closed with
 its date, cost and runs; `docs/04-decision-log.md` with the stage's entries settled and the
-walk's decisions added; `docs/01-requirements.md` with the scope lists revised and the index
+walk's decisions added; `docs/02-architecture.md` §8 with each deferral's line revised, or the choice
+made; `docs/01-requirements.md` with the scope lists revised and the index
 appended; `docs/00-overview.md` with the stage closed in the stage map, the risk register and
 the map re-ranked, the next stage named with its cap proposed; for a pre-release stage, the
 gates record's `:security/signed` with the time (`:at`, as `bb next` gives it) and the signer's name (`:by`, never "the
