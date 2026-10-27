@@ -798,7 +798,8 @@ Fifteen rules, each paid for once by a round or a stop in the projects built on 
     Architect, never a refusal.
 16. **A target about a log line is tested through the logging backend's own layout.** A test that
     reads the string handed to the logger never sees what the backend adds: an exception logged
-    beside the message is written with its message and every cause's, which can carry the request.
+    beside the message is written with its class, its message and, for an `ex-info`, its data -
+    every exception in its chain the same - and the data can carry the request.
     One packet's target said the line names the method and the path, its test read exactly that
     string, and the line the backend wrote held the session secret and visitors' queries. The
     target names the backend's output - a test appender, the captured line - as what its test reads.

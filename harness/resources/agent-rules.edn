@@ -122,7 +122,7 @@
   :group :non-negotiable
   :audience #{:coder :tester :reviewer :human}
   :title "An exception is never written to the application's log."
-  :text "No role logs an exception object, its message or its ex-data. A log line about an exception names its class - with the method and the path when a request was being answered - and nothing the exception carries. The logging backend writes an exception passed to it with its message and every cause's message, and an exception thrown while a request is handled can carry the request and the application's context: a line whose own words were clean has written a session secret and visitors' queries. A test of a log line reads what the backend wrote, through the backend's own layout, never the string handed to the logger."}
+  :text "No role logs an exception object, its message or its ex-data. A log line about an exception names its class - with the method and the path when a request was being answered - and nothing the exception carries. The logging backend writes each exception in the chain passed to it as its class, its message and, for an `ex-info`, its data, and an exception thrown while a request is handled can carry the request and the application's context in its data: a line whose own words were clean has written a session secret and visitors' queries. A test of a log line reads what the backend wrote, through the backend's own layout, never the string handed to the logger."}
 
  ;; Set by a person, 2026-10-27 (plan 7.0, item 5.6), from the first KIT project's own rule, kept as
  ;; a project rule there and absent here: the template gives Alpine and htmx, which read some

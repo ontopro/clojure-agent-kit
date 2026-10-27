@@ -38,7 +38,8 @@
 (def kinds
   "The findings a Blueprint read is for, as the `kind` the answer uses: the
   method's over-engineering question, then §06's rules for targets and shapes,
-  then the two ways a Blueprint disagrees with its own stage document."
+  then the two ways a Blueprint disagrees with its own stage document, then
+  a log line's target not read through the logging backend (rule 16)."
   ["over-engineered" "target-two-promises" "target-not-checkable" "target-no-marker"
    "target-source-unnamed" "requirement-words-missing" "target-whole-hiccup"
    "shape-undefined" "shape-not-granted" "seam-unstated" "packet-task-mismatch"

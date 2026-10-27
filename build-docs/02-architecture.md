@@ -88,8 +88,9 @@ Not given:
   is rewritten when the policy changes: a cost that grows with each stage, which §8 either avoids
   in stage 0 or writes down.
 - **The exception is logged whole.** `log-exception` passes the exception to the log beside the
-  method and the path, and the backend writes its message and every cause's message: an exception
-  thrown while a request is handled can carry the request and the application's context. One
+  method and the path, and the backend writes each exception in the chain as its class, its
+  message and, for an `ex-info`, its data: an exception thrown while a request is handled can carry
+  the request and the application's context in its data. One
   project's security review read the session secret and visitors' queries in the line Logback wrote
   for a request whose body failed to decode. The rule source says a log line names an exception's
   class and nothing it carries, so a project's first stage rewrites the line (`server.clj`
