@@ -18,8 +18,8 @@
 ;;
 ;; Two tasks live HERE and not in `harness/`, because they are about this clone as a whole:
 ;;
-;;   bb docker-gates    the fresh-machine check: `bb gates` on a clone of HEAD inside a Linux
-;;                      container that has only the toolchain (the `Dockerfile` beside this file,
+;;   bb docker-gates    `bb gates` on a clone of HEAD inside the KIT's toolchain image - a fresh
+;;                      Linux machine in Docker with only the KIT's toolchain (the `Dockerfile` beside this file,
 ;;                      every version from harness/resources/known-good.edn)
 ;;   bb docker-health   the same container running `bb health --record`; its platform's record
 ;;                      is copied out to harness/health/records/ for `bb health-sync`
@@ -45,7 +45,7 @@
   :init (do (defn harness [& args]
               (apply shell {:dir "harness"} "bb" args))
 
-            ;; The fresh-machine container. `docker-image!` builds the toolchain image, tagged by
+            ;; The KIT's toolchain image. `docker-image!` builds it, tagged by
             ;; known-good's date, each ARG from that file and the date one too (KIT_AS_OF), with the
             ;; base pulled - so a new health record rebuilds the operating-system layer, which the
             ;; cache had kept as old as the first build (register row 131); `in-container!` clones HEAD from the
@@ -148,7 +148,7 @@
               :requires ([harness.gates.kit-status :as kit-status])
               :task (kit-status/-main)}
 
-  docker-gates {:doc "The fresh-machine check: build the toolchain image from the Dockerfile (every version from harness/resources/known-good.edn), clone HEAD inside from a read-only mount, run bb gates there, require a clean tree after. Log: .local/gates/docker-gates.log; record (the commit, the exit), red or green: .local/gates/docker-gates.edn, the newest, which `bb tag-check` reads, and every run kept under .local/gates/docker-gates/. Needs Docker running"
+  docker-gates {:doc "The gates in the KIT's toolchain image - a fresh Linux machine in Docker with only the KIT's toolchain: build it from the Dockerfile (every version from harness/resources/known-good.edn), clone HEAD inside from a read-only mount, run bb gates there, require a clean tree after. Log: .local/gates/docker-gates.log; record (the commit, the exit), red or green: .local/gates/docker-gates.edn, the newest, which `bb tag-check` reads, and every run kept under .local/gates/docker-gates/. Needs Docker running"
                 :requires ([harness.gates.tag-check :as tag-check])
                 :task (tag-check/docker-recorded!
                        (fn []

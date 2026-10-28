@@ -118,7 +118,7 @@ Said plainly:
 ## The KIT's own security review
 
 `bb security-review --kit` in `harness/`: a security reviewer reads a clone of the KIT's HEAD with the
-review's tools, its tests run by `bb` in the toolchain image with no network, the clone and the
+review's tools, its tests run by `bb` in the KIT's toolchain image - a fresh Linux machine in Docker with only the KIT's toolchain, with no network, the clone and the
 container removed after. The record is in `.local/security-review-kit/out/`, never committed, as the
 KIT's run records are not.
 
@@ -161,7 +161,7 @@ The checklist at the head of `DEVLOG.md`, with `bb tag-check` as its mechanism. 
 4. `bb tag-check <tag> --run` again - the gates and `bb docker-gates` on that commit - then
    `bb tag-check <tag>`: every line `ok`, or no tag.
 5. The person's bear-claw secrets scan, by hand: a second rule set the KIT's scan does not
-   carry. And Docker Scout on the fresh-machine image, by hand (a Docker login), the command as
+   carry. And Docker Scout on the KIT's toolchain image, by hand (a Docker login), the command as
    `tag-check` prints it. `tag-check` names both and runs neither. A HIGH or CRITICAL against a
    pinned tool moves that pin before the tag - the one move a tag waits for; the rest of
    `tag-check`'s toolchain lines are information for the next plan's start.

@@ -1,7 +1,8 @@
-# THE FRESH MACHINE. The KIT's toolchain and nothing of the KIT: a Linux image a clone is
-# made in, so `bb gates` and `bb health` are run on a machine that has only what the harness
-# README's prerequisites name. Built and run by `bb docker-gates` and `bb docker-health` at
-# the root of the clone; the GitHub workflow runs on the same image.
+# THE KIT'S TOOLCHAIN IMAGE - a fresh Linux machine in Docker with only the KIT's toolchain,
+# and nothing of the KIT: a clone is made in it, so `bb gates` and `bb health` are run on a
+# machine that has only what the harness README's prerequisites name. Built and run by
+# `bb docker-gates` and `bb docker-health` at the root of the clone; the GitHub workflow runs on
+# the same image.
 #
 # EVERY VERSION IS A BUILD ARG, and the two tasks read each value from
 # `harness/resources/known-good.edn` - the set a recorded health run actually ran together -
@@ -23,7 +24,7 @@ ARG JAVA_IMAGE_TAG=${JAVA_VERSION}_${JAVA_BUILD}-jdk-noble
 # ---------------------------------------------------------------------------------------
 # git at the known-good version, built from source: Ubuntu 24.04's package is older than
 # the version the record names, and a floor the image falls under is a doctor note on every
-# run. Built in its own stage so the toolchain image carries no compiler; without its Rust
+# run. Built in its own stage so the KIT's toolchain image carries no compiler; without its Rust
 # parts, optional until git 3.0, so no cargo.
 FROM eclipse-temurin:${JAVA_IMAGE_TAG} AS git-build
 ARG GIT_VERSION=2.56.0
@@ -38,7 +39,7 @@ RUN curl -fsSL "https://mirrors.edge.kernel.org/pub/software/scm/git/git-${GIT_V
  && rm -rf "/tmp/git-${GIT_VERSION}"
 
 # ---------------------------------------------------------------------------------------
-# The toolchain image: Ubuntu 24.04 (noble) with Temurin 21, from Adoptium's own image.
+# The KIT's toolchain image: Ubuntu 24.04 (noble) with Temurin 21, from Adoptium's own image.
 FROM eclipse-temurin:${JAVA_IMAGE_TAG}
 
 ARG BB_VERSION=1.13.226

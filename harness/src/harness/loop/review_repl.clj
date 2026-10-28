@@ -1,6 +1,6 @@
 (ns harness.loop.review-repl
   "The code reviewer's REPL: a container per review round, the security review's sandbox as it
-  stands - the toolchain image, no network, the dependency cache read-only, limits on memory,
+  stands - the KIT's toolchain image - a fresh Linux machine in Docker with only the KIT's toolchain, no network, the dependency cache read-only, limits on memory,
   processes and processors - holding a COPY of the gate worktree's tree, the uncommitted files
   included, with the project's nREPL started in it. The reviewer's `nrepl_eval` is a `docker
   exec` into it (`harness.models.code-review-tools`).

@@ -11,7 +11,7 @@
   secrets scan of the commits since the last tag; the gates record green for
   HEAD's tree; a docker-gates record green for HEAD. bear-claw's secrets scan
   is named, never run: the script is the person's, outside the clone; so is
-  Docker Scout's scan of the fresh-machine image, which needs a Docker login
+  Docker Scout's scan of the KIT's toolchain image - a fresh Linux machine in Docker with only the KIT's toolchain, which needs a Docker login
   (register row 131). The toolchain's newer releases (`bb toolchain-newer`)
   are printed as information and never fail it.
 
@@ -185,7 +185,7 @@
     (not= (read then) (read now))))
 
 (defn- known-good-as-of
-  "The known-good set's date in the clone at `root`: the fresh-machine image's tag."
+  "The known-good set's date in the clone at `root`: the KIT's toolchain image's tag."
   [root]
   (:as-of (edn/read-string (slurp (str (fs/path root known-good-path))))))
 
@@ -325,7 +325,7 @@
           (let [cs (checks root tag)]
             (print-checks cs)
             (println "  by hand: bear-claw's secrets scan (`bear-claw.bb -s secrets`), the second rule set - not run here")
-            (println (str "  by hand: Docker Scout on the fresh-machine image (a Docker login) - `docker scout cves "
+            (println (str "  by hand: Docker Scout on the KIT's toolchain image (a Docker login) - `docker scout cves "
                           "local://clojure-agent-kit-toolchain:" (known-good-as-of root) " --only-severity critical,high`; "
                           "a HIGH or CRITICAL against a pinned tool moves the pin before the tag"))
             (doseq [l (toolchain-newer/newer-lines (toolchain-newer/check root))]

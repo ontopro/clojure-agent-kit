@@ -62,6 +62,33 @@ tested" stays information for an adopter, never a block.
 
 ---
 
+## 2026-10-28 (plan 7.0)
+
+### One name for the image the KIT is checked in: the KIT's toolchain image (plan 7.0, item 8.1a)
+
+The image the root `Dockerfile` builds had two names: "the toolchain image" (`review_repl`,
+`security_review`, `security_review_sandbox`, the skill) and "the fresh-machine image" or
+"container" (`tag_check`, `harness/README.md`, `bb.edn`, the skill). One thing, one name - the
+person, 2026-10-28: "yes to the KIT's toolchain image". A name says what the thing is, and the image
+has two jobs, not one: `bb docker-gates` and `bb docker-health` check the KIT in it, and a project's
+code reviewer REPL and security review run in it as their sandbox - so "fresh machine" is its
+explanation, not its name. The first mention in each file now reads "the KIT's toolchain image - a
+fresh Linux machine in Docker with only the KIT's toolchain", the name alone after it. Linux, because
+Docker runs only Linux: the macOS health record is this Mac's own, and nothing tries a fresh Mac.
+Older entries here and `NOTES.md` keep the old words.
+
+### The reading session starts in a tab of its own (the kit-session skill; `76d0b7b`, `7c6af2b`, `2425690`)
+
+Said here for the commits that changed only `.claude/` (Fable 5.1's read of `7c6af2b`: the commit
+hook does not watch `.claude/`, and `76d0b7b` and `7c6af2b` were the first skill commits with no entry).
+`76d0b7b`: an item's parts are sub-tasks N.M, defects apart from enhancements. `7c6af2b`: the reader
+starts from `.claude/agents/kit-reader.md` with `claude --agent kit-reader -n kit-reader --model
+fable`; spawned first as an agent-teams teammate, it worked, and was set aside - the writer wrote its
+brief, and each of its turns sent the writer an idle notice carrying its reply, its words to the
+person included. `2425690`: the definition names no model, so `--model` is the one place.
+
+---
+
 ## 0.6.11 — plan 6.11's boundary: a stage amended after its packets ran, and the KIT's own security review
 
 Plan 6.11 added:

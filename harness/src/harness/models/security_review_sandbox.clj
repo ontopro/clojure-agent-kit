@@ -30,7 +30,7 @@
 (def app-port 8000)
 
 (defn image-tag
-  "The toolchain image `bb docker-gates` builds for the known-good set on `kit`, by its date."
+  "The KIT's toolchain image - a fresh Linux machine in Docker with only the KIT's toolchain, which `bb docker-gates` builds for the known-good set on `kit`, by its date."
   [kit]
   (str "clojure-agent-kit-toolchain:" (:as-of (edn/read-string (slurp (str (fs/path kit "harness" "resources" "known-good.edn")))))))
 
