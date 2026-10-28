@@ -91,9 +91,9 @@ rows, `toolchain-sum`'s verdicts).
 
 Live text, not history, still said "fresh machine" where an adopter or a session reads it: `NOTES.md`'s
 "No CI" paragraph, the help text of `bb security-review --kit` - the one place an adopter meets the
-name with no README near - and this file's head checklist, its step 4 and the Docker Scout line under it. Each now
-says "the KIT's toolchain image", with its explanation where it is the first mention. The dated
-entries below, and `NOTES.md`'s rows, keep their words.
+name with no README near - and this file's head checklist, its step 4 and the Docker Scout line
+under it. Each now says "the KIT's toolchain image", with its explanation where it is the first
+mention. The dated entries below, and `NOTES.md`'s rows, keep their words.
 
 ### One name for the image the KIT is checked in: the KIT's toolchain image (plan 7.0, item 8.1a)
 
@@ -157,7 +157,8 @@ log (row 221, `cc67406`, `2b5dab3`).
 The stage plan was its folder's first Markdown file by name, so the browser pack's
 `accessibility.md`, and later an amendment's brief, were taken for it. The plan is `stage-N-plan.md`
 for every kind, found by that name (`f5b3229`); working documents go in `stage-N/notes/` (`143dd08`);
-one table in `build-docs/README.md` gives a stage folder's names (`a057277`, `b0038da`), and
+one table, `stages/folder-names`, gives a stage folder's names, rendered in `build-docs/README.md`
+and held to it by a test (`a057277`, `b0038da`), and
 `bb next` names a file it does not give (`f65b5db`); `bb upgrade` renames a stage-0 plan and its
 blueprint's header (`af06907`, `bfb40c6`).
 
@@ -199,17 +200,20 @@ commit of their own (`9dc3d5f`). The doctor reads a project's java pin as prefer
 and names the fix in the shell's tool manager, never the harness (`6280f16`, `53818da`). `bb health`
 builds the generated application's image on the set and serves its first page from it (`db749f6`),
 and that first build opened row 234: the template's image builds for amd64 alone and has no folder
-for SQLite's file.
+for SQLite's file. No doctor test sees this machine's JAVA_HOME - a fixture holds it nil until 8.2e
+makes it an input of `probe` (`af54380`). Row 233 stays fixed in part: `known-good.edn` and the
+Dockerfile's JDK move at the tag, and JAVA_HOME becomes `probe`'s input in 8.2e.
 
 ### Records are add-only (plan 7.0, item 11, row 232)
 
 The person's rule (2026-10-26): "record keeping should follow immutability rule i.e never
 overwriting". Fable 5.1's design note sorted every file the KIT writes into record, view or working
 state, and the person chose. Health records are kept per run (`f826185`); the security pack keeps
-each run beside the first (`8acd506`); a signing after an amendment adds, never replaces (`8cf33a8`,
-`3319663`); a correction is a superseding entry, a repriced cost computed and never stored over
-(`b813581`, `6c8e539`); a document cites a record by commit or `:at` (`af58b0d`, `fca8fe6`); and
-`method.md` §09 says it (`f110f6b`, `cdf4398`).
+each run beside the first (`8acd506`); the threat model is signed once, at the close, after the last
+amendment, and a signing is never written over (`8cf33a8`, as amended `3319663`); a correction is
+a superseding entry, a repriced cost computed and never stored over (`b813581`, `6c8e539`); a
+document cites a record by commit or `:at` (`af58b0d`, `fca8fe6`); and `method.md` §09 says it
+(`f110f6b`, `cdf4398`).
 
 ---
 
