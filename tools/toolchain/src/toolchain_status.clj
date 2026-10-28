@@ -27,7 +27,7 @@
   [cache platform rows]
   (into [(str "toolchain cache " cache " (" (name platform) ")")]
         (for [{:keys [tool version path present?]} rows]
-          (format "  %-10s %-14s %s" (name tool) version (if present? path "not installed")))))
+          (format "  %-10s %-16s %s" (name tool) version (if present? path "not installed")))))
 
 (defn main
   "The `status` task: the rows for this machine, `--edn` as the map the doctor will read."

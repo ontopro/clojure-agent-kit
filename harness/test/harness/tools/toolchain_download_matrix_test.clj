@@ -42,7 +42,11 @@
   (is (= [:java :clj-kondo :clojure :geckodriver]
          (dm/machine-tools matrix :linux-aarch64 [:java :clj-kondo :clojure :geckodriver]))
       "the KIT's toolchain image names them")
-  (is (= [] (dm/machine-tools matrix :macos-aarch64 [:geckodriver])) "no archive for the platform"))
+  (is (= [] (dm/machine-tools matrix :macos-aarch64 [:geckodriver])) "no archive for the platform")
+  (is (= [] (dm/machine-tools matrix :macos-aarch64 [:git])) "git builds on Linux alone (:os)")
+  (is (= [:git] (dm/machine-tools matrix :linux-amd64 [:git])))
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not in the download matrix: jaava - it has bb, java"
+                        (dm/machine-tools matrix :linux-amd64 [:java :jaava]))))
 
 (deftest the-matrix-meets-the-environment-tables-floors
   (let [floors (into {} (map (juxt :tool :min)) (edn/read-string (slurp "resources/toolchain.edn")))]

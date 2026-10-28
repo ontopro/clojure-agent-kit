@@ -30,7 +30,8 @@ A map keyed by tool. For each, the exact version, the archive's URL with `{versi
 | `geckodriver` | Mozilla's GitHub release, Linux, for the KIT's toolchain image only | none: computed by `toolchain-sum` |
 
 `git` and `geckodriver` are `:image-only`: installed only where named, which the KIT's toolchain
-image does - never on a machine, where git and a browser are the person's own.
+image does - never on a machine, where git and a browser are the person's own. git's source
+tarball is one archive for every platform, and its `:os :linux` keeps it to Linux's two.
 
 The floors a machine must meet stay in `harness/resources/toolchain.edn`, which `bb doctor` reads;
 a test holds the matrix's `bb` and `java` at or above them. cljfmt and clojure-mcp-light will be

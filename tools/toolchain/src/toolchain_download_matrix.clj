@@ -44,11 +44,12 @@
 (defn asset
   "Tool `tool`'s archive for `platform`: `{:tool :version :platform :url :file :sha256 :checksum-url}`,
   `:checksum-url` nil where the publisher publishes none. A tool with one archive for every
-  platform (no `:platforms`) gives that one. A platform the tool has no archive for is nil."
+  platform (no `:platforms`) gives that one - on every platform of its `:os` when it names one, a
+  source tarball that builds on one OS. A platform the tool has no archive for is nil."
   [matrix tool platform]
-  (let [{:keys [version url checksum-url platforms sha256]} (get matrix tool)
+  (let [{:keys [version url checksum-url platforms sha256 os]} (get matrix tool)
         p (if platforms (get platforms platform) {:sha256 sha256})]
-    (when (and version p)
+    (when (and version p (or (nil? os) (nil? platform) (= os (os-of platform))))
       (let [u (fill url version (:asset p))]
         {:tool tool :version version :platform platform
          :url u :file (subs u (inc (str/last-index-of u "/")))
@@ -64,8 +65,13 @@
 
 (defn machine-tools
   "The tools a machine on `platform` takes, in the matrix's order: every tool with an archive for
-  it, an `:image-only` one only when `only` names it. `only` nil is every tool not image-only."
+  it, an `:image-only` one only when `only` names it. `only` nil is every tool not image-only; a
+  tool `only` names that the matrix has not is refused by name."
   [matrix platform only]
+  (when-let [unknown (seq (remove matrix only))]
+    (throw (ex-info (str "not in the download matrix: " (str/join ", " (map name unknown))
+                         " - it has " (str/join ", " (map name (keys matrix))))
+                    {:unknown unknown})))
   (->> (keys matrix)
        (filter #(asset matrix % platform))
        (filter #(if only

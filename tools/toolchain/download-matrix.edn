@@ -1,7 +1,8 @@
 ;; THE DOWNLOAD MATRIX - what the toolchain pack fetches, at which exact version, from where, and the
 ;; sha256 each archive must have. The one place these versions are written (plan 7.0, item 8.1):
-;; the install, the KIT's toolchain image and `bb toolchain-newer` read them here. Plain EDN, so a
-;; release's tag is readable without its code.
+;; `status` and `toolchain-sum` read them here, and the install, the KIT's toolchain image and
+;; `bb toolchain-newer` will (plan 7.0, item 8). Plain EDN, so a release's tag is readable without
+;; its code.
 ;;
 ;;   :url            the archive, `{version}` and `{asset}` filled - and Temurin's two spellings of
 ;;                   its version, `{version-url}` (+ as %2B) and `{version-file}` (+ as _)
@@ -9,6 +10,8 @@
 ;;   :platforms      per platform, the asset's spelling and its sha256; a tool without them has one
 ;;                   archive for every platform and its :sha256 beside :url
 ;;   :bin            the executable, under <cache>/<tool>/<version>/ - for the JDK, under its :home
+;;   :os             for an archive of every platform that builds on one OS (a source tarball):
+;;                   that OS's platforms alone take it
 ;;   :image-only     installed only where named (`--only`): the KIT's toolchain image names them
 ;;
 ;; A sha256 is pasted from `toolchain-sum <tool>`, which takes it from the archive itself and sets it
@@ -61,6 +64,7 @@
        :sha256 "26c56c296b38c0695b26fa95f475f1d01704d2d38e73465ca30b0b2f5dc789d3"
        :unpack :tar.xz
        :bin "bin/git"
+       :os :linux
        :image-only true}
 
  ;; the image's browser fallback; on a machine, geckodriver and Firefox stay the adopter's own

@@ -65,6 +65,17 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-28 (plan 7.0)
 
+### The download matrix's reader refuses what it cannot take (From Fable 5.1's read of `158508e`)
+
+git's source tarball is one archive for every platform, so a Mac asked for it (`--only git`) would
+have taken it; its entry now says `:os :linux`, and `asset` gives an archive with an `:os` only to
+that OS's platforms - one rule with geckodriver's, which has Linux platforms alone. A tool `--only`
+names that the matrix has not (`jaava`) was dropped without a word; `machine-tools` refuses it by
+name, so 8.1c's install inherits the refusal. `toolchain-sum` exited on a mismatch inside the `try`
+whose `finally` deletes its temporary folder, and `System/exit` runs no `finally`: the folder is
+deleted before any exit now. Two nits: the matrix's header says what reads it today and what will,
+and `status`'s version column is 16 wide.
+
 ### The toolchain pack's first step: the download matrix, `status`, `toolchain-sum` (plan 7.0, item 8.1b)
 
 The KIT's tools move from "installed by the person, versions recorded" to "held by the KIT at exact

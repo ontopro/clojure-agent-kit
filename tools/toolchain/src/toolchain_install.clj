@@ -73,16 +73,17 @@
                        (str/join ", " (map name (keys matrix)))))
             (System/exit 1))
         matrix (cond-> matrix version (assoc-in [k :version] version))
-        dir (fs/create-temp-dir {:prefix "toolchain-sum-"})]
-    (try
-      (let [rows (vec (for [a (dm/assets matrix k)]
-                        (let [f (str dir "/" (:file a))]
-                          (binding [*out* *err*] (println "fetching" (:url a)))
-                          (fetch! (:url a) f)
-                          (let [taken (sha256-of f)]
-                            (fs/delete f)
-                            (sum-row a taken (some-> (:checksum-url a) fetch-text!
-                                                     (dm/published-sha256 (:file a))))))))]
-        (run! println (sum-lines k (get-in matrix [k :version]) rows))
-        (when (some #(= :differs (:says %)) rows) (System/exit 1)))
-      (finally (fs/delete-tree dir)))))
+        dir (fs/create-temp-dir {:prefix "toolchain-sum-"})
+        ;; the folder deleted before any exit: System/exit runs no finally
+        rows (try
+               (vec (for [a (dm/assets matrix k)]
+                      (let [f (str dir "/" (:file a))]
+                        (binding [*out* *err*] (println "fetching" (:url a)))
+                        (fetch! (:url a) f)
+                        (let [taken (sha256-of f)]
+                          (fs/delete f)
+                          (sum-row a taken (some-> (:checksum-url a) fetch-text!
+                                                   (dm/published-sha256 (:file a))))))))
+               (finally (fs/delete-tree dir)))]
+    (run! println (sum-lines k (get-in matrix [k :version]) rows))
+    (when (some #(= :differs (:says %)) rows) (System/exit 1))))
