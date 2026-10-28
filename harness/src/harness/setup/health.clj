@@ -746,11 +746,19 @@
              (str "XTDB " (xtdb-version kit) ": "
                   (or line (str "the probe exited " exit "\n" (str/join "\n" (take-last 6 (str/split-lines (str out err)))))))))))
 
+(defn- container-java
+  "The JVM version inside a running container, from its `java -version`; nil when it does not say."
+  [run dir name]
+  (let [{:keys [out err]} (run dir ["docker" "exec" name "java" "-version"])]
+    (second (re-find #"version \"([^\"]+)\"" (str out err)))))
+
 (defn check-xtdb-pgwire
   "The XTDB server image of the tested version (`xtdb-image`), started with no port but its Postgres
   wire on a free one of localhost, and reached through it by the same probe: two inserts, read over
-  valid time; the container removed after, whatever happened. Where Docker is not running, skipped
-  and said. `run` and `docker?` for a test; `sleep` between the tries while the server starts."
+  valid time; the container removed after, whatever happened. The image brings its own JVM, so the
+  line names both - the server's, read from the running container (`:server-java`, which the record
+  carries), and the probe's on this machine. Where Docker is not running, skipped and said. `run`
+  and `docker?` for a test; `sleep` between the tries while the server starts."
   ([subject] (check-xtdb-pgwire subject {}))
   ([{:keys [dir kit] :as subject} {:keys [run docker? sleep tries]
                                    :or {run default-shell
@@ -761,6 +769,7 @@
             :skipped? true)
      (let [image (xtdb-image (xtdb-version kit))
            name (str "kit-health-xtdb-" (subs (str (random-uuid)) 0 8))
+           server-java (volatile! nil)
            [line ms]
            (timed (fn []
                     (try
@@ -770,11 +779,14 @@
                           (let [port (some->> (:out (run dir ["docker" "port" name "5432"])) str/split-lines first (re-find #":(\d+)$") second)]
                             (loop [i 1]
                               (let [l (probe-line (:out (run dir ["clojure" "-M:probe" "--pgwire" (str port)])))]
-                                (cond (some-> l (str/starts-with? "ok ")) (str l " (try " i ")")
+                                (cond (some-> l (str/starts-with? "ok "))
+                                      (do (vreset! server-java (container-java run dir name)) (str l " (try " i ")"))
                                       (>= i tries) (or l "FAILED: the probe never answered")
                                       :else (do (sleep) (recur (inc i)))))))))
                       (finally (run dir ["docker" "rm" "-f" name])))))]
-       (result :pgwire subject (some-> line (str/starts-with? "ok ")) ms (str image ": " line))))))
+       (cond-> (result :pgwire subject (some-> line (str/starts-with? "ok ")) ms
+                       (str image (some->> @server-java (str " on java ")) ": " line))
+         @server-java (assoc :server-java @server-java))))))
 
 ;; ---------------------------------------------------------------------------
 ;; the generated application
@@ -857,7 +869,9 @@
              ;; a skipped check says so in the record, so a row never reads it as passed
              :checks (mapv #(select-keys % [:subject :check :ok? :ms :skipped?]) checks)
              ;; the store the KIT offers, as tried: its version and its server image (plan 7.0, item 7.3)
-             :xtdb {:version (xtdb-version kit) :image (xtdb-image (xtdb-version kit))}
+             ;; the image's own JVM, as the pgwire check read it (none when the check did not run)
+             :xtdb (cond-> {:version (xtdb-version kit) :image (xtdb-image (xtdb-version kit))}
+                     (some :server-java checks) (assoc :server-java (some :server-java checks)))
              :ok? (every? :ok? checks)}
       ;; A RUN FROM A LOCAL CLONE SAYS SO IN THE RECORD, not only on the terminal: the pin above is
       ;; what the clone stood for, not what was generated, and `bb tag-check` refuses such a record -

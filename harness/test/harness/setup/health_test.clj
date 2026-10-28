@@ -438,12 +438,17 @@
                   (swap! calls conj argv)
                   (cond (= ["docker" "run"] (take 2 argv)) {:exit 0 :out "abc\n"}
                         (= ["docker" "port"] (take 2 argv)) {:exit 0 :out "127.0.0.1:55432\n"}
+                        (= ["docker" "exec"] (take 2 argv)) {:exit 0 :err "openjdk version \"25.0.4.1\" 2026-08-18 LTS\n"}
                         (= "--pgwire" (nth argv 2 nil)) (if (< (swap! probes inc) 3) {:exit 1 :out "FAILED: refused\n"}
-                                                            {:exit 0 :out "ok server over pgwire: two inserts, read over valid time - java 25.0.5, 462 ms\n"})
+                                                            {:exit 0 :out "ok server over pgwire: two inserts, read over valid time - probe java 25.0.5, 462 ms\n"})
                         :else {:exit 0 :out ""}))
             r (health/check-xtdb-pgwire subject {:run run :docker? (constantly true) :sleep (fn [])})]
         (is (:ok? r))
-        (is (= "ghcr.io/xtdb/xtdb:2.2.0: ok server over pgwire: two inserts, read over valid time - java 25.0.5, 462 ms (try 3)" (:detail r)))
+        (is (= "ghcr.io/xtdb/xtdb:2.2.0 on java 25.0.4.1: ok server over pgwire: two inserts, read over valid time - probe java 25.0.5, 462 ms (try 3)" (:detail r)))
+        (is (= "25.0.4.1" (:server-java r)) "the image's own JVM, read from the running container")
+        (is (= {:version "2.2.0" :image "ghcr.io/xtdb/xtdb:2.2.0" :server-java "25.0.4.1"}
+               (:xtdb (health/record kit [r] pin [])))
+            "the record carries it")
         (is (some #(= ["clojure" "-M:probe" "--pgwire" "55432"] %) @calls))
         (is (= ["docker" "rm" "-f"] (take 3 (last @calls))) "removed, last")))
     (testing "an image that will not start: failed, and still removed"
@@ -453,4 +458,5 @@
                                                  :docker? (constantly true) :sleep (fn [])})]
         (is (not (:ok? r)))
         (is (str/includes? (:detail r) "FAILED: docker run ghcr.io/xtdb/xtdb:2.2.0 exited 125: no such image"))
+        (is (nil? (:server-java r)) "no JVM said for a server that never started")
         (is (= ["docker" "rm" "-f"] (take 3 (last @calls))))))))

@@ -32,7 +32,8 @@
   (let [t0 (System/currentTimeMillis)]
     (try
       (let [what (if (= "--pgwire" flag) (pgwire port) (embedded))]
-        (println (str "ok " what " - java " (System/getProperty "java.version") ", "
+        (println (str "ok " what (if (= "--pgwire" flag) " - probe java " " - java ")
+                      (System/getProperty "java.version") ", "
                       (- (System/currentTimeMillis) t0) " ms"))
         (shutdown-agents)
         (System/exit 0))
