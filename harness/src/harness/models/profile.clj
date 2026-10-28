@@ -424,18 +424,27 @@
 
 (defn render-roster
   "`text` (the roster) with the Model cell of every table row whose Profile role cell names a role
-  of `profile` - its first backquoted keyword - written from the profile. Every other byte kept."
+  of `profile` - its first backquoted keyword - written from the profile. Every other byte kept.
+  A row is a line that starts `| ` and ends ` |`; any other line is left as it is. A row that names
+  a role but has not six cells - a ` | ` typed inside a cell - is refused by its line number: the
+  check claims it and cannot read it, and a row skipped without a word is how the column fell
+  behind."
   [text profile]
   (->> (str/split text #"\n" -1)
-       (map (fn [line]
-              (if-not (str/starts-with? line "| ")
-                line
-                (let [cells (str/split (subs line 2 (- (count line) 2)) #" \| " -1)
-                      role (some->> (get cells 3) (re-find #"`:([a-z-]+)`") second keyword)]
-                  (if (and (= 6 (count cells)) role
-                           (or (get-in profile [:roles role]) (#{:security-panel} role)))
-                    (str "| " (str/join " | " (assoc (vec cells) 4 (roster-model profile role))) " |")
-                    line)))))
+       (map-indexed
+        (fn [i line]
+          (if-not (and (>= (count line) 4) (str/starts-with? line "| ") (str/ends-with? line " |"))
+            line
+            (let [cells (str/split (subs line 2 (- (count line) 2)) #" \| " -1)
+                  role (some->> (get cells 3) (re-find #"`:([a-z-]+)`") second keyword)
+                  ours? (and role (or (get-in profile [:roles role]) (#{:security-panel} role)))]
+              (cond (not ours?) line
+                    (not= 6 (count cells))
+                    (throw (ex-info (str "roster.md line " (inc i) ": " (count cells)
+                                         " cells, 6 expected - a ' | ' inside a cell?")
+                                    {:line (inc i) :cells (count cells)}))
+                    :else
+                    (str "| " (str/join " | " (assoc (vec cells) 4 (roster-model profile role))) " |"))))))
        (str/join "\n")))
 
 (defn roster-sync-main

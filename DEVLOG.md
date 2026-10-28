@@ -65,6 +65,16 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-28 (plan 7.0)
 
+### The roster check reads a row whole or refuses it (From Fable 5.1's read of `9478b22`)
+
+`render-roster` cut every line starting `| ` as if it ended ` |`: a hand-edited row without the
+closing bar lost its last two characters, rewritten without a word (the reader ran it: `… | notes`
+came back `… | not |`), and a line `| ` alone threw an index error. A row is now a line that starts
+`| ` and ends ` |`; anything else is left byte for byte. And a row that names a profile role but has
+not six cells - a ` | ` typed inside a cell - was skipped silently, the way the column fell behind;
+it is refused now with its line number, so the test fails saying which row. The person: "yes to
+both".
+
 ### The roster's Model column is written from the profile, and a test holds it (plan 7.0, item 1.8, register row 235)
 
 The person, 2026-10-28, asked whether something should hold `roster.md` to the profile so it cannot

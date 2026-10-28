@@ -402,4 +402,12 @@
         (is (= "| Coding | per run | dispatched role | `:coder` | `gemini-4-argon`, medium, direct to Google | its own worktree |"
                (profile/render-roster row claude)))
         (is (= "| The person | approvals | human | none | — | x |"
-               (profile/render-roster "| The person | approvals | human | none | — | x |" claude)))))))
+               (profile/render-roster "| The person | approvals | human | none | — | x |" claude)))))
+    ;; From Fable 5.1's read of 9478b22: a row with no closing ` |` lost its last two characters,
+    ;; and a line `| ` alone threw
+    (testing "a line that is not a row whole is left byte for byte"
+      (doseq [l ["| a | b | c | `:coder` | old | notes" "| " "|" "| x"]]
+        (is (= l (profile/render-roster l claude)) (pr-str l))))
+    (testing "a row the check claims and cannot read is refused by its line"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"roster.md line 2: 7 cells, 6 expected - a ' \| ' inside a cell\?"
+                            (profile/render-roster "intro\n| Coding | per run | role | `:coder` | m | a | b |" claude))))))
