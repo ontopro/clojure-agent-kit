@@ -37,6 +37,7 @@
  harness.setup.init-args #{}
  harness.gates.toolchain-newer #{}
  harness.setup.stages #{}
+ harness.setup.project-set #{}
  harness.contained-path #{}
  harness.setup.stage-move #{harness.setup.stages}
 

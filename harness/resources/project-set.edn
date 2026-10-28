@@ -1,0 +1,20 @@
+;; THE SET THE KIT WRITES INTO A PROJECT: the versions `bb init` and `bb upgrade` put into the
+;; application, over what the pinned template generated, as a commit of their own
+;; (`harness.setup.project-set`). Hand-written, and the one place each is written: `bb health`
+;; builds the generated application's image from it, and `bb health --record` copies the set it
+;; proved into `known-good.edn` as `:project` (plan 7.0, item 7.4).
+;;
+;;   :java          the application's `.mise.toml` java line. mise runs exactly the version a
+;;                  file names (it takes no range for java), so this is the project's default,
+;;                  not a floor: 21 and newer works, and an adopter on 21 says so in a
+;;                  gitignored `.mise.local.toml`, which mise reads over the project's file
+;;   :build-image   the Dockerfile's build stage: Temurin 25 with the Clojure CLI of
+;;                  `known-good.edn`
+;;   :runtime-image the Dockerfile's runtime stage: Docker Hub's newest Temurin 25 JRE on Alpine
+;;   :tailwindcss   the CSS build's version, as the template's `.mise.toml` pins it; the
+;;                  Dockerfile's `TAILWIND_VERSION` is written to match
+
+{:java "temurin-25"
+ :build-image "clojure:temurin-25-tools-deps-1.12.6.1673-alpine"
+ :runtime-image "eclipse-temurin:25.0.4.1_1-jre-alpine"
+ :tailwindcss "4.3.3"}
