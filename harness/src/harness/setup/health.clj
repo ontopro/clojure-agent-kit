@@ -40,6 +40,9 @@
               Firefox; skipped, and said, where it cannot run
     :security (:app only) the KIT's security pack tries from outside what the
               architecture document's §4 says the template gives
+    :image    (:app only) the application's Dockerfile - on the KIT's tested set, which
+              `bb init` wrote - built and run, `GET /` the KIT's first page, the image's
+              JVM read; skipped, and said, where Docker is not running
 
   GUIDE, DO NOT INSTALL: a failing check names what failed and what to read;
   nothing here changes the machine. Offline after the template's first fetch.
@@ -63,6 +66,7 @@
    [harness.setup.app :as app]
    [harness.setup.doctor :as doctor]
    [harness.setup.init :as init]
+   [harness.setup.project-set :as project-set]
    [harness.setup.skills :as skills]
    [harness.setup.template :as template]
    [harness.setup.workspace :as workspace]))
@@ -746,6 +750,8 @@
              (str "XTDB " (xtdb-version kit) ": "
                   (or line (str "the probe exited " exit "\n" (str/join "\n" (take-last 6 (str/split-lines (str out err)))))))))))
 
+(defn- docker-running? [] (= 0 (:exit (default-shell "." ["docker" "info" "--format" "{{.ServerVersion}}"]))))
+
 (defn- container-java
   "The JVM version inside a running container, from its `java -version`; nil when it does not say."
   [run dir name]
@@ -762,7 +768,7 @@
   ([subject] (check-xtdb-pgwire subject {}))
   ([{:keys [dir kit] :as subject} {:keys [run docker? sleep tries]
                                    :or {run default-shell
-                                        docker? #(= 0 (:exit (default-shell "." ["docker" "info" "--format" "{{.ServerVersion}}"])))
+                                        docker? docker-running?
                                         sleep #(Thread/sleep 2000) tries 30}}]
    (if-not (docker?)
      (assoc (result :pgwire subject true 0 "skipped: Docker is not running - the image is tried where it is")
@@ -787,6 +793,72 @@
        (cond-> (result :pgwire subject (some-> line (str/starts-with? "ok ")) ms
                        (str image (some->> @server-java (str " on java ")) ": " line))
          @server-java (assoc :server-java @server-java))))))
+
+(def image-platform
+  "The platform the application's image is built and run for: the template's Dockerfile is
+  amd64's alone at `kit-v1.3` - it downloads tailwindcss's x64 binary, and babashka's aarch64
+  `--static` build is linked against glibc, which the Alpine image lacks (`bb: not found`) - so
+  an arm64 machine builds it under emulation, as a deployment to amd64 would run it."
+  "linux/amd64")
+
+(def image-tries 60)
+
+(defn- http-page [url]
+  (try (let [r (http/get url {:throw false :timeout 2000})] [(:status r) (:body r)])
+       (catch Exception _ nil)))
+
+(defn check-image
+  "The application's image built from its Dockerfile - the KIT's tested set over the template's,
+  which `bb init` wrote - for `image-platform`, run with a session secret made for the run and a
+  tmpfs at `/app/db` (the runtime stage makes no folder for SQLite's file: a deployment mounts a
+  volume there), `GET /` on a free localhost port answering the KIT's first page; the JVM inside
+  read (`:image-java`, which the record carries). The container and the image removed after,
+  whatever happened. Skipped, and said, where Docker is not running. `run`, `docker?`, `page`
+  (`(fn [url]) -> [status body]`) and `sleep` for a test."
+  ([subject] (check-image subject {}))
+  ([{:keys [dir] :as subject} {:keys [run docker? page sleep tries]
+                               :or {run default-shell docker? docker-running? page http-page
+                                    sleep #(Thread/sleep 2000) tries image-tries}}]
+   (if-not (docker?)
+     (assoc (result :image subject true 0 "skipped: Docker is not running - the image is built where it is")
+            :skipped? true)
+     (let [id (subs (str (random-uuid)) 0 8)
+           tag (str "kit-health-app:" id)
+           container (str "kit-health-app-" id)
+           tail (fn [{:keys [out err]}] (str/join "\n" (take-last 6 (str/split-lines (str out err)))))
+           [{:keys [ok? line java]} ms]
+           (timed
+            (fn []
+              (try
+                (let [b (run dir ["docker" "build" "--platform" image-platform "-t" tag "."])]
+                  (if-not (= 0 (:exit b))
+                    {:line (str "FAILED: docker build exited " (:exit b) "\n" (tail b))}
+                    (let [s (run dir ["docker" "run" "-d" "--platform" image-platform "--name" container
+                                      "-e" (str "SESSION_SECRET_KEY=" (random-uuid)) "--tmpfs" "/app/db"
+                                      "-p" "127.0.0.1::80" tag])]
+                      (if-not (= 0 (:exit s))
+                        {:line (str "FAILED: docker run exited " (:exit s) ": " (str/trim (str (:err s))))}
+                        (let [port (some->> (:out (run dir ["docker" "port" container "80"])) str/split-lines first
+                                            (re-find #":(\d+)$") second)
+                              url (str "http://127.0.0.1:" port "/")]
+                          (loop [i 1]
+                            (let [[status body] (page url)
+                                  missing (remove #(str/includes? (str body) %) kit-page-marks)]
+                              (cond
+                                (and (= 200 status) (empty? missing))
+                                {:ok? true :java (container-java run dir container)
+                                 :line (str "GET / -> 200, the KIT's first page (try " i ")")}
+                                (= 200 status)
+                                {:line (str "GET / -> 200, but not the KIT's first page: no " (str/join ", " (map pr-str missing)))}
+                                (>= i tries)
+                                {:line (str "FAILED: no 200 from the container within " tries " tries\n"
+                                            (tail (run dir ["docker" "logs" container])))}
+                                :else (do (sleep) (recur (inc i)))))))))))
+                (finally
+                  (run dir ["docker" "rm" "-f" container])
+                  (run dir ["docker" "rmi" "-f" tag])))))]
+       (cond-> (result :image subject ok? ms (str image-platform (some->> java (str ", java ")) ": " line))
+         java (assoc :image-java java))))))
 
 ;; ---------------------------------------------------------------------------
 ;; the generated application
@@ -873,6 +945,9 @@
              :xtdb (cond-> {:version (xtdb-version kit) :image (xtdb-image (xtdb-version kit))}
                      (some :server-java checks) (assoc :server-java (some :server-java checks)))
              :ok? (every? :ok? checks)}
+      ;; THE PROJECT'S TOOLCHAIN, AS PROVED: the set `bb init` wrote, when the image built from it
+      ;; served (plan 7.0, item 7.4.4) - and the JVM inside it
+      (some :image-java checks) (assoc :project (assoc (project-set/load-set) :image-java (some :image-java checks)))
       ;; A RUN FROM A LOCAL CLONE SAYS SO IN THE RECORD, not only on the terminal: the pin above is
       ;; what the clone stood for, not what was generated, and `bb tag-check` refuses such a record -
       ;; a tag's records come from the pushed pin, never with KIT_TEMPLATE_LOCAL set
@@ -907,7 +982,8 @@
                ";; application's gates. `bb doctor` shows it beside what is installed; newer is 'newer than\n"
                ";; tested', information and never a fault. Versions are floors; the JDK's is 21, 25 preferred.\n"
                (with-out-str (pp/pprint (cond-> {:as-of (:health/as-of rec) :platform (:label platform) :tools tools}
-                                          (:xtdb rec) (assoc :xtdb (:xtdb rec)))))))
+                                          (:xtdb rec) (assoc :xtdb (:xtdb rec))
+                                          (:project rec) (assoc :project (:project rec)))))))
     (str path)))
 
 (defn load-records
@@ -1056,6 +1132,7 @@
                        :red (check-red subject)
                        :loop (check-loop subject)
                        :serve (check-serve subject)
+                       :image (check-image subject)
                        :browser (check-browser subject)
                        :security (check-security subject)
                        :embedded (check-xtdb-embedded subject)
@@ -1096,7 +1173,7 @@
                 (let [{:keys [workspace app pin local-root ms]} (generate-app! kit)]
                   (say (format "  generated in %.1fs: %s%s" (/ ms 1000.0) app
                                (if local-root (str " - from LOCAL CLONE " local-root ", not the pin") "")))
-                  (let [rs (run-subject! (app-subject kit workspace app app-name pin) [:gates :red :loop :serve :browser :security])]
+                  (let [rs (run-subject! (app-subject kit workspace app app-name pin) [:gates :red :loop :serve :browser :security :image])]
                     (if (flags "--keep")
                       (say "\n  kept: " workspace)
                       (fs/delete-tree (fs/parent workspace)))

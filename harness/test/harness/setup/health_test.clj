@@ -460,3 +460,51 @@
         (is (str/includes? (:detail r) "FAILED: docker run ghcr.io/xtdb/xtdb:2.2.0 exited 125: no such image"))
         (is (nil? (:server-java r)) "no JVM said for a server that never started")
         (is (= ["docker" "rm" "-f"] (take 3 (last @calls))))))))
+
+;; plan 7.0, item 7.4.4: the application's image, on the KIT's tested set, built and served
+(deftest the-image-check-builds-runs-reads-and-always-removes
+  (let [subject {:subject :app :dir "/app"}
+        page-ok [200 (str "<h1>" (str/join " " health/kit-page-marks) "</h1>")]]
+    (testing "no Docker: skipped, and said"
+      (let [r (health/check-image subject {:docker? (constantly false)})]
+        (is (:ok? r))
+        (is (:skipped? r))))
+    (testing "built, run with a secret and a tmpfs for the database, served on the second try, the JVM read, then removed"
+      (let [calls (atom [])
+            tries (atom 0)
+            run (fn [_ argv]
+                  (swap! calls conj argv)
+                  (cond (= ["docker" "port"] (take 2 argv)) {:exit 0 :out "127.0.0.1:55080\n"}
+                        (= ["docker" "exec"] (take 2 argv)) {:exit 0 :err "openjdk version \"25.0.4.1\" 2026-08-18 LTS\n"}
+                        :else {:exit 0 :out ""}))
+            r (health/check-image subject {:run run :docker? (constantly true) :sleep (fn [])
+                                           :page (fn [url] (is (= "http://127.0.0.1:55080/" url))
+                                                   (if (< (swap! tries inc) 2) nil page-ok))})
+            build (first @calls)
+            start (second @calls)]
+        (is (:ok? r))
+        (is (= "linux/amd64, java 25.0.4.1: GET / -> 200, the KIT's first page (try 2)" (:detail r)))
+        (is (= "25.0.4.1" (:image-java r)))
+        (is (= ["docker" "build" "--platform" "linux/amd64" "-t"] (take 5 build)))
+        (is (some #{"--tmpfs"} start))
+        (is (some #(str/starts-with? % "SESSION_SECRET_KEY=") start))
+        (is (some #{"127.0.0.1::80"} start) "a free port of localhost only")
+        (is (= [["docker" "rm" "-f"] ["docker" "rmi" "-f"]] (map #(take 3 %) (take-last 2 @calls))) "container, then image")
+        (testing "the record carries the set as proved, and the JVM inside"
+          (let [rec (health/record kit-dir [r] pin [])]
+            (is (= "25.0.4.1" (get-in rec [:project :image-java])))
+            (is (= "temurin-25" (get-in rec [:project :tools :java])))))))
+    (testing "a page that is not the KIT's: failed, and said"
+      (let [r (health/check-image subject {:run (fn [_ argv] (if (= ["docker" "port"] (take 2 argv)) {:exit 0 :out "127.0.0.1:1\n"} {:exit 0 :out ""}))
+                                           :docker? (constantly true) :sleep (fn []) :page (constantly [200 "<h1>Welcome</h1>"])})]
+        (is (not (:ok? r)))
+        (is (str/includes? (:detail r) "not the KIT's first page"))
+        (is (nil? (:project (health/record kit-dir [r] pin []))) "no set recorded as proved")))
+    (testing "a build that fails: failed with its last lines, and still removed"
+      (let [calls (atom [])
+            r (health/check-image subject {:run (fn [_ argv] (swap! calls conj argv)
+                                                  (if (= ["docker" "build"] (take 2 argv)) {:exit 1 :err "line\nbb: not found\n"} {:exit 0 :out ""}))
+                                           :docker? (constantly true) :sleep (fn [])})]
+        (is (not (:ok? r)))
+        (is (str/includes? (:detail r) "FAILED: docker build exited 1\nline\nbb: not found"))
+        (is (= ["docker" "rmi" "-f"] (take 3 (last @calls))))))))
