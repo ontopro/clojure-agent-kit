@@ -360,7 +360,7 @@ different keys.
 consumer too: `harness.models.runner/api-runner` dispatches each role to the model its
 profile names. Every dispatched run has gone through it.
 
-**Two worked examples ship, one per seat**, and since 2026-10-16 they differ only in the seat and the orchestrator. Where each seat
+**Two worked examples ship, one per seat**, and they differ in the seat and the orchestrator (since 2026-10-16), and in the Coder's route and the security panel (since 2026-10-28). Where each seat
 stands, as the doctor says beside each of the five (all five stay, decided 2026-09-24):
 `claude` is the seat every build on the KIT has run from and the one the health check's profile
 names; `agy-ide` has its example, checked by `bb profile`, and no build yet; `opencode`,
@@ -369,12 +369,12 @@ Proved one seat at a time, portability being the design:
 
 | | seat `claude` | seat `agy-ide` |
 |---|---|---|
-| coder | `google` · `gemini-4-argon` (effort medium, from 2026-10-16; `claude-sonnet-5-5` from 2026-10-02 before) · OpenRouter pinned `google-vertex` · `:openai` | the same (from 2026-10-16; `gemini-3.8-flash` before) |
+| coder | `google` · `gemini-4-argon` (effort medium, from 2026-10-16; `claude-sonnet-5-5` from 2026-10-02 before) · direct to Google's API, `:pricing` (from 2026-10-28; OpenRouter pinned `google-vertex` before) · `:openai` | `gemini-4-argon` (from 2026-10-16; `gemini-3.8-flash` before) · OpenRouter pinned `google-vertex` · `:openai` |
 | tester | `anthropic` · `claude-sonnet-5-5` (effort medium, from 2026-10-16; `gemini-3.8-flash` before; cache asked for) · direct · `:anthropic` | the same (from 2026-10-16; `gpt-5.6-sol` before) |
 | reviewer | `openai` · `gpt-6.1-sol` (effort high, from 2026-10-07; `gpt-5.6-sol` before) · OpenRouter · `:openai` | the same (from 2026-10-16; `claude-opus-5-5` direct before) |
 | spec-reviewer | `openai` · `gpt-6.1-sol` (effort high, from 2026-10-07) · OpenRouter · `:openai` | the same (from 2026-10-16; `claude-opus-5-5` direct before) |
 | plan-reviewer | the spec reviewer's selection, block for block (its own role since 2026-10-06; the profile's comment says why) | the same |
-| security-reviewer | `openai` · `gpt-6-astra` (effort high, from 2026-10-08) · OpenRouter pinned `openai` · `:openai` | the same |
+| security-reviewer | a panel in rotation: `openai` · `gpt-6-astra` (effort high, from 2026-10-08); `google` · `gemini-4-argon` (effort high, left out while it is the Coder); `openai` · `gpt-6.1-sol` (effort xhigh, from 2026-10-28) · each OpenRouter pinned · `:openai` | Astra and Argon, as the `claude` seat's first two |
 | orchestrator | `anthropic` · `claude-opus-5-5` (effort medium, from 2026-10-02; Fable 5.1 before) · direct (from 2026-10-16), no cache · `:anthropic` | `google` · `gemini-4-argon` (effort medium, from 2026-10-16; `gemini-3.8-flash` before) · OpenRouter pinned `google-vertex` · `:openai` |
 
 *(The `claude` seat's Tester and code reviewer swapped on 2026-09-16, after bake-offs measured
@@ -388,7 +388,8 @@ that: one key and one balance, the cost reported rather than computed, one credi
 generation record; the profile's header says why.)*
 
 Each example uses both `:shape` adapters - its Anthropic roles direct to Anthropic with
-`:pricing`, the rest over OpenRouter. There are two rather than one because a single
+`:pricing`, the rest over OpenRouter, but the `claude` example's Coder, direct to Google with
+`:pricing`. There are two rather than one because a single
 committed profile reads as *your* configuration, which is exactly how the first version
 was misread.
 
@@ -397,14 +398,14 @@ family as the binding contract, the model as a dated selection underneath it. Ei
 are the profile's and the harness calls them; two are the seat's, where the human
 works, and no packet reaches them:
 
-| Role | Constraint | Family | Model (as the shipped `claude.edn` has it, 2026-10-16) | Dispatched? | Notes |
+| Role | Constraint | Family | Model (as the shipped `claude.edn` has it, 2026-10-28) | Dispatched? | Notes |
 |---|---|---|---|---|---|
-| **Coder** | — (family A) | Google | `gemini-4-argon` over OpenRouter pinned to `google-vertex`, effort medium (from 2026-10-16; `claude-sonnet-5-5` from 2026-10-02 before) | yes, every task | The seat's family by convention, set aside here on a measurement (2026-10-16): re-run packets of the first KIT project, Argon coding and Sonnet testing passed each first time. |
+| **Coder** | — (family A) | Google | `gemini-4-argon` direct to Google's API (from 2026-10-28; over OpenRouter pinned to `google-vertex` before), effort medium (from 2026-10-16; `claude-sonnet-5-5` from 2026-10-02 before) | yes, every task | The seat's family by convention, set aside here on a measurement (2026-10-16): re-run packets of the first KIT project, Argon coding and Sonnet testing passed each first time. |
 | **Tester** | **≠ A** | Anthropic | `claude-sonnet-5-5` direct to Anthropic, effort medium, the cache asked for (from 2026-10-16; `gemini-3.8-flash` before) | yes, every task | Chosen by its tests, not its price; the cheapest model in the hardest seat lost a run. |
 | **Code reviewer** | **≠ A** | OpenAI | `gpt-6.1-sol`, effort high | yes, on green | Third family; only Coder-divergence is required, a third adds blind-spot diversity. |
 | **Spec reviewer** | **≠ A** | OpenAI | `gpt-6.1-sol`, effort high | yes, once per spec, before `start` | Reads the Architect's contract cold — every place a target can be read two ways, every input no target mentions — and the Architect is the seat, family A. Added 2026-09-18; same model as the code reviewer because that is the configuration measured. |
 | **Plan reviewer** | **≠ A** | OpenAI | `gpt-6.1-sol`, effort high | yes, in every stage's plan step (`bb plan-review`) | The spec reviewer's selection by default; its own role since 2026-10-06, so a project can set it apart. |
-| **Security reviewer** | **≠ A** | OpenAI | `gpt-6-astra`, effort high | yes, at every stage's end (`bb security-review`) | Reads the merged application with tools, in a sandbox with no network; a finding counts only when a test of its own fails. Added 2026-10-08. |
+| **Security reviewer** | **≠ A** | OpenAI; Google | a panel in rotation: `gpt-6-astra`, effort high; `gemini-4-argon`, effort high, left out while it is the Coder; `gpt-6.1-sol`, effort xhigh (from 2026-10-28) | yes, at every stage's end (`bb security-review`) | Reads the merged application with tools, in a sandbox with no network; a finding counts only when a test of its own fails. Added 2026-10-08. |
 | **Blueprint reviewer** | none — family A, accepted by decision | Anthropic | `claude-opus-5-5` direct to Anthropic (from 2026-10-16; over OpenRouter pinned to `anthropic` before), effort high, no cache | yes, once per Blueprint, before sign-off | Reads the stage document and the Blueprint whole against §07, the blueprint, and §06's rules (`bb blueprint-review`). The rule's reasoning reaches it as it reaches the spec reviewer; the exception is from a measurement — on one build this family, reading Blueprints cold, alone found each round's load-bearing defect — written in the profile's comment and watched in `NOTES.md`. Added 2026-09-25. |
 | **Orchestrator** | none | software; Anthropic for triage | `claude-opus-5-5` direct to Anthropic (from 2026-10-16), no cache, effort medium (from 2026-10-02; Fable 5.1 before) — triage calls only | yes, on a red gate, a note or a rejected review | Dispatch is `harness.loop.orchestrate`; the model enters at triage and shares the Coder's family by decision — it verifies nothing, so §05 does not reach it. Watched in `NOTES.md`. |
 | **Architect** | none | Anthropic — the seat | the session's model, chosen per session | no — seat-side | Writes the spec and amends it at a stop; does not verify Coder output. |

@@ -87,10 +87,14 @@
 (deftest the-claude-example-codes-with-argon-and-tests-with-sonnet
   ;; The person's decision of 2026-10-16 on a measurement (DEVLOG, register row
   ;; 130): packets re-run by the loop alone, Argon coding with Sonnet testing
-  ;; passed each first time. The verifiers stay off the Coder's family.
+  ;; passed each first time. The verifiers stay off the Coder's family. Since 2026-10-28 (row 235)
+  ;; on Google's own API, as the first KIT project builds: a direct endpoint reports no cost, so
+  ;; the role carries :pricing.
   (let [{:keys [coder tester reviewer security-reviewer]} (:roles (get (profile/examples) "claude"))]
-    (is (= ["google/gemini-4-argon" :google] ((juxt :model :family) coder)))
-    (is (= ["google-vertex"] (get-in coder [:params :provider :only])))
+    (is (= ["gemini-4-argon" :google] ((juxt :model :family) coder)))
+    (is (= ["https://generativelanguage.googleapis.com/v1beta/openai" "GEMINI_API_KEY"]
+           ((juxt :endpoint :key-env) coder)))
+    (is (get-in coder [:pricing :per-mtok :in]) "a direct endpoint's role is priced")
     (is (= ["claude-sonnet-5-5" :anthropic 40] ((juxt :model :family :max-rounds) tester)))
     (is (not-any? #{:google} (map :family [tester reviewer security-reviewer])))))
 
@@ -376,5 +380,7 @@
 (deftest the-shipped-examples-carry-a-panel
   (doseq [[nm p] (profile/examples)]
     (is (empty? (profile/violations p)) nm)
-    (is (= ["gpt-6-astra" "gemini-4-argon"] (mapv :name (profile/security-panel p))) nm)
+    ;; the claude example's third member as the first KIT project's profile has it (row 235)
+    (is (= (cond-> ["gpt-6-astra" "gemini-4-argon"] (= "claude" nm) (conj "gpt-6.1-sol"))
+           (mapv :name (profile/security-panel p))) nm)
     (is (= ["gemini-4-argon"] (mapv :name (:left-out (profile/panel-split p)))) (str nm ": the Coder is Argon"))))

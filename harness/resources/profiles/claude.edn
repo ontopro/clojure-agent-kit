@@ -11,7 +11,8 @@
 ;;   once); the cost is computed from :pricing and marked ~; the API has no balance, and its key is
 ;;   a credit stop of its own. :max_tokens goes in :params - thinking counts against it.
 ;; - :shape :openai is OpenRouter: the reply carries the cost, and `bb balance` reads the credit.
-;;   :provider pins the host; without :allow_fallbacks false it can change between calls.
+;;   :provider pins the host; without :allow_fallbacks false it can change between calls. Google's
+;;   own endpoint takes the same shape, with no cost in its reply: :pricing, as for Anthropic's.
 ;; - :max-rounds caps a role's completions in one dispatch (the harness's default is 24).
 ;; - Models are dated selections, said in the DEVLOG. `bb profile` says when a newer model is
 ;;   listed; `bb bake-off` compares candidates on your own cases.
@@ -21,12 +22,14 @@
  :roles
  {;; CODER - writes the implementation in its own worktree and nREPL. 2026-10-16.
   :coder {:family :google
-          :model "google/gemini-4-argon"
+          :model "gemini-4-argon"
           :shape :openai
-          :endpoint "https://openrouter.ai/api/v1"
-          :key-env "OPENROUTER_API_KEY"
-          :params {:reasoning_effort "medium"
-                   :provider {:only ["google-vertex"] :allow_fallbacks false}}}
+          :endpoint "https://generativelanguage.googleapis.com/v1beta/openai"
+          :key-env "GEMINI_API_KEY"
+          :params {:reasoning_effort "medium"}
+          :pricing {:per-mtok {:in 2 :out 10 :cache-read 0.1}
+                    :source "https://ai.google.dev/gemini-api/docs/pricing"
+                    :as-of "2026-10-28"}}
 
   ;; TESTER - writes the tests from the contract alone, a test per target, so it takes more
   ;; rounds than the Coder. Choose it by its tests, not its price. 2026-10-16.
@@ -109,9 +112,9 @@
  ;; fails (`bb security-panel`). In rotation order: a stage's default is the member after the one
  ;; that read the stage before; the pre-release stage, all of them. A member of the Coder's family
  ;; reads nothing while the Coder is of it - here Gemini 4 Argon, which is the Coder: the rule
- ;; shown, not a mistake. Both found 6 of 6 planted faults on the KIT's fixture (2026-10-16). Fable
- ;; 5.1 declined the review through OpenRouter and at Anthropic's API, and is not a member. A member
- ;; is added here, never in code.
+ ;; shown, not a mistake. Astra and Argon found 6 of 6 planted faults on the KIT's fixture
+ ;; (2026-10-16). Fable 5.1 declined the review through OpenRouter and at Anthropic's API, and is not
+ ;; a member. A member is added here, never in code.
  :security-panel [{:family :openai
                    :model "openai/gpt-6-astra"
                    :shape :openai
@@ -125,4 +128,11 @@
                    :endpoint "https://openrouter.ai/api/v1"
                    :key-env "OPENROUTER_API_KEY"
                    :params {:reasoning_effort "high"
-                            :provider {:only ["google-vertex"] :allow_fallbacks false}}}]}
+                            :provider {:only ["google-vertex"] :allow_fallbacks false}}}
+                  {:family :openai
+                   :model "openai/gpt-6.1-sol"
+                   :shape :openai
+                   :endpoint "https://openrouter.ai/api/v1"
+                   :key-env "OPENROUTER_API_KEY"
+                   :params {:reasoning_effort "xhigh"
+                            :provider {:only ["openai"] :allow_fallbacks false}}}]}

@@ -65,6 +65,20 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-28 (plan 7.0)
 
+### The shipped `claude` profile is the one the first project builds with; the roster follows it (plan 7.0, item 1.8, register row 235)
+
+The person, 2026-10-28: the first KIT project's profile "is the tried and tested one we want to use"
+- its configuration, not its comments. Two differences from the shipped `claude.edn`: the Coder,
+Gemini 4 Argon, on Google's own API (`GEMINI_API_KEY`) rather than through OpenRouter, priced from
+Google's page because that endpoint reports no cost (`report.clj` counts a direct step's cost from
+`:pricing`); and a third security panel member, GPT-6.1 Sol at `xhigh`, which the project tried on
+OpenRouter first. The person: "xhigh is what it is. Item 10.2 does its thing" - the routes table's
+levels stay 10.2's. `harness/roster.md` was older still (dated 2026-10-08: Sonnet coding, Flash
+testing, every role over OpenRouter), and `portability.md`'s seat tables and the harness README's
+seat paragraph said the old routes; all now say the profile. Two of the profile's own comments that
+the change made false were corrected (the `:openai` shape's header line, "both" in the panel's).
+`bb profile` holds the file. Nothing yet holds the roster to the profile (row 235 stays in part).
+
 ### The download matrix's reader refuses what it cannot take (From Fable 5.1's read of `158508e`)
 
 git's source tarball is one archive for every platform, so a Mac asked for it (`--only git`) would
