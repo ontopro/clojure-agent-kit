@@ -27,12 +27,18 @@
        "# newer works. For 21 on this machine only, put `java = \"temurin-21\"` under [tools] in\n"
        "# .mise.local.toml - gitignored, and mise reads it over this file.\n"))
 
-(def ^:private template-sentence #"(?s)The one real constraint is the JDK: stay on 21 \(.*?\)\.")
-
-(def kit-sentence
-  "What the KIT writes in place of the template's sentence that says to stay on 21: two comment
-  lines, so the paragraph keeps its width."
-  "The JDK is 21 and newer, 25 the default\n# (the java line below).")
+(def sentences
+  "The template's sentences the KIT's set makes false, each with what the KIT writes in its place
+  - as comment lines of the paragraph's width - and what is said when neither is found, so a
+  template release that rewords one is seen: `[what template-re kit-text]`."
+  [["the template's sentence on the known-good set"
+    #"(?s)A KNOWN-GOOD SET, not a set of requirements: these versions were run together on.*?booted and served\."
+    (str "A KNOWN-GOOD SET, not a set of requirements: the versions under [tools] are the KIT's,\n"
+         "# run together through its gates and `bb health` (its `known-good.edn`), and written here\n"
+         "# by `bb init` and `bb upgrade`.")]
+   ["the template's sentence on the JDK"
+    #"(?s)The one real constraint is the JDK: stay on 21 \(.*?\)\."
+    "The JDK is 21 and newer, 25 the default\n# (the java line below)."]])
 
 (defn- tool-line-re [tool]
   (re-pattern (str "(?m)^[ \\t]*" (java.util.regex.Pattern/quote (name tool)) "[ \\t]*=[ \\t]*\"[^\"]*\"[ \\t]*$")))
@@ -47,8 +53,8 @@
 
 (defn with-tools
   "`.mise.toml` with every line under [tools] that `tools` names set to its value, the KIT's note
-  above the table, and the template's sentence that says to stay on 21 replaced. A tool with no
-  line is said, never added; so is the sentence when neither it nor the KIT's is there."
+  above the table, and the template's `sentences` the set makes false replaced. A tool with no line
+  is said, never added; so is a sentence when neither it nor the KIT's is there."
   [text tools]
   (if-let [[from to] (tools-table text)]
     (let [[body missed] (reduce (fn [[body missed] [tool v]]
@@ -61,10 +67,13 @@
           t (str (subs text 0 from) body (subs text to))
           t (if (str/includes? t (first (str/split-lines tools-note)))
               t
-              (str/replace-first t #"(?m)^\[tools\][ \t]*$" (str/re-quote-replacement (str tools-note "[tools]"))))
-          [t missed] (cond (re-find template-sentence t) [(str/replace t template-sentence (str/re-quote-replacement kit-sentence)) missed]
-                           (str/includes? t kit-sentence) [t missed]
-                           :else [t (conj missed "the template's sentence on the JDK")])]
+              (str/replace-first t #"(?m)^\[tools\][ \t]*$" (str/re-quote-replacement (str "#\n" tools-note "[tools]"))))
+          [t missed] (reduce (fn [[t missed] [what re kit-text]]
+                               (cond (re-find re t) [(str/replace t re (str/re-quote-replacement kit-text)) missed]
+                                     (str/includes? t kit-text) [t missed]
+                                     :else [t (conj missed what)]))
+                             [t missed]
+                             sentences)]
       {:text t :missed missed})
     {:text text :missed ["the [tools] table"]}))
 

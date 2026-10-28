@@ -23,11 +23,15 @@
 (deftest every-tools-line-is-the-kits-with-the-note-above-the-table
   (let [{:keys [text missed]} (ps/with-tools fixture/mise (:tools the-set))]
     (is (= [] missed))
-    (is (str/includes? text (str ps/tools-note "[tools]\n"
+    (is (str/includes? text (str "you do not need to run it.\n#\n" ps/tools-note "[tools]\n"
                                  "java = \"temurin-25\"\nclojure = \"1.12.6.1673\"\nbabashka = \"1.13.226\"\n"
                                  "clj-kondo = \"2026.08.04\"\ncljfmt = \"0.16.6\"\ntailwindcss = \"4.3.3\"\n")))
     (is (str/includes? text "cljfmt = \"asdf:https://github.com/b-social/asdf-cljfmt\"") "the [alias] table untouched")
     (is (not (str/includes? text "stay on 21")))
+    (is (not (str/includes? text "2026-09-21")) "the template's known-good sentence replaced")
+    (is (str/starts-with? text (str "# A KNOWN-GOOD SET, not a set of requirements: the versions under [tools] are the KIT's,\n"
+                                    "# run together through its gates and `bb health` (its `known-good.edn`), and written here\n"
+                                    "# by `bb init` and `bb upgrade`. Newer versions are expected\n")))
     (is (str/includes? text "fault. The JDK is 21 and newer, 25 the default\n# (the java line below). Babashka must"))
     (is (every? #(str/starts-with? % "#") (take-while #(not= "[tools]" %) (str/split-lines text)))
         "the comment still a comment")
@@ -47,6 +51,9 @@
   (testing "the template's sentence reworded: said, so a template release that rewrites it is seen"
     (let [r (ps/with-tools (str/replace fixture/mise "stay on 21" "keep to 21") (:tools the-set))]
       (is (= ["the template's sentence on the JDK"] (:missed r)))))
+  (testing "the known-good sentence reworded: said too"
+    (let [r (ps/with-tools (str/replace fixture/mise "run together on" "tried together on") (:tools the-set))]
+      (is (= ["the template's sentence on the known-good set"] (:missed r)))))
   (testing "no [tools] table: said, nothing written"
     (is (= {:text "[alias]\n" :missed ["the [tools] table"]} (ps/with-tools "[alias]\n" (:tools the-set))))))
 

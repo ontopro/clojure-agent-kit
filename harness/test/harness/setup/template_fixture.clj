@@ -1,6 +1,7 @@
 (ns harness.setup.template-fixture
-  "The three files the KIT rewrites in a generated application, as the pinned template generates
-  them at `kit-v1.3` (f12268d), copied by hand: the tests of the set's rewrites, and the stand-in
+  "The three files the KIT rewrites in a generated application, from the pinned template at
+  `kit-v1.3` (f12268d), copied by hand: `.mise.toml` whole, the Dockerfile and `.gitignore` cut to
+  the lines the KIT rewrites and their neighbours. The tests of the set's rewrites, and the stand-in
   template of the upgrade tests, read the template's shape and not one written for the test.
   A template release that changes them is noticed by `bb health`, which generates from the pin.")
 
