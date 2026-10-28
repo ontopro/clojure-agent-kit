@@ -32,8 +32,8 @@ its seat, and the plan's Task Status names the model per item - design-heavy wor
 rest to Opus 5.5, the other model reading.
 
 The reading session is started by the person, in a tab of its own at the root, from its definition
-`.claude/agents/kit-reader.md` (its model, its tools and a fixed brief that points here):
-`claude --agent kit-reader -n kit-reader --model fable` - `--model` names the item's reading model.
+`.claude/agents/kit-reader.md` (its tools and a fixed brief that points here):
+`claude --agent kit-reader -n kit-reader --model fable` - `--model` names the item's reading model, and only it: the definition names none.
 The writer finds it by `ListAgents` and sends it its own session name; the two talk by `SendMessage`.
 
 | Seat | Does | Never |
