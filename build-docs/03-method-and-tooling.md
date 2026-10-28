@@ -265,7 +265,8 @@ written down — the rule source's own first rule says it outranks the others:
 > verifiers' independence, the seat, the key variables - and `bb balance` reads the credit
 > behind it. The seat is where the human works, with no packet. The shipped `claude` example
 > sends the Anthropic roles direct to Anthropic's API, with prompt caching asked for on the Tester
-> alone, and every other role through OpenRouter - its Coder is Google's Argon, on a measurement.
+> alone, its Coder - Google's Argon, on a measurement - direct to Google's API with `:pricing`, and
+> every other role through OpenRouter.
 > A direct role carries `:pricing` (its cost is computed and marked `~`), its spend is counted
 > from the records, and its key is a second credit
 > stop; an OpenRouter role's cost is the endpoint's word and its balance is `bb balance`'s. The

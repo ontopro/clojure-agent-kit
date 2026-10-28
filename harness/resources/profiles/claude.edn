@@ -113,8 +113,9 @@
  ;; that read the stage before; the pre-release stage, all of them. A member of the Coder's family
  ;; reads nothing while the Coder is of it - here Gemini 4 Argon, which is the Coder: the rule
  ;; shown, not a mistake. Astra and Argon found 6 of 6 planted faults on the KIT's fixture
- ;; (2026-10-16). Fable 5.1 declined the review through OpenRouter and at Anthropic's API, and is not
- ;; a member. A member is added here, never in code.
+ ;; (2026-10-16); Sol at xhigh joined from the first KIT project's panel (2026-10-23), with no fixture
+ ;; figure of its own. Fable 5.1 declined the review through OpenRouter and at Anthropic's API, and is
+ ;; not a member. A member is added here, never in code.
  :security-panel [{:family :openai
                    :model "openai/gpt-6-astra"
                    :shape :openai

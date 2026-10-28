@@ -65,6 +65,15 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-28 (plan 7.0)
 
+### The build docs' profile sentence and the panel's third member (From Fable 5.1's read of `07270b2`)
+
+`build-docs/03-method-and-tooling.md`'s instruction above the role table still sent the shipped
+`claude` example's Coder through OpenRouter - the one route document 1.8 missed, and the one an
+adopter reads while filling the table; it says direct to Google's API with `:pricing` now. And the
+profile's panel comment said why Astra and Argon are members (6 of 6 on the KIT's fixture) and
+nothing of Sol: it joined from the first KIT project's panel (2026-10-23), with no fixture figure of
+its own.
+
 ### The shipped `claude` profile is the one the first project builds with; the roster follows it (plan 7.0, item 1.8, register row 235)
 
 The person, 2026-10-28: the first KIT project's profile "is the tried and tested one we want to use"
