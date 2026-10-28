@@ -98,6 +98,99 @@ person included. `2425690`: the definition names no model, so `--model` is the o
 
 ---
 
+## 2026-10-26 to 2026-10-28 (plan 7.0, items 1-7 and 11)
+
+Written after the fact (From Fable 5.1's read of `25d5092`): these items closed with a register row
+each and no entry here, because the commit hook takes a `NOTES.md` change alone. The rows carry the
+detail and the tests; an entry says what each item changed and why, and names its rows. Every
+commit named was read by Fable 5.1 and holds, some after a fix the read named (listed beside it).
+
+### The first project's defects (plan 7.0, item 1, register rows 213-218, 220)
+
+Seven defects the first KIT project met in its stages 5 and 6. The security pack threw a
+NullPointerException when no request was answered, so a deploy's record could not be written and
+the cause was hidden; it now refuses by name with the first request's error (row 213, `96a7ddd`).
+It probed an https deploy with no port written on port 80, because a load-filed namespace shadowed
+its `port` (row 214, `9c9115a`, `c155cd8`). The browser pack's narrow widths were 500 px - headless
+Firefox keeps no window under 500 - so "no sideways scroll at 390" was never measured at 390; a
+narrow width is measured in a frame (row 215, `b50bae1`, `7dd56f4`, `1d5ffb0`). Firefox updated
+itself under a check, and no profile pref stops it; `bb health`'s browser check warns when the
+machine has no policy turning the updater off or an update is staged, and names how to set one - the
+lasting fix, a pinned Firefox in a container, is item 8.5 (row 218, `864b545`, `2c6fc20`). `run-loop amend` can take a dependent into `:files/test`, where a new run was the only
+way on (row 216, `7b55e35`, `2bf73b0`); a red gate on a dependent says so by name (row 217,
+`cf1c175`). And `bb security-route` keeps each run's record, which the stage report sums: it had
+counted a stage's last routing run alone, $0.57 of $1.38, so the cap read short (row 220, `1a1e648`,
+`719e6a7`).
+
+### Enhancements: the money by role, and what changed since the last report (plan 7.0, item 2, rows 219, 221)
+
+The money-by-role table names each model once with its stages after it,
+`claude-sonnet-5.5 (S0); gemini-4-argon (S1->S4)`, where it listed every stage (row 219, `e5c3083`).
+"Since you last looked" counted from a look nobody recorded and read as the state now - the person:
+"mighty confusing"; it is now what happened since the report was last generated, from the reports
+log (row 221, `cc67406`, `2b5dab3`).
+
+### A stage folder's files by fixed names (plan 7.0, item 3, rows 222, 223)
+
+The stage plan was its folder's first Markdown file by name, so the browser pack's
+`accessibility.md`, and later an amendment's brief, were taken for it. The plan is `stage-N-plan.md`
+for every kind, found by that name (`f5b3229`); working documents go in `stage-N/notes/` (`143dd08`);
+one table in `build-docs/README.md` gives a stage folder's names (`a057277`, `b0038da`), and
+`bb next` names a file it does not give (`f65b5db`); `bb upgrade` renames a stage-0 plan and its
+blueprint's header (`af06907`, `bfb40c6`).
+
+### The security panel's table by reading (plan 7.0, item 4, row 224)
+
+A member who read a stage twice got the same marks in both columns, so the table said an earlier
+reading found what only a later one did. A row's marks name the reading, a column is looked up by its
+record, and a member who read twice is numbered (`a20676a`).
+
+### A security decision deferred states its blast radius (plan 7.0, item 5, row 225)
+
+The first project left its content-security policy to its pre-release stage, and three stages of
+Alpine expressions made the strict policy a rewrite. `02-architecture.md` §8's deferred row carries
+`deferred to stage N: what grows against it · the cost to switch`, `bb plan-check` holds it
+(`1bbf089`), `kit-stage-end` re-reads it (`5045bd5`), §4 and the plan review's checklist ask the
+cost (`44b3323`, `8997f84`), and a rule keeps a request value out of `x-*` and `hx-*` attributes
+(`9cd7af6`). Fable 5.1 read the design first.
+
+### The first project's kept lessons (plan 7.0, item 6, rows 226-231)
+
+Six lessons the project had kept as its own, taken into the KIT. No role logs an exception whole -
+its data can carry the request (row 226, `5b393c2`, `d4caa5c`). The blueprint review asks two
+questions it let through (row 227, `0a3c37c`). A stage's cap plans the security review's growing
+cost and the fix after it (row 228, `e1c3a3b`). A belief about a KIT command is read in its source
+before a reading is skipped on it (row 229, `c15e42f`). `bb packet-tests` lists the tests that read
+what a packet changes, before it is cut (row 230, `af8b27f`, `727c594`). A disputed library fact is
+settled on the JVM, the form and its result in the answer, and the code reviewer has a REPL over a
+copy nobody merges (row 231, `44857bc`, `014e30a`, `5ec5aae`; Fable 5.1 designed 6.6).
+
+### The JDK to 25, XTDB pinned, one owner for each version (plan 7.0, item 7, rows 233, 234)
+
+The KIT held JDK 21 exactly for a reason that had gone: XTDB 2.2.0 starts on 25. Proved first -
+an embedded node on Temurin 25.0.5 and `bb health` on 25 - then the pin is 21 and newer, 25
+preferred (`95484b7`), and XTDB pinned at 2.2.0 and tried by `bb health`, in-process and over pgwire
+with the image's own JVM named (`e19067b`, `38bbc95`). The versions the KIT writes into a project
+are one hand-written file, `project-set.edn` - the whole toolchain, `.mise.toml`'s tools and the
+Dockerfile's images (`bebeb2d`, `0ee5cdc`, `76ee47e`) - which `bb init` and `bb upgrade` write as a
+commit of their own (`9dc3d5f`). The doctor reads a project's java pin as preferred, not a floor,
+and names the fix in the shell's tool manager, never the harness (`6280f16`, `53818da`). `bb health`
+builds the generated application's image on the set and serves its first page from it (`db749f6`),
+and that first build opened row 234: the template's image builds for amd64 alone and has no folder
+for SQLite's file.
+
+### Records are add-only (plan 7.0, item 11, row 232)
+
+The person's rule (2026-10-26): "record keeping should follow immutability rule i.e never
+overwriting". Fable 5.1's design note sorted every file the KIT writes into record, view or working
+state, and the person chose. Health records are kept per run (`f826185`); the security pack keeps
+each run beside the first (`8acd506`); a signing after an amendment adds, never replaces (`8cf33a8`,
+`3319663`); a correction is a superseding entry, a repriced cost computed and never stored over
+(`b813581`, `6c8e539`); a document cites a record by commit or `:at` (`af58b0d`, `fca8fe6`); and
+`method.md` §09 says it (`f110f6b`, `cdf4398`).
+
+---
+
 ## 0.6.11 — plan 6.11's boundary: a stage amended after its packets ran, and the KIT's own security review
 
 Plan 6.11 added:
