@@ -10,6 +10,7 @@
    [harness.setup.app :as app]
    [harness.setup.init :as init]
    [harness.setup.template :as template]
+   [harness.setup.template-fixture :as fixture]
    [harness.setup.template-upgrade :as tu]
    [harness.setup.workspace :as workspace]))
 
@@ -30,7 +31,8 @@
 
 (def generated-files
   "What the template generates at the pin, as a test's stand-in for deps-new."
-  {"deps.edn" "{:deps {}}\n" "src/xyx/core.clj" "(ns xyx.core)\n" "src/xyx/views.clj" views-clj})
+  (merge {"deps.edn" "{:deps {}}\n" "src/xyx/core.clj" "(ns xyx.core)\n" "src/xyx/views.clj" views-clj}
+         fixture/files))
 
 (defn- write-tree! [target files]
   (doseq [[path content] files]
@@ -110,7 +112,7 @@
   (let [ws (workspace!)
         app (:workspace/app ws)]
     (is (= (git-out app "rev-list" "--max-parents=0" "HEAD") (git-out app "rev-parse" "template")))
-    (is (= "2" (git-out app "rev-list" "--count" "main")))))
+    (is (= "3" (git-out app "rev-list" "--count" "main")) "the template's, the KIT's files, the tested set")))
 
 (deftest a-release-is-merged-through-the-template-branch-and-the-loops-merge
   (let [ws (workspace!)
@@ -127,7 +129,7 @@
     (testing "template holds the new tree, as a second commit with the tag in its subject"
       (is (= "2" (git-out app "rev-list" "--count" "template")))
       (is (= (str app/untouched-subject (app/generation-label new-pin nil)) (git-out app "log" "-1" "--format=%s" "template")))
-      (is (= #{"deps.edn" "src/xyx/core.clj" "src/xyx/views.clj" "resources/new.txt"}
+      (is (= (into #{"deps.edn" "src/xyx/core.clj" "src/xyx/views.clj" "resources/new.txt"} (keys fixture/files))
              (set (str/split-lines (git-out app "ls-tree" "-r" "--name-only" "template")))))
       (is (= {:template (str (:template pin)) :tag "kit-v9.9" :sha7 "abcdef0"} (tu/generated-from (git-out app "log" "-1" "--format=%s" "template")))))
     (testing "the upgrade branch, off main, carries git's merge of template; main is untouched"
@@ -392,10 +394,12 @@
 
 (deftest bb-upgrade-writes-the-tested-set-on-its-branch-as-a-commit-of-its-own
   ;; plan 7.0, item 7.4.2: an application made before the KIT wrote its tested set gets it on the
-  ;; upgrade's branch, before the gates, with the template as it was
+  ;; upgrade's branch, before the gates, with the template as it was; a file the application
+  ;; does not have is said
   (let [ws (workspace!)
         app (:workspace/app ws)
-        _ (spit (str (fs/path app ".mise.toml")) "[tools]\njava = \"temurin-21\"\n")
+        _ (spit (str (fs/path app ".mise.toml")) fixture/mise)
+        _ (fs/delete (fs/path app "Dockerfile"))
         _ (git-out app "add" "-A")
         _ (git-out app "commit" "-q" "-m" "an application from before the tested set")
         generate (fn [target] (fs/create-dirs target) (write-tree! target generated-files))
@@ -405,9 +409,11 @@
                                               :id "upgrade-0.7.0" :release "0.7.0" :branch-anyway? true :before-gates :kit-files})))]
     (is (= :awaiting-merge (:outcome @result)))
     (is (= {:kind :kit-files :release "0.7.0"} (:hook (state ws "upgrade-0.7.0"))) "the hook recorded by name")
-    (is (= "KIT 0.7.0: the versions the KIT tests - .mise.toml's java line, the Dockerfile's images, .mise.local.toml ignored"
+    (is (= "KIT 0.7.0: the versions the KIT tests - .mise.toml's [tools], the Dockerfile's images and versions, .mise.local.toml ignored"
            (git-out app "log" "-1" "--format=%s" "upgrade-0.7.0")))
     (is (str/includes? (git-out app "show" "upgrade-0.7.0:.mise.toml") "java = \"temurin-25\""))
+    (is (str/includes? (git-out app "show" "upgrade-0.7.0:.mise.toml") "cljfmt = \"0.16.6\"") "every tool, not the JDK alone")
+    (is (= [".mise.toml"] (str/split-lines (git-out app "diff" "--name-only" "main" "upgrade-0.7.0"))))
     (is (str/includes? out "left alone where the application differs: Dockerfile: none in the application")
         "what it could not write, said")
-    (is (= "[tools]\njava = \"temurin-21\"" (git-out app "show" "main:.mise.toml")) "main untouched until the merge")))
+    (is (= (str/trim fixture/mise) (git-out app "show" "main:.mise.toml")) "main untouched until the merge")))

@@ -2,72 +2,66 @@
   (:require [babashka.fs :as fs]
             [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
-            [harness.setup.project-set :as ps]))
-
-;; the template's own files at kit-v1.3, cut to the lines the KIT rewrites and their neighbours
-(def ^:private mise
-  (str "# check, lint, tests, and the dev system booted and served. Newer versions are expected\n"
-       "# to work and are not a fault. The one real constraint is the JDK: stay on 21 (XTDB,\n"
-       "# an optional store, documents a minimum of 21 and its early v2 releases failed at\n"
-       "# class-load on newer JDKs). Babashka must be 1.12.212 or newer for bbin.\n"
-       "[tools]\n"
-       "java = \"temurin-21\"\n"
-       "clojure = \"1.12.6.1673\"\n"
-       "tailwindcss = \"4.3.3\"\n"
-       "\n[alias]\n"))
-
-(def ^:private dockerfile
-  (str "FROM clojure:temurin-21-tools-deps-1.12.1.1550-alpine AS build\n\n"
-       "WORKDIR /app\n\n"
-       "ARG BB_VERSION=1.12.206\n"
-       "ARG TAILWIND_VERSION=v4.1.11\n\n"
-       "FROM eclipse-temurin:21.0.2_13-jre-alpine\n"
-       "CMD [\"java\", \"-Xmx256m\", \"-jar\", \"standalone.jar\"]\n"))
+            [harness.setup.project-set :as ps]
+            [harness.setup.template-fixture :as fixture]))
 
 (def ^:private the-set
-  {:java "temurin-25"
+  {:tools {:java "temurin-25" :clojure "1.12.6.1673" :babashka "1.13.226"
+           :clj-kondo "2026.08.04" :cljfmt "0.16.6" :tailwindcss "4.3.3"}
    :build-image "clojure:temurin-25-tools-deps-1.12.6.1673-alpine"
-   :runtime-image "eclipse-temurin:25.0.4.1_1-jre-alpine"
-   :tailwindcss "4.3.3"})
+   :runtime-image "eclipse-temurin:25.0.4.1_1-jre-alpine"})
 
-(deftest the-shipped-set-is-the-jdk-25-set
-  (let [s (ps/load-set)]
-    (is (= "temurin-25" (:java s)))
-    (is (str/starts-with? (:build-image s) "clojure:temurin-25-tools-deps-"))
-    (is (str/starts-with? (:runtime-image s) "eclipse-temurin:25."))
-    (is (re-matches #"\d+\.\d+\.\d+" (:tailwindcss s)))))
+(deftest the-shipped-set-is-the-whole-toolchain-on-jdk-25
+  (let [{:keys [tools build-image runtime-image]} (ps/load-set)]
+    (is (= #{:java :clojure :babashka :clj-kondo :cljfmt :tailwindcss} (set (keys tools)))
+        "every line the template's [tools] carries")
+    (is (= "temurin-25" (:java tools)))
+    (is (= (str "clojure:temurin-25-tools-deps-" (:clojure tools) "-alpine") build-image)
+        "the build image's Clojure CLI is the set's")
+    (is (str/starts-with? runtime-image "eclipse-temurin:25."))))
 
-(deftest the-java-line-is-25-with-the-kits-note-and-the-stay-on-21-sentence-gone
-  (let [{:keys [text missed]} (ps/with-java mise "temurin-25")]
+(deftest every-tools-line-is-the-kits-with-the-note-above-the-table
+  (let [{:keys [text missed]} (ps/with-tools fixture/mise (:tools the-set))]
     (is (= [] missed))
-    (is (str/includes? text (str ps/java-note "java = \"temurin-25\"\n")))
+    (is (str/includes? text (str ps/tools-note "[tools]\n"
+                                 "java = \"temurin-25\"\nclojure = \"1.12.6.1673\"\nbabashka = \"1.13.226\"\n"
+                                 "clj-kondo = \"2026.08.04\"\ncljfmt = \"0.16.6\"\ntailwindcss = \"4.3.3\"\n")))
+    (is (str/includes? text "cljfmt = \"asdf:https://github.com/b-social/asdf-cljfmt\"") "the [alias] table untouched")
     (is (not (str/includes? text "stay on 21")))
-    (is (str/includes? text "The JDK is 21 and newer, 25 the default (the java line below). Babashka must"))
-    (is (str/includes? text "clojure = \"1.12.6.1673\"") "the other lines kept")
+    (is (str/includes? text "fault. The JDK is 21 and newer, 25 the default\n# (the java line below). Babashka must"))
     (is (every? #(str/starts-with? % "#") (take-while #(not= "[tools]" %) (str/split-lines text)))
         "the comment still a comment")
+    (is (every? #(<= (count %) 100) (str/split-lines text)) "the paragraph keeps its width")
     (testing "written twice is written once"
-      (is (= text (:text (ps/with-java text "temurin-25")))))
-    (testing "a later set moves the line, the note kept once"
-      (let [t (:text (ps/with-java text "temurin-27"))]
+      (is (= {:text text :missed []} (ps/with-tools text (:tools the-set)))))
+    (testing "a later set moves the lines, the note kept once"
+      (let [t (:text (ps/with-tools text (assoc (:tools the-set) :java "temurin-27")))]
         (is (str/includes? t "java = \"temurin-27\""))
-        (is (= 1 (count (re-seq #"THE JDK, WRITTEN BY THE KIT" t))))))
-    (testing "no java line: said, nothing written"
-      (is (= {:text "[tools]\nclojure = \"1\"\n" :missed ["the java line under [tools]"]}
-             (ps/with-java "[tools]\nclojure = \"1\"\n" "temurin-25"))))))
+        (is (= 1 (count (re-seq #"THE VERSIONS UNDER \[tools\] ARE THE KIT'S" t))))))))
 
-(deftest the-dockerfile-takes-both-images-and-the-tailwind-version
-  (let [{:keys [text missed]} (ps/with-images dockerfile the-set)]
+(deftest what-the-mise-file-lacks-is-said-never-added
+  (testing "a tool with no line"
+    (let [r (ps/with-tools (str/replace fixture/mise "cljfmt = \"0.16.5\"\n" "") (:tools the-set))]
+      (is (= ["the cljfmt line under [tools]"] (:missed r)))
+      (is (not (str/includes? (:text r) "cljfmt = \"0.16.6\"")))))
+  (testing "the template's sentence reworded: said, so a template release that rewrites it is seen"
+    (let [r (ps/with-tools (str/replace fixture/mise "stay on 21" "keep to 21") (:tools the-set))]
+      (is (= ["the template's sentence on the JDK"] (:missed r)))))
+  (testing "no [tools] table: said, nothing written"
+    (is (= {:text "[alias]\n" :missed ["the [tools] table"]} (ps/with-tools "[alias]\n" (:tools the-set))))))
+
+(deftest the-dockerfile-takes-both-images-and-the-bb-and-tailwind-versions
+  (let [{:keys [text missed]} (ps/with-images fixture/dockerfile the-set)]
     (is (= [] missed))
     (is (str/includes? text "FROM clojure:temurin-25-tools-deps-1.12.6.1673-alpine AS build\n") "the stage's name kept")
     (is (str/includes? text "FROM eclipse-temurin:25.0.4.1_1-jre-alpine\n"))
+    (is (str/includes? text "ARG BB_VERSION=1.13.226\n"))
     (is (str/includes? text "ARG TAILWIND_VERSION=v4.3.3\n"))
-    (is (str/includes? text "ARG BB_VERSION=1.12.206") "what the set does not name kept")
     (is (= text (:text (ps/with-images text the-set))) "written twice is written once")
     (testing "a project's own FROM is kept, and said"
       (let [r (ps/with-images "FROM ubuntu:24.04 AS build\nFROM eclipse-temurin:21-jre\n" the-set)]
         (is (= "FROM ubuntu:24.04 AS build\nFROM eclipse-temurin:25.0.4.1_1-jre-alpine\n" (:text r)))
-        (is (= ["the build stage's FROM clojure:temurin-..." "ARG TAILWIND_VERSION"] (:missed r)))))))
+        (is (= ["the build stage's FROM clojure:temurin-..." "ARG BB_VERSION" "ARG TAILWIND_VERSION"] (:missed r)))))))
 
 (deftest the-gitignore-gains-the-local-mise-file-once
   (is (= "/target\n.mise.local.toml\n" (:text (ps/with-ignore "/target\n"))))
@@ -77,10 +71,10 @@
 (deftest write-says-what-changed-and-what-it-could-not-find
   (let [app (str (fs/create-temp-dir {:prefix "project-set"}))]
     (try
-      (spit (str (fs/path app ".mise.toml")) mise)
-      (spit (str (fs/path app "Dockerfile")) dockerfile)
+      (spit (str (fs/path app ".mise.toml")) fixture/mise)
+      (spit (str (fs/path app "Dockerfile")) fixture/dockerfile)
       (is (= {:changed [".mise.toml" "Dockerfile"] :missed [".gitignore: none in the application"]} (ps/write! app the-set)))
-      (spit (str (fs/path app ".gitignore")) "/target\n")
+      (spit (str (fs/path app ".gitignore")) fixture/gitignore)
       (is (= {:changed [".gitignore"] :missed []} (ps/write! app the-set)) "the rest already written")
       (is (= {:changed [] :missed []} (ps/write! app the-set)))
       (finally (fs/delete-tree app)))))

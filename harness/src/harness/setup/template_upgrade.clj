@@ -306,8 +306,7 @@
     (let [{:keys [changed missed]} (project-set/write! wt)]
       (when (seq changed)
         (apply git! wt nil "add" "--" changed)
-        (git! wt nil "commit" "-q" "-m" (str "KIT " release ": the versions the KIT tests - .mise.toml's java line, "
-                                             "the Dockerfile's images, .mise.local.toml ignored"))
+        (git! wt nil "commit" "-q" "-m" (str "KIT " release ": the versions the KIT tests - " ".mise.toml's [tools], the Dockerfile's images and versions, .mise.local.toml ignored"))
         (say (str "the KIT's tested set written on the branch: " (str/join ", " changed))))
       (when (seq missed)
         (say (str "the KIT's tested set left alone where the application differs: " (str/join "; " missed)))))))

@@ -193,8 +193,8 @@
   ;; commit of its own, the template branch still at the untouched tree
   (let [ws (str (fs/real-path (fs/create-temp-dir)))
         app-dir (str (fs/path ws "xyx-app"))
-        the-set {:java "temurin-25" :build-image "clojure:temurin-25-tools-deps-1.12.6.1673-alpine"
-                 :runtime-image "eclipse-temurin:25.0.4.1_1-jre-alpine" :tailwindcss "4.3.3"}]
+        the-set {:tools {:java "temurin-25" :babashka "1.13.226" :tailwindcss "4.3.3"} :build-image "clojure:temurin-25-tools-deps-1.12.6.1673-alpine"
+                 :runtime-image "eclipse-temurin:25.0.4.1_1-jre-alpine"}]
     ((app/app-fn pin {:app-name "xyx" :git-env git-env :project-set the-set
                       :run (generator (atom []) {"deps.edn" "{}" "src/xyx/core.clj" "(ns xyx.core)"
                                                  ".mise.toml" "[tools]\njava = \"temurin-21\"\n"

@@ -15,8 +15,8 @@
   the KIT's first page in place of the template's (`home-page`). Nothing else: the
   fork carries what an application needs on its own, and what exists because of
   the harness stays out of the application. The third, when it changes anything, is the
-  versions the KIT tests (`harness.setup.project-set`): `.mise.toml`'s java line, the Dockerfile's
-  images, `.mise.local.toml` ignored. And one branch, `template`, left at the
+  project's toolchain, which the KIT owns (`harness.setup.project-set`): `.mise.toml`'s [tools], the
+  Dockerfile's images and versions, `.mise.local.toml` ignored. And one branch, `template`, left at the
   first commit: the old side of every template upgrade (`harness.setup.template-upgrade`).
 
   THE FIRST PAGE IS THE KIT'S, AND THE FORK STAYS NEUTRAL. The template's own page
@@ -228,7 +228,7 @@
         (when (seq changed)
           (apply git "add" "--" changed)
           (git "commit" "-q" "-m" (str "The versions the KIT tests, from its project-set.edn: "
-                                       ".mise.toml's java line, the Dockerfile's images, .mise.local.toml ignored")))
+                                       ".mise.toml's [tools], the Dockerfile's images and versions, .mise.local.toml ignored")))
         (when (seq missed)
           (println (str "The KIT's tested set was not written in full - " (str/join "; " missed)
                         ". The template generated these otherwise: set by hand what should be.")))))))

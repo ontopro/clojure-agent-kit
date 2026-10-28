@@ -11,6 +11,7 @@
    [harness.setup.init :as init]
    [harness.setup.skills :as skills]
    [harness.setup.template :as template]
+   [harness.setup.template-fixture :as fixture]
    [harness.setup.upgrade :as upgrade]
    [harness.setup.upgrade-run :as ur]
    [harness.setup.workspace :as workspace]))
@@ -90,7 +91,8 @@
 
 (def generated-files
   {"deps.edn" "{:deps {}}\n" "src/xyx/core.clj" "(ns xyx.core)\n"
-   "src/xyx/views.clj" (str "(ns xyx.views)\n\n(defn base [c] [:html c])\n\n(def home-page\n  (base [:h1 \"Welcome to Clojure Stack Lite\"]))\n")})
+   "src/xyx/views.clj" (str "(ns xyx.views)\n\n(defn base [c] [:html c])\n\n(def home-page\n  (base [:h1 \"Welcome to Clojure Stack Lite\"]))\n")
+   ".mise.toml" fixture/mise "Dockerfile" fixture/dockerfile ".gitignore" fixture/gitignore})
 
 (defn- workspace!
   "A workspace made by `bb init` from the fake KIT at 0.6.4, the project then at work: the

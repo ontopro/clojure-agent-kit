@@ -1,20 +1,26 @@
-;; THE SET THE KIT WRITES INTO A PROJECT: the versions `bb init` and `bb upgrade` put into the
+;; THE SET THE KIT WRITES INTO A PROJECT: the project's whole toolchain, which the KIT owns (the
+;; person, 2026-10-28: "KIT owns whole tools set"). `bb init` and `bb upgrade` write it into the
 ;; application, over what the pinned template generated, as a commit of their own
-;; (`harness.setup.project-set`). Hand-written, and the one place each is written: `bb health`
-;; builds the generated application's image from it, and `bb health --record` copies the set it
-;; proved into `known-good.edn` as `:project` (plan 7.0, item 7.4).
+;; (`harness.setup.project-set`); the template's own numbers are placeholders the KIT overwrites.
+;; Hand-written, and the one place each value is written: `bb health` builds the generated
+;; application's image from it, and `bb health --record` copies the set it proved into
+;; `known-good.edn` as `:project` (plan 7.0, item 7.4).
 ;;
-;;   :java          the application's `.mise.toml` java line. mise runs exactly the version a
-;;                  file names (it takes no range for java), so this is the project's default,
-;;                  not a floor: 21 and newer works, and an adopter on 21 says so in a
-;;                  gitignored `.mise.local.toml`, which mise reads over the project's file
-;;   :build-image   the Dockerfile's build stage: Temurin 25 with the Clojure CLI of
-;;                  `known-good.edn`
+;;   :tools         every line under `.mise.toml`'s [tools], by mise's name for the tool. The
+;;                  values are the ones the KIT's own gates run (`known-good.edn`). java: mise
+;;                  runs exactly the version a file names (it takes no range for java), so this is
+;;                  the project's default, not a floor - 21 and newer works, and an adopter on 21
+;;                  says so in a gitignored `.mise.local.toml`, which mise reads over the file
+;;   :build-image   the Dockerfile's build stage: Temurin 25 with the Clojure CLI of :tools
 ;;   :runtime-image the Dockerfile's runtime stage: Docker Hub's newest Temurin 25 JRE on Alpine
-;;   :tailwindcss   the CSS build's version, as the template's `.mise.toml` pins it; the
-;;                  Dockerfile's `TAILWIND_VERSION` is written to match
+;;
+;; The Dockerfile's `BB_VERSION` and `TAILWIND_VERSION` are written from :tools as well.
 
-{:java "temurin-25"
+{:tools {:java "temurin-25"
+         :clojure "1.12.6.1673"
+         :babashka "1.13.226"
+         :clj-kondo "2026.08.04"
+         :cljfmt "0.16.6"
+         :tailwindcss "4.3.3"}
  :build-image "clojure:temurin-25-tools-deps-1.12.6.1673-alpine"
- :runtime-image "eclipse-temurin:25.0.4.1_1-jre-alpine"
- :tailwindcss "4.3.3"}
+ :runtime-image "eclipse-temurin:25.0.4.1_1-jre-alpine"}
