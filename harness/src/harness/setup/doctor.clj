@@ -291,7 +291,10 @@
                  (and (= :ok status) other-major? (nil? pin))
                  (conj (str "major " prefer " is preferred, the one the KIT tests on; " (major version) " works - " min " and newer"))
                  (and (= :ok status) other-major? pin)
+                 ;; THE SHELL'S TOOL MANAGER PICKS THE JDK, NEVER THE HARNESS (the person, 2026-10-28: a
+                 ;; tooling concern) - the note names the two that read a pin
                  (conj (str (:source pin) " names " (:pin pin) "; " (major version) " is what runs here, and works - " min " and newer"
+                            "; to run " prefer " here, mise activated in the shell (`mise activate`) or jenv's `jenv local " prefer "`"
                             (when-not (str/includes? (:source pin) "local")
                               (str "; for " (major version) " as this machine's default, `java = \"temurin-" (major version)
                                    "\"` in .mise.local.toml"))))

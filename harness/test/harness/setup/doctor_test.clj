@@ -188,6 +188,7 @@
           (is (= :ok (:status r)) "the KIT's 25 in the project, 21 running: works")
           (is (:not-preferred? r))
           (is (str/includes? (:note r) (str ".mise.toml names temurin-25; 21 is what runs here, and works - 21 and newer; "
+                                            "to run 25 here, mise activated in the shell (`mise activate`) or jenv's `jenv local 25`; "
                                             "for 21 as this machine's default, `java = \"temurin-21\"` in .mise.local.toml"))))
         (let [r (probe "21.0.13" (pin 21 ".mise.local.toml"))]
           (is (= :ok (:status r)))
@@ -195,7 +196,9 @@
           (is (nil? (:note r))))
         (let [r (probe "25.0.5" (pin 21 ".mise.local.toml"))]
           (is (:not-preferred? r))
-          (is (= ".mise.local.toml names temurin-21; 25 is what runs here, and works - 21 and newer" (:note r))
+          (is (= (str ".mise.local.toml names temurin-21; 25 is what runs here, and works - 21 and newer; "
+                      "to run 21 here, mise activated in the shell (`mise activate`) or jenv's `jenv local 21`")
+                 (:note r))
               "no advice to write the file that already says it"))
         (is (nil? (:note (probe "25.0.5" (pin 25 ".mise.toml")))))
         (is (= :too-old (:status (probe "17.0.9" (pin 17 ".mise.local.toml")))) "the floor is the KIT's, whatever a pin says")))))
