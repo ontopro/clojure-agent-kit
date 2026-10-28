@@ -43,14 +43,15 @@ the template fork's tags and version the template, not the KIT.
 3. The tag's documents: its heading here, with its line - what the plan added, and anything a
    workspace made before it needs - and the root README's sentence naming the current tag.
 4. On the commit the tag will name: `bb repair && bb gates` green, then `bb docker-gates` run by
-   hand and green - the gates on a clone of that commit inside a machine that has only the
-   toolchain, which is the fresh-machine check until a workflow runs it on push.
+   hand and green - the gates on a clone of that commit in the KIT's toolchain image, a fresh
+   Linux machine in Docker with only the KIT's toolchain: the check on a fresh machine until a
+   workflow runs it on push.
 5. The merge, the tag and the push, by the person.
 
 `bb tag-check <tag>` at the root is this list's mechanism: a line per check and no tag unless
 every one holds. `bb tag-check <tag> --run` does steps 2 and 4 where they are stale, stopping for
 the commit between them; `--landed` checks origin after step 5. bear-claw's secrets scan stays a
-step by hand, named there, and so does Docker Scout's scan of the fresh-machine image (a Docker
+step by hand, named there, and so does Docker Scout's scan of the KIT's toolchain image (a Docker
 login): `docker scout cves local://clojure-agent-kit-toolchain:<as-of> --only-severity critical,high`.
 
 **The toolchain's pins move at a plan's start, not before its tag.** `bb toolchain-newer` lists
@@ -63,6 +64,14 @@ tested" stays information for an adopter, never a block.
 ---
 
 ## 2026-10-28 (plan 7.0)
+
+### The name in three live places 8.1a left (From Fable 5.1's read of `25d5092`)
+
+Live text, not history, still said "fresh machine" where an adopter or a session reads it: `NOTES.md`'s
+"No CI" paragraph, the help text of `bb security-review --kit` - the one place an adopter meets the
+name with no README near - and this file's head checklist, its step 4 and the Docker Scout line under it. Each now
+says "the KIT's toolchain image", with its explanation where it is the first mention. The dated
+entries below, and `NOTES.md`'s rows, keep their words.
 
 ### One name for the image the KIT is checked in: the KIT's toolchain image (plan 7.0, item 8.1a)
 
