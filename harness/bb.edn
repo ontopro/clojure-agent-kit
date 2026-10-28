@@ -32,14 +32,15 @@
         ;; dev/ too: dev/example.clj has its own test through `bb example`. And the security
         ;; pack's judgements, which are pure and tested here: the pack runs on its own bb.edn; the browser
         ;; pack's judgement of a measured page, likewise; and the SVG
-        ;; pack's trace, whose fitting is pure (its command reads PNGs on the JVM)
-        :extra-paths ["test" "dev" "../tools/security/src" "../tools/browser/src" "../tools/svg/src"]
+        ;; pack's trace, whose fitting is pure (its command reads PNGs on the JVM); and the
+        ;; toolchain pack's reading of its download matrix
+        :extra-paths ["test" "dev" "../tools/security/src" "../tools/browser/src" "../tools/svg/src" "../tools/toolchain/src"]
         ;; a failure throws with the failing tests by name, which `gates` writes into its record
         :requires ([harness.gates.record :as record])
         :task (record/run-tests! (test-nses))}
 
   fmt {:doc "Format with cljfmt"
-       :task (shell "cljfmt fix src test dev ../tools/security/src ../tools/browser/src ../tools/svg/src")}
+       :task (shell "cljfmt fix src test dev ../tools/security/src ../tools/browser/src ../tools/svg/src ../tools/toolchain/src")}
 
   ;; Gate 0 for work done beside the loop. NOT part of `gates` — gate 0 runs
   ;; before the gate sequence, not inside it.
@@ -89,10 +90,10 @@
                :task (apply health/sync-main *command-line-args*)}
 
   fmt-check {:doc "Check formatting (no changes)"
-             :task (shell "cljfmt check src test dev ../tools/security/src ../tools/browser/src ../tools/svg/src")}
+             :task (shell "cljfmt check src test dev ../tools/security/src ../tools/browser/src ../tools/svg/src ../tools/toolchain/src")}
 
   lint {:doc "Lint with clj-kondo"
-        :task (shell "clj-kondo --lint src test dev ../tools/security/src ../tools/browser/src ../tools/svg/src")}
+        :task (shell "clj-kondo --lint src test dev ../tools/security/src ../tools/browser/src ../tools/svg/src ../tools/toolchain/src")}
 
   rules-sync {:doc "Regenerate every rule mirror - resources/rule-mirrors.edn, ../rule-mirrors.edn and the workspace's, where they exist - or the paths given, from resources/agent-rules.edn. [--workspace <dir>] for a KIT kept outside its workspace (or KIT_WORKSPACE)"
               :requires ([harness.rules :as rules])
@@ -155,7 +156,6 @@
   next {:doc "bb next [--where [--edn | --full] [--since <YYYY-MM-DD>]] [--workspace <dir>]: the workflow's next step, its owner and the command or skill to run, from five facts that are files - a workspace, the plan check, the stage's gates record, its blueprint's review and sign-off, its packets' merged records; setup before a workspace exists, scoping in one with no brief yet. --where: where the project stands first - phase, stage, goal, what is done and open, where a phase, a step, the project plan and each kind of ID are defined; --where --full: the fuller account a person reads, from the same map; --where --edn: the same and more as one EDN map - the phases, every stage with its money and days, what waits on the person, what changed since a date (harness.setup.where)"
         :requires ([harness.setup.where :as where])
         :task (apply where/-main *command-line-args*)}
-
 
   roadmap-page {:doc "bb roadmap-page [--workspace <dir>]: the project's roadmap, drawn, into the workspace's work/where/ - roadmap.svg (five phase lanes, a box per stage by state, the money bar, open decisions and risks as badges) and roadmap.html, which carries it with what waits on the person, money and time, what changed since the last report, what is open, what is next; from bb next --where --edn's map, never committed; each page kept under its time (roadmap-<stamp>.html and .svg, roadmap.html the newest copy) and a line added to work/where/reports.edn, which the next counts from (harness.setup.roadmap-page)"
                 :requires ([harness.setup.roadmap-page :as roadmap-page])

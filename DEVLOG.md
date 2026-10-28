@@ -65,6 +65,28 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-28 (plan 7.0)
 
+### The toolchain pack's first step: the download matrix, `status`, `toolchain-sum` (plan 7.0, item 8.1b)
+
+The KIT's tools move from "installed by the person, versions recorded" to "held by the KIT at exact
+versions and checksums", and the first step is the one place those versions are written:
+`tools/toolchain/download-matrix.edn`, a fourth tool pack, because the toolchain is tooling, never
+the harness (the person, 2026-10-28: "cljfmt, clojure, MCP light are all tooling."). Per tool its
+exact version and, for each of four platforms, the archive and its sha256: Babashka 1.13.226,
+Temurin 25.0.5+8, clj-kondo 2026.08.04, the official Clojure CLI's tools tarball 1.12.6.1673, and,
+for the KIT's toolchain image only (`:image-only`), git 2.56.0's source and geckodriver 0.37.1 for
+Linux. Every sha256 was pasted from `bb --config tools/toolchain/bb.edn toolchain-sum <tool>`,
+which fetched all 16 archives and took each one's sha256 from the archive itself: 13 match the
+publisher's checksum file (Babashka's and clj-kondo's `.sha256`, Temurin's `.sha256.txt`,
+kernel.org's `sha256sums.asc`); geckodriver publishes none, so its two are computed and said so;
+the Clojure tarball's matches the one the official `posix-install.sh` embeds (Fable 5.1's design
+note, verified there). `status [--edn]` lists the tools this machine takes, where the pack puts them
+(`~/.kit/toolchain/<tool>/<version>/`, or `KIT_TOOLCHAIN_DIR`) and whether they are there - none
+yet: the install is 8.1c. The harness requires none of it; `bb doctor` will read `status --edn`
+as a subprocess in 8.2e. Tests: `toolchain-download-matrix-test` (the four platforms and a fifth
+refused, every URL filled with a sha256, the image-only rule, the matrix at or above the
+environment table's floors, the cache paths, a publisher's checksum read out of a list, the status
+rows, `toolchain-sum`'s verdicts).
+
 ### The name in three live places 8.1a left (From Fable 5.1's read of `25d5092`)
 
 Live text, not history, still said "fresh machine" where an adopter or a session reads it: `NOTES.md`'s

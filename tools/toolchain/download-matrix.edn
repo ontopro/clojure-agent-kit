@@ -1,0 +1,73 @@
+;; THE DOWNLOAD MATRIX - what the toolchain pack fetches, at which exact version, from where, and the
+;; sha256 each archive must have. The one place these versions are written (plan 7.0, item 8.1):
+;; the install, the KIT's toolchain image and `bb toolchain-newer` read them here. Plain EDN, so a
+;; release's tag is readable without its code.
+;;
+;;   :url            the archive, `{version}` and `{asset}` filled - and Temurin's two spellings of
+;;                   its version, `{version-url}` (+ as %2B) and `{version-file}` (+ as _)
+;;   :checksum-url   the publisher's checksum file, where it publishes one
+;;   :platforms      per platform, the asset's spelling and its sha256; a tool without them has one
+;;                   archive for every platform and its :sha256 beside :url
+;;   :bin            the executable, under <cache>/<tool>/<version>/ - for the JDK, under its :home
+;;   :image-only     installed only where named (`--only`): the KIT's toolchain image names them
+;;
+;; A sha256 is pasted from `toolchain-sum <tool>`, which takes it from the archive itself and sets it
+;; beside the publisher's: a version moves with its sha256s, by the person, as a pin move does.
+;; The floors a machine must meet stay in harness/resources/toolchain.edn (:min); a test holds bb
+;; and java here at or above them. cljfmt and clojure-mcp-light are the pack's bb.edn :deps.
+{:bb {:version "1.13.226"
+      :url "https://github.com/babashka/babashka/releases/download/v{version}/babashka-{version}-{asset}.tar.gz"
+      :checksum-url "https://github.com/babashka/babashka/releases/download/v{version}/babashka-{version}-{asset}.tar.gz.sha256"
+      :unpack :tar.gz
+      :bin "bb"
+      :platforms {:macos-aarch64 {:asset "macos-aarch64" :sha256 "584f8679022d9f23f897fcb6ebb3f6c05508483c34b555a6730fd38bf620a5a2"}
+                  :macos-amd64 {:asset "macos-amd64" :sha256 "a86e99ccffdb468a9f059dd1658063b97cd68c071e8581289fb9a0ac8fb72db8"}
+                  :linux-aarch64 {:asset "linux-aarch64-static" :sha256 "85d62914ce1183634e9f81db67ec8e4db41f927ab8caf5b92076da9e46fda679"}
+                  :linux-amd64 {:asset "linux-amd64-static" :sha256 "bf89e909c4025edf2d669921c81107435b7244840d8f4306f58439c328a342f9"}}}
+
+ :java {:version "25.0.5+8"
+        :url "https://github.com/adoptium/temurin25-binaries/releases/download/jdk-{version-url}/OpenJDK25U-jdk_{asset}_hotspot_{version-file}.tar.gz"
+        :checksum-url "https://github.com/adoptium/temurin25-binaries/releases/download/jdk-{version-url}/OpenJDK25U-jdk_{asset}_hotspot_{version-file}.tar.gz.sha256.txt"
+        :unpack :tar.gz
+        :home {:macos "jdk-{version}/Contents/Home" :linux "jdk-{version}"}
+        :bin "bin/java"
+        :platforms {:macos-aarch64 {:asset "aarch64_mac" :sha256 "36dc14d797aaff6d89aab302cd053fdba6207dfdcf772052fa7b023a94b0e857"}
+                    :macos-amd64 {:asset "x64_mac" :sha256 "32cd4d2151c91aa00d0fc911edfd05245ed40fa6b1aa894d5f35c928cd67a59d"}
+                    :linux-aarch64 {:asset "aarch64_linux" :sha256 "bb5b2ded252f21c6090cf780b0a408ad0d83bbb557e702955643557f13231880"}
+                    :linux-amd64 {:asset "x64_linux" :sha256 "68982529869257d0ee6b824ec5aa270ff8b118bb438670da0b97ebdab178d7fb"}}}
+
+ :clj-kondo {:version "2026.08.04"
+             :url "https://github.com/clj-kondo/clj-kondo/releases/download/v{version}/clj-kondo-{version}-{asset}.zip"
+             :checksum-url "https://github.com/clj-kondo/clj-kondo/releases/download/v{version}/clj-kondo-{version}-{asset}.zip.sha256"
+             :unpack :zip
+             :bin "clj-kondo"
+             :platforms {:macos-aarch64 {:asset "macos-aarch64" :sha256 "8fe3a57820890a35d843599097276f56ce483a1501abd7f68edd1897770f1559"}
+                         :macos-amd64 {:asset "macos-amd64" :sha256 "594b964e1d1d21da66d7505fe2fbd3dec08af95ace788808588ae56a049f3d66"}
+                         :linux-aarch64 {:asset "linux-aarch64" :sha256 "9ef3add2c69a24cc5f40b07829f23407b36bba021c4345f4587fb6d51533ee25"}
+                         :linux-amd64 {:asset "linux-static-amd64" :sha256 "25dce55f597cc7f034f6c5f8bf4195128e3efeb3b22710a066fb67b489e70a3b"}}}
+
+ ;; the official Clojure CLI's tools tarball, laid out by the pack as posix-install.sh does (8.1c);
+ ;; its publisher's checksum is the one posix-install.sh embeds, not a file of its own
+ :clojure {:version "1.12.6.1673"
+           :url "https://download.clojure.org/install/clojure-tools-{version}.tar.gz"
+           :sha256 "fe9194858e75d5af13c2e2aff92d710674d5bc5105f2b42f90a7d94d82ec023c"
+           :unpack :tar.gz
+           :bin "bin/clojure"}
+
+ ;; the KIT's toolchain image builds git from its source; never installed on a machine
+ :git {:version "2.56.0"
+       :url "https://mirrors.edge.kernel.org/pub/software/scm/git/git-{version}.tar.xz"
+       :checksum-url "https://mirrors.edge.kernel.org/pub/software/scm/git/sha256sums.asc"
+       :sha256 "26c56c296b38c0695b26fa95f475f1d01704d2d38e73465ca30b0b2f5dc789d3"
+       :unpack :tar.xz
+       :bin "bin/git"
+       :image-only true}
+
+ ;; the image's browser fallback; on a machine, geckodriver and Firefox stay the adopter's own
+ :geckodriver {:version "0.37.1"
+               :url "https://github.com/mozilla/geckodriver/releases/download/v{version}/geckodriver-v{version}-{asset}.tar.gz"
+               :unpack :tar.gz
+               :bin "geckodriver"
+               :image-only true
+               :platforms {:linux-aarch64 {:asset "linux-aarch64" :sha256 "8fd90b951422fbad5b56539fb344dff66eb3f986d615d8d6fde9f1f62dad610c"}
+                           :linux-amd64 {:asset "linux64" :sha256 "e815130ea95983e162ae91843b48d3a3ce991735635fce83a647afde21e09f7e"}}}}
