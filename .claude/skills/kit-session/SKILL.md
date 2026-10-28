@@ -31,6 +31,11 @@ Two sessions work in this folder. A seat is a role, not a model: the prompt that
 its seat, and the plan's Task Status names the model per item - design-heavy work to Fable 5.1, the
 rest to Opus 5.5, the other model reading.
 
+The reading session is started by the person, in a tab of its own at the root, from its definition
+`.claude/agents/kit-reader.md` (its model, its tools and a fixed brief that points here):
+`claude --agent kit-reader -n kit-reader --model fable` - `--model` names the item's reading model.
+The writer finds it by `ListAgents` and sends it its own session name; the two talk by `SendMessage`.
+
 | Seat | Does | Never |
 |---|---|---|
 | **The KIT session** (writes) | edits the tracked files and the plan file, runs the gates, commits; sends each design and each commit to be read; relays each read to the person with the scope it proposes; writes the item's documents, the read marks and the plan's memory index line | commits a fix the person has not said go to; starts an item without the person's go on its scope |
@@ -69,6 +74,13 @@ Said plainly:
 - The independence is by context, not by family - the person runs one seat: the reader never writes
   and never sees the writer's reasoning, only its design and its diff. So two tabs, never one tab
   switching `/model`, which would read its own reasoning.
+- The reader is not the writer's teammate. Spawned as one (an `Agent` call with a name, under agent
+  teams), it worked, and was set aside (2026-10-28): the writer wrote its brief, and every turn of it
+  sent the writer an idle notice carrying its reply - its words to the person too. Its own tab has
+  neither, is a process of its own that the writer's restart leaves running, and the definition keeps
+  the brief fixed.
+- The writer's own subagents do legwork - a search, a trial in a scratch copy - never a read: they
+  know only the prompt the writer wrote them.
 - A read is a reading, as `bb plan-review` is, not a gate. `bb gates` and the pre-commit hook are.
 - A session with no seat named asks which before it reads or writes.
 
