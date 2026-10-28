@@ -230,6 +230,10 @@
            :requires ([harness.models.profile :as profile])
            :task (apply profile/-main *command-line-args*)}
 
+  roster-sync {:doc "Write roster.md's Model column from the shipped claude example (resources/profiles/claude.edn); a test holds the file to it"
+               :requires ([harness.models.profile :as profile])
+               :task (profile/roster-sync-main)}
+
   sigs {:doc "Check a task spec's :deps-sigs against its :files/context (EDN on stdin), read from the workspace's application ([--dir <app>] for another)"
         :requires ([harness.contract.sigs :as sigs]
                    [harness.setup.workspace :as workspace])

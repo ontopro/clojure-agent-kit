@@ -386,6 +386,68 @@
            [(str/replace (fs/file-name f) #"\.edn$" "")
             (read-profile f)]))))
 
+;; ---------------------------------------------------------------------------
+;; the roster's Model column, written from the shipped `claude` example
+;; ---------------------------------------------------------------------------
+;; `roster.md` maps every act of a build to its actor, and its Model column said the `claude`
+;; example's models by hand - and fell behind it for twelve days (register row 235). The column
+;; is written from the profile now, and a test holds the file to it.
+
+(defn- route
+  "How a role is reached, as the roster says it."
+  [{:keys [endpoint params]}]
+  (cond (str/includes? endpoint "api.anthropic.com") "direct to Anthropic"
+        (str/includes? endpoint "generativelanguage.googleapis.com") "direct to Google"
+        (str/includes? endpoint "openrouter.ai")
+        (if-let [only (seq (get-in params [:provider :only]))]
+          (str "OpenRouter pinned to " (str/join ", " (map #(str "`" % "`") only)))
+          "OpenRouter")
+        :else endpoint))
+
+(defn- model-text [{:keys [model params max-rounds] :as role}]
+  (str/join ", " (remove nil? [(str "`" model "`")
+                               (or (:reasoning_effort params) (get-in params [:output_config :effort]))
+                               (route role)
+                               (when max-rounds (str max-rounds " rounds"))])))
+
+(defn roster-model
+  "The roster's Model cell for `role` of `profile`: the model, its effort, its route; for
+  `:security-panel` (or `:security-reviewer`) every member in rotation order, one of the Coder's
+  family said to be left out."
+  [profile role]
+  (if (#{:security-panel :security-reviewer} role)
+    (let [out (set (map :name (:left-out (panel-split profile))))]
+      (str "in rotation: "
+           (str/join "; " (for [m (security-panel profile)]
+                            (str (model-text m) (when (out (:name m)) " - left out while it is the Coder's family"))))))
+    (model-text (get-in profile [:roles role]))))
+
+(defn render-roster
+  "`text` (the roster) with the Model cell of every table row whose Profile role cell names a role
+  of `profile` - its first backquoted keyword - written from the profile. Every other byte kept."
+  [text profile]
+  (->> (str/split text #"\n" -1)
+       (map (fn [line]
+              (if-not (str/starts-with? line "| ")
+                line
+                (let [cells (str/split (subs line 2 (- (count line) 2)) #" \| " -1)
+                      role (some->> (get cells 3) (re-find #"`:([a-z-]+)`") second keyword)]
+                  (if (and (= 6 (count cells)) role
+                           (or (get-in profile [:roles role]) (#{:security-panel} role)))
+                    (str "| " (str/join " | " (assoc (vec cells) 4 (roster-model profile role))) " |")
+                    line)))))
+       (str/join "\n")))
+
+(defn roster-sync-main
+  "`bb roster-sync`: `roster.md`'s Model column written from the shipped `claude` example."
+  [& _]
+  (let [f "roster.md"
+        before (slurp f)
+        after (render-roster before (get (examples) "claude"))]
+    (if (= before after)
+      (println "roster.md: the Model column is the claude example's already")
+      (do (spit f after) (println "roster.md: the Model column written from resources/profiles/claude.edn")))))
+
 (defn -main
   "bb profile — check a profile.
 

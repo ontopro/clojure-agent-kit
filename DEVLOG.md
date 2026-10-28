@@ -65,6 +65,20 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-28 (plan 7.0)
 
+### The roster's Model column is written from the profile, and a test holds it (plan 7.0, item 1.8, register row 235)
+
+The person, 2026-10-28, asked whether something should hold `roster.md` to the profile so it cannot
+fall behind again: "Yes". The Model column had said the `claude` example's models by hand and was
+twelve days behind it. `profile/render-roster` writes the cell of every table row whose Profile role
+names a role of the profile - the model, its effort, its route (direct to Anthropic, direct to
+Google, OpenRouter pinned to its host), a Tester's rounds, the security panel in rotation with the
+member of the Coder's family said to be left out - and keeps every other byte; `bb roster-sync`
+writes it, and `profile_test`'s `the-roster-says-the-claude-examples-models` fails the gates when
+the file differs. A test rather than a new gate: the check is one comparison, and the test suite is
+already in `bb gates`. Two cells lost hand-written words to it: the plan review's "the spec
+reviewer's selection by default" moved to its Notes, and security routing's "as Triage above" is
+now the orchestrator's model itself. Row 235 closed.
+
 ### The build docs' profile sentence and the panel's third member (From Fable 5.1's read of `07270b2`)
 
 `build-docs/03-method-and-tooling.md`'s instruction above the role table still sent the shipped

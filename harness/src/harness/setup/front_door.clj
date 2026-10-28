@@ -41,6 +41,7 @@
   and syncs, the security reviewer's fixture and its scoring, the tour, the REPL,
   and the two setup commands run from the clone before a workspace exists."
   #{"gates" "test" "fmt" "fmt-check" "lint" "repair" "inventory-sync" "health-sync"
+    "roster-sync"
     "bake-off-check" "security-fixture" "security-score" "security-bake-off"
     "example" "dev" "init" "health"})
 

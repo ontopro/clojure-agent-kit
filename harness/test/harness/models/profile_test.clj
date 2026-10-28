@@ -384,3 +384,22 @@
     (is (= (cond-> ["gpt-6-astra" "gemini-4-argon"] (= "claude" nm) (conj "gpt-6.1-sol"))
            (mapv :name (profile/security-panel p))) nm)
     (is (= ["gemini-4-argon"] (mapv :name (:left-out (profile/panel-split p)))) (str nm ": the Coder is Argon"))))
+
+(deftest the-roster-says-the-claude-examples-models
+  ;; roster.md's Model column fell behind the shipped profile for twelve days (register row 235);
+  ;; `bb roster-sync` writes it from the profile, and this holds the file to it.
+  (let [text (slurp "roster.md")
+        claude (get (profile/examples) "claude")]
+    (is (= text (profile/render-roster text claude))
+        "roster.md's Model column is not the claude example's - run `bb roster-sync` in harness/")
+    (testing "a cell as the roster says it"
+      (is (= "`gemini-4-argon`, medium, direct to Google" (profile/roster-model claude :coder)))
+      (is (= "`claude-sonnet-5-5`, medium, direct to Anthropic, 40 rounds" (profile/roster-model claude :tester)))
+      (is (str/includes? (profile/roster-model claude :security-panel)
+                         "`google/gemini-4-argon`, high, OpenRouter pinned to `google-vertex` - left out while it is the Coder's family")))
+    (testing "a drifted cell is caught, and nothing else of a row is touched"
+      (let [row "| Coding | per run | dispatched role | `:coder` | `someone/else`, low | its own worktree |"]
+        (is (= "| Coding | per run | dispatched role | `:coder` | `gemini-4-argon`, medium, direct to Google | its own worktree |"
+               (profile/render-roster row claude)))
+        (is (= "| The person | approvals | human | none | — | x |"
+               (profile/render-roster "| The person | approvals | human | none | — | x |" claude)))))))
