@@ -182,8 +182,40 @@
       (is (str/includes? (:note r) "major 25 is preferred, the one the KIT tests on; 21 works - 21 and newer")))
     (is (= :ok (:status (probe "27.0.1"))) "newer works")
     (is (= :too-old (:status (probe "17.0.9"))) "below the floor")
-    (is (= :ok (:status (probe "25.0.5" {:java {:major 21 :pin "temurin-21" :version "21" :source ".mise.toml"}})))
-        "a project's pin of 21 is a floor 25 is above")))
+    (testing "a project's pin is its preferred major, never a floor (plan 7.0, item 7.4.3)"
+      (let [pin (fn [m src] {:java {:major m :pin (str "temurin-" m) :version (str m) :source src}})]
+        (let [r (probe "21.0.13" (pin 25 ".mise.toml"))]
+          (is (= :ok (:status r)) "the KIT's 25 in the project, 21 running: works")
+          (is (:not-preferred? r))
+          (is (str/includes? (:note r) (str ".mise.toml names temurin-25; 21 is what runs here, and works - 21 and newer; "
+                                            "for 21 as this machine's default, `java = \"temurin-21\"` in .mise.local.toml"))))
+        (let [r (probe "21.0.13" (pin 21 ".mise.local.toml"))]
+          (is (= :ok (:status r)))
+          (is (not (:not-preferred? r)) "the adopter chose 21 locally: nothing to say")
+          (is (nil? (:note r))))
+        (let [r (probe "25.0.5" (pin 21 ".mise.local.toml"))]
+          (is (:not-preferred? r))
+          (is (= ".mise.local.toml names temurin-21; 25 is what runs here, and works - 21 and newer" (:note r))
+              "no advice to write the file that already says it"))
+        (is (nil? (:note (probe "25.0.5" (pin 25 ".mise.toml")))))
+        (is (= :too-old (:status (probe "17.0.9" (pin 17 ".mise.local.toml")))) "the floor is the KIT's, whatever a pin says")))))
+
+(deftest the-local-mise-file-is-read-over-the-projects
+  ;; plan 7.0, item 7.4.3: as mise reads it - an adopter on 21 says so in .mise.local.toml
+  (let [dir (str (fs/create-temp-dir))]
+    (try
+      (spit (str (fs/path dir ".mise.toml")) "[tools]\njava = \"temurin-25\"\nclj-kondo = \"2026.08.04\"\n")
+      (is (= {:major 25 :pin "temurin-25" :version "25" :source ".mise.toml"} (:java (doctor/mise-pins dir))))
+      (spit (str (fs/path dir ".mise.local.toml")) "[tools]\njava = \"temurin-21\"\n")
+      (let [pins (doctor/mise-pins dir)]
+        (is (= {:major 21 :pin "temurin-21" :version "21" :source ".mise.local.toml"} (:java pins)) "the local line wins")
+        (is (= ".mise.toml" (get-in pins [:clj-kondo :source])) "the project's other lines kept"))
+      (let [nested (str (fs/create-dirs (fs/path dir "src" "app")))]
+        (is (= 21 (get-in (doctor/mise-pins nested) [:java :major])) "found walking up, the pair together"))
+      (fs/delete (fs/path dir ".mise.toml"))
+      (is (= ".mise.local.toml" (get-in (doctor/mise-pins dir) [:java :source])) "a local file alone is read")
+      (is (= ".mise.local.toml" (str (fs/file-name (doctor/mise-file dir)))))
+      (finally (fs/delete-tree dir)))))
 
 (deftest the-jdk-is-the-one-exact-major-and-a-pin-that-disagrees-is-the-pins-fault
   (let [spec {:tool :java :via :flag :cmd ["java" "-version"] :req :required :major 21

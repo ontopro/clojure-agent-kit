@@ -19,9 +19,12 @@
   the command or page that fixes it, and nothing here runs one: run `bb doctor`,
   follow it, run it again.
 
-  VERSIONS ARE MINIMUMS. A pin in the nearest `.mise.toml` (walking up), or a
-  `:min` here, is a floor: older is `:too-old`, newer is fine and said so. The
-  JDK is 21 and newer, 25 preferred (`:prefer-major` on its entry): 21 is XTDB's
+  VERSIONS ARE MINIMUMS. A pin in the nearest `.mise.toml` (walking up; its
+  `.mise.local.toml` read over it, as mise reads it), or a `:min` here, is a floor:
+  older is `:too-old`, newer is fine and said so - except the JDK's pin, which is the
+  project's preferred major and not a floor: mise takes no range for java, so the KIT
+  writes 25 there as the default and an adopter on 21 says so locally (plan 7.0, item
+  7.4.3). The JDK is 21 and newer, 25 preferred (`:prefer-major` on its entry): 21 is XTDB's
   documented minimum, and XTDB 2.2.0 runs on 25 with `-Dio.netty.noUnsafe=false`
   (plan 7.0, item 7, proved before the pin moved) - another major above the floor
   is said, never a fault. An entry may still hold an exact `:major`; none does
@@ -139,19 +142,31 @@
   "mise's tool names where they differ from ours."
   {"babashka" :bb})
 
-(defn mise-file
-  "Nearest .mise.toml or mise.toml, walking up from `dir` to the filesystem
-  root. Returns nil when there is none — the normal case for the KIT's own
-  clone, which means no version constraints apply."
+(def ^:private mise-names
+  "mise's config files in one folder, the project's before the local one mise reads over it."
+  [[".mise.toml" "mise.toml"] [".mise.local.toml" "mise.local.toml"]])
+
+(defn mise-files
+  "The mise config files of the nearest folder that has one, walking up from `dir` to the
+  filesystem root: the project's file, then its local one (`.mise.local.toml`, gitignored, which
+  mise reads over it) - each when it exists. Empty when there is none, the normal case for the
+  KIT's own clone, which means no version constraints apply."
   [dir]
   (loop [d (fs/absolutize (or dir "."))]
-    (or (first (filter fs/exists? [(fs/path d ".mise.toml") (fs/path d "mise.toml")]))
-        (when-let [parent (fs/parent d)]
-          (recur parent)))))
+    (let [found (keep (fn [names] (first (filter fs/exists? (map #(fs/path d %) names)))) mise-names)]
+      (cond (seq found) (vec found)
+            (fs/parent d) (recur (fs/parent d))
+            :else []))))
+
+(defn mise-file
+  "The nearest mise config: the project's file, or a local one alone. Nil when there is none."
+  [dir]
+  (first (mise-files dir)))
 
 (defn mise-pins
   "Read the [tools] table of the nearest mise config into
-  {tool-key {:major _ :pin _ :version _ :source _}}.
+  {tool-key {:major _ :pin _ :version _ :source _}} - the local file's lines over the
+  project's, as mise reads them, `:source` naming the file a pin came from.
 
   This reads a known table shape with a regex; it is NOT a TOML parser, and
   Babashka has none. It handles `name = \"value\"` lines under [tools], skips
@@ -160,17 +175,17 @@
   of the pin (`temurin-21` -> \"21\"), `:major` its leading segment."
   ([] (mise-pins "."))
   ([dir]
-   (if-let [f (mise-file dir)]
-     (let [body (slurp (str f))
-           tools (second (re-find #"(?ms)^\[tools\]\s*$(.*?)(?=^\[|\z)" body))]
-       (into {}
-             (keep (fn [[_ nm v]]
-                     (let [k (get mise-aliases nm (keyword nm))]
-                       (when-let [m (major v)]
-                         [k {:major m :pin v :version (or (parse-version v) (str m))
-                             :source (str (fs/file-name f))}]))))
-             (re-seq #"(?m)^\s*([A-Za-z0-9_.-]+)\s*=\s*\"([^\"]+)\"" (or tools ""))))
-     {})))
+   (into {}
+         (mapcat (fn [f]
+                   (let [body (slurp (str f))
+                         tools (second (re-find #"(?ms)^\[tools\]\s*$(.*?)(?=^\[|\z)" body))]
+                     (keep (fn [[_ nm v]]
+                             (let [k (get mise-aliases nm (keyword nm))]
+                               (when-let [m (major v)]
+                                 [k {:major m :pin v :version (or (parse-version v) (str m))
+                                     :source (str (fs/file-name f))}])))
+                           (re-seq #"(?m)^\s*([A-Za-z0-9_.-]+)\s*=\s*\"([^\"]+)\"" (or tools "")))))
+                 (mise-files dir)))))
 
 (defn java-home
   "JAVA_HOME, as a seam tests can redefine."
@@ -230,7 +245,8 @@
   (`:broken` otherwise - the loop cannot run it whatever `bbin ls` says); an
   exact `:major` where the entry has one; then every floor - the entry's `:min`
   and the mise pin - is a MINIMUM. Newer than the pin, or than the known-good
-  set, is a note."
+  set, is a note. For an entry with a `:prefer-major` (the JDK) the pin is no floor but the
+  preferred major: the project's default, which a JDK of another major is told, never failed by."
   ([spec bbin-idx pins] (probe spec bbin-idx pins {}))
   ([{:keys [tool via cmd min] exact :major prefer :prefer-major :as spec} bbin-idx pins good]
    (let [nm (name tool)
@@ -255,7 +271,11 @@
          ;; An exact-major tool's pin is not a floor: a pin on another major disagrees
          ;; with the KIT, and the pin is what to change, not the JDK.
          pin-disagrees? (and exact pin (not= exact (:major pin)))
-         floor (when-not exact floor)
+         ;; THE JDK'S PIN IS THE PROJECT'S DEFAULT, NOT A FLOOR (plan 7.0, item 7.4.3): the KIT writes
+         ;; 25 there, and an adopter on 21 overrides it in .mise.local.toml - read above, over it
+         floor (when-not (or exact prefer) floor)
+         prefer (when prefer (or (:major pin) prefer))
+         other-major? (and prefer (major version) (not= prefer (major version)))
          status (cond
                   (not installed?) :missing
                   (nil? path) :not-on-path
@@ -268,8 +288,13 @@
          notes (cond-> []
                  (= :java tool) (conj (java-home-mismatch version))
                  ;; 21 AND NEWER, 25 PREFERRED (the person, 2026-10-26): another major is said, never a fault
-                 (and (= :ok status) prefer (major version) (not= prefer (major version)))
+                 (and (= :ok status) other-major? (nil? pin))
                  (conj (str "major " prefer " is preferred, the one the KIT tests on; " (major version) " works - " min " and newer"))
+                 (and (= :ok status) other-major? pin)
+                 (conj (str (:source pin) " names " (:pin pin) "; " (major version) " is what runs here, and works - " min " and newer"
+                            (when-not (str/includes? (:source pin) "local")
+                              (str "; for " (major version) " as this machine's default, `java = \"temurin-" (major version)
+                                   "\"` in .mise.local.toml"))))
                  pin-disagrees?
                  (conj (str (:source pin) " pins " (:pin pin) " but the KIT requires major " exact
                             " - change the pin, not the JDK"))
@@ -282,7 +307,7 @@
      (cond-> (assoc base :path path :version version :pin pin :known-good good-version :status status)
        (seq (remove nil? notes)) (assoc :note (str/join "; " (remove nil? notes)))
        ;; said on a ready machine too: the one note a short report keeps
-       (and (= :ok status) prefer (major version) (not= prefer (major version))) (assoc :not-preferred? true)))))
+       (and (= :ok status) other-major?) (assoc :not-preferred? true)))))
 
 (defn report
   "Probe the whole toolchain. Shells `bbin ls` and reads the mise config and

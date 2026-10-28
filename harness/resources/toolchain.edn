@@ -28,7 +28,8 @@
   :does "JVM the project and its nREPL run on"
   :needed-for "JDK 21 and newer, 25 preferred: 21 is XTDB v2's documented minimum, and
                XTDB 2.2.0 starts on 25 with -Dio.netty.noUnsafe=false (checked 2026-10-27:
-               `bb health` 9 of 9 on Temurin 25.0.5). A .mise.toml pin is read too, as a floor"
+               `bb health` 9 of 9 on Temurin 25.0.5). A project's .mise.toml pin of it (its
+               .mise.local.toml over it) is the project's preferred major, not a floor"
   :install "Temurin 25: https://adoptium.net/temurin/releases/?version=25 (brew install --cask temurin@25)"}
 
  {:tool :clojure :via :flag :cmd ["clojure" "--version"] :req :required :tier :loop
