@@ -39,9 +39,10 @@
                      file written when there is none), committed in the build; a file tracked
                      already is named and left tracked - untracking it is the person's
     app              the application's upgrade branch: `bb template-upgrade` with the rule
-                     mirror re-rendered on that branch before its gates - one branch, one merge,
-                     one decision; a release that leaves the pin alone still gets the branch for
-                     the mirror, and a branch with nothing on it is no run
+                     mirror re-rendered and the KIT's tested set written (`project-set.edn`) on
+                     that branch before its gates - one branch, one merge, one decision; a
+                     release that leaves the pin alone still gets the branch for either, and a
+                     branch with nothing on it is no run
     workspace-edn    `:workspace/kit-commit` and `:workspace/kit-version` moved to this KIT -
                      the one source the doctor and the next upgrade read - and the upgrade's
                      record under `:workspace/upgraded-to`: what it left for the Architect
@@ -425,14 +426,14 @@
 (defn- step-app! [{:keys [ws release generate gates]}]
   (let [id (str "upgrade-" release)
         ;; THE HOOK BY NAME, recorded in the run: `bb template-upgrade` resuming this run after a
-        ;; conflict re-renders the mirror too (`tu/rule-mirror-hook`)
+        ;; conflict re-renders the mirror and writes the tested set too (`tu/hook-fn`)
         r (tu/upgrade! ws (cond-> {:pin (template/pin (template/load-pins))
                                    :local-root (some-> (System/getenv "KIT_TEMPLATE_LOCAL") not-empty fs/absolutize fs/normalize str)
                                    :gates (or gates (tu/project-gates ws))
                                    :id id
                                    :release release
                                    :branch-anyway? true
-                                   :before-gates :rule-mirror}
+                                   :before-gates :kit-files}
                             generate (assoc :generate generate)))
         run-dir (str (fs/path (:workspace/work ws) "runs" id))]
     {:status :done
@@ -440,7 +441,7 @@
                :awaiting-merge (str "the branch " id " is gated green and awaits its merge: " (tu/merge-command run-dir))
                :conflict (str "the template's merge stopped on " (str/join ", " (:conflicts r)) " - the Architect's, in the worktree; `bb template-upgrade` after")
                :gates-red (str "the gate " (name (:failed r)) " is red on the branch - the Architect's; `bb template-upgrade` after")
-               :nothing "the application needs nothing: the template as it was and the mirror current"
+               :nothing "the application needs nothing: the template as it was, the mirror and the tested set current"
                (str (:outcome r)))
      :app (when (not= :nothing (:outcome r))
             {:branch id :run-dir run-dir :state (:outcome r)})}))
@@ -565,7 +566,7 @@
         (say "build-ignore: " (let [f (fs/path (:workspace/build ws) ".gitignore")
                                     [_ added] (ignore-text (when (fs/exists? f) (slurp (str f))) init/build-ignored)]
                                 (if (seq added) (str "would add " (str/join ", " added)) "nothing to add")))
-        (say "app: " (if moved (str "the template pin moved " (:git/tag (:from moved)) " -> " (:git/tag (:to moved)) ": template-upgrade, the mirror on its branch") "the pin as it was: a branch for the mirror if it changed"))
+        (say "app: " (if moved (str "the template pin moved " (:git/tag (:from moved)) " -> " (:git/tag (:to moved)) ": template-upgrade, the mirror and the tested set on its branch") "the pin as it was: a branch for the mirror and the tested set if either changed"))
         (println "bb upgrade --dry-run: nothing was written.")))))
 
 ;; ---------------------------------------------------------------------------

@@ -35,6 +35,7 @@
    [harness.loop.driver :as driver]
    [harness.rules :as rules]
    [harness.setup.app :as app]
+   [harness.setup.project-set :as project-set]
    [harness.setup.template :as template]
    [harness.setup.workspace :as workspace]))
 
@@ -296,6 +297,31 @@
         (git! wt nil "commit" "-q" "-m" (str "KIT " release ": the rule mirror re-rendered from the release's rule source"))
         (say (str "the rule mirror re-rendered on the branch: " (str/join ", " changed)))))))
 
+(defn project-set-hook
+  "The versions the KIT tests (`harness.setup.project-set`) written in the worktree's application and
+  committed when changed, with `release` in the message; a file it did not find to rewrite said.
+  Idempotent."
+  [release]
+  (fn [wt]
+    (let [{:keys [changed missed]} (project-set/write! wt)]
+      (when (seq changed)
+        (apply git! wt nil "add" "--" changed)
+        (git! wt nil "commit" "-q" "-m" (str "KIT " release ": the versions the KIT tests - .mise.toml's java line, "
+                                             "the Dockerfile's images, .mise.local.toml ignored"))
+        (say (str "the KIT's tested set written on the branch: " (str/join ", " changed))))
+      (when (seq missed)
+        (say (str "the KIT's tested set left alone where the application differs: " (str/join "; " missed)))))))
+
+(defn hook-fn
+  "The `:before-gates` step a run recorded by name, as a function of the worktree: `:rule-mirror`
+  (what a run of an older release recorded) the mirror alone; `:kit-files` the mirror, then the
+  tested set. Nil for none."
+  [ws {:keys [kind release]}]
+  (case kind
+    :rule-mirror (rule-mirror-hook ws release)
+    :kit-files (fn [wt] ((rule-mirror-hook ws release) wt) ((project-set-hook release) wt))
+    nil))
+
 (declare gates-on!)
 
 (defn- gates!
@@ -305,10 +331,10 @@
   to merge, and the run is removed again."
   [ctx wt {:keys [gates before-gates env ws]} run-dir]
   ;; THE HOOK THE RUN RECORDED, when the caller passed none: a resume by `bb template-upgrade`
-  ;; of a run `bb upgrade` started still re-renders the mirror before the gates
+  ;; of a run `bb upgrade` started still re-renders the mirror, and writes the tested set, before the gates
   (let [state @(:state ctx)
         hook (cond (fn? before-gates) before-gates
-                   (= :rule-mirror (get-in state [:hook :kind])) (rule-mirror-hook ws (get-in state [:hook :release])))]
+                   :else (hook-fn ws (:hook state)))]
     (when hook (hook (str wt))))
   (let [state @(:state ctx)
         head (git! wt env "rev-parse" "HEAD")]
@@ -501,7 +527,7 @@
             _ (fs/create-dirs run-dir)
             _ (spit (str state-file)
                     (with-out-str (pp/pprint (initial-state {:id id :ws ws :now now :from from :to to :label label
-                                                             :hook (when (= :rule-mirror before-gates) {:kind :rule-mirror :release release})
+                                                             :hook (when (#{:rule-mirror :kit-files} before-gates) {:kind before-gates :release release})
                                                              :template-commit template-commit
                                                              :base-branch base-branch :base-commit base-commit
                                                              :worktree wt}))))

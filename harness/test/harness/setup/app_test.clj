@@ -187,3 +187,27 @@
     (is (= :no-home-page (:app/error (ex-data e))))
     (is (= "1" (git-out app-dir "rev-list" "--count" "HEAD")) "the generated commit alone")
     (is (not (fs/exists? (fs/path app-dir "AGENTS.md"))) "nothing of the KIT's written")))
+
+(deftest the-third-commit-is-the-versions-the-kit-tests
+  ;; plan 7.0, item 7.4.2: what the template generated for the JDK, rewritten to the KIT's set as a
+  ;; commit of its own, the template branch still at the untouched tree
+  (let [ws (str (fs/real-path (fs/create-temp-dir)))
+        app-dir (str (fs/path ws "xyx-app"))
+        the-set {:java "temurin-25" :build-image "clojure:temurin-25-tools-deps-1.12.6.1673-alpine"
+                 :runtime-image "eclipse-temurin:25.0.4.1_1-jre-alpine" :tailwindcss "4.3.3"}]
+    ((app/app-fn pin {:app-name "xyx" :git-env git-env :project-set the-set
+                      :run (generator (atom []) {"deps.edn" "{}" "src/xyx/core.clj" "(ns xyx.core)"
+                                                 ".mise.toml" "[tools]\njava = \"temurin-21\"\n"
+                                                 "Dockerfile" (str "FROM clojure:temurin-21-tools-deps-1.12.1.1550-alpine AS build\n"
+                                                                   "ARG TAILWIND_VERSION=v4.1.11\n"
+                                                                   "FROM eclipse-temurin:21.0.2_13-jre-alpine\n")
+                                                 ".gitignore" "/target\n"})})
+     app-dir)
+    (is (= "3" (git-out app-dir "rev-list" "--count" "HEAD")))
+    (is (= #{".mise.toml" "Dockerfile" ".gitignore"}
+           (set (str/split-lines (git-out app-dir "diff" "--name-only" "HEAD~1" "HEAD")))))
+    (is (str/starts-with? (git-out app-dir "log" "-1" "--format=%s") "The versions the KIT tests, from its project-set.edn"))
+    (is (str/includes? (slurp (str (fs/path app-dir ".mise.toml"))) "java = \"temurin-25\""))
+    (is (str/includes? (slurp (str (fs/path app-dir "Dockerfile"))) "FROM eclipse-temurin:25.0.4.1_1-jre-alpine"))
+    (is (str/includes? (git-out app-dir "show" "template:.mise.toml") "temurin-21") "the template branch untouched")
+    (is (= "" (git-out app-dir "status" "--porcelain")))))

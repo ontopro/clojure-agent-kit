@@ -84,7 +84,7 @@
    (reduce (fn [acc [rel f]]
              (let [p (fs/path app-dir rel)]
                (if-not (fs/exists? p)
-                 (update acc :missed conj (str rel ": the file"))
+                 (update acc :missed conj (str rel ": none in the application"))
                  (let [old (slurp (str p))
                        {:keys [text missed]} (f old s)]
                    (when (not= old text) (spit (str p) text))

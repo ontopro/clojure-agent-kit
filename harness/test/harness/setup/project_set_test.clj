@@ -79,7 +79,7 @@
     (try
       (spit (str (fs/path app ".mise.toml")) mise)
       (spit (str (fs/path app "Dockerfile")) dockerfile)
-      (is (= {:changed [".mise.toml" "Dockerfile"] :missed [".gitignore: the file"]} (ps/write! app the-set)))
+      (is (= {:changed [".mise.toml" "Dockerfile"] :missed [".gitignore: none in the application"]} (ps/write! app the-set)))
       (spit (str (fs/path app ".gitignore")) "/target\n")
       (is (= {:changed [".gitignore"] :missed []} (ps/write! app the-set)) "the rest already written")
       (is (= {:changed [] :missed []} (ps/write! app the-set)))

@@ -389,3 +389,25 @@
       (let [e (try (run-upgrade! ws release [[:fmt "true"]]) nil (catch clojure.lang.ExceptionInfo e e))]
         (is (:branch-gone (ex-data e)))
         (is (str/includes? (ex-message e) (str "remove " (fs/path work "runs" id) " to abandon the run")))))))
+
+(deftest bb-upgrade-writes-the-tested-set-on-its-branch-as-a-commit-of-its-own
+  ;; plan 7.0, item 7.4.2: an application made before the KIT wrote its tested set gets it on the
+  ;; upgrade's branch, before the gates, with the template as it was
+  (let [ws (workspace!)
+        app (:workspace/app ws)
+        _ (spit (str (fs/path app ".mise.toml")) "[tools]\njava = \"temurin-21\"\n")
+        _ (git-out app "add" "-A")
+        _ (git-out app "commit" "-q" "-m" "an application from before the tested set")
+        generate (fn [target] (fs/create-dirs target) (write-tree! target generated-files))
+        result (atom nil)
+        out (with-out-str
+              (reset! result (tu/upgrade! ws {:pin pin :env git-env :gates [[:fmt "true"]] :generate generate
+                                              :id "upgrade-0.7.0" :release "0.7.0" :branch-anyway? true :before-gates :kit-files})))]
+    (is (= :awaiting-merge (:outcome @result)))
+    (is (= {:kind :kit-files :release "0.7.0"} (:hook (state ws "upgrade-0.7.0"))) "the hook recorded by name")
+    (is (= "KIT 0.7.0: the versions the KIT tests - .mise.toml's java line, the Dockerfile's images, .mise.local.toml ignored"
+           (git-out app "log" "-1" "--format=%s" "upgrade-0.7.0")))
+    (is (str/includes? (git-out app "show" "upgrade-0.7.0:.mise.toml") "java = \"temurin-25\""))
+    (is (str/includes? out "left alone where the application differs: Dockerfile: none in the application")
+        "what it could not write, said")
+    (is (= "[tools]\njava = \"temurin-21\"" (git-out app "show" "main:.mise.toml")) "main untouched until the merge")))

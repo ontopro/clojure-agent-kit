@@ -6,7 +6,7 @@
   turns a pin into an argv, and `app-fn` runs that argv. `harness.setup.init` takes the
   result as a function of one folder and never learns what made it.
 
-  TWO COMMITS, SO THE KIT'S HAND IS VISIBLE. The first is the template's output,
+  THREE COMMITS AT MOST, SO THE KIT'S HAND IS VISIBLE. The first is the template's output,
   untouched: `git diff` against it is, for ever, everything that was done to the
   application after generation. The second adds `AGENTS.md` - a frame around a
   block generated from the KIT's rule source - and a `CLAUDE.md` stub importing
@@ -14,7 +14,9 @@
   declared under the application's name, which the boundary gate enforces - and
   the KIT's first page in place of the template's (`home-page`). Nothing else: the
   fork carries what an application needs on its own, and what exists because of
-  the harness stays out of the application. And one branch, `template`, left at the
+  the harness stays out of the application. The third, when it changes anything, is the
+  versions the KIT tests (`harness.setup.project-set`): `.mise.toml`'s java line, the Dockerfile's
+  images, `.mise.local.toml` ignored. And one branch, `template`, left at the
   first commit: the old side of every template upgrade (`harness.setup.template-upgrade`).
 
   THE FIRST PAGE IS THE KIT'S, AND THE FORK STAYS NEUTRAL. The template's own page
@@ -31,6 +33,7 @@
    [harness.gates.boundary :as boundary]
    [harness.gates.forms :as forms]
    [harness.rules :as rules]
+   [harness.setup.project-set :as project-set]
    [harness.setup.template :as template]))
 
 (defn agents-md
@@ -185,8 +188,9 @@
   `:local-root` (a local clone of the template instead of the pinned commit -
   `KIT_TEMPLATE_LOCAL`); `:kit-version`, for the first page's foot; `:git-env`, extra
   environment for git; `:run`, `(fn [dir env argv]) -> {:exit _ :out _}`, which a test
-  replaces so that no JVM starts."
-  [p {:keys [app-name build-folder local-root kit-version git-env run] :or {run run-process}}]
+  replaces so that no JVM starts; `:project-set`, the set written in the third commit (default the
+  shipped `project-set.edn`)."
+  [p {:keys [app-name build-folder local-root kit-version git-env run project-set] :or {run run-process}}]
   (fn [app-dir]
     (let [git (fn [& args] (run-or-throw run app-dir git-env (into ["git"] args)))
           from (generation-label p local-root)]
@@ -217,4 +221,14 @@
         (spit (str views-path) page)
         (git "add" "AGENTS.md" "CLAUDE.md" boundary/file-name views)
         (git "commit" "-q" "-m" (str "AGENTS.md from the KIT's rule source, the CLAUDE.md stub that imports it, "
-                                     "layers.edn for the boundary gate, and the KIT's first page in " views))))))
+                                     "layers.edn for the boundary gate, and the KIT's first page in " views)))
+      ;; THE THIRD COMMIT: the versions the KIT tests, over what the template generated - a
+      ;; file it did not find to rewrite is said, never guessed at
+      (let [{:keys [changed missed]} (project-set/write! app-dir (or project-set (project-set/load-set)))]
+        (when (seq changed)
+          (apply git "add" "--" changed)
+          (git "commit" "-q" "-m" (str "The versions the KIT tests, from its project-set.edn: "
+                                       ".mise.toml's java line, the Dockerfile's images, .mise.local.toml ignored")))
+        (when (seq missed)
+          (println (str "The KIT's tested set was not written in full - " (str/join "; " missed)
+                        ". The template generated these otherwise: set by hand what should be.")))))))
