@@ -68,6 +68,20 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### `bb toolchain-newer` is `bb kit-pins`, and the kit-session skill says when to run it on demand (plan 7.0, item 8.1d)
+
+The person, 2026-10-29: "I will be running brew updates regularly, so this is going to come up. The
+best thing to do is to reduce friction ... making it easy to run the version report easily on demand.
+Maybe both directly and via a KIT skill also?" - and on its name: "It is a version report of what? for
+what purpose? needs a better name." It is the KIT's pins, each beside what this machine runs and its
+newest release, for deciding which pins move: `bb kit-pins` ("kit-" as `bb kit-status`, a command of
+the KIT's own development; "pins" the KIT's word for these versions, qualified because the doctor's
+"pin" is a project's `.mise.toml` line). The person: "yes, bb kit-pins". The namespace is
+`harness.gates.kit-pins`; `kit-status`, `tag-check`, the root `bb.edn`, the harness README and the
+matrix's header follow. The kit-session skill gains step 5: after a `brew upgrade`, or on the
+person's word, `bb kit-pins` - a row "installed differs" is a go or no-go now, a row "newer released"
+waits for a plan's start or a tag unless the person moves it.
+
 ### The toolchain image's name is made in one namespace, `tag-check`'s Docker Scout command uses it, and the digest covers hidden files (From Fable 5.1's read of `1de97ad`)
 
 The low: `bb tag-check` printed the Docker Scout command a person runs before a tag with

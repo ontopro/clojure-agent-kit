@@ -35,7 +35,7 @@
  harness.setup.template #{}
  harness.setup.workspace #{}
  harness.setup.init-args #{}
- harness.gates.toolchain-newer #{}
+ harness.gates.kit-pins #{}
  harness.gates.toolchain-image #{}
  harness.setup.stages #{}
  harness.setup.project-set #{}
@@ -46,8 +46,8 @@
  harness.rules #{harness.setup.workspace}
  harness.setup.front-door #{harness.setup.workspace}
  harness.gates.repair #{harness.setup.doctor}
- harness.gates.tag-check #{harness.gates.record harness.gates.toolchain-image harness.gates.toolchain-newer}
- harness.gates.kit-status #{harness.gates.record harness.gates.tag-check harness.gates.toolchain-newer}
+ harness.gates.tag-check #{harness.gates.record harness.gates.toolchain-image harness.gates.kit-pins}
+ harness.gates.kit-status #{harness.gates.record harness.gates.tag-check harness.gates.kit-pins}
  harness.models.tools #{harness.contained-path harness.gates.forms harness.gates.repair harness.setup.doctor}
  harness.models.profile #{harness.contract.shapes harness.models.catalogue harness.setup.doctor harness.setup.workspace}
  harness.money.report #{harness.contract.shapes harness.models.provenance harness.setup.workspace}

@@ -10,16 +10,16 @@
   named by the branch: `plan-v6.2` -> `.local/plans/v6/kit-plan-v6.2.md`); and a
   `.local/` folder without its `README.md`, or an entry in one that its README
   never names; the toolchain's pins with a newer release
-  (`harness.gates.toolchain-newer`); and the commits since the last tag that carry no read mark on
+  (`harness.gates.kit-pins`); and the commits since the last tag that carry no read mark on
   the plan's Task Status (the kit-session skill, \"The seats\"). Exit 0 always. The KIT's own
   development only."
   (:require
    [babashka.fs :as fs]
    [babashka.process :as p]
    [clojure.string :as str]
+   [harness.gates.kit-pins :as kit-pins]
    [harness.gates.record :as record]
-   [harness.gates.tag-check :as tag-check]
-   [harness.gates.toolchain-newer :as toolchain-newer]))
+   [harness.gates.tag-check :as tag-check]))
 
 (defn- git [root & args]
   (let [{:keys [exit out]} (apply p/shell {:dir (str root) :out :string :err :string :continue true} "git" args)]
@@ -156,5 +156,5 @@
                                                 :when (not (str/blank? l))]
                                             (str/split l #" " 2)))]
                 (str "`" (subs sha 0 7) "` " subject))))
-    (report "The toolchain's newer releases (`bb toolchain-newer`, the version report; a go or no-go per row is the person's, at a plan's start and before a tag):"
-            (toolchain-newer/newer-lines (toolchain-newer/check root)))))
+    (report "The toolchain's newer releases (`bb kit-pins`, the KIT's pins; a go or no-go per row is the person's, at a plan's start and before a tag):"
+            (kit-pins/newer-lines (kit-pins/check root)))))

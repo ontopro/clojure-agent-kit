@@ -12,7 +12,7 @@
   HEAD's tree; a docker-gates record green for HEAD. bear-claw's secrets scan
   is named, never run: the script is the person's, outside the clone; so is
   Docker Scout's scan of the KIT's toolchain image - a fresh Linux machine in Docker with only the KIT's toolchain, which needs a Docker login
-  (register row 131). The toolchain's newer releases (`bb toolchain-newer`)
+  (register row 131). The toolchain's newer releases (`bb kit-pins`)
   are printed as information and never fail it.
 
   `--run` first does what is stale or missing, in the checklist's order,
@@ -28,9 +28,9 @@
    [clojure.edn :as edn]
    [clojure.pprint :as pprint]
    [clojure.string :as str]
+   [harness.gates.kit-pins :as kit-pins]
    [harness.gates.record :as record]
-   [harness.gates.toolchain-image :as toolchain-image]
-   [harness.gates.toolchain-newer :as toolchain-newer]))
+   [harness.gates.toolchain-image :as toolchain-image]))
 
 ;; ---------------------------------------------------------------- git and files
 
@@ -122,7 +122,7 @@
 (defn versions-check
   "THE KIT AN ADOPTER GETS HAS ITS PINS EQUAL TO KNOWN-GOOD, the JDK apart (the person, 2026-10-29:
   \"The KIT that an Adopter gets should have matrix = known-good versions (with the Java exception
-  noted)\"). `pins` as `toolchain-newer/pins` reads them, `good` known-good's `:tools` (the Mac
+  noted)\"). `pins` as `kit-pins/pins` reads them, `good` known-good's `:tools` (the Mac
   host's recorded run), `linux` the Linux health record's `:tools` (the KIT's toolchain image's
   run), `args` the Dockerfile's `ARG` defaults. Compared: bb, clj-kondo, the Clojure CLI and cljfmt
   with known-good; git with the Linux record's - the image's git is the matrix's, the Mac's is brew's,
@@ -254,10 +254,10 @@
         the-pin (pin root)]
     [(tree-check (git root "branch" "--show-current") (git root "status" "--porcelain"))
      (health-check (read-records root))
-     (versions-check (toolchain-newer/read-pins root)
+     (versions-check (kit-pins/read-pins root)
                      (:tools (read-edn (fs/path root known-good-path)))
                      (some->> (fs/glob (fs/path root records-dir) "linux-*.edn") (map str) sort first read-edn :tools)
-                     (toolchain-newer/dockerfile-args (some-> (fs/path root "Dockerfile") str slurp)))
+                     (kit-pins/dockerfile-args (some-> (fs/path root "Dockerfile") str slurp)))
      (devlog-check (slurp (str (fs/path root "DEVLOG.md"))) tag)
      (readme-check (slurp (str (fs/path root "README.md"))) tag)
      (tag-absent-check tag (git root "rev-parse" "-q" "--verify" (str "refs/tags/" tag))
@@ -353,8 +353,8 @@
             (println (str "  by hand: Docker Scout on the KIT's toolchain image (a Docker login) - `docker scout cves "
                           "local://" (toolchain-image/image-tag root) " --only-severity critical,high`; "
                           "a HIGH or CRITICAL against a pinned tool moves the pin before the tag"))
-            (doseq [l (toolchain-newer/newer-lines (toolchain-newer/check root))]
-              (println (str "  information: " l " (`bb toolchain-newer`, the version report; a go or no-go per row is the person's, before the tag)")))
+            (doseq [l (kit-pins/newer-lines (kit-pins/check root))]
+              (println (str "  information: " l " (`bb kit-pins`, the KIT's pins; a go or no-go per row is the person's, before the tag)")))
             (if (every? :ok? cs)
               (println (str "\nevery check holds: `" tag "` may be cut on HEAD, by the person"))
               (do (println (str "\n" (count (remove :ok? cs)) " check(s) fail: no tag")) (System/exit 1))))))))

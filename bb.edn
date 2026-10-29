@@ -34,7 +34,7 @@
 ;;                      `bb gates` (.local/gates/last.edn, written green or red) was green on
 ;;                      exactly the tree being committed. `git commit --no-verify` skips it
 ;;   bb kit-status      what an item's end should look at; prints, never refuses
-;;   bb toolchain-newer the version report: each pin as installed, pinned and newest; prints, never refuses
+;;   bb kit-pins        the KIT's pins, each as installed here, pinned and newest; prints, never refuses
 ;;   bb tag-check <tag> whether the pre-tag checklist (DEVLOG.md's head) holds for a tag on HEAD;
 ;;                      never tags. --run does what is stale, --landed checks origin after the push
 {:paths ["harness/src"]
@@ -146,9 +146,9 @@
              :requires ([harness.gates.tag-check :as tag-check])
              :task (apply tag-check/-main *command-line-args*)}
 
-  toolchain-newer {:doc "The version report: each tool and library the KIT pins (the download matrix, the pack's deps, the Dockerfile's own, the project set, the template's) as installed here, as pinned, and its newest release by git ls-remote; information, exit 0. A go or no-go per row is the person's (kit-session skill)"
-                   :requires ([harness.gates.toolchain-newer :as toolchain-newer])
-                   :task (toolchain-newer/-main)}
+  kit-pins {:doc "The KIT's pins: each tool and library the KIT pins (the download matrix, the pack's deps, the Dockerfile's own, the project set, the template's) as installed here, as pinned, and its newest release by git ls-remote; information, exit 0. A go or no-go per row is the person's (kit-session skill)"
+            :requires ([harness.gates.kit-pins :as kit-pins])
+            :task (kit-pins/-main)}
 
   kit-status {:doc "What an item's end should look at, printed, never refused: flaky tests since the last tag, health records stale against the code they ran, register rows opened since it still open or on watch, the plan's Sessions log older than HEAD, a .local/ folder without its README.md or an entry it never names, the toolchain's newer releases, the commits since the last tag with no read mark on the plan's Task Status"
               :requires ([harness.gates.kit-status :as kit-status])

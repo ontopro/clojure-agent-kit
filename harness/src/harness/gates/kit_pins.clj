@@ -1,5 +1,5 @@
-(ns harness.gates.toolchain-newer
-  "`bb toolchain-newer`: the version report - each pin as installed, as pinned, and newest.
+(ns harness.gates.kit-pins
+  "`bb kit-pins`: the KIT's pins, each as installed here, as pinned, and newest.
 
   Each tool and library the KIT pins, as installed here, as pinned, and its newest release -
   information for the person, never a fault, exit 0 always.
@@ -268,7 +268,7 @@
                                                "git" "rev-parse" "--show-toplevel")]
                (if (zero? exit) (str/trim out) "."))
         rs (check root {:installed? true})]
-    (println "toolchain-newer: the version report - each pin as installed here, as pinned, and its newest release (git ls-remote); information, never a fault")
+    (println "kit-pins: the KIT's pins - each as installed here, as pinned, and its newest release (git ls-remote); information, never a fault")
     (doseq [l (table rs)] (println (str "  " l)))
     (println (str "\n" (count (filter #(some #{:newer} (:marks %)) rs)) " newer released, "
                   (count (filter #(some #{:installed-differs} (:marks %)) rs)) " installed differ. "

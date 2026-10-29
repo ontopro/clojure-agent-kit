@@ -1,7 +1,7 @@
 ;; THE DOWNLOAD MATRIX - what the toolchain pack fetches, at which exact version, from where, and the
 ;; sha256 each archive must have. The one place these versions are written (plan 7.0, item 8.1):
 ;; `status` and `toolchain-sum` read them here, and the install, the KIT's toolchain image and
-;; `bb toolchain-newer` will (plan 7.0, item 8). Plain EDN, so a release's tag is readable without
+;; `bb kit-pins` will (plan 7.0, item 8). Plain EDN, so a release's tag is readable without
 ;; its code.
 ;;
 ;;   :url            the archive, `{version}` and `{asset}` filled - and Temurin's two spellings of

@@ -1,9 +1,9 @@
-(ns harness.gates.toolchain-newer-test
+(ns harness.gates.kit-pins-test
   (:require
    [babashka.fs :as fs]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
-   [harness.gates.toolchain-newer :as tn]))
+   [harness.gates.kit-pins :as tn]))
 
 (deftest versions-compare-as-numbers
   (is (pos? (tn/compare-versions "1.13.226" "1.13.225")))
