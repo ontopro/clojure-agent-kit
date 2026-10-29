@@ -65,6 +65,16 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### The harness README's example `.mise.toml` is what `bb init` writes (From Fable 5.1's read of `1bfe459`)
+
+The block under "Versions: floors, one pin, and a known-good set" showed the template's file as it
+shipped before plan 7.0 wrote the KIT's set into a project: java `temurin-21`, babashka 1.13.223,
+clj-kondo 2026.08.04, cljfmt 0.16.5, no tailwindcss, and a bbin comment that goes with bbin in 8.2d -
+a reader comparing it with a generated file found nothing the same. It is now an excerpt of what `bb
+init` and `bb upgrade` write: the KIT's note above `[tools]` (`project_set/tools-note`) and the
+project set's six lines. The person: "yes". Still by hand; 8.2e, which rewrites the README's
+Versions section, decides whether a check holds it to `project-set.edn`.
+
 ### The version report says a git dep and XTDB as fetched, and what an unpinned row's machine runs (plan 7.0, item 8.1d)
 
 The person, at the report's first run: "why is 0.8.0 not showing up in the intalled here column?"

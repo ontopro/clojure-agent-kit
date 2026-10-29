@@ -343,16 +343,21 @@ loop. Nobody is gating this role, so it runs them itself.
 
 The harness ships no `.mise.toml` of its own — its gates run entirely under `bb` and need no
 JVM, so a pin it does not have would fail `bb gates` on your machine for no reason. The generated
-application ships one, dated, the versions it was last run with:
+application carries one, its `[tools]` the KIT's tested set (`resources/project-set.edn`), written
+over the template's by `bb init` and `bb upgrade` - an excerpt:
 
 ```toml
-# .mise.toml - a KNOWN-GOOD SET, not a set of requirements
+# THE VERSIONS UNDER [tools] ARE THE KIT'S: `bb init` and `bb upgrade` write them from its
+# tested set, over the template's. The JDK: 25 is the one the KIT tests and prefers; 21 and
+# newer works. For 21 on this machine only, put `java = "temurin-21"` under [tools] in
+# .mise.local.toml - gitignored, and mise reads it over this file.
 [tools]
-java = "temurin-21"
+java = "temurin-25"
 clojure = "1.12.6.1673"
-babashka = "1.13.223"        # bbin needs >= 1.12.212
-clj-kondo = "2026.08.04"
-cljfmt = "0.16.5"
+babashka = "1.13.229"
+clj-kondo = "2026.10.26"
+cljfmt = "0.16.6"
+tailwindcss = "4.3.3"
 ```
 
 `bb doctor` reads the `[tools]` table of the nearest one (walking up) as FLOORS: older is *too
