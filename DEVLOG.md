@@ -65,6 +65,24 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### The toolchain pack installs: `toolchain-install`, its plan pure, each archive checked before it is unpacked (plan 7.0, item 8.1c)
+
+The install's core, which the KIT's toolchain image will run (D-9). `toolchain-download-matrix/plan`
+is pure - the matrix, the cache, the platform, `--only`, the running bb and the cache's state in;
+a step per tool out: `:kept` (in the cache), `:skip` (bb when the running one is at or above the
+matrix's - the person, 2026-10-29; the JDK unless named, 200 MB, the `--java` flag and the lookup
+of a JDK already on the machine being 8.3a's), `:install` with its archive, folder and download.
+`toolchain-install` walks it: the archive fetched into `<cache>/downloads/` - or the copy there
+reused only while its sha256 is the matrix's - `verify!` before anything is unpacked (a mismatch
+deleted and refused by name), unpacked beside its place and moved in; the Clojure CLI laid out by
+`cli-layout`, the nine files as the official `posix-install.sh` does it (`PREFIX` and `BINDIR`
+filled, 755 and 644), its tarball's own `install.sh` being Homebrew's; `--link <dir>` links each
+tool's executables for the image, whose PATH can name no version. A failure is one line and exit
+1, never a stack trace. `status`'s rows gain `:fix`, the install command for a row not present
+(8.1b's read). Tried into a scratch cache (`KIT_TOOLCHAIN_DIR`): clj-kondo and the CLI installed and
+linked, `clj-kondo --version` v2026.10.26, `clojure --version` 1.12.6.1673, `clojure -M -e` ran; a
+second run kept both; a corrupted download in `downloads/` was fetched again, not reused.
+
 ### The harness README's example `.mise.toml` is what `bb init` writes (From Fable 5.1's read of `1bfe459`)
 
 The block under "Versions: floors, one pin, and a known-good set" showed the template's file as it

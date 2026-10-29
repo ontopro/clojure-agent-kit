@@ -16,11 +16,14 @@
     (if (str/blank? d) (str home "/.kit/toolchain") d)))
 
 (defn rows
-  "A row per tool `platform` takes - `{:tool :version :path :present?}` - `present?` the test of a path."
+  "A row per tool `platform` takes - `{:tool :version :path :present?}`, and `:fix` when it is not
+  present: the pack's command that installs it - `present?` the test of a path."
   [matrix cache platform present?]
   (for [t (dm/machine-tools matrix platform nil)
-        :let [p (dm/bin-path matrix cache t platform)]]
-    {:tool t :version (:version (get matrix t)) :path p :present? (boolean (present? p))}))
+        :let [p (dm/bin-path matrix cache t platform)
+              here? (boolean (present? p))]]
+    (cond-> {:tool t :version (:version (get matrix t)) :path p :present? here?}
+      (not here?) (assoc :fix (str "bb --config <kit>/tools/toolchain/bb.edn toolchain-install --only " (name t))))))
 
 (defn lines
   "The rows as a person reads them."

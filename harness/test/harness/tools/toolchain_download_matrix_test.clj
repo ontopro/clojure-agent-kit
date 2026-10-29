@@ -77,9 +77,12 @@
   (is (= "/k" (status/cache-dir {"KIT_TOOLCHAIN_DIR" "/k"} "/home/u")))
   (is (= "/home/u/.kit/toolchain" (status/cache-dir {} "/home/u")))
   (is (= [{:tool :bb :version "1.13.229" :path "/c/bb/1.13.229/bb" :present? true}
-          {:tool :java :version "25.0.5+8" :path "/c/java/25.0.5+8/jdk-25.0.5+8/bin/java" :present? false}
-          {:tool :clj-kondo :version "2026.10.26" :path "/c/clj-kondo/2026.10.26/clj-kondo" :present? false}
-          {:tool :clojure :version "1.12.6.1673" :path "/c/clojure/1.12.6.1673/bin/clojure" :present? false}]
+          {:tool :java :version "25.0.5+8" :path "/c/java/25.0.5+8/jdk-25.0.5+8/bin/java" :present? false
+           :fix "bb --config <kit>/tools/toolchain/bb.edn toolchain-install --only java"}
+          {:tool :clj-kondo :version "2026.10.26" :path "/c/clj-kondo/2026.10.26/clj-kondo" :present? false
+           :fix "bb --config <kit>/tools/toolchain/bb.edn toolchain-install --only clj-kondo"}
+          {:tool :clojure :version "1.12.6.1673" :path "/c/clojure/1.12.6.1673/bin/clojure" :present? false
+           :fix "bb --config <kit>/tools/toolchain/bb.edn toolchain-install --only clojure"}]
          (status/rows (select-keys matrix [:bb :java :clj-kondo :clojure :git]) "/c" :linux-amd64
                       #{"/c/bb/1.13.229/bb"}))))
 

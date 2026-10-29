@@ -99,3 +99,39 @@
         line (or (first (filter names? lines))
                  (when (= 1 (count lines)) (first lines)))]
     (some->> line (re-find #"(?i)\b[0-9a-f]{64}\b") str/lower-case)))
+
+(defn compare-versions
+  "Negative, zero or positive as version `a` is older than, the same as or newer than `b`, by their
+  numbers - a build after `+` is not the version, a missing part is 0."
+  [a b]
+  (let [k #(mapv parse-long (re-seq #"\d+" (first (str/split (str %) #"\+"))))
+        ka (k a) kb (k b)
+        n (max (count ka) (count kb))
+        pad #(into % (repeat (- n (count %)) 0))]
+    (compare (pad ka) (pad kb))))
+
+(defn plan
+  "The install's steps on `platform` into the cache `cache`, one per tool `machine-tools` gives for
+  `only`, in the matrix's order - pure:
+    `:kept`    the tool's executable is at its cache path (`present?`);
+    `:skip`    bb, when the bb running the install (`running`'s `:bb`) is at or above the matrix's -
+               the install cannot replace the bb that runs it, and a newer one is used as it is (the
+               person, 2026-10-29); the JDK when `only` does not name it - 200 MB, fetched only when
+               asked (the --java flag and the lookup of a JDK already on the machine are 8.3a's);
+    `:install` the archive, the folder it lands in, the executable, and where the archive is kept
+               (`<cache>/downloads/`, reused while its sha256 is the matrix's).
+  Each step `{:tool :version :step …}`."
+  [matrix cache platform {:keys [only running present?] :or {present? (constantly false)}}]
+  (for [t (machine-tools matrix platform only)
+        :let [v (:version (get matrix t))
+              bin (bin-path matrix cache t platform)
+              base {:tool t :version v :bin bin}]]
+    (cond (present? bin) (assoc base :step :kept)
+          (and (= :bb t) (get running :bb) (not (neg? (compare-versions (get running :bb) v))))
+          (assoc base :step :skip :why (str "the bb running this is " (get running :bb) ", at or above " v))
+          (and (= :java t) (not (some #{:java} only)))
+          (assoc base :step :skip :why "fetched only when named: --only java")
+          :else
+          (let [a (asset matrix t platform)]
+            (assoc base :step :install :asset a :dir (str cache "/" (name t) "/" v)
+                   :download (str cache "/downloads/" (:file a)))))))
