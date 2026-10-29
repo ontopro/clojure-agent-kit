@@ -424,7 +424,7 @@
     (is (empty? (profile/readme-gaps (slurp "README.md") claude)))
     (testing "a cell as the tables say it"
       (is (= "`gemini-4-argon`, medium (Google API)" (profile/portability-model claude :coder)))
-      (is (= "`gemini-4-argon`, medium (OpenRouter)" (profile/portability-model (get examples "agy-ide") :coder)))
+      (is (= "`gemini-4-argon`, medium (Google API)" (profile/portability-model (get examples "agy-ide") :coder)))
       (is (= (str "`gpt-6-astra`, high (OpenRouter); `gemini-4-argon`, high (OpenRouter), left out while it is the Coder; "
                   "`gpt-6.1-sol`, xhigh (OpenRouter)")
              (profile/portability-model claude :security-panel))))

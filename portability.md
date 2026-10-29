@@ -324,11 +324,13 @@ parameters:
 ```clojure
 ;; resources/profiles/agy-ide.edn
 {:seat :agy-ide                     ; exactly one — where the human works
- :roles {:coder    {:family :google :model "google/gemini-4-argon" :shape :openai
-                    :endpoint "https://openrouter.ai/api/v1"
-                    :key-env "OPENROUTER_API_KEY"
-                    :params {:reasoning_effort "medium"
-                             :provider {:only ["google-vertex"] :allow_fallbacks false}}}
+ :roles {:coder    {:family :google :model "gemini-4-argon" :shape :openai
+                    :endpoint "https://generativelanguage.googleapis.com/v1beta/openai"
+                    :key-env "GEMINI_API_KEY"
+                    :params {:reasoning_effort "medium"}
+                    :pricing {:per-mtok {:in 2 :out 10 :cache-read 0.1}
+                              :source "https://ai.google.dev/gemini-api/docs/pricing"
+                              :as-of "2026-10-28"}}
          :tester   {:family :anthropic :model "claude-sonnet-5-5" :shape :anthropic
                     :endpoint "https://api.anthropic.com"
                     :key-env "ANTHROPIC_API_KEY"
@@ -360,7 +362,7 @@ different keys.
 consumer too: `harness.models.runner/api-runner` dispatches each role to the model its
 profile names. Every dispatched run has gone through it.
 
-**Two worked examples ship, one per seat**, and they differ in the seat and the orchestrator (since 2026-10-16), and in the Coder's route and the security panel (since 2026-10-28). Where each seat
+**Two worked examples ship, one per seat**, and they differ in the seat and the orchestrator (since 2026-10-16), and in the security panel (since 2026-10-28). Where each seat
 stands, as the doctor says beside each of the five (all five stay, decided 2026-09-24):
 `claude` is the seat every build on the KIT has run from and the one the health check's profile
 names; `agy-ide` has its example, checked by `bb profile`, and no build yet; `opencode`,
@@ -369,14 +371,14 @@ Proved one seat at a time, portability being the design:
 
 | | seat `claude` | seat `agy-ide` |
 |---|---|---|
-| coder | `gemini-4-argon`, medium (Google API) | `gemini-4-argon`, medium (OpenRouter) |
+| coder | `gemini-4-argon`, medium (Google API) | `gemini-4-argon`, medium (Google API) |
 | tester | `claude-sonnet-5-5`, medium (Anthropic API) | `claude-sonnet-5-5`, medium (Anthropic API) |
 | reviewer | `gpt-6.1-sol`, high (OpenRouter) | `gpt-6.1-sol`, high (OpenRouter) |
 | spec-reviewer | `gpt-6.1-sol`, high (OpenRouter) | `gpt-6.1-sol`, high (OpenRouter) |
 | plan-reviewer | `gpt-6.1-sol`, high (OpenRouter) | `gpt-6.1-sol`, high (OpenRouter) |
 | blueprint-reviewer | `claude-opus-5-5`, high (Anthropic API) | `claude-opus-5-5`, high (Anthropic API) |
 | security-reviewer | `gpt-6-astra`, high (OpenRouter); `gemini-4-argon`, high (OpenRouter), left out while it is the Coder; `gpt-6.1-sol`, xhigh (OpenRouter) | `gpt-6-astra`, high (OpenRouter); `gemini-4-argon`, high (OpenRouter), left out while it is the Coder |
-| orchestrator | `claude-opus-5-5`, medium (Anthropic API) | `gemini-4-argon`, medium (OpenRouter) |
+| orchestrator | `claude-opus-5-5`, medium (Anthropic API) | `gemini-4-argon`, medium (Google API) |
 
 *(The `claude` seat's Tester and code reviewer swapped on 2026-09-16, after bake-offs measured
 both seats' candidates. Those bake-offs' records are not in this repository; what the selections rest on is in
@@ -389,8 +391,8 @@ reported rather than computed, one credit stop, the generation record; the profi
 what each route means for the money.)*
 
 Each example uses both `:shape` adapters - its Anthropic roles direct to Anthropic with
-`:pricing`, the rest over OpenRouter, but the `claude` example's Coder, direct to Google with
-`:pricing`. There are two rather than one because a single
+`:pricing`, its Argon roles (each example's Coder, and `agy-ide`'s orchestrator) direct to Google
+with `:pricing` (since 2026-10-29 in `agy-ide`), the rest over OpenRouter. There are two rather than one because a single
 committed profile reads as *your* configuration, which is exactly how the first version
 was misread.
 

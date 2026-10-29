@@ -65,6 +65,17 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### The `agy-ide` example's Argon roles go direct to Google's API, as the `claude` example's Coder does (plan 7.0, item 1.8)
+
+The person, 2026-10-29: "the agy-ide profile: update the 'gemini-4-argon' references to use the
+Google API (same as the Claude profile). Update the relevent documents too". `agy-ide.edn`'s Coder and
+orchestrator move from OpenRouter (pinned to `google-vertex`) to Google's OpenAI-compatible endpoint,
+`GEMINI_API_KEY`, with the `claude` example's Argon `:pricing` (Google's page, 2026-10-28); its header
+gains the line on Google's endpoint the `claude` header has. The security panel's Argon stays on
+OpenRouter, as in the `claude` example - it is left out while Argon is the Coder. `bb roster-sync`
+wrote portability.md's `agy-ide` column; its profile excerpt, its sentence on the two examples'
+differences and on the adapters each uses, and the harness README's sentence on `agy-ide` follow.
+
 ### portability.md's note under the seat table says the Anthropic roles' route as it is (From Fable 5.1's read of `b8dda37`)
 
 The note under the seat table said "The `claude` seat's two Anthropic roles go through OpenRouter
