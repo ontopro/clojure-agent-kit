@@ -68,6 +68,17 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### A health run that moves the pins is not stale against the commit that holds it (From Fable 5.1's read of `4eab9df`, register row 127)
+
+The reader ran `tag-check`'s `read-records` on `4eab9df`: both records stale, "known-good.edn changed
+since". Row 127 had kept the set's date out of the comparison; this was its other half, never seen
+before because the set had not moved since - a run that MOVES the set compared the set at the record's
+commit (the old pins) with HEAD's (the ones it wrote), so every pin move cost a second pair of health
+runs before a tag. `set-stales?` (pure): the set's move stales a record only when the record did not
+run what HEAD's set says, over `kit-pins/recorded-tools` - the JDK, git (a Mac's is brew's, the
+image's the matrix's) and the rest apart. On HEAD now: both records fresh, "both platforms recorded
+on code HEAD still has", with no rerun. The person: "yes, take 1 to 3 now".
+
 ### The health records on the moved pins: known-good is the matrix's, both platforms 12 of 12 (plan 7.0, item 8.1c)
 
 `bb health --record` on this Mac (macOS 27.0.1 arm64, at `f9b5af8`): 12 of 12 checks in 186 s; `bb

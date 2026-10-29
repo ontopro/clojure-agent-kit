@@ -210,6 +210,19 @@
   (let [read #(try (dissoc (edn/read-string (str %)) :as-of) (catch Exception _ ::unreadable))]
     (not= (read then) (read now))))
 
+(defn set-stales?
+  "Whether known-good's move between a record's commit and HEAD makes the record stale: when the set
+  says something new (`known-good-moved?`, `then` and `now` its EDN text) AND the record did not run
+  what HEAD's set now says, over the tools the pins hold (`kit-pins/recorded-tools`; the JDK, git
+  and the rest apart). A health run that moves the set - every pin move - is evidence for the set it
+  wrote, not stale against the commit that holds it (From Fable 5.1's read of `4eab9df`; register
+  row 127 was the first half, the date). `record-tools` the record's `:tools`."
+  [record-tools then now]
+  (and (known-good-moved? then now)
+       (let [held #(select-keys % kit-pins/recorded-tools)
+             now-tools (:tools (try (edn/read-string (str now)) (catch Exception _ nil)))]
+         (not= (held record-tools) (held now-tools)))))
+
 (defn read-records [root]
   (for [f (sort (map str (fs/glob (fs/path root records-dir) "*.edn")))
         :let [r (edn/read-string (slurp f))
@@ -218,9 +231,10 @@
                                      (concat health-paths [(str ":(exclude)" records-dir) (str ":(exclude)" known-good-path)]))
                               str/split-lines
                               (->> (remove str/blank?)))
-              ;; THE KNOWN-GOOD SET COUNTS WHEN IT SAYS SOMETHING NEW, not when it is re-dated
-              set-moved? (known-good-moved? (git root "show" (str sha ":" known-good-path))
-                                            (git root "show" (str "HEAD:" known-good-path)))]]
+              ;; THE KNOWN-GOOD SET COUNTS WHEN IT SAYS SOMETHING NEW the record did not run
+              set-moved? (set-stales? (:tools r)
+                                      (git root "show" (str sha ":" known-good-path))
+                                      (git root "show" (str "HEAD:" known-good-path)))]]
     {:platform (get-in r [:platform :key])
      :sha sha
      :dirty? (get-in r [:kit :dirty?])

@@ -88,6 +88,16 @@
     (is (tc/known-good-moved? then nil) "no set at the record's commit")
     (is (tc/known-good-moved? "{:as-of" then) "an unreadable set is a change")))
 
+(deftest a-run-that-moves-the-set-is-evidence-for-it
+  ;; From Fable 5.1's read of 4eab9df: a health run that moves the pins wrote the set HEAD holds, so it
+  ;; is not stale against that commit - the set's move stales a record only when the record did not run it
+  (let [then "{:as-of \"2026-10-22\" :tools {:bb \"1.13.226\" :clj-kondo \"2026.08.04\" :java \"21.0.12.1\"}}"
+        now "{:as-of \"2026-10-29\" :tools {:bb \"1.13.229\" :clj-kondo \"2026.10.26\" :java \"25.0.5\" :git \"2.57.0\"}}"]
+    (is (not (tc/set-stales? {:bb "1.13.229" :clj-kondo "2026.10.26" :java "25.0.4" :git "2.56.0"} then now))
+        "the run that wrote the set: fresh - its JDK and its git apart")
+    (is (tc/set-stales? {:bb "1.13.228" :clj-kondo "2026.10.26"} then now) "a record one patch behind the set: stale")
+    (is (not (tc/set-stales? {:bb "1.13.226"} then then)) "the set unmoved: never stale by it")))
+
 (deftest the-pins-are-what-the-health-runs-recorded-the-jdk-apart
   ;; the person, 2026-10-29: "The KIT that an Adopter gets should have matrix = known-good versions
   ;; (with the Java exception noted)"
