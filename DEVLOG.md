@@ -65,6 +65,13 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### portability.md's note under the seat table says the Anthropic roles' route as it is (From Fable 5.1's read of `b8dda37`)
+
+The note under the seat table said "The `claude` seat's two Anthropic roles go through OpenRouter
+since 2026-09-25 in the shipped file", false since 2026-10-16, and the paragraph after it said the
+opposite on the same page. The person: "correct it". It says now that they went direct to Anthropic
+on 2026-10-16, over OpenRouter from 2026-09-25 before, and why that route had been chosen.
+
 ### `bb roster-sync` refuses in one line and writes nothing (From Fable 5.1's read of `b8dda37`)
 
 Two nits: a portability.md row without its closing ` |` was refused as "0 cells, 3 expected - a ' |

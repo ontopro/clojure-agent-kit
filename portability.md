@@ -383,10 +383,10 @@ both seats' candidates. Those bake-offs' records are not in this repository; wha
 the profiles' own comments, in words. The
 Orchestrator row was added the same day, when the loop began routing red gates and notes
 through a model call; its selection is a decision, not a measurement, and the profile
-comment says which. The `claude` seat's two Anthropic roles go through OpenRouter since
-2026-09-25 in the shipped file - decided 2026-09-18 and applied by hand in every build before
-that: one key and one balance, the cost reported rather than computed, one credit stop, the
-generation record; the profile's header says why.)*
+comment says which. The `claude` seat's Anthropic roles went direct to Anthropic on 2026-10-16,
+over OpenRouter from 2026-09-25 before - decided 2026-09-18 for one key and one balance, the cost
+reported rather than computed, one credit stop, the generation record; the profile's header says
+what each route means for the money.)*
 
 Each example uses both `:shape` adapters - its Anthropic roles direct to Anthropic with
 `:pricing`, the rest over OpenRouter, but the `claude` example's Coder, direct to Google with
