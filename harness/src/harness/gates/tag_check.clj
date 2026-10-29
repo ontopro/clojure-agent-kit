@@ -130,12 +130,12 @@
   with known-good's `clj-nrepl-eval`. The JDK is not compared: known-good records the recording
   machine's, and any 21 or newer is allowed (Fable 5.1's read of the versions decision)."
   [pins good linux args]
-  (let [pairs [["bb" (get-in pins [:bb :version]) (:bb good)]
-               ["clj-kondo" (get-in pins [:clj-kondo :version]) (:clj-kondo good)]
-               ["clojure" (get-in pins [:clojure :version]) (:clojure good)]
-               ["cljfmt" (get-in pins [:cljfmt :version]) (:cljfmt good)]
-               ["clojure-mcp-light" (get args "MCP_LIGHT_SHA") (:clj-nrepl-eval good)]
-               ["git (the image's)" (get-in pins [:git :version]) (:git linux)]]
+  (let [pairs (concat
+               ;; the tools a record must run at the pins, one list with `bb health --record`'s guard
+               ;; (From Fable 5.1's read of `f9b5af8`)
+               (for [t (sort kit-pins/recorded-tools)] [(name t) (get-in pins [t :version]) (get good t)])
+               [["clojure-mcp-light" (get args "MCP_LIGHT_SHA") (:clj-nrepl-eval good)]
+                ["git (the image's)" (get-in pins [:git :version]) (:git linux)]])
         off (remove (fn [[_ pinned recorded]] (= pinned recorded)) pairs)]
     (check :versions (empty? off)
            (if (seq off)

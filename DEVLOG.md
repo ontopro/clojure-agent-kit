@@ -68,6 +68,14 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### `tag-check`'s `versions` line reads the one list of tools a record must run at the pins (From Fable 5.1's read of `f9b5af8`)
+
+`versions-check` named bb, clj-kondo, the Clojure CLI and cljfmt by hand, and `kit-pins/recorded-tools`
+- which `bb health --record`'s guard and `set-stales?` read - named them again: one decision, "matrix =
+known-good", written twice and agreeing by hand. The four pairs are made from `recorded-tools` now;
+clojure-mcp-light's commit and the image's git stay as the two pairs of their own. The person: "yes,
+take 1 to 3 now".
+
 ### A health run that moves the pins is not stale against the commit that holds it (From Fable 5.1's read of `4eab9df`, register row 127)
 
 The reader ran `tag-check`'s `read-records` on `4eab9df`: both records stale, "known-good.edn changed
