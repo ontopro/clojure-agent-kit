@@ -68,6 +68,18 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### The health records on the moved pins: known-good is the matrix's, both platforms 12 of 12 (plan 7.0, item 8.1c)
+
+`bb health --record` on this Mac (macOS 27.0.1 arm64, at `f9b5af8`): 12 of 12 checks in 186 s; `bb
+docker-health` in the KIT's toolchain image, rebuilt under its new name since known-good's date moved
+(Linux Ubuntu 24.04.5 arm64): 12 of 12 in 101 s; `bb health-sync` rendered the README block. Both passed
+`--record`'s new guard - no drift. `known-good.edn` now says bb 1.13.229, clj-kondo 2026.10.26 and Java
+25.0.5 (it said 1.13.226, 2026.08.04 and 21.0.12.1), with XTDB 2.2.0 and the project set beside them;
+each run kept under its own time-named file (`health/records/<platform>/2026-10-29-f9b5af8.edn`, item
+11). `bb tag-check`'s `versions` line, red since `cea3a41`: "the pins are what the health runs
+recorded, the JDK apart (bb 1.13.229, clj-kondo 2026.10.26, clojure 1.12.6.1673, cljfmt 0.16.6,
+clojure-mcp-light d341c23, git (the image's) 2.56.0)".
+
 ### `bb health --record` refuses before the run when this machine has drifted from the KIT's pins (plan 7.0, item 8.1d)
 
 The person, 2026-10-29: "As part of the 'bb health --record' run, it runs the report and if there are

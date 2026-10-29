@@ -1,32 +1,36 @@
 ;; Written by `bb health --record`; rendered into the README by `bb health-sync`. Do not edit.
-{:health/as-of "2026-10-22",
+{:health/as-of "2026-10-29",
  :platform
  {:key "linux-arm64", :label "Linux Ubuntu 24.04.5 LTS arm64"},
  :kit
- {:sha "d8674cd8a4015d7d70242a905cad4449bdbf45f2",
-  :short "d8674cd",
+ {:sha "f9b5af88cb8db0e8ef169fa5b67742ac125c4631",
+  :short "f9b5af8",
   :dirty? false},
  :template
  {:template io.github.ontopro/clojure-stack-lite,
   :git/tag "kit-v1.3",
   :git/sha "f12268d32585d98358a0413a300e20ef74e95635"},
  :tools
- {:bb "1.13.226",
-  :clj-kondo "2026.08.04",
+ {:bb "1.13.229",
+  :clj-kondo "2026.10.26",
   :clj-nrepl-eval "d341c23",
   :clj-paren-repair "d341c23",
   :cljfmt "0.16.6",
   :clojure "1.12.6.1673",
   :git "2.56.0",
-  :java "21.0.12.1"},
+  :java "25.0.5"},
  :checks
- [{:subject :selfcheck, :check :gates, :ok? true, :ms 3822}
-  {:subject :selfcheck, :check :red, :ok? true, :ms 5515}
-  {:subject :selfcheck, :check :loop, :ok? true, :ms 10270}
-  {:subject :app, :check :gates, :ok? true, :ms 15315}
-  {:subject :app, :check :red, :ok? true, :ms 12547}
-  {:subject :app, :check :loop, :ok? true, :ms 13186}
-  {:subject :app, :check :serve, :ok? true, :ms 7518}
-  {:subject :app, :check :browser, :ok? true, :ms 10614}
-  {:subject :app, :check :security, :ok? true, :ms 12595}],
+ [{:subject :selfcheck, :check :gates, :ok? true, :ms 3452}
+  {:subject :selfcheck, :check :red, :ok? true, :ms 5320}
+  {:subject :selfcheck, :check :loop, :ok? true, :ms 8622}
+  {:subject :app, :check :gates, :ok? true, :ms 13885}
+  {:subject :app, :check :red, :ok? true, :ms 11737}
+  {:subject :app, :check :loop, :ok? true, :ms 11900}
+  {:subject :app, :check :serve, :ok? true, :ms 8495}
+  {:subject :app, :check :browser, :ok? true, :ms 14198}
+  {:subject :app, :check :security, :ok? true, :ms 11794}
+  {:subject :app, :check :image, :ok? true, :ms 0, :skipped? true}
+  {:subject :xtdb, :check :embedded, :ok? true, :ms 11722}
+  {:subject :xtdb, :check :pgwire, :ok? true, :ms 0, :skipped? true}],
+ :xtdb {:version "2.2.0", :image "ghcr.io/xtdb/xtdb:2.2.0"},
  :ok? true}
