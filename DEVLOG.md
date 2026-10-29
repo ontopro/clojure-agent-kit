@@ -63,6 +63,25 @@ tested" stays information for an adopter, never a block.
 
 ---
 
+## 2026-10-29 (plan 7.0)
+
+### portability.md's two tables and the README's profile sentence are checked against the profile (plan 7.0, item 1.8)
+
+The roster's check left three places that say the `claude` example's models by hand: portability.md's
+seat table and its role table, and the harness README's sentence on the profile. The person,
+2026-10-29: "add them to the check to keep them updated". Each cell there sits beside its dated
+history ("from 2026-10-16; `gemini-3.8-flash` before"), which the profile does not hold, so they are
+checked, not written: `profile/table-gaps` reads each table's rows by role and says, by line, a model
+the cell does not name (the panel's in rotation order), an `effort <e>` it does not give after the
+model, a member left out it does not say is, a route it does not name (`direct`; `OpenRouter` in the
+seat table, the role table naming only direct routes), a role with no row, and a plan reviewer said to
+be the spec reviewer's selection when it is not. `profile/readme-gaps` holds the README's
+`(its Coder is ...)` to the Coder's model and route. A test runs both on the files. The check found
+the seat table had no blueprint-reviewer row: it has one now. The README names the Coder as
+`gemini-4-argon` rather than Argon, so the check can read it.
+
+---
+
 ## 2026-10-28 (plan 7.0)
 
 ### The roster check reads a row whole or refuses it (From Fable 5.1's read of `9478b22`)

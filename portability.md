@@ -374,6 +374,7 @@ Proved one seat at a time, portability being the design:
 | reviewer | `openai` · `gpt-6.1-sol` (effort high, from 2026-10-07; `gpt-5.6-sol` before) · OpenRouter · `:openai` | the same (from 2026-10-16; `claude-opus-5-5` direct before) |
 | spec-reviewer | `openai` · `gpt-6.1-sol` (effort high, from 2026-10-07) · OpenRouter · `:openai` | the same (from 2026-10-16; `claude-opus-5-5` direct before) |
 | plan-reviewer | the spec reviewer's selection, block for block (its own role since 2026-10-06; the profile's comment says why) | the same |
+| blueprint-reviewer | `anthropic` · `claude-opus-5-5` (effort high) · direct (from 2026-10-16; OpenRouter pinned `anthropic` before), no cache · `:anthropic` | the same |
 | security-reviewer | a panel in rotation: `openai` · `gpt-6-astra` (effort high, from 2026-10-08); `google` · `gemini-4-argon` (effort high, left out while it is the Coder); `openai` · `gpt-6.1-sol` (effort xhigh, from 2026-10-28) · each OpenRouter pinned · `:openai` | Astra and Argon, as the `claude` seat's first two |
 | orchestrator | `anthropic` · `claude-opus-5-5` (effort medium, from 2026-10-02; Fable 5.1 before) · direct (from 2026-10-16), no cache · `:anthropic` | `google` · `gemini-4-argon` (effort medium, from 2026-10-16; `gemini-3.8-flash` before) · OpenRouter pinned `google-vertex` · `:openai` |
 
