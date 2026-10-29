@@ -24,6 +24,7 @@
    [babashka.fs :as fs]
    [babashka.process :as p]
    [clojure.string :as str]
+   [harness.gates.toolchain-image :as toolchain-image]
    [harness.models.code-review-tools :as crt]
    [harness.models.security-review-sandbox :as sbx]))
 
@@ -141,7 +142,7 @@
     (try
       (when (fs/exists? clone) (fs/delete-tree clone))
       (copy-tree! worktree clone)
-      (let [image (or image (sbx/image-tag kit))
+      (let [image (or image (toolchain-image/image-tag kit))
             spec {:image image :clone clone :name name :cmd cmd}]
         (try (sbx/clear-stale! run)
              (doseq [n (stale-running (:out (run stale-running-argv {})) (java.time.Instant/now))]

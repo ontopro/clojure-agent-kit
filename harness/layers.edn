@@ -36,6 +36,7 @@
  harness.setup.workspace #{}
  harness.setup.init-args #{}
  harness.gates.toolchain-newer #{}
+ harness.gates.toolchain-image #{}
  harness.setup.stages #{}
  harness.setup.project-set #{}
  harness.contained-path #{}
@@ -45,7 +46,7 @@
  harness.rules #{harness.setup.workspace}
  harness.setup.front-door #{harness.setup.workspace}
  harness.gates.repair #{harness.setup.doctor}
- harness.gates.tag-check #{harness.gates.record harness.gates.toolchain-newer}
+ harness.gates.tag-check #{harness.gates.record harness.gates.toolchain-image harness.gates.toolchain-newer}
  harness.gates.kit-status #{harness.gates.record harness.gates.tag-check harness.gates.toolchain-newer}
  harness.models.tools #{harness.contained-path harness.gates.forms harness.gates.repair harness.setup.doctor}
  harness.models.profile #{harness.contract.shapes harness.models.catalogue harness.setup.doctor harness.setup.workspace}
@@ -63,7 +64,7 @@
  harness.models.runner #{harness.contained-path harness.gates.repair harness.models.agent harness.models.code-review-tools harness.models.tools harness.rules}
  harness.models.runner-check #{harness.contract.shapes harness.models.runner}
  harness.models.security-review-tools #{harness.contained-path harness.models.tools}
- harness.models.security-review-sandbox #{}
+ harness.models.security-review-sandbox #{harness.gates.toolchain-image}
  harness.models.security-score #{harness.contained-path harness.models.security-review-sandbox harness.models.security-review-tools}
  harness.models.security-bake-off #{harness.models.catalogue harness.models.security-review harness.models.security-score}
  harness.models.security-review #{harness.contained-path harness.money.balance harness.models.agent harness.models.catalogue harness.models.profile
@@ -79,7 +80,7 @@
  harness.setup.blueprint-review #{harness.contained-path harness.models.agent harness.models.profile harness.setup.plan harness.setup.plan-review harness.setup.stages harness.setup.workspace}
 
  ;; the loop
- harness.loop.review-repl #{harness.models.code-review-tools harness.models.security-review-sandbox}
+ harness.loop.review-repl #{harness.gates.toolchain-image harness.models.code-review-tools harness.models.security-review-sandbox}
  harness.loop.driver #{harness.contained-path harness.loop.library-claims harness.loop.review-repl harness.contract.packet harness.contract.shapes harness.contract.sigs harness.contract.spec-review
                        harness.contract.stub harness.contract.targets harness.gates.repair harness.gates.run harness.loop.log
                        harness.loop.provision harness.models.profile harness.models.provenance harness.models.runner

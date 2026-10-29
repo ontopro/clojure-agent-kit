@@ -54,7 +54,8 @@ the template fork's tags and version the template, not the KIT.
 every one holds. `bb tag-check <tag> --run` does steps 2 and 4 where they are stale, stopping for
 the commit between them; `--landed` checks origin after step 5. bear-claw's secrets scan stays a
 step by hand, named there, and so does Docker Scout's scan of the KIT's toolchain image (a Docker
-login): `docker scout cves local://clojure-agent-kit-toolchain:<as-of> --only-severity critical,high`.
+login): `docker scout cves local://clojure-agent-kit-toolchain:<as-of>-<digest> --only-severity critical,high`, as
+`bb tag-check` prints it.
 
 **The toolchain's pins move at a plan's start, not before its tag.** `bb toolchain-newer` lists
 each pin beside its newest release, and `bb kit-status` and `bb tag-check` print its newer lines.
@@ -66,6 +67,19 @@ tested" stays information for an adopter, never a block.
 ---
 
 ## 2026-10-29 (plan 7.0)
+
+### The toolchain image's name is made in one namespace, `tag-check`'s Docker Scout command uses it, and the digest covers hidden files (From Fable 5.1's read of `1de97ad`)
+
+The low: `bb tag-check` printed the Docker Scout command a person runs before a tag with
+`clojure-agent-kit-toolchain:<known-good's date>`, the tag's old shape, which Docker no longer has
+once the image is named for what it holds. `tag-check` (a gate) cannot require the security review's
+sandbox (a model), so `image-context`, `context-digest` and `image-tag` move to a leaf of their own,
+`harness.gates.toolchain-image`, which the sandbox, the review REPL, `tag-check` and the root
+`bb.edn`'s `docker-image!` all read - one maker; `tag-check`'s `known-good-as-of` goes. The DEVLOG's
+checklist line says `<as-of>-<digest>`, as `bb tag-check` prints it. The nit: the digest listed the
+pack with `fs/glob "**"`, which skips hidden files, while `.dockerignore`'s `!tools/toolchain` sends
+them - so a `.DS_Store` would have changed the image and not its name; it globs hidden files now, and
+a test puts one in a pack and sees the digest move. The person: "yes, bb kit-pins - go in that order".
 
 ### `bb tag-check` holds the pins to what the health runs recorded, the JDK apart (plan 7.0, item 8.1c)
 
