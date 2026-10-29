@@ -118,6 +118,31 @@
                  :else (str "both platforms recorded on code HEAD still has ("
                             (str/join ", " (map #(str (:platform %) " " (subs (:sha %) 0 7)) (keep by (sort platforms)))) ")")))))
 
+(defn versions-check
+  "THE KIT AN ADOPTER GETS HAS ITS PINS EQUAL TO KNOWN-GOOD, the JDK apart (the person, 2026-10-29:
+  \"The KIT that an Adopter gets should have matrix = known-good versions (with the Java exception
+  noted)\"). `pins` as `toolchain-newer/pins` reads them, `good` known-good's `:tools` (the Mac
+  host's recorded run), `linux` the Linux health record's `:tools` (the KIT's toolchain image's
+  run), `args` the Dockerfile's `ARG` defaults. Compared: bb, clj-kondo, the Clojure CLI and cljfmt
+  with known-good; git with the Linux record's - the image's git is the matrix's, the Mac's is brew's,
+  moved by no one's decision; clojure-mcp-light's commit (the Dockerfile's `MCP_LIGHT_SHA` until 8.2d)
+  with known-good's `clj-nrepl-eval`. The JDK is not compared: known-good records the recording
+  machine's, and any 21 or newer is allowed (Fable 5.1's read of the versions decision)."
+  [pins good linux args]
+  (let [pairs [["bb" (get-in pins [:bb :version]) (:bb good)]
+               ["clj-kondo" (get-in pins [:clj-kondo :version]) (:clj-kondo good)]
+               ["clojure" (get-in pins [:clojure :version]) (:clojure good)]
+               ["cljfmt" (get-in pins [:cljfmt :version]) (:cljfmt good)]
+               ["clojure-mcp-light" (get args "MCP_LIGHT_SHA") (:clj-nrepl-eval good)]
+               ["git (the image's)" (get-in pins [:git :version]) (:git linux)]]
+        off (remove (fn [[_ pinned recorded]] (= pinned recorded)) pairs)]
+    (check :versions (empty? off)
+           (if (seq off)
+             (str (str/join "; " (for [[t pinned recorded] off] (str t " pinned " (or pinned "nowhere") ", recorded " (or recorded "nowhere"))))
+                  " - a health run records the pins: `bb tag-check <tag> --run`")
+             (str "the pins are what the health runs recorded, the JDK apart ("
+                  (str/join ", " (map (fn [[t v]] (str t " " v)) (map (juxt first second) pairs))) ")")))))
+
 (defn stale-platforms
   "The platforms whose health record is missing or stale."
   [records]
@@ -233,6 +258,10 @@
         the-pin (pin root)]
     [(tree-check (git root "branch" "--show-current") (git root "status" "--porcelain"))
      (health-check (read-records root))
+     (versions-check (toolchain-newer/read-pins root)
+                     (:tools (read-edn (fs/path root known-good-path)))
+                     (some->> (fs/glob (fs/path root records-dir) "linux-*.edn") (map str) sort first read-edn :tools)
+                     (toolchain-newer/dockerfile-args (some-> (fs/path root "Dockerfile") str slurp)))
      (devlog-check (slurp (str (fs/path root "DEVLOG.md"))) tag)
      (readme-check (slurp (str (fs/path root "README.md"))) tag)
      (tag-absent-check tag (git root "rev-parse" "-q" "--verify" (str "refs/tags/" tag))

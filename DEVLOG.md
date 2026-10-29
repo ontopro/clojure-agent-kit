@@ -39,7 +39,9 @@ the template fork's tags and version the template, not the KIT.
 2. The health records on that commit: `bb health --record` in `harness/`, then `bb docker-health`
    at the root, then `bb health-sync`; the records and the README block committed. A record
    names the commit it ran on, and a tag on code its records never ran is a tag on an untried
-   claim.
+   claim. They make known-good the pins: `bb tag-check`'s `versions` line holds the download
+   matrix, the pack's pins and the Dockerfile's to what the runs recorded, the JDK apart - the KIT
+   an adopter gets has its pins equal to known-good.
 3. The tag's documents: its heading here, with its line - what the plan added, and anything a
    workspace made before it needs - and the root README's sentence naming the current tag.
 4. On the commit the tag will name: `bb repair && bb gates` green, then `bb docker-gates` run by
@@ -64,6 +66,20 @@ tested" stays information for an adopter, never a block.
 ---
 
 ## 2026-10-29 (plan 7.0)
+
+### `bb tag-check` holds the pins to what the health runs recorded, the JDK apart (plan 7.0, item 8.1c)
+
+The person, 2026-10-29: "The KIT that an Adopter gets should have matrix = known-good versions (with
+the Java exception noted)." `tag-check` gains a `versions` line (`versions-check`, pure): bb,
+clj-kondo, the Clojure CLI and cljfmt as pinned - the matrix, the pack's deps or the Dockerfile's
+until the fold - against known-good, the Mac host's recorded run; git against the Linux record's,
+the image's git being the matrix's and the Mac's brew's (Fable 5.1's read of the versions
+decision); clojure-mcp-light's commit, the Dockerfile's `MCP_LIGHT_SHA` until 8.2d, against
+known-good's `clj-nrepl-eval`. The JDK is not compared: known-good records the recording machine's,
+and any 21 or newer is allowed. Red today, "bb pinned 1.13.229, recorded 1.13.226; clj-kondo pinned
+2026.10.26, recorded 2026.08.04", until the health runs after `1bfe459` - and `--run` reruns them, since
+`tools/` is a health path, so the line's advice is the command that closes it. The checklist above
+says it.
 
 ### The KIT's toolchain image is named for what it holds; `image-args` refuses a platform it has no image for (From Fable 5.1's read of `720f2af`)
 
