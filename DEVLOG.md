@@ -65,6 +65,23 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### portability.md's tables of models say the current model alone, written from the profiles (From Fable 5.1's read of `60842de`)
+
+The reader found the check `60842de` added read the cells' history: a name or a route word in a
+"before" parenthetical satisfied it, so a Coder moved to OpenRouter, or back to a model its cell once
+held, passed (probed in a scratch copy). The person, 2026-10-29, removed the history instead:
+"simplify the 2 tables with seats/models - remove the history and keep only the current model &
+effort (origin in parenthesis)", and chose the cells written from the profiles by `bb roster-sync`
+and held by a test, as roster.md's column is, the `agy-ide` column from `agy-ide.edn`. Each cell is
+now `` `model`, effort (origin) `` - Google API, Anthropic API or OpenRouter - the panel's members in
+rotation, the one of the Coder's family "left out while it is the Coder". `render-portability`
+writes the two tables (refusing a table not found, a role with no row, a row of other than its
+cells, by name), so a drift is caught both ways - a member or an effort removed from the profile
+too, the reader's second nit - and the check, with its nits on a missing effort, a cascading "names
+no" and a member named twice, is gone. The README's sentence stays a check, `readme-gaps`: the
+Coder's model and its route. The role table's header drops its date. The history the cells carried
+is in this log's earlier entries and the profiles' comments.
+
 ### portability.md's two tables and the README's profile sentence are checked against the profile (plan 7.0, item 1.8)
 
 The roster's check left three places that say the `claude` example's models by hand: portability.md's

@@ -36,7 +36,6 @@
    [babashka.fs :as fs]
    [babashka.http-client :as http]
    [clojure.edn :as edn]
-   [clojure.set :as set]
    [clojure.string :as str]
    [harness.contract.shapes :as shapes]
    [harness.models.catalogue :as catalogue]
@@ -448,104 +447,110 @@
                     (str "| " (str/join " | " (assoc (vec cells) 4 (roster-model profile role))) " |"))))))
        (str/join "\n")))
 
-;; portability.md's two tables and the README's profile sentence say the same models by hand, each
-;; cell beside its dated history, which the profile does not hold: they are checked, not written.
+;; portability.md's two tables say each role's model in short, no history (the person, 2026-10-29:
+;; "remove the history and keep only the current model & effort (origin in parenthesis)"), so they
+;; are written from the profiles too. The README's profile sentence is prose: it is checked.
 
 (defn- effort [{:keys [params]}]
   (or (:reasoning_effort params) (get-in params [:output_config :effort])))
 
-(defn- stated-gaps
-  "What `cell` fails to say of `members` (one role's selection, or the panel in rotation order):
-  each model backquoted, its name without the router's prefix, in order; from it to the next
-  member's name, `effort <e>` when `effort?` and `left out` for a member left out; in the cell,
-  `direct` for a direct route and, when `openrouter?`, `OpenRouter` for the router's."
-  [cell members left-out {:keys [effort? openrouter?]}]
-  (let [names (map #(str "`" (str/replace (:model %) #"^[a-z-]+/" "") "`") members)
-        at (reductions (fn [from nm] (some-> from (#(str/index-of cell nm %)))) 0 names)
-        at (rest at)]
-    (concat
-     (for [[nm i] (map vector names at) :when (nil? i)] (str "names no " nm))
-     (when (every? some? at)
-       (for [[m i end] (map vector members at (concat (rest at) [(count cell)]))
-             :let [seg (subs cell i end)
-                   nm (str/replace (:model m) #"^[a-z-]+/" "")]
-             gap [(when (and effort? (not (re-find (re-pattern (str "\\beffort " (effort m) "\\b")) seg)))
-                    (str nm ": no `effort " (effort m) "`"))
-                  (when (and (left-out (:name m)) (not (str/includes? seg "left out")))
-                    (str nm ": not said to be left out"))]
-             :when gap]
-         gap))
-     (when (and (some #(not (str/includes? (:endpoint %) "openrouter.ai")) members)
-                (not (str/includes? cell "direct")))
-       ["no `direct`"])
-     (when (and openrouter? (some #(str/includes? (:endpoint %) "openrouter.ai") members)
-                (not (str/includes? cell "OpenRouter")))
-       ["no `OpenRouter`"]))))
+(defn- origin
+  "Where a role's requests go, as portability.md says it."
+  [{:keys [endpoint]}]
+  (cond (str/includes? endpoint "api.anthropic.com") "Anthropic API"
+        (str/includes? endpoint "generativelanguage.googleapis.com") "Google API"
+        (str/includes? endpoint "openrouter.ai") "OpenRouter"
+        :else endpoint))
 
-(defn- role-members [profile role]
+(defn- model-name [{:keys [model]}]
+  (str "`" (str/replace model #"^[a-z-]+/" "") "`"))
+
+(defn- short-text [role]
+  (str (str/join ", " (remove nil? [(model-name role) (effort role)])) " (" (origin role) ")"))
+
+(defn portability-model
+  "portability.md's Model cell for `role` of `profile`: the model, its effort, its origin in
+  parentheses; for `:security-panel` every member in rotation order, one of the Coder's family said
+  to be left out."
+  [profile role]
   (if (= :security-panel role)
-    (security-panel profile)
-    [(get-in profile [:roles role])]))
+    (let [out (set (map :name (:left-out (panel-split profile))))]
+      (str/join "; " (for [m (security-panel profile)]
+                       (str (short-text m) (when (out (:name m)) ", left out while it is the Coder")))))
+    (short-text (get-in profile [:roles role]))))
 
-(def stated-tables
-  "The tables that say the `claude` example's models by hand: in `file` (from `harness/`), the
-  rows after the line starting `header`, the selection in cell `column`, the role named by cell 0."
-  [{:file "../portability.md" :header "| | seat `claude` | seat `agy-ide` |" :column 1
-    :effort? true :openrouter? true
+(def ^:private portability-tables
+  "portability.md's tables of models: the rows after the line starting `:header`, each `:cells`
+  cells, the role named by its first; `:columns` maps a cell to the example whose model it says."
+  [{:header "| | seat `claude` | seat `agy-ide` |" :cells 3 :columns {1 "claude" 2 "agy-ide"}
     :labels {"coder" :coder "tester" :tester "reviewer" :reviewer "spec-reviewer" :spec-reviewer
              "plan-reviewer" :plan-reviewer "blueprint-reviewer" :blueprint-reviewer
              "security-reviewer" :security-panel "orchestrator" :orchestrator}}
-   {:file "../portability.md" :header "| Role | Constraint | Family | Model (as the shipped `claude.edn`"
-    :column 3 :effort? true :openrouter? false
+   {:header "| Role | Constraint | Family | Model" :cells 6 :columns {3 "claude"}
     :labels {"**Coder**" :coder "**Tester**" :tester "**Code reviewer**" :reviewer
              "**Spec reviewer**" :spec-reviewer "**Plan reviewer**" :plan-reviewer
              "**Blueprint reviewer**" :blueprint-reviewer "**Security reviewer**" :security-panel
              "**Orchestrator**" :orchestrator}}])
 
-(defn table-gaps
-  "Each line where `text`'s table (one of `stated-tables`) fails to say `profile`'s selection,
-  and each role of the table it has no row for. A cell saying it is `the spec reviewer's
-  selection` holds when the two roles are the same block. Empty when the table says them all."
-  [text profile {:keys [file header column labels] :as table}]
-  (let [lines (str/split-lines text)
-        start (first (keep-indexed (fn [i l] (when (str/starts-with? l header) i)) lines))]
-    (if-not start
-      [(str file ": no table under `" header "`")]
-      (let [rows (->> (map vector (range) lines) (drop (+ 2 start)) (take-while #(str/starts-with? (second %) "| ")))
-            out (set (map :name (:left-out (panel-split profile))))
-            seen (keep (fn [[i l]]
-                         (let [cells (mapv str/trim (str/split (subs l 1) #"\|"))]
-                           (when-let [role (labels (first cells))] [i role (get cells column "")])))
-                       rows)]
-        (concat
-         (for [[i role cell] seen
-               gap (if (str/starts-with? cell "the spec reviewer's selection")
-                     (when (not= (get-in profile [:roles role]) (get-in profile [:roles :spec-reviewer]))
-                       ["says the spec reviewer's selection, and it is not"])
-                     (stated-gaps cell (role-members profile role) out table))]
-           (str file " line " (inc i) ", " (name role) ": " gap))
-         (for [role (sort (set/difference (set (vals labels)) (set (map second seen))))]
-           (str file ": no row for " (name role))))))))
+(defn render-portability
+  "`text` (portability.md) with the Model cells of its two tables of models written from
+  `examples` (name -> profile). Every other byte kept. A table not found, a role with no row, or a
+  row of a role with other than its table's cells is refused by name."
+  [text examples]
+  (reduce
+   (fn [text {:keys [header cells columns labels]}]
+     (let [lines (vec (str/split text #"\n" -1))
+           start (or (first (keep-indexed (fn [i l] (when (str/starts-with? l header) i)) lines))
+                     (throw (ex-info (str "portability.md: no table under `" header "`") {:header header})))
+           rows (for [i (->> (range (+ 2 start) (count lines)) (take-while #(str/starts-with? (lines %) "| ")))
+                      :let [l (lines i)
+                            cs (when (str/ends-with? l " |") (str/split (subs l 2 (- (count l) 2)) #" \| " -1))
+                            role (labels (str/trim (first (str/split (subs l 1) #"\|"))))]
+                      :when role]
+                  (if (= cells (count cs))
+                    [i role cs]
+                    (throw (ex-info (str "portability.md line " (inc i) ": " (count cs) " cells, " cells
+                                         " expected - a ' | ' inside a cell?")
+                                    {:line (inc i) :cells (count cs)}))))
+           missing (sort (remove (set (map second rows)) (set (vals labels))))]
+       (when (seq missing)
+         (throw (ex-info (str "portability.md: no row for " (str/join ", " (map name missing))
+                              " under `" header "`")
+                         {:missing missing})))
+       (->> rows
+            (reduce (fn [ls [i role cs]]
+                      (let [written (reduce-kv (fn [cs col ex] (assoc cs col (portability-model (get examples ex) role)))
+                                               (vec cs) columns)]
+                        (assoc ls i (str "| " (str/join " | " written) " |"))))
+                    lines)
+            (str/join "\n"))))
+   text portability-tables))
 
 (defn readme-gaps
-  "Where the README's profile sentence, `(its Coder is ...)`, fails to say `profile`'s Coder."
+  "Where the README's profile sentence, `(its Coder is ...)`, fails to name `profile`'s Coder and
+  its route (`direct`, or `OpenRouter`)."
   [text profile]
-  (let [flat (str/replace text #"\s+" " ")
-        sentence (second (re-find #"\(its Coder is ([^)]*)\)" flat))]
+  (let [sentence (second (re-find #"\(its Coder is ([^)]*)\)" (str/replace text #"\s+" " ")))
+        coder (get-in profile [:roles :coder])
+        nm (model-name coder)
+        via (if (= "OpenRouter" (origin coder)) "OpenRouter" "direct")]
     (if-not sentence
       ["README.md: no `(its Coder is ...)`"]
       (map #(str "README.md, its Coder: " %)
-           (stated-gaps sentence [(get-in profile [:roles :coder])] #{} {:openrouter? true})))))
+           (remove nil? [(when-not (str/includes? sentence nm) (str "names no " nm))
+                         (when-not (str/includes? sentence via) (str "no `" via "`"))])))))
 
 (defn roster-sync-main
-  "`bb roster-sync`: `roster.md`'s Model column written from the shipped `claude` example."
+  "`bb roster-sync`: `roster.md`'s Model column written from the shipped `claude` example, and
+  `portability.md`'s two tables of models from the shipped examples."
   [& _]
-  (let [f "roster.md"
-        before (slurp f)
-        after (render-roster before (get (examples) "claude"))]
-    (if (= before after)
-      (println "roster.md: the Model column is the claude example's already")
-      (do (spit f after) (println "roster.md: the Model column written from resources/profiles/claude.edn")))))
+  (doseq [[f render what] [["roster.md" #(render-roster % (get (examples) "claude")) "the Model column"]
+                           ["../portability.md" #(render-portability % (examples)) "the two tables of models"]]]
+    (let [before (slurp f)
+          after (render before)]
+      (if (= before after)
+        (println (str (fs/file-name f) ": " what " - already the shipped examples'"))
+        (do (spit f after) (println (str (fs/file-name f) ": " what " - written from resources/profiles/")))))))
 
 (defn -main
   "bb profile — check a profile.

@@ -412,33 +412,43 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"roster.md line 2: 7 cells, 6 expected - a ' \| ' inside a cell\?"
                             (profile/render-roster "intro\n| Coding | per run | role | `:coder` | m | a | b |" claude))))))
 
-(deftest portability-and-the-readme-say-the-claude-examples-models
-  ;; the person, 2026-10-29: portability.md's two tables and the README's sentence "add them to the
-  ;; check to keep them updated" - by hand, beside their history, so checked rather than written
-  (let [claude (get (profile/examples) "claude")
-        [seats roles] profile/stated-tables
+(deftest portability-and-the-readme-say-the-shipped-examples-models
+  ;; the person, 2026-10-29: portability.md's two tables "remove the history and keep only the
+  ;; current model & effort (origin in parenthesis)" - written by `bb roster-sync`, held here; the
+  ;; README's sentence is prose, checked
+  (let [examples (profile/examples)
+        claude (get examples "claude")
         text (slurp "../portability.md")]
-    (doseq [t profile/stated-tables]
-      (is (empty? (profile/table-gaps text claude t)) (:header t)))
+    (is (= text (profile/render-portability text examples))
+        "portability.md's tables of models are not the shipped examples' - run `bb roster-sync` in harness/")
     (is (empty? (profile/readme-gaps (slurp "README.md") claude)))
-    (testing "a drifted cell is named by its line and what it lacks"
+    (testing "a cell as the tables say it"
+      (is (= "`gemini-4-argon`, medium (Google API)" (profile/portability-model claude :coder)))
+      (is (= "`gemini-4-argon`, medium (OpenRouter)" (profile/portability-model (get examples "agy-ide") :coder)))
+      (is (= (str "`gpt-6-astra`, high (OpenRouter); `gemini-4-argon`, high (OpenRouter), left out while it is the Coder; "
+                  "`gpt-6.1-sol`, xhigh (OpenRouter)")
+             (profile/portability-model claude :security-panel))))
+    (testing "a drifted cell is written back, both directions, nothing else of the row touched"
+      (let [stale (str/replace text "| **Tester** | **≠ A** | Anthropic | `claude-sonnet-5-5`, medium (Anthropic API) |"
+                               "| **Tester** | **≠ A** | Anthropic | `claude-sonnet-5-5`, medium, the cache asked for (from 2026-10-16) |")]
+        (is (not= text stale))
+        (is (= text (profile/render-portability stale examples))))
+      (let [moved (assoc examples "claude" (update claude :security-panel pop))]
+        (is (str/includes? (profile/render-portability text moved)
+                           "| security-reviewer | `gpt-6-astra`, high (OpenRouter); `gemini-4-argon`, high (OpenRouter), left out while it is the Coder | `gpt-6-astra`")
+            "a member removed from the profile leaves the table")))
+    (testing "the README's sentence: its Coder's model and route"
       (let [moved (assoc-in claude [:roles :coder :model] "someone/else-1")]
-        (is (some #(re-find #"^\.\./portability\.md line \d+, coder: names no `else-1`$" %)
-                  (profile/table-gaps text moved seats)))
         (is (= ["README.md, its Coder: names no `else-1`"] (profile/readme-gaps (slurp "README.md") moved))))
-      (let [moved (assoc-in claude [:roles :tester :params :output_config :effort] "low")]
-        (is (some #(str/ends-with? % "tester: claude-sonnet-5-5: no `effort low`") (profile/table-gaps text moved roles))))
-      (let [moved (update claude :security-panel #(vec (reverse %)))]
-        (is (some #(str/includes? % "security-panel: names no") (profile/table-gaps text moved seats))
-            "the panel's rotation order"))
       (let [moved (assoc-in claude [:roles :coder :endpoint] "https://openrouter.ai/api/v1")]
-        (is (some #(str/ends-with? % "plan-reviewer: says the spec reviewer's selection, and it is not")
-                  (profile/table-gaps text (assoc-in claude [:roles :plan-reviewer :model] "x/y") seats)))
         (is (empty? (profile/readme-gaps "(its Coder is `gemini-4-argon`, over OpenRouter)" moved)))
         (is (= ["README.md, its Coder: no `OpenRouter`"]
-               (profile/readme-gaps "(its Coder is `gemini-4-argon`, direct)" moved)))))
-    (testing "a table missing, or a role with no row, is said"
-      (is (= ["../portability.md: no table under `| | seat `claude` | seat `agy-ide` |`"]
-             (profile/table-gaps "" claude seats)))
-      (is (some #{"../portability.md: no row for blueprint-reviewer"}
-                (profile/table-gaps (str/replace text #"(?m)^\| blueprint-reviewer .*\n" "") claude seats))))))
+               (profile/readme-gaps "(its Coder is `gemini-4-argon`, direct)" moved))))
+      (is (= ["README.md: no `(its Coder is ...)`"] (profile/readme-gaps "" claude))))
+    (testing "a table, a row or a cell the renderer cannot read is refused by name"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"portability.md: no table under `\| \| seat `claude`"
+                            (profile/render-portability "" examples)))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"portability.md: no row for blueprint-reviewer under"
+                            (profile/render-portability (str/replace text #"(?m)^\| blueprint-reviewer .*\n" "") examples)))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"portability.md line \d+: 4 cells, 3 expected"
+                            (profile/render-portability (str/replace text "| tester | `claude" "| tester | x | `claude") examples))))))

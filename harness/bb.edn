@@ -230,7 +230,7 @@
            :requires ([harness.models.profile :as profile])
            :task (apply profile/-main *command-line-args*)}
 
-  roster-sync {:doc "Write roster.md's Model column from the shipped claude example (resources/profiles/claude.edn); a test holds the file to it"
+  roster-sync {:doc "Write roster.md's Model column from the shipped claude example, and portability.md's two tables of models from the shipped examples (resources/profiles/); a test holds both"
                :requires ([harness.models.profile :as profile])
                :task (profile/roster-sync-main)}
 
