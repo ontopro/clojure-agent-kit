@@ -91,7 +91,9 @@ on code HEAD still has", with no rerun. The person: "yes, take 1 to 3 now".
 
 `bb health --record` on this Mac (macOS 27.0.1 arm64, at `f9b5af8`): 12 of 12 checks in 186 s; `bb
 docker-health` in the KIT's toolchain image, rebuilt under its new name since known-good's date moved
-(Linux Ubuntu 24.04.5 arm64): 12 of 12 in 101 s; `bb health-sync` rendered the README block. Both passed
+(Linux Ubuntu 24.04.5 arm64): 101 s, 12 of 12 as `bb health` counts them - two of them skipped, the app
+image and XTDB over pgwire, for no Docker inside the container, so 10 run, as the README block says
+(From Fable 5.1's read of `4eab9df`); `bb health-sync` rendered the README block. Both passed
 `--record`'s new guard - no drift. `known-good.edn` now says bb 1.13.229, clj-kondo 2026.10.26 and Java
 25.0.5 (it said 1.13.226, 2026.08.04 and 21.0.12.1), with XTDB 2.2.0 and the project set beside them;
 each run kept under its own time-named file (`health/records/<platform>/2026-10-29-f9b5af8.edn`, item
