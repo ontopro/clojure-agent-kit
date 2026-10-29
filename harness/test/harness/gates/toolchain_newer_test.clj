@@ -43,7 +43,10 @@
       "the matrix before the Dockerfile; a pin no file carries is left out")
   (is (= {:version "0.16.6" :from :pack-deps}
          (:cljfmt (tn/pins (assoc files :pack-deps {'dev.weavejester/cljfmt {:mvn/version "0.16.6"}}) project-set)))
-      "once the pack's bb.edn has the library, it is the pin"))
+      "once the pack's bb.edn has the library, it is the pin")
+  (is (= {:version "2.2.0" :from :xtdb-deps}
+         (:xtdb (tn/pins (assoc files :xtdb-deps {'com.xtdb/xtdb-api {:mvn/version "2.2.0"}}) project-set)))
+      "XTDB from the health check's deps.edn, the one place the KIT writes it"))
 
 (deftest a-row-carries-what-differs
   (let [rows (tn/rows (tn/pins files project-set)
@@ -53,9 +56,10 @@
         by (into {} (map (juxt :tool :marks)) rows)]
     (is (= {:bb [:newer :installed-differs] :clj-kondo [:project-differs] :java [] :geckodriver [:unknown]
             :cljfmt [:unknown] :clojure-mcp-light [:unknown] :tailwindcss [:unknown] :template [:newer]
-            :deps-new [:unknown]}
+            :deps-new [:unknown] :clojure [:unpinned] :git [:unpinned] :bbin [:unpinned] :xtdb [:unpinned]}
            by)
-        "the JDK's build is not a difference; a commit installed is not compared with a tag")
+        (str "the JDK's build is not a difference; a commit installed is not compared with a tag; a source "
+             "no file carries is a row, unpinned (From Fable 5.1's read of 51ce107)"))
     (testing "the lines `bb kit-status` and `bb tag-check` print: what moved and what did not answer"
       (is (= ["bb 1.13.225 -> 1.13.229 released"
               "geckodriver 0.37.1 - newest unknown (its repository did not answer)"
@@ -72,7 +76,36 @@
                     "newer released; installed differs")
                (second t)))
         (is (some #(str/starts-with? % "tailwindcss        -           4.3.3 (project set) ") t)
-            "a tool only a project runs: nothing installed here, no project column of its own")))))
+            "a tool only a project runs: nothing installed here, no project column of its own")
+        (is (some #(re-matches #"git +- +- +- +no file carries its pin" %) t) "a lost pin shows")))))
+
+(deftest a-jdk-of-another-major-is-allowed-and-said-apart
+  ;; From Fable 5.1's read of 51ce107: 21 and newer, 25 preferred (the person, 2026-10-26) - a machine
+  ;; on 21 is not a difference; another patch of the pin's major is
+  (let [ps {:java {:version "25.0.5+8" :from :download-matrix}}
+        java-row (fn [inst notes] (first (filter #(= :java (:tool %))
+                                                 (tn/rows ps {:java inst} {:java "25.0.5"} {} notes))))]
+    (is (= [:other-major] (:marks (java-row "21.0.12.1" {}))))
+    (is (= "installed major 21, allowed" (:note (java-row "21.0.12.1" {}))))
+    (is (= "major 25 is preferred, the one the KIT tests on; 21 works - 21 and newer"
+           (:note (java-row "21.0.12.1" {:java "major 25 is preferred, the one the KIT tests on; 21 works - 21 and newer"})))
+        "the doctor's own words, never the report's restatement")
+    (is (= [:installed-differs] (:marks (java-row "25.0.4" {}))))
+    (is (= [] (:marks (java-row "25.0.5" {}))))
+    (is (some #(str/ends-with? % "major 25 is preferred")
+              (tn/table [(assoc (java-row "21.0.12.1" {:java "major 25 is preferred"}) :installed "21.0.12.1")])))))
+
+(deftest the-doctors-map-is-read-whatever-its-exit
+  ;; From Fable 5.1's read of 51ce107: the doctor prints its map and exits 1 when a required tool is
+  ;; unusable - the machine the report is most for
+  (is (= {:bb {:version "1.13.229" :status :ok} :git {:version nil :status :missing :req :required}}
+         (tn/read-doctor "{:bb {:version \"1.13.229\" :status :ok} :git {:version nil :status :missing :req :required}}")))
+  (is (= {:bb "1.13.229" :git "missing"}
+         (tn/installed {:bb {:version "1.13.225" :from :download-matrix} :git {:version "2.56.0" :from :download-matrix}}
+                       (tn/read-doctor "{:bb {:version \"1.13.229\" :status :ok} :git {:version nil :status :missing}}")
+                       "/nowhere")))
+  (is (= {} (tn/read-doctor "")) "no output")
+  (is (= {} (tn/read-doctor "toolchain: not ready")) "not a map"))
 
 (deftest installed-is-the-doctors-probe-or-the-librarys-fetch
   (let [home (str (fs/create-temp-dir))

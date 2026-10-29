@@ -13,7 +13,8 @@
   The pins: the download matrix (`tools/toolchain/download-matrix.edn`) for the tools the pack
   fetches; the pack's `bb.edn` deps for its libraries, the Dockerfile's own until a library is the
   pack's (cljfmt, clojure-mcp-light, bbin); the project set (`project-set.edn`) for what only a
-  project runs (tailwindcss), and beside each tool it shares with the matrix; the template's and
+  project runs (tailwindcss), and beside each tool it shares with the matrix; XTDB's, the one
+  place the KIT writes it (`harness/health/xtdb/deps.edn`, plan 7.0, item 7.3); the template's and
   deps-new's tags (`template-pins.edn`). Installed: the doctor's probe of this machine where the
   doctor has a row, read from `bb doctor --edn` in a subprocess (the doctor's table is the harness's
   resource, not on the root task's classpath); a library the pack loads, its pinned version and whether bb has fetched it;
@@ -44,13 +45,14 @@
     :pin [[:pack-deps 'dev.weavejester/cljfmt] [:dockerfile "CLJFMT_VERSION"]] :probe :cljfmt :project :cljfmt}
    {:tool :clojure-mcp-light :repo "bhauman/clojure-mcp-light" :tag #"v(\d+\.\d+\.\d+)" :pin [[:dockerfile "MCP_LIGHT_TAG"]] :probe :clj-nrepl-eval}
    {:tool :bbin :repo "babashka/bbin" :tag #"v(\d+\.\d+\.\d+)" :pin [[:dockerfile "BBIN_VERSION"]] :probe :bbin}
+   {:tool :xtdb :repo "xtdb/xtdb" :tag #"v(\d+\.\d+\.\d+)" :pin [[:xtdb-deps 'com.xtdb/xtdb-api]]}
    {:tool :tailwindcss :repo "tailwindlabs/tailwindcss" :tag #"v(\d+\.\d+\.\d+)" :pin [[:project-set :tailwindcss]]}
    {:tool :template :repo "ontopro/clojure-stack-lite" :tag #"(kit-v\d+(?:\.\d+)*)" :pin [[:template :git/tag]]}
    {:tool :deps-new :repo "seancorfield/deps-new" :tag #"v(\d+\.\d+\.\d+)" :pin [[:template :deps-new]]}])
 
 (def ^:private where
   {:download-matrix "matrix" :pack-deps "pack bb.edn" :dockerfile "Dockerfile" :project-set "project set"
-   :template "template-pins"})
+   :template "template-pins" :xtdb-deps "health/xtdb deps.edn"})
 
 ;; ---------------------------------------------------------------- pure
 
@@ -89,13 +91,14 @@
   "Each source's pin from the files' contents, as {tool {:version :from}} - the first place of its
   `:pin` that carries it; a pin no file carries is left out. The Dockerfile's `v` prefix is
   dropped, so a pin and a release are compared as the same shape."
-  [{:keys [matrix pack-deps dockerfile template-pins]} & [project-set]]
+  [{:keys [matrix pack-deps dockerfile template-pins xtdb-deps]} & [project-set]]
   (let [args (dockerfile-args dockerfile)
         template (get-in template-pins [:templates (:default template-pins)])
         read (fn [[place k]]
                (case place
                  :download-matrix (get-in matrix [k :version])
                  :pack-deps (get-in pack-deps [k :mvn/version])
+                 :xtdb-deps (get-in xtdb-deps [k :mvn/version])
                  :dockerfile (some-> (get args k) (str/replace #"^v" ""))
                  :project-set (get-in project-set [:tools k])
                  :template (case k
@@ -107,25 +110,35 @@
           sources)))
 
 (defn rows
-  "One row per pinned source: {:tool :pin :from :installed :project :newest :marks}. `installed` is
+  "One row per source: {:tool :pin :from :installed :project :newest :note :marks}. `installed` is
   {tool version-or-text} (absent: `-`), `releases` {tool newest-or-nil}, `project-set` the project
-  set. `:marks`, in order: `:newer` when a release is newer than the pin, `:unknown` when the
-  repository did not answer, `:installed-differs` when this machine runs another version than the
-  pin, `:project-differs` when the project set writes another version than the pin."
-  [pins installed releases project-set]
-  (for [{:keys [tool project]} sources
-        :let [{pin :version from :from} (get pins tool)]
-        :when pin
-        :let [nw (get releases tool)
-              inst (get installed tool)
-              proj (when (and project (not= :project-set from)) (get-in project-set [:tools project]))
-              differs? (fn [v] (and (version? v) (version? pin) (not (zero? (compare-versions v pin)))))]]
-    {:tool tool :pin pin :from from :installed inst :project proj :newest nw
-     :marks (cond-> []
-              (and nw (pos? (compare-versions nw pin))) (conj :newer)
-              (nil? nw) (conj :unknown)
-              (differs? inst) (conj :installed-differs)
-              (differs? proj) (conj :project-differs))}))
+  set, `notes` {tool the doctor's note}. `:marks`, in order: `:unpinned` when no file carries the
+  pin - the row kept, so a lost pin shows; `:newer` when a release is newer than the pin; `:unknown`
+  when the repository did not answer; `:other-major` when this machine runs a JDK of another major
+  than the pin's - allowed, 21 and newer, so not a difference, said in the doctor's own words;
+  `:installed-differs` when this machine runs another version than the pin; `:project-differs`
+  when the project set writes another version than the pin."
+  ([pins installed releases project-set] (rows pins installed releases project-set {}))
+  ([pins installed releases project-set notes]
+   (for [{:keys [tool project]} sources
+         :let [{pin :version from :from} (get pins tool)
+               nw (get releases tool)
+               inst (get installed tool)
+               proj (when (and project pin (not= :project-set from)) (get-in project-set [:tools project]))
+               differs? (fn [v] (and (version? v) (version? pin) (not (zero? (compare-versions v pin)))))
+               other-major? (and (= :java tool) (version? inst) (version? pin)
+                                 (not= (first (version-key inst)) (first (version-key pin))))]]
+     (if-not pin
+       {:tool tool :marks [:unpinned]}
+       (cond-> {:tool tool :pin pin :from from :installed inst :project proj :newest nw
+                :marks (cond-> []
+                         (and nw (pos? (compare-versions nw pin))) (conj :newer)
+                         (nil? nw) (conj :unknown)
+                         other-major? (conj :other-major)
+                         (and (differs? inst) (not other-major?)) (conj :installed-differs)
+                         (differs? proj) (conj :project-differs))}
+         other-major? (assoc :note (or (get notes tool)
+                                       (str "installed major " (first (version-key inst)) ", allowed"))))))))
 
 (defn line
   "A row as one line, for `bb kit-status` and `bb tag-check`."
@@ -141,19 +154,19 @@
   (map line (filter #(some #{:newer :unknown} (:marks %)) rows)))
 
 (def ^:private mark-text
-  {:newer "newer released" :unknown "latest unknown" :installed-differs "installed differs"
-   :project-differs "project set differs"})
+  {:unpinned "no file carries its pin" :newer "newer released" :unknown "latest unknown"
+   :installed-differs "installed differs" :project-differs "project set differs"})
 
 (defn table
   "The report: a header and a line per row - tool, installed, pinned (where), latest, marks - the
   columns padded to their widest cell."
   [rows]
   (let [cells (cons ["tool" "installed" "pinned (where)" "latest" "marks"]
-                    (for [{:keys [tool pin from installed project newest marks]} rows]
+                    (for [{:keys [tool pin from installed project newest note marks]} rows]
                       [(name tool) (or installed "-")
-                       (str pin " (" (where from) (when project (str "; project set " project)) ")")
-                       (or newest "unknown")
-                       (str/join "; " (map mark-text marks))]))
+                       (if pin (str pin " (" (where from) (when project (str "; project set " project)) ")") "-")
+                       (if pin (or newest "unknown") "-")
+                       (str/join "; " (map #(if (= :other-major %) note (mark-text %)) marks))]))
         widths (apply map (fn [& col] (apply max (map count col))) cells)]
     (for [row cells]
       (str/trimr (str/join "  " (map (fn [c w] (format (str "%-" w "s") c)) row widths))))))
@@ -177,7 +190,8 @@
      :pack-deps (some-> (read "tools/toolchain/bb.edn") edn/read-string :deps)
      :dockerfile (read "Dockerfile")
      :template-pins (some-> (read "harness/resources/template-pins.edn") edn/read-string)
-     :project-set (some-> (read "harness/resources/project-set.edn") edn/read-string)}))
+     :project-set (some-> (read "harness/resources/project-set.edn") edn/read-string)
+     :xtdb-deps (some-> (read "harness/health/xtdb/deps.edn") edn/read-string :deps)}))
 
 (defn read-pins
   "The pins as the clone at `root` has them."
@@ -207,12 +221,19 @@
                       [tool v]))))
           sources)))
 
+(defn read-doctor
+  "`bb doctor --edn`'s output read; {} when it is not a map. Its exit is the doctor's verdict on the
+  machine, not on its map: it prints the map and exits 1 when a required tool is unusable - the
+  machine this report is most for (From Fable 5.1's read of `51ce107`)."
+  [out]
+  (let [m (try (edn/read-string out) (catch Exception _ nil))]
+    (if (map? m) m {})))
+
 (defn- doctor-edn
-  "`bb doctor --edn` run in the clone's `harness/`, read; {} when it does not answer."
+  "`bb doctor --edn` run in the clone's `harness/`, read whatever its exit."
   [root]
-  (let [{:keys [exit out]} (p/shell {:out :string :err :string :continue true :dir (str (fs/path root "harness"))}
-                                    "bb" "doctor" "--edn")]
-    (or (when (zero? exit) (try (edn/read-string out) (catch Exception _ nil))) {})))
+  (read-doctor (:out (p/shell {:out :string :err :string :continue true :dir (str (fs/path root "harness"))}
+                              "bb" "doctor" "--edn"))))
 
 (defn check
   "The rows for the clone at `root`, every repository asked at once. With `installed?` false the
@@ -221,9 +242,11 @@
   ([root {:keys [timeout-ms installed?] :or {timeout-ms 20000 installed? false}}]
    (let [files (read-files root)
          ps (pins files (:project-set files))
+         doctor (if installed? (doctor-edn root) {})
          asked (into {} (for [{:keys [tool repo tag]} sources :when (get-in ps [tool :version])]
                           [tool (future (some->> (tags repo timeout-ms) (newest tag)))]))]
-     (rows ps (if installed? (installed ps (doctor-edn root) (System/getProperty "user.home")) {}) (update-vals asked deref) (:project-set files)))))
+     (rows ps (if installed? (installed ps doctor (System/getProperty "user.home")) {}) (update-vals asked deref)
+           (:project-set files) (into {} (keep (fn [[t {:keys [note]}]] (when note [t note]))) doctor)))))
 
 (defn -main [& _]
   (let [root (let [{:keys [exit out]} (p/shell {:out :string :err :string :continue true}

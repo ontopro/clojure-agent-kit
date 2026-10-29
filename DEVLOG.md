@@ -65,6 +65,20 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### The version report reads the doctor whatever its exit, keeps a lost pin's row, says the JDK's major apart, and has XTDB (From Fable 5.1's read of `51ce107`)
+
+The low: the report discarded `bb doctor --edn`'s map whenever the doctor exited 1 - and the doctor
+prints its map and exits 1 when a required tool is unusable, so on the machine the report is most
+for every installed cell read `-`. It reads the map whatever the exit now (`read-doctor`), `{}` only
+when the output is no map. The nit: a source no file carries dropped out of the table silently; it is
+a row now, `-` across, "no file carries its pin". And, on the reader's answers: a JDK of another major
+than the pin's is no difference under "21 and newer, 25 preferred" - its own mark, worded by the
+doctor's note on the java row (the report never restates the environment table's rule), while
+another patch of the pin's major stays "installed differs"; XTDB joins, its pin read from
+`harness/health/xtdb/deps.edn`, the one place the KIT writes it (2.2.0, the newest). The images wait
+for 8.5b, which adds a registry's tags as a source; clojure-mcp-light's commit is compared at 8.2d,
+when its pin is one. The person: "yes to both, take them as one commit".
+
 ### `bb toolchain-newer` is the version report: each pin as installed here, as pinned, and its newest release (plan 7.0, item 8.1d)
 
 The person, 2026-10-29: "in KIT's development, known-good is a record of everything that has been
