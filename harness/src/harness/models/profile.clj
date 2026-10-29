@@ -268,7 +268,10 @@
          {:profile/error :key-env-unset
           :role r
           ;; The variable's NAME, never a value, and never a hint about one.
-          :detail (str key-env " is named by " (name r) " and is not set")})))
+          ;; THE COMMAND THAT SETS IT (plan 7.0, item 8.6b): the workspace `.env` holds the names, the
+          ;; shell loads it before the session - said without reading the file
+          :detail (str key-env " is named by " (name r) " and is not set - in the workspace `.env` (`" key-env
+                       "=` there, the key after it)? Then `eval \"$(bb toolchain-env)\"` in the shell that starts the session")})))
 
 ;; ---------------------------------------------------------------------------
 ;; reachability — network

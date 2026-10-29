@@ -68,6 +68,23 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### `bb init` writes the workspace `.env` template, and the KIT ignores `.env`, `.env.local`, `.mise.local.toml` (plan 7.0, items 8.6b and 8.6c's ignore lines)
+
+The person, 2026-10-28: "one of the steps needs to be to initialize a '.env' file with just the KEYS so
+that the Adopter can put in the relevant keys - basically a '.env' template"; and 2026-10-29, "go on 8.6c
+and 8.6b first". `init/env-template` (pure): every distinct `:key-env` the seat's profile names, its roles
+and its security panel, one `NAME=` line each, EMPTY, sorted by name, under a comment naming what uses it
+and the host it is sent to; a role with no `:key-env` (a local model) adds no line, a profile with none
+writes no `.env`. The header: this project's keys, one key per project with a limit at the provider
+(`bb balance` shows it), never committed, loaded before the session starts. `layout` writes it at the
+workspace root beside `workspace.edn` - never again: `bb upgrade` does not render the layout - and lists
+it in `--dry-run`; the workspace README names it; `init`'s closing lines say fill it first. `bb
+profile`'s unset line names where the key goes and the command that loads it, reading nothing. The
+claude example gives `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY`. The KIT's own
+`.gitignore` gains `.env`, `.env.local` and `.mise.local.toml` before any is placed in a clone (the gates
+check the whole tree). The loader the header and the lines name, `eval "$(bb toolchain-env)"`, is 8.6a,
+the next commit in item 8's build order.
+
 ### `tag-check`'s `versions` line reads the one list of tools a record must run at the pins (From Fable 5.1's read of `f9b5af8`)
 
 `versions-check` named bb, clj-kondo, the Clojure CLI and cljfmt by hand, and `kit-pins/recorded-tools`

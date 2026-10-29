@@ -11,3 +11,10 @@ target/
 # `/.local/` until 2026-09-16, and a tool writing to `harness/.local/` while that
 # directory was the working directory left an untracked file the root rule did not cover.
 .local/
+
+# A WORKSPACE'S KEYS AND A MACHINE'S OWN PINS, never committed (plan 7.0, item 8.6c): the gates check
+# the whole tree and a commit is `git add -A` of it, so these are ignored before any is placed here -
+# the KIT's own `--kit` review and bake-offs read a `.env` at the clone's root.
+.env
+.env.local
+.mise.local.toml

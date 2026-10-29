@@ -193,6 +193,39 @@
            ";;\n"
            (slurp source)))))
 
+(defn env-template
+  "The workspace `.env` as `bb init` writes it (plan 7.0, item 8.6b; the person, 2026-10-28: \"one of
+  the steps needs to be to initialize a '.env' file with just the KEYS so that the Adopter can put in
+  the relevant keys - basically a '.env' template\"): every distinct `:key-env` the seat's profile
+  names - its roles and its security panel - one `NAME=` line each, EMPTY, sorted by name, under a
+  comment naming what uses it and where it is sent; a role with no `:key-env` (a local model) adds no
+  line. The header says the file is this project's keys, one key per project with a limit at the
+  provider, never committed. Nil for a profile that names no key. Pure: `profile` the profile's map,
+  `build` the build's folder."
+  [profile build]
+  (let [uses (concat (for [[role r] (sort-by key (:roles profile))] [(name role) r])
+                     (for [m (profile/security-panel profile)] [(str "security panel (" (:name m) ")") m]))
+        by-key (->> uses
+                    (filter (fn [[_ r]] (:key-env r)))
+                    (group-by (fn [[_ r]] (:key-env r))))
+        host #(some-> % java.net.URI. .getHost)]
+    (when (seq by-key)
+      (str "# THIS PROJECT'S KEYS - written by `bb init` with the names its profile (" build "/profile.edn)
+"
+           "# needs, each empty: put the key after the `=`, nothing else on the line. One key per project,
+"
+           "# with a spending limit set at the provider (`bb balance` shows the key's limit beside the
+"
+           "# account's credit). This folder is not a repository, and nothing commits this file.
+"
+           "# Loaded into the shell before the session starts: `eval \"$(bb toolchain-env)\"`, then `claude`.
+"
+           (str/join (for [k (sort (keys by-key))
+                           :let [rs (by-key k)]]
+                       (str "\n# " (str/join ", " (distinct (map first rs)))
+                            " - " (str/join ", " (distinct (keep (comp host :endpoint second) rs))) "\n"
+                            k "=\n")))))))
+
 (defn- workspace-readme [project {:workspace/keys [kit app build work]}]
   (str "# " project " - a workspace, not a repository\n\n"
        "Written by the KIT's `bb init`. This folder holds sibling git repositories and is not one\n"
@@ -203,6 +236,7 @@
        "| `" build "/` | the build: the plan's documents in `docs/` from the KIT's template, `rules.edn` this project's rules over the KIT's rule source, `profile.edn` the models per role, `loop.edn` defaults for runs, and `runs/` the run records with `RUNS.md` their published tables. Read before the first dispatch by `bb plan-check`, run from this folder |\n"
        "| `" work "/` | scratch, in no repository: `runs/<id>/` and `worktrees/`. Safe to delete between runs |\n"
        "| `workspace.edn` | which folder is which, for the harness |\n"
+       "| `.env` | this project's keys: the names its profile needs, written empty by `bb init` - fill them; never committed, loaded into the shell before a session starts |\n"
        "| `bb.edn` | the front door: every KIT command a project runs is run from this folder; `bb upgrade` writes it again (by hand, `bb front-door-sync`) |\n"
        "| `CLAUDE.md`, `.claude/` | orientation for a session started here, and the skills and the off-loop role it loads |\n\n"
        "Start sessions HERE, not inside one of the repositories. One workspace is one project.\n"))
@@ -448,8 +482,14 @@
            [{:path "workspace.edn" :what "which folder is which, for the harness"
              :content (workspace-edn ws)}
             {:path "bb.edn" :what "the front door: every command a project runs, run from here"
-             :content (front-door/render harness-tasks)}
-            {:path "README.md" :what "one screen on the folders"
+             :content (front-door/render harness-tasks)}]
+           ;; THE PROJECT'S KEYS, NAMED AND EMPTY (plan 7.0, item 8.6b): the names the seat's profile
+           ;; needs, for the person to fill; never written again - `bb profile` names a key added later
+           (when-let [env (some-> (shipped-profile kit-dir seat) (#(when (fs/exists? %) (profile/read-profile %)))
+                                  (env-template build))]
+             [{:path ".env" :what "this project's keys: the names its profile needs, empty, to fill - never committed"
+               :content env}])
+           [{:path "README.md" :what "one screen on the folders"
              :content (workspace-readme project ws)}
             {:path "CLAUDE.md" :what "orientation for a session started here (no rules, no import)"
              ;; MARKED, so an upgrade knows its own: the hash of the text below the first line
@@ -744,6 +784,8 @@
                                  "; remove it before running `bb init` again."))
                    (System/exit 1)))]
         (println (str "Created. " (fs/path ws-dir workspace/file-name) " says which folder is which.\n\n"
+                      "First, this project's keys: fill " (fs/path ws-dir ".env") " - the names its profile needs, each\n"
+                      "empty - then `eval \"$(bb toolchain-env)\"` in the shell that starts the session, and `bb profile`.\n\n"
                       "Next: open a Claude Code session in the workspace folder - Opus 5.5, effort high -\n"
                       "and type /kit-start:\n\n"
                       "  cd " ws-dir " && claude\n\n"
