@@ -396,7 +396,7 @@
       (is (= "`gemini-4-argon`, medium, direct to Google" (profile/roster-model claude :coder)))
       (is (= "`claude-sonnet-5-5`, medium, direct to Anthropic, 40 rounds" (profile/roster-model claude :tester)))
       (is (str/includes? (profile/roster-model claude :security-panel)
-                         "`google/gemini-4-argon`, high, OpenRouter pinned to `google-vertex` - left out while it is the Coder's family")))
+                         "`gemini-4-argon`, high, direct to Google - left out while it is the Coder's family")))
     (testing "a drifted cell is caught, and nothing else of a row is touched"
       (let [row "| Coding | per run | dispatched role | `:coder` | `someone/else`, low | its own worktree |"]
         (is (= "| Coding | per run | dispatched role | `:coder` | `gemini-4-argon`, medium, direct to Google | its own worktree |"
@@ -425,7 +425,7 @@
     (testing "a cell as the tables say it"
       (is (= "`gemini-4-argon`, medium (Google API)" (profile/portability-model claude :coder)))
       (is (= "`gemini-4-argon`, medium (Google API)" (profile/portability-model (get examples "agy-ide") :coder)))
-      (is (= (str "`gpt-6-astra`, high (OpenRouter); `gemini-4-argon`, high (OpenRouter), left out while it is the Coder; "
+      (is (= (str "`gpt-6-astra`, high (OpenRouter); `gemini-4-argon`, high (Google API), left out while it is the Coder; "
                   "`gpt-6.1-sol`, xhigh (OpenRouter)")
              (profile/portability-model claude :security-panel))))
     (testing "a drifted cell is written back, both directions, nothing else of the row touched"
@@ -435,7 +435,7 @@
         (is (= text (profile/render-portability stale examples))))
       (let [moved (assoc examples "claude" (update claude :security-panel pop))]
         (is (str/includes? (profile/render-portability text moved)
-                           "| security-reviewer | `gpt-6-astra`, high (OpenRouter); `gemini-4-argon`, high (OpenRouter), left out while it is the Coder | `gpt-6-astra`")
+                           "| security-reviewer | `gpt-6-astra`, high (OpenRouter); `gemini-4-argon`, high (Google API), left out while it is the Coder | `gpt-6-astra`")
             "a member removed from the profile leaves the table")))
     (testing "the README's sentence: its Coder's model and route"
       (let [moved (assoc-in claude [:roles :coder :model] "someone/else-1")]

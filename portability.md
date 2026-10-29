@@ -377,7 +377,7 @@ Proved one seat at a time, portability being the design:
 | spec-reviewer | `gpt-6.1-sol`, high (OpenRouter) | `gpt-6.1-sol`, high (OpenRouter) |
 | plan-reviewer | `gpt-6.1-sol`, high (OpenRouter) | `gpt-6.1-sol`, high (OpenRouter) |
 | blueprint-reviewer | `claude-opus-5-5`, high (Anthropic API) | `claude-opus-5-5`, high (Anthropic API) |
-| security-reviewer | `gpt-6-astra`, high (OpenRouter); `gemini-4-argon`, high (OpenRouter), left out while it is the Coder; `gpt-6.1-sol`, xhigh (OpenRouter) | `gpt-6-astra`, high (OpenRouter); `gemini-4-argon`, high (OpenRouter), left out while it is the Coder |
+| security-reviewer | `gpt-6-astra`, high (OpenRouter); `gemini-4-argon`, high (Google API), left out while it is the Coder; `gpt-6.1-sol`, xhigh (OpenRouter) | `gpt-6-astra`, high (OpenRouter); `gemini-4-argon`, high (Google API), left out while it is the Coder |
 | orchestrator | `claude-opus-5-5`, medium (Anthropic API) | `gemini-4-argon`, medium (Google API) |
 
 *(The `claude` seat's Tester and code reviewer swapped on 2026-09-16, after bake-offs measured
@@ -391,8 +391,8 @@ reported rather than computed, one credit stop, the generation record; the profi
 what each route means for the money.)*
 
 Each example uses both `:shape` adapters - its Anthropic roles direct to Anthropic with
-`:pricing`, its Argon roles (each example's Coder, and `agy-ide`'s orchestrator) direct to Google
-with `:pricing` (since 2026-10-29 in `agy-ide`), the rest over OpenRouter. There are two rather than one because a single
+`:pricing`, every Argon role direct to Google with `:pricing` - one model, one route (the
+person, 2026-10-29) - the rest over OpenRouter. There are two rather than one because a single
 committed profile reads as *your* configuration, which is exactly how the first version
 was misread.
 
@@ -408,7 +408,7 @@ works, and no packet reaches them:
 | **Code reviewer** | **≠ A** | OpenAI | `gpt-6.1-sol`, high (OpenRouter) | yes, on green | Third family; only Coder-divergence is required, a third adds blind-spot diversity. |
 | **Spec reviewer** | **≠ A** | OpenAI | `gpt-6.1-sol`, high (OpenRouter) | yes, once per spec, before `start` | Reads the Architect's contract cold — every place a target can be read two ways, every input no target mentions — and the Architect is the seat, family A. Added 2026-09-18; same model as the code reviewer because that is the configuration measured. |
 | **Plan reviewer** | **≠ A** | OpenAI | `gpt-6.1-sol`, high (OpenRouter) | yes, in every stage's plan step (`bb plan-review`) | The spec reviewer's selection by default; its own role since 2026-10-06, so a project can set it apart. |
-| **Security reviewer** | **≠ A** | OpenAI; Google | `gpt-6-astra`, high (OpenRouter); `gemini-4-argon`, high (OpenRouter), left out while it is the Coder; `gpt-6.1-sol`, xhigh (OpenRouter) | yes, at every stage's end (`bb security-review`) | Reads the merged application with tools, in a sandbox with no network; a finding counts only when a test of its own fails. Added 2026-10-08. |
+| **Security reviewer** | **≠ A** | OpenAI; Google | `gpt-6-astra`, high (OpenRouter); `gemini-4-argon`, high (Google API), left out while it is the Coder; `gpt-6.1-sol`, xhigh (OpenRouter) | yes, at every stage's end (`bb security-review`) | Reads the merged application with tools, in a sandbox with no network; a finding counts only when a test of its own fails. Added 2026-10-08. |
 | **Blueprint reviewer** | none — family A, accepted by decision | Anthropic | `claude-opus-5-5`, high (Anthropic API) | yes, once per Blueprint, before sign-off | Reads the stage document and the Blueprint whole against §07, the blueprint, and §06's rules (`bb blueprint-review`). The rule's reasoning reaches it as it reaches the spec reviewer; the exception is from a measurement — on one build this family, reading Blueprints cold, alone found each round's load-bearing defect — written in the profile's comment and watched in `NOTES.md`. Added 2026-09-25. |
 | **Orchestrator** | none | software; Anthropic for triage | `claude-opus-5-5`, medium (Anthropic API) | yes, on a red gate, a note or a rejected review | Dispatch is `harness.loop.orchestrate`; the model enters at triage and shares the Coder's family by decision — it verifies nothing, so §05 does not reach it. Watched in `NOTES.md`. |
 | **Architect** | none | Anthropic — the seat | the session's model, chosen per session | no — seat-side | Writes the spec and amends it at a stop; does not verify Coder output. |

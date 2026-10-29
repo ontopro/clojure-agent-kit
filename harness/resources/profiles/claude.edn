@@ -124,12 +124,14 @@
                    :params {:reasoning_effort "high"
                             :provider {:only ["openai"] :allow_fallbacks false}}}
                   {:family :google
-                   :model "google/gemini-4-argon"
+                   :model "gemini-4-argon"
                    :shape :openai
-                   :endpoint "https://openrouter.ai/api/v1"
-                   :key-env "OPENROUTER_API_KEY"
-                   :params {:reasoning_effort "high"
-                            :provider {:only ["google-vertex"] :allow_fallbacks false}}}
+                   :endpoint "https://generativelanguage.googleapis.com/v1beta/openai"
+                   :key-env "GEMINI_API_KEY"
+                   :params {:reasoning_effort "high"}
+                   :pricing {:per-mtok {:in 2 :out 10 :cache-read 0.1}
+                             :source "https://ai.google.dev/gemini-api/docs/pricing"
+                             :as-of "2026-10-28"}}
                   {:family :openai
                    :model "openai/gpt-6.1-sol"
                    :shape :openai

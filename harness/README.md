@@ -464,8 +464,9 @@ of a project is written into it - which is why the list below is short.
   the KIT has run from and the one the health check's profile names - its example sends the
   Anthropic roles direct to Anthropic's API (since 2026-10-16; over OpenRouter pinned to `anthropic`
   before) with the cache asked for on the tool-loop role among them, the Tester since 2026-10-16 (its
-  Coder is Google's `gemini-4-argon`, on a measurement, direct to Google's API since 2026-10-28), and every
-  other role through OpenRouter; its
+  Coder is Google's `gemini-4-argon`, on a measurement, direct to Google's API since 2026-10-28, and
+  the security panel's Argon too since 2026-10-29 - one model, one route), and every other role through
+  OpenRouter; its
   header says what each route means for the money: a computed cost and a credit stop of its own
   direct, a reported cost and `bb balance` on OpenRouter - and `agy-ide`, written and
   checked by `bb profile` but never yet in the seat of a build, its roles the `claude` example's

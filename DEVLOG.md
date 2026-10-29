@@ -65,6 +65,18 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### Every Argon role goes direct to Google's API: one model, one route (plan 7.0, item 1.8)
+
+The person, 2026-10-29, asked whether the security panel's Argon stays on OpenRouter as in the
+`claude` example: "Every Argon reference goes to Google API - basically 1 model 1 route." Both
+examples' panel member moves from OpenRouter (pinned to `google-vertex`) to Google's endpoint with
+`GEMINI_API_KEY` and the Argon `:pricing` (Google's page, 2026-10-28) - a direct reply carries no cost.
+The member reads nothing while Argon is the Coder, so no review changes today; `bb security-review`'s
+balance pre-flight applies to an OpenRouter endpoint only (`security_review.clj` 665), so a direct
+member takes no OpenRouter margin. `bb roster-sync` wrote roster.md's and portability.md's cells;
+portability.md's adapters sentence, the harness README's and `build-docs/03`'s say every Argon role
+goes direct. The first project's own profile is the project's: the change there is its session's.
+
 ### `bb roster-sync` says a missing file in one line too; the `agy-ide` header says what differs (From Fable 5.1's read of `85419dc` and `5b3eb7d`)
 
 `roster-sync-main` caught only the KIT's own refusals, so a `roster.md` or `portability.md` gone from
