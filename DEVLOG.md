@@ -68,6 +68,20 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### `bb health --record` refuses before the run when this machine has drifted from the KIT's pins (plan 7.0, item 8.1d)
+
+The person, 2026-10-29: "As part of the 'bb health --record' run, it runs the report and if there are
+differences, it stops and asks what to do." It stops - one refusal, exit 1, before any minute is spent -
+and the person is asked by whoever runs it: `bb health --record` is run by an agent or by `bb tag-check
+--run`, where a prompt would hang (the writer's reading, "agree"). The doctor's probe the run already
+takes is read through `kit-pins` (`read-pins`, `installed`, `rows` with no releases, offline), and
+`record-drift` keeps the rows a record must not certify: the tools `tag-check`'s `versions` line holds -
+bb, clj-kondo, the Clojure CLI, cljfmt - and git only where the record is the image's (Linux); the JDK
+apart, any 21 and newer. `drift-refusal` names each row, installed against pinned and where, and the two
+ways out: move the pin (`bb kit-pins`, the person's go, `toolchain-sum`) or put the machine back. A
+newer release never stops a record. No flag records anyway: `tag-check` would refuse what it recorded.
+On this machine today: no drift. The kit-session skill's step 5 says it.
+
 ### `bb toolchain-newer` is `bb kit-pins`, and the kit-session skill says when to run it on demand (plan 7.0, item 8.1d)
 
 The person, 2026-10-29: "I will be running brew updates regularly, so this is going to come up. The

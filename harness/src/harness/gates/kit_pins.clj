@@ -274,3 +274,34 @@
                   (count (filter #(some #{:installed-differs} (:marks %)) rs)) " installed differ. "
                   "Each row is the person's go or no-go - to the latest, or back to the pin where this machine drifted; "
                   "a version moves only on that go, and a health run then records it (kit-session skill)."))))
+
+;; ---------------------------------------------------------------- the record's guard
+
+(def recorded-tools
+  "The tools whose versions a health record must have run at the KIT's pins - what `bb tag-check`'s
+  `versions` line holds to known-good: bb, clj-kondo, the Clojure CLI and cljfmt; and git where the
+  record is the KIT's toolchain image's (Linux), whose git is the matrix's - a Mac's is brew's. The
+  JDK apart: any 21 or newer is allowed."
+  #{:bb :clj-kondo :clojure :cljfmt})
+
+(defn record-drift
+  "The rows of `rows` a health record must not be written over: one of `recorded-tools` (git too when
+  `linux?`) that this machine runs at another version than the KIT pins - pure."
+  [rows linux?]
+  (let [guarded (cond-> recorded-tools linux? (conj :git))]
+    (filter #(and (guarded (:tool %)) (some #{:installed-differs} (:marks %))) rows)))
+
+(defn drift-refusal
+  "What `bb health --record` says when `drift` is not empty, or nil: each row, then the two ways out
+  (the person, 2026-10-29: \"As part of the 'bb health --record' run, it runs the report and if there
+  are differences, it stops and asks what to do\" - it stops; the person is asked by whoever runs it)."
+  [drift]
+  (when (seq drift)
+    (str/join "\n"
+              (concat ["--record refused: this machine runs other versions than the KIT pins, and a record of them"
+                       "would certify versions nobody chose:"]
+                      (for [{:keys [tool installed pin from]} drift]
+                        (str "    " (name tool) "  installed " installed ", pinned " pin " (" (where from) ")"))
+                      ["  Either move the pin to what this machine runs - `bb kit-pins`, the person's go, then the pin moved"
+                       "  (`toolchain-sum` for the download matrix) - or put this machine back on the pinned version;"
+                       "  then run this again. Nothing was run."]))))

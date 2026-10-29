@@ -131,3 +131,19 @@
         (fs/create-dirs (fs/path home ".gitlibs" "libs" "io.github.seancorfield" "deps-new" "2f96530c963dbe920f2e5945612b96410f6c6e12"))
         (fs/create-dirs (fs/path home ".m2" "repository" "com" "xtdb" "xtdb-api" "2.2.0"))
         (is (= {:deps-new "0.8.0, fetched" :xtdb "2.2.0, fetched"} (tn/installed ps {} home)))))))
+
+(deftest a-record-is-refused-over-a-drifted-tool
+  ;; the person, 2026-10-29: "As part of the 'bb health --record' run, it runs the report and if there
+  ;; are differences, it stops" - over the tools tag-check's versions line holds, git only in the image
+  (let [pins {:bb {:version "1.13.229" :from :download-matrix} :git {:version "2.56.0" :from :download-matrix}
+              :java {:version "25.0.5+8" :from :download-matrix} :geckodriver {:version "0.37.1" :from :download-matrix}
+              :clj-kondo {:version "2026.10.26" :from :download-matrix}}
+        rows (tn/rows pins {:bb "1.13.230" :git "2.57.0" :java "25.0.4" :geckodriver "0.36.0" :clj-kondo "2026.10.26"} {} nil)]
+    (is (= [:bb] (map :tool (tn/record-drift rows false)))
+        "a Mac's git is brew's, the JDK any 21 and newer, geckodriver no record's - only bb")
+    (is (= [:bb :git] (map :tool (tn/record-drift rows true))) "in the image, its git is the matrix's")
+    (is (nil? (tn/drift-refusal (tn/record-drift (tn/rows pins {:bb "1.13.229"} {} nil) false))) "no drift, no refusal")
+    (let [r (tn/drift-refusal (tn/record-drift rows false))]
+      (is (str/starts-with? r "--record refused: this machine runs other versions than the KIT pins"))
+      (is (str/includes? r "    bb  installed 1.13.230, pinned 1.13.229 (matrix)"))
+      (is (str/ends-with? r "then run this again. Nothing was run.")))))

@@ -29,7 +29,8 @@ commands that check each step. Nothing here is shipped: `bb init` copies `skills
    the same read. A row marked "installed differs" is this machine running another version than the
    KIT pins, moved by no one's decision: the person says go (the pin moves to it, as above) or no-go
    (the machine goes back to the pin). A row marked "newer released" waits for the next plan's start
-   or a tag, unless the person moves it now.
+   or a tag, unless the person moves it now. `bb health --record` refuses while a row it records
+   reads "installed differs", so a drift is settled before a record certifies it.
 
 ## The seats
 

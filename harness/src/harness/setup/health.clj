@@ -58,6 +58,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [harness.gates.boundary :as boundary]
+   [harness.gates.kit-pins :as kit-pins]
    [harness.gates.run :as gates]
    [harness.loop.driver :as driver]
    [harness.loop.orchestrate :as orch]
@@ -1146,7 +1147,9 @@
   generation (no JVM beyond the project's own gates). `--keep` leaves the
   scratch workspace for inspection and prints where it is. `--record`, on a
   healthy full run, writes this platform's record and the known-good set -
-  commit them, then `bb health-sync` renders the README block."
+  commit them, then `bb health-sync` renders the README block. It is refused before the run when
+  this machine runs another version than the KIT pins of a tool the record holds (`bb kit-pins`,
+  `kit-pins/record-drift`): a record certifies the pins, not a drift nobody chose."
   [& args]
   (let [flags (set (filter #(str/starts-with? % "--") args))
         kit (kit-dir)
@@ -1156,7 +1159,16 @@
     (when (flags "--record")
       (when-let [why (record-refusal kit (workspace/find-workspace kit))]
         (say "  " why)
-        (System/exit 1)))
+        (System/exit 1))
+      ;; A RECORD CERTIFIES THE KIT'S PINS, NOT WHAT THIS MACHINE DRIFTED TO (plan 7.0, item 8.1d): a
+      ;; tool a brew upgrade moved is refused here, in seconds, offline - the doctor's probe above
+      (let [pins (kit-pins/read-pins kit)
+            doctor (into {} (map (juxt :tool #(select-keys % [:version :status]))) doctor-results)
+            rows (kit-pins/rows pins (kit-pins/installed pins doctor (System/getProperty "user.home")) {} nil)]
+        (when-let [why (kit-pins/drift-refusal
+                        (kit-pins/record-drift rows (str/starts-with? (System/getProperty "os.name") "Linux")))]
+          (say "  " why)
+          (System/exit 1))))
     (say "\n  doctor: gates tier " (if (doctor/ok? doctor-results :gates) "ok" "NOT OK")
          ", loop tier " (if (doctor/ok? doctor-results :loop) "ok" "NOT OK") " (`bb doctor` has the table)")
     (when-not (doctor/ok? doctor-results :loop)
