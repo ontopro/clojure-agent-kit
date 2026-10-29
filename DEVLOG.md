@@ -65,6 +65,17 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### `bb roster-sync` refuses in one line and writes nothing (From Fable 5.1's read of `b8dda37`)
+
+Two nits: a portability.md row without its closing ` |` was refused as "0 cells, 3 expected - a ' |
+' inside a cell?", the wrong cause - it says "no closing ` |`" now; and an example gone from
+`resources/profiles/` reached the renderer as a NullPointerException - it is refused by name, "no
+shipped example `agy-ide` in resources/profiles/". The person, taking them: "KIT should be resilient -
+so tooling that crashes and takes down the application is bad." So `bb roster-sync` renders both files
+before it writes either, and a refusal is one line on stderr and exit 1, "roster-sync: <the reason> -
+nothing written" - never a stack trace, never one file of the two (probed: portability.md without its
+tables, roster.md untouched).
+
 ### portability.md's tables of models say the current model alone, written from the profiles (From Fable 5.1's read of `60842de`)
 
 The reader found the check `60842de` added read the cells' history: a name or a route word in a

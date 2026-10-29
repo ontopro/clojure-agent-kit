@@ -492,10 +492,17 @@
              "**Blueprint reviewer**" :blueprint-reviewer "**Security reviewer**" :security-panel
              "**Orchestrator**" :orchestrator}}])
 
+(defn- example!
+  "The shipped example `ex` of `examples`, or a refusal naming it."
+  [examples ex]
+  (or (get examples ex)
+      (throw (ex-info (str "no shipped example `" ex "` in resources/profiles/") {:example ex}))))
+
 (defn render-portability
   "`text` (portability.md) with the Model cells of its two tables of models written from
-  `examples` (name -> profile). Every other byte kept. A table not found, a role with no row, or a
-  row of a role with other than its table's cells is refused by name."
+  `examples` (name -> profile). Every other byte kept. A table not found, a role with no row, a row
+  of a role without its closing ` |` or with other than its table's cells, or an example a table
+  names and `examples` lacks is refused by name."
   [text examples]
   (reduce
    (fn [text {:keys [header cells columns labels]}]
@@ -507,11 +514,13 @@
                             cs (when (str/ends-with? l " |") (str/split (subs l 2 (- (count l) 2)) #" \| " -1))
                             role (labels (str/trim (first (str/split (subs l 1) #"\|"))))]
                       :when role]
-                  (if (= cells (count cs))
-                    [i role cs]
-                    (throw (ex-info (str "portability.md line " (inc i) ": " (count cs) " cells, " cells
-                                         " expected - a ' | ' inside a cell?")
-                                    {:line (inc i) :cells (count cs)}))))
+                  (cond (nil? cs)
+                        (throw (ex-info (str "portability.md line " (inc i) ": no closing ` |`") {:line (inc i)}))
+                        (not= cells (count cs))
+                        (throw (ex-info (str "portability.md line " (inc i) ": " (count cs) " cells, " cells
+                                             " expected - a ' | ' inside a cell?")
+                                        {:line (inc i) :cells (count cs)}))
+                        :else [i role cs]))
            missing (sort (remove (set (map second rows)) (set (vals labels))))]
        (when (seq missing)
          (throw (ex-info (str "portability.md: no row for " (str/join ", " (map name missing))
@@ -519,7 +528,7 @@
                          {:missing missing})))
        (->> rows
             (reduce (fn [ls [i role cs]]
-                      (let [written (reduce-kv (fn [cs col ex] (assoc cs col (portability-model (get examples ex) role)))
+                      (let [written (reduce-kv (fn [cs col ex] (assoc cs col (portability-model (example! examples ex) role)))
                                                (vec cs) columns)]
                         (assoc ls i (str "| " (str/join " | " written) " |"))))
                     lines)
@@ -542,12 +551,18 @@
 
 (defn roster-sync-main
   "`bb roster-sync`: `roster.md`'s Model column written from the shipped `claude` example, and
-  `portability.md`'s two tables of models from the shipped examples."
+  `portability.md`'s two tables of models from the shipped examples. Both are rendered before
+  either is written: a refusal is one line and exit 1, nothing written - never a stack trace, never
+  one file of the two."
   [& _]
-  (doseq [[f render what] [["roster.md" #(render-roster % (get (examples) "claude")) "the Model column"]
-                           ["../portability.md" #(render-portability % (examples)) "the two tables of models"]]]
-    (let [before (slurp f)
-          after (render before)]
+  (let [exs (examples)
+        jobs [["roster.md" #(render-roster % (example! exs "claude")) "the Model column"]
+              ["../portability.md" #(render-portability % exs) "the two tables of models"]]
+        done (try (mapv (fn [[f render what]] (let [before (slurp f)] [f before (render before) what])) jobs)
+                  (catch clojure.lang.ExceptionInfo e
+                    (binding [*out* *err*] (println (str "roster-sync: " (ex-message e) " - nothing written")))
+                    (System/exit 1)))]
+    (doseq [[f before after what] done]
       (if (= before after)
         (println (str (fs/file-name f) ": " what " - already the shipped examples'"))
         (do (spit f after) (println (str (fs/file-name f) ": " what " - written from resources/profiles/")))))))

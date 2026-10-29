@@ -451,4 +451,10 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"portability.md: no row for blueprint-reviewer under"
                             (profile/render-portability (str/replace text #"(?m)^\| blueprint-reviewer .*\n" "") examples)))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"portability.md line \d+: 4 cells, 3 expected"
-                            (profile/render-portability (str/replace text "| tester | `claude" "| tester | x | `claude") examples))))))
+                            (profile/render-portability (str/replace text "| tester | `claude" "| tester | x | `claude") examples)))
+      ;; From Fable 5.1's read of b8dda37: a row without its closing bar said as that, and an example
+      ;; gone from resources/profiles/ named rather than a NullPointerException
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"portability.md line \d+: no closing ` \|`$"
+                            (profile/render-portability (str/replace text #"(?m)^(\| tester \| .*) \|$" "$1") examples)))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no shipped example `agy-ide` in resources/profiles/"
+                            (profile/render-portability text (dissoc examples "agy-ide")))))))
