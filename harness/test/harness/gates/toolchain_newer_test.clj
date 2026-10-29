@@ -25,7 +25,8 @@
   {:matrix {:bb {:version "1.13.225"} :clj-kondo {:version "2026.08.04"} :java {:version "25.0.5+8"}
             :geckodriver {:version "0.37.1"}}
    :dockerfile "ARG BB_VERSION=1.13.0\nARG MCP_LIGHT_TAG=v0.2.2\n  ARG INDENTED=1\nARG CLJFMT_VERSION=0.16.5\n"
-   :template-pins {:default :t :templates {:t {:git/tag "kit-v1.3" :deps-new {:git/tag "v0.8.0"}}}}})
+   :template-pins {:default :t :templates {:t {:template 'io.github.o/t :git/tag "kit-v1.3" :git/sha "f12268d"
+                                               :deps-new {:git/tag "v0.8.0" :git/sha "2f96530"}}}}})
 
 (def project-set {:tools {:babashka "1.13.225" :clj-kondo "2026.07.24" :tailwindcss "4.3.3"}})
 
@@ -37,8 +38,8 @@
           :cljfmt {:version "0.16.5" :from :dockerfile}
           :clojure-mcp-light {:version "0.2.2" :from :dockerfile}
           :tailwindcss {:version "4.3.3" :from :project-set}
-          :template {:version "kit-v1.3" :from :template}
-          :deps-new {:version "0.8.0" :from :template}}
+          :template {:version "kit-v1.3" :from :template :gitlib {:lib 'io.github.o/t :sha "f12268d"}}
+          :deps-new {:version "0.8.0" :from :template :gitlib {:lib 'io.github.seancorfield/deps-new :sha "2f96530"}}}
          (tn/pins files project-set))
       "the matrix before the Dockerfile; a pin no file carries is left out")
   (is (= {:version "0.16.6" :from :pack-deps}
@@ -77,7 +78,10 @@
                (second t)))
         (is (some #(str/starts-with? % "tailwindcss        -           4.3.3 (project set) ") t)
             "a tool only a project runs: nothing installed here, no project column of its own")
-        (is (some #(re-matches #"git +- +- +- +no file carries its pin" %) t) "a lost pin shows")))))
+        (is (some #(re-matches #"git +- +- +- +no file carries its pin" %) t) "a lost pin shows")))
+    ;; From Fable 5.1's read of 2267ee7: what this machine runs is so whether or not a file pins it
+    (is (some #(re-matches #"git +2\.56\.0 +- +- +no file carries its pin" %)
+              (tn/table (tn/rows (tn/pins files project-set) {:git "2.56.0"} {} project-set))))))
 
 (deftest a-jdk-of-another-major-is-allowed-and-said-apart
   ;; From Fable 5.1's read of 51ce107: 21 and newer, 25 preferred (the person, 2026-10-26) - a machine
@@ -119,4 +123,11 @@
            (tn/installed pins doctor home))
         "a library the pack loads is its pin and whether bb fetched it, not the binary's probe")
     (fs/create-dirs (fs/path home ".m2" "repository" "dev" "weavejester" "cljfmt" "0.16.6"))
-    (is (= "0.16.6, fetched" (:cljfmt (tn/installed pins doctor home))))))
+    (is (= "0.16.6, fetched" (:cljfmt (tn/installed pins doctor home))))
+    (testing "a git dep the Clojure CLI fetches, by its sha; XTDB a Maven dep (the person: why is 0.8.0 not shown)"
+      (let [ps {:deps-new {:version "0.8.0" :from :template :gitlib {:lib 'io.github.seancorfield/deps-new :sha "2f96530"}}
+                :xtdb {:version "2.2.0" :from :xtdb-deps}}]
+        (is (= {:deps-new "0.8.0, not fetched" :xtdb "2.2.0, not fetched"} (tn/installed ps {} home)))
+        (fs/create-dirs (fs/path home ".gitlibs" "libs" "io.github.seancorfield" "deps-new" "2f96530c963dbe920f2e5945612b96410f6c6e12"))
+        (fs/create-dirs (fs/path home ".m2" "repository" "com" "xtdb" "xtdb-api" "2.2.0"))
+        (is (= {:deps-new "0.8.0, fetched" :xtdb "2.2.0, fetched"} (tn/installed ps {} home)))))))

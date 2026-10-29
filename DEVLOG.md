@@ -65,6 +65,18 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### The version report says a git dep and XTDB as fetched, and what an unpinned row's machine runs (plan 7.0, item 8.1d)
+
+The person, at the report's first run: "why is 0.8.0 not showing up in the intalled here column?"
+deps-new is a git dep the Clojure CLI fetches when `bb init` generates the application, into
+`~/.gitlibs/libs/io.github.seancorfield/deps-new/<full sha>` - `2f96530…` was there - and the report
+looked only in `~/.m2`, for the pack's libraries. `fetched` now looks in `~/.gitlibs` for the
+template and deps-new, by the pin's short sha as a prefix of the folder's name, and in `~/.m2` for
+XTDB as for the pack's deps: "0.17.0, fetched", "kit-v1.3, fetched", "2.2.0, fetched" on this
+machine. And Fable 5.1's nit on `2267ee7`: an unpinned row keeps what this machine runs in its
+installed column. The run after `1bfe459`: every row the same three ways, "0 newer released, 0
+installed differ".
+
 ### The pins move on the person's go: bb 1.13.229, clj-kondo 2026.10.26, deps-new 0.17.0 (plan 7.0, item 8.1d)
 
 The version report's first run (`bb toolchain-newer`, `2267ee7`) showed three rows behind their newest

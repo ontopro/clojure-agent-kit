@@ -90,10 +90,13 @@
 (defn pins
   "Each source's pin from the files' contents, as {tool {:version :from}} - the first place of its
   `:pin` that carries it; a pin no file carries is left out. The Dockerfile's `v` prefix is
-  dropped, so a pin and a release are compared as the same shape."
+  dropped, so a pin and a release are compared as the same shape. A pin the Clojure CLI fetches as
+  a git dep - the template, deps-new - carries `:gitlib {:lib :sha}` too, for `fetched`."
   [{:keys [matrix pack-deps dockerfile template-pins xtdb-deps]} & [project-set]]
   (let [args (dockerfile-args dockerfile)
         template (get-in template-pins [:templates (:default template-pins)])
+        gitlib {:git/tag (some->> (:git/sha template) (hash-map :lib (:template template) :sha))
+                :deps-new (some->> (get-in template [:deps-new :git/sha]) (hash-map :lib 'io.github.seancorfield/deps-new :sha))}
         read (fn [[place k]]
                (case place
                  :download-matrix (get-in matrix [k :version])
@@ -106,7 +109,11 @@
                              :deps-new (some-> (get-in template [:deps-new :git/tag]) (str/replace #"^v" "")))))]
     (into {}
           (keep (fn [{:keys [tool pin]}]
-                  (some (fn [place] (when-let [v (read place)] [tool {:version v :from (first place)}])) pin)))
+                  (some (fn [[from k :as place]]
+                          (when-let [v (read place)]
+                            [tool (cond-> {:version v :from from}
+                                    (and (= :template from) (gitlib k)) (assoc :gitlib (gitlib k)))]))
+                        pin)))
           sources)))
 
 (defn rows
@@ -129,7 +136,8 @@
                other-major? (and (= :java tool) (version? inst) (version? pin)
                                  (not= (first (version-key inst)) (first (version-key pin))))]]
      (if-not pin
-       {:tool tool :marks [:unpinned]}
+       ;; what this machine runs is so whether or not a file pins it (From Fable 5.1's read of 2267ee7)
+       {:tool tool :installed inst :marks [:unpinned]}
        (cond-> {:tool tool :pin pin :from from :installed inst :project proj :newest nw
                 :marks (cond-> []
                          (and nw (pos? (compare-versions nw pin))) (conj :newer)
@@ -199,13 +207,20 @@
   (let [files (read-files root)] (pins files (:project-set files))))
 
 (defn fetched
-  "A library the pack loads: its pinned version and whether bb has fetched it - Maven's into
-  `~/.m2`. Nil for a pin that is not the pack's."
-  [{:keys [version from]} lib home]
-  (when (= :pack-deps from)
-    (let [[group artifact] (str/split (str lib) #"/")
-          dir (fs/path home ".m2" "repository" (str/replace group "." "/") artifact version)]
-      (str version (if (fs/exists? dir) ", fetched" ", not fetched")))))
+  "A library: its pinned version and whether it is fetched - a Maven dep (the pack's `bb.edn`, the
+  health check's XTDB) into `~/.m2`; a git dep the Clojure CLI fetches (the template, deps-new) into
+  `~/.gitlibs/libs/<lib>/<full sha>`, the pin's short sha a prefix of the folder's name. Nil for a pin
+  that is neither."
+  [{:keys [version from gitlib]} lib home]
+  (cond (#{:pack-deps :xtdb-deps} from)
+        (let [[group artifact] (str/split (str lib) #"/")
+              dir (fs/path home ".m2" "repository" (str/replace group "." "/") artifact version)]
+          (str version (if (fs/exists? dir) ", fetched" ", not fetched")))
+        gitlib
+        (let [dir (fs/path home ".gitlibs" "libs" (str (:lib gitlib)))
+              have? (and (fs/directory? dir)
+                         (some #(str/starts-with? (str (fs/file-name %)) (:sha gitlib)) (fs/list-dir dir)))]
+          (str version (if have? ", fetched" ", not fetched")))))
 
 (defn installed
   "What this machine has of each source: a library the pack loads by `fetched`, else the doctor's
@@ -215,8 +230,8 @@
   (let [by-probe (update-vals doctor #(or (:version %) (some-> (:status %) name)))]
     (into {}
           (keep (fn [{:keys [tool probe pin]}]
-                  (let [lib (some (fn [[place k]] (when (= :pack-deps place) k)) pin)]
-                    (when-let [v (or (some-> lib (#(fetched (get pins tool) % home)))
+                  (let [lib (some (fn [[place k]] (when (#{:pack-deps :xtdb-deps} place) k)) pin)]
+                    (when-let [v (or (fetched (get pins tool) lib home)
                                      (get by-probe probe))]
                       [tool v]))))
           sources)))
