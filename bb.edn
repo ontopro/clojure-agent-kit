@@ -42,7 +42,8 @@
  {:requires ([babashka.fs :as fs]
              [clojure.edn :as edn]
              [clojure.string :as str])
-  :init (do (defn harness [& args]
+  :init (do (require '[harness.models.security-review-sandbox :as sbx])
+            (defn harness [& args]
               (apply shell {:dir "harness"} "bb" args))
 
             ;; The KIT's toolchain image. `docker-image!` builds it, tagged by known-good's date,
@@ -66,7 +67,7 @@
                     platform (docker-platform)
                     image-args (edn/read-string (:out (shell {:out :string} "bb" "--config" "tools/toolchain/bb.edn"
                                                              "image-args" platform)))
-                    tag (str "clojure-agent-kit-toolchain:" as-of)
+                    tag (sbx/image-tag ".")
                     args (mapcat (fn [[k v]] ["--build-arg" (str k "=" v)])
                                  (assoc image-args "KIT_AS_OF" as-of))]
                 (println "image" tag "for" platform "- the toolchain of tools/toolchain/download-matrix.edn")

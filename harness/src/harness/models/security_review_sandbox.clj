@@ -29,10 +29,35 @@
 (def m2-volume "kit-review-m2")
 (def app-port 8000)
 
-(defn image-tag
-  "The KIT's toolchain image - a fresh Linux machine in Docker with only the KIT's toolchain, which `bb docker-gates` builds for the known-good set on `kit`, by its date."
+(defn image-context
+  "What the KIT's toolchain image is built from in the clone `kit`, as `[relative-path content]`
+  sorted: the `Dockerfile` and every file of the toolchain pack (`tools/toolchain/`), the build
+  context `.dockerignore` lets in - the download matrix's versions and the pack's code together."
   [kit]
-  (str "clojure-agent-kit-toolchain:" (:as-of (edn/read-string (slurp (str (fs/path kit "harness" "resources" "known-good.edn")))))))
+  (sort-by first
+           (for [f (cons (fs/path kit "Dockerfile")
+                         (filter fs/regular-file? (fs/glob (fs/path kit "tools" "toolchain") "**")))]
+             [(str (fs/relativize kit f)) (slurp (str f))])))
+
+(defn context-digest
+  "The first 7 hex of the sha256 over `image-context`'s paths and contents - pure."
+  [context]
+  (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+    (doseq [[path content] context]
+      (.update md (.getBytes (str path "\u0000" content "\u0000") "UTF-8")))
+    (subs (format "%064x" (BigInteger. 1 (.digest md))) 0 7)))
+
+(defn image-tag
+  "The KIT's toolchain image - a fresh Linux machine in Docker with only the KIT's toolchain - as
+  `bb docker-gates` builds it from the clone `kit`: known-good's date and the digest of what it is
+  built from (`context-digest`). The ONE place the tag is made: the root `bb.edn`'s `docker-image!`
+  names its build so, and the security review's sandbox and the review REPL run it so - a change to
+  the matrix, the pack or the Dockerfile not yet built is \"Unable to find image\", never the old
+  toolchain reviewing code (From Fable 5.1's read of `720f2af`)."
+  [kit]
+  (str "clojure-agent-kit-toolchain:"
+       (:as-of (edn/read-string (slurp (str (fs/path kit "harness" "resources" "known-good.edn")))))
+       "-" (context-digest (image-context kit))))
 
 ;; ---------------------------------------------------------------------------
 ;; the commands

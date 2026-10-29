@@ -143,8 +143,13 @@
 
 (defn image-args
   "The KIT's toolchain image's build arguments for the Linux `platform` it is built for:
-  `<P>_VERSION`, `<P>_URL` and `<P>_SHA256` of each of `image-tools` - pure."
+  `<P>_VERSION`, `<P>_URL` and `<P>_SHA256` of each of `image-tools` - pure. A platform none of
+  them has an archive for is refused by name, never a map of nils."
   [matrix platform]
+  (when-not (some #{platform} (filter #(= :linux (os-of %)) platforms))
+    (throw (ex-info (str "no KIT toolchain image for " (if platform (name platform) "no platform")
+                         " - it is built for " (str/join ", " (map name (filter #(= :linux (os-of %)) platforms))))
+                    {:platform platform})))
   (into (sorted-map)
         (mapcat (fn [[tool prefix]]
                   (let [{:keys [version url sha256]} (asset matrix tool platform)]

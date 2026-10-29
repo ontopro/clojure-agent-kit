@@ -25,7 +25,11 @@
 
   image-args {:doc "The KIT's toolchain image's build arguments for a Linux platform (linux-aarch64, linux-amd64), as an EDN map: bb's and git's version, URL and sha256 from the download matrix - what the image fetches by shell before bb exists. Read by the root `docker-image!`"
               :requires ([toolchain-download-matrix :as dm])
-              :task (prn (dm/image-args (dm/read-matrix (str pack-dir "/download-matrix.edn")) (keyword (first *command-line-args*))))}
+              :task (try (prn (dm/image-args (dm/read-matrix (str pack-dir "/download-matrix.edn"))
+                                             (some-> (first *command-line-args*) keyword)))
+                         (catch clojure.lang.ExceptionInfo e
+                           (binding [*out* *err*] (println (str "image-args: " (ex-message e))))
+                           (System/exit 1)))}
 
   toolchain-sum {:doc "Fetch each platform's archive of a tool once, take its sha256, set it beside the publisher's checksum and the matrix's; the lines to paste. Exit 1 when one differs from its publisher's"
                  :requires ([toolchain-install :as install])

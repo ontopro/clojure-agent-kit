@@ -12,7 +12,16 @@
 (def kit (str (fs/normalize (fs/absolutize ".."))))
 
 (deftest the-image-is-the-one-docker-gates-builds
-  (is (re-matches #"clojure-agent-kit-toolchain:\d{4}-\d{2}-\d{2}" (sb/image-tag kit))))
+  (is (re-matches #"clojure-agent-kit-toolchain:\d{4}-\d{2}-\d{2}-[0-9a-f]{7}" (sb/image-tag kit)))
+  ;; From Fable 5.1's read of 720f2af: the tag names what the image holds, so a change not yet built
+  ;; is a missing image, never the old toolchain
+  (let [ctx (sb/image-context kit)]
+    (is (= "Dockerfile" (ffirst ctx)) "the Dockerfile, then the pack's files, sorted")
+    (is (some #(= "tools/toolchain/download-matrix.edn" (first %)) ctx))
+    (is (= (sb/context-digest ctx) (sb/context-digest (reverse (reverse ctx)))) "the same context, the same digest")
+    (is (not= (sb/context-digest ctx)
+              (sb/context-digest (map (fn [[p c]] [p (if (str/ends-with? p "download-matrix.edn") (str c " ") c)]) ctx)))
+        "a byte of the matrix moves it")))
 
 (deftest the-isolated-container-has-no-network-a-read-only-cache-and-limits
   (let [argv (sb/run-argv {:image "img" :clone "/c" :name "n" :review "/r"})

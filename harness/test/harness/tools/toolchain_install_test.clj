@@ -137,4 +137,8 @@
     (is (= "https://github.com/babashka/babashka/releases/download/v1.13.229/babashka-1.13.229-linux-amd64-static.tar.gz"
            (get (dm/image-args matrix :linux-amd64) "BB_URL")))
     (is (str/includes? dockerfile "toolchain-install \\\n      --only java,clj-kondo,clojure,geckodriver --link /usr/local/bin")
-        "the rest by the pack")))
+        "the rest by the pack")
+    ;; From Fable 5.1's read of 720f2af: a platform with no image is refused, never a map of nils
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no KIT toolchain image for macos-aarch64 - it is built for linux-aarch64, linux-amd64"
+                          (dm/image-args matrix :macos-aarch64)))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no KIT toolchain image for no platform" (dm/image-args matrix nil)))))

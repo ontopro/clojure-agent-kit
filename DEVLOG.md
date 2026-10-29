@@ -65,6 +65,21 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### The KIT's toolchain image is named for what it holds; `image-args` refuses a platform it has no image for (From Fable 5.1's read of `720f2af`)
+
+The low: the security review's sandbox and the review REPL run the image by its tag without building
+it, and the tag was known-good's date alone - right while the image's versions came from the same
+file, wrong once they are the matrix's: after a matrix move, until a health record moves the date,
+both would have run whatever Docker last built under that date, the old toolchain reviewing code.
+The tag is now the date and the first 7 hex of a sha256 over what the image is built from - the
+Dockerfile and every file of the toolchain pack, the context `.dockerignore` lets in, so the matrix and
+the pack's code together (`clojure-agent-kit-toolchain:2026-10-22-a797b79` today). One place makes it,
+`security-review-sandbox/image-tag`; the root `bb.edn`'s `docker-image!` names its build by it, so a
+change not yet built is "Unable to find image", a named refusal. The nits: the Dockerfile's header
+said a GitHub workflow runs on the image - this repository has none; and `image-args` with no or a
+Mac platform printed a map of nils - it refuses by name now, one line and exit 1. The person: "yes, go
+on both follow-ups".
+
 ### `status` and the install say one thing of bb; the fix is runnable; a tool in place is moved aside, not deleted first (From Fable 5.1's read of `cf554a7`)
 
 The person: "yes, go on both follow-ups". The lows: after an install on a machine whose bb is at or

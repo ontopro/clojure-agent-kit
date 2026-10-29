@@ -1,8 +1,9 @@
 # THE KIT'S TOOLCHAIN IMAGE - a fresh Linux machine in Docker with only the KIT's toolchain,
 # and nothing of the KIT: a clone is made in it, so `bb gates` and `bb health` are run on a
 # machine that has only what the harness README's prerequisites name. Built and run by
-# `bb docker-gates` and `bb docker-health` at the root of the clone; the GitHub workflow runs on
-# the same image.
+# `bb docker-gates` and `bb docker-health` at the root of the clone; tagged by known-good's date and
+# a digest of this file and the toolchain pack (`security-review-sandbox/image-tag`), the name the
+# security review's sandbox and the review REPL run.
 #
 # THE VERSIONS ARE THE DOWNLOAD MATRIX'S (`tools/toolchain/download-matrix.edn`), and the image
 # installs its tools BY RUNNING THE TOOLCHAIN PACK (plan 7.0, item 8.1c, D-9): one implementation
