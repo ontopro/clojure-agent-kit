@@ -65,6 +65,26 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### The pins move on the person's go: bb 1.13.229, clj-kondo 2026.10.26, deps-new 0.17.0 (plan 7.0, item 8.1d)
+
+The version report's first run (`bb toolchain-newer`, `2267ee7`) showed three rows behind their newest
+release, bb and clj-kondo installed newer than pinned. The person, row by row: bb "yes", clj-kondo
+"yes", deps-new "yes. check with Fable - it did a run and verified it."
+- **bb 1.13.226 → 1.13.229, clj-kondo 2026.08.04 → 2026.10.26**: the download matrix's versions and
+  each platform's sha256, taken by `bb --config tools/toolchain/bb.edn toolchain-sum <tool> <version>`
+  - all eight match the publisher's `.sha256` files; the project set (`project-set.edn`, what `bb
+  init` and `bb upgrade` write into a project) with them. This machine's gates ran on both already.
+- **deps-new v0.8.0 → v0.17.0** (`template-pins.edn`, `657fca6`): verified by a scratch `bb init` on the
+  pinned template with 0.17.0 beside one with 0.8.0 (Fable 5.1, 2026-10-29, in its session's scratch
+  folder): the generated applications identical by `diff -r` (42 files each), the application's `bb
+  fmt-check`, `bb lint`, `bb test` green (10 tests, 53 assertions); deps-new's CHANGELOG v0.9 to v0.17
+  and `new.clj`/`impl.clj` read for what `create-command` and the template rely on - nothing changed.
+  Not exercised: a user- or directory-level `.cljconf/org.corfield/deps-new.edn` (deps-new 0.15 on),
+  which would override the template's `template.edn` keys; none exists on this machine.
+`bb health` was not run before the move: its record after 8.1c (`bb health --record`, `bb
+docker-health`, `bb health-sync`) is the evidence, and moves `known-good.edn` and the Dockerfile's
+defaults with it.
+
 ### The version report reads the doctor whatever its exit, keeps a lost pin's row, says the JDK's major apart, and has XTDB (From Fable 5.1's read of `51ce107`)
 
 The low: the report discarded `bb doctor --edn`'s map whenever the doctor exited 1 - and the doctor

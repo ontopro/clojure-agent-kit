@@ -56,7 +56,7 @@
           (str t " at or above its floor")))))
 
 (deftest a-tool-lives-at-its-cache-path
-  (is (= "/c/bb/1.13.226/bb" (dm/bin-path matrix "/c" :bb :macos-aarch64)))
+  (is (= "/c/bb/1.13.229/bb" (dm/bin-path matrix "/c" :bb :macos-aarch64)))
   (is (= "/c/clojure/1.12.6.1673/bin/clojure" (dm/bin-path matrix "/c" :clojure :linux-amd64)))
   (is (= "/c/java/25.0.5+8/jdk-25.0.5+8/Contents/Home/bin/java" (dm/bin-path matrix "/c" :java :macos-aarch64)))
   (is (= "/c/java/25.0.5+8/jdk-25.0.5+8/bin/java" (dm/bin-path matrix "/c" :java :linux-aarch64))))
@@ -76,12 +76,12 @@
 (deftest the-status-rows-are-the-contract-the-doctor-will-read
   (is (= "/k" (status/cache-dir {"KIT_TOOLCHAIN_DIR" "/k"} "/home/u")))
   (is (= "/home/u/.kit/toolchain" (status/cache-dir {} "/home/u")))
-  (is (= [{:tool :bb :version "1.13.226" :path "/c/bb/1.13.226/bb" :present? true}
+  (is (= [{:tool :bb :version "1.13.229" :path "/c/bb/1.13.229/bb" :present? true}
           {:tool :java :version "25.0.5+8" :path "/c/java/25.0.5+8/jdk-25.0.5+8/bin/java" :present? false}
-          {:tool :clj-kondo :version "2026.08.04" :path "/c/clj-kondo/2026.08.04/clj-kondo" :present? false}
+          {:tool :clj-kondo :version "2026.10.26" :path "/c/clj-kondo/2026.10.26/clj-kondo" :present? false}
           {:tool :clojure :version "1.12.6.1673" :path "/c/clojure/1.12.6.1673/bin/clojure" :present? false}]
          (status/rows (select-keys matrix [:bb :java :clj-kondo :clojure :git]) "/c" :linux-amd64
-                      #{"/c/bb/1.13.226/bb"}))))
+                      #{"/c/bb/1.13.229/bb"}))))
 
 (deftest toolchain-sum-says-what-the-checksums-say-together
   (let [a {:platform :linux-amd64 :file "x.tar.gz" :sha256 "m"}]

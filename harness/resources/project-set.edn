@@ -18,8 +18,8 @@
 
 {:tools {:java "temurin-25"
          :clojure "1.12.6.1673"
-         :babashka "1.13.226"
-         :clj-kondo "2026.08.04"
+         :babashka "1.13.229"
+         :clj-kondo "2026.10.26"
          :cljfmt "0.16.6"
          :tailwindcss "4.3.3"}
  :build-image "clojure:temurin-25-tools-deps-1.12.6.1673-alpine"

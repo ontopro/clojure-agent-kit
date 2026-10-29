@@ -50,5 +50,5 @@ A version moves with its sha256s, by the person, as a pin move does: `toolchain-
 ## The cache
 
 `~/.kit/toolchain/`, or the folder `KIT_TOOLCHAIN_DIR` names: per tool, then per version -
-`bb/1.13.226/bb`, `java/25.0.5+8/…`, `clojure/1.12.6.1673/bin/clojure`. Nothing of it is in the
+`bb/1.13.229/bb`, `java/25.0.5+8/…`, `clojure/1.12.6.1673/bin/clojure`. Nothing of it is in the
 repository.
