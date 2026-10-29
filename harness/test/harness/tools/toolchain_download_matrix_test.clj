@@ -78,13 +78,26 @@
   (is (= "/home/u/.kit/toolchain" (status/cache-dir {} "/home/u")))
   (is (= [{:tool :bb :version "1.13.229" :path "/c/bb/1.13.229/bb" :present? true}
           {:tool :java :version "25.0.5+8" :path "/c/java/25.0.5+8/jdk-25.0.5+8/bin/java" :present? false
-           :fix "bb --config <kit>/tools/toolchain/bb.edn toolchain-install --only java"}
+           :fix "bb --config /k/bb.edn toolchain-install --only java"}
           {:tool :clj-kondo :version "2026.10.26" :path "/c/clj-kondo/2026.10.26/clj-kondo" :present? false
-           :fix "bb --config <kit>/tools/toolchain/bb.edn toolchain-install --only clj-kondo"}
+           :fix "bb --config /k/bb.edn toolchain-install --only clj-kondo"}
           {:tool :clojure :version "1.12.6.1673" :path "/c/clojure/1.12.6.1673/bin/clojure" :present? false
-           :fix "bb --config <kit>/tools/toolchain/bb.edn toolchain-install --only clojure"}]
+           :fix "bb --config /k/bb.edn toolchain-install --only clojure"}]
          (status/rows (select-keys matrix [:bb :java :clj-kondo :clojure :git]) "/c" :linux-amd64
-                      #{"/c/bb/1.13.229/bb"}))))
+                      #{"/c/bb/1.13.229/bb"} {:config "/k/bb.edn"})))
+  ;; From Fable 5.1's read of cf554a7: status and the plan say one thing of bb - present when the bb
+  ;; running it is at or above the matrix's, which the install then skips; else its fix, runnable
+  (let [bb-row #(first (status/rows (select-keys matrix [:bb]) "/c" :linux-amd64 #{} {:running {:bb %} :config "/k/bb.edn"}))]
+    (is (= {:tool :bb :version "1.13.229" :path "/c/bb/1.13.229/bb" :present? true :running "1.13.229"} (bb-row "1.13.229")))
+    (is (:present? (bb-row "1.13.300")))
+    (is (= {:tool :bb :version "1.13.229" :path "/c/bb/1.13.229/bb" :present? false
+            :fix "bb --config /k/bb.edn toolchain-install --only bb"}
+           (bb-row "1.13.226")))
+    (is (= ["toolchain cache /c (linux-amd64)"
+            "  bb         1.13.229         the bb running this, 1.13.229"
+            "  java       25.0.5+8         not installed - bb --config /k/bb.edn toolchain-install --only java"]
+           (status/lines "/c" :linux-amd64 (status/rows (select-keys matrix [:bb :java]) "/c" :linux-amd64 #{}
+                                                        {:running {:bb "1.13.229"} :config "/k/bb.edn"}))))))
 
 (deftest toolchain-sum-says-what-the-checksums-say-together
   (let [a {:platform :linux-amd64 :file "x.tar.gz" :sha256 "m"}]

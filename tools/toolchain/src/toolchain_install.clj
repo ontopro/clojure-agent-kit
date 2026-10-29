@@ -119,7 +119,11 @@
   [archive kind to]
   (fs/create-dirs to)
   (case kind
-    :tar.gz (p/shell {:out :string :err :string} "tar" "-xzf" (str archive) "-C" (str to))
+    :tar.gz (let [{:keys [exit err]} (p/shell {:out :string :err :string :continue true}
+                                              "tar" "-xzf" (str archive) "-C" (str to))]
+              (when-not (zero? exit)
+                (throw (ex-info (str "tar could not unpack " (fs/file-name archive) ": " (str/trim err))
+                                {:archive (str archive) :exit exit}))))
     :zip (fs/unzip archive to {:replace-existing true})
     (throw (ex-info (str "the install unpacks .tar.gz and .zip, not " kind) {:unpack kind})))
   to)
@@ -168,22 +172,41 @@
       (verify! part (:sha256 asset))
       (fs/move part download {:replace-existing true}))))
 
+(defn swap-in!
+  "The folder `staged` moved into `dir`: an existing `dir` moved aside to `<dir>.old` first - a
+  sibling, so a rename - and put back when the move fails, then deleted. `dir` is never missing for
+  longer than a rename while `--link`'s links and `toolchain-env`'s PATH point at it (From Fable
+  5.1's read of `cf554a7`)."
+  [staged dir]
+  (let [old (str dir ".old")]
+    (fs/delete-tree old)
+    (when (fs/exists? dir) (fs/move dir old))
+    (try (fs/move staged dir)
+         (catch Exception e
+           (when (fs/exists? old) (fs/move old dir))
+           (throw e)))
+    (fs/delete-tree old)))
+
 (defn install-step!
   "One `:install` step: the archive downloaded and verified, unpacked into a folder beside its
-  place, then moved into place - the Clojure CLI laid out by `cli-layout` - and the executable made
-  one."
+  place - the Clojure CLI laid out there by `cli-layout`, its paths the place's - the executable
+  made one, and the folder swapped into place (`swap-in!`)."
   [matrix {:keys [tool version dir bin download] :as step}]
   (download! step)
   (fs/create-dirs (fs/parent dir))
-  (let [tmp (fs/create-temp-dir {:dir (fs/parent dir) :prefix (str (name tool) "-unpacking-")})]
+  (let [tmp (fs/create-temp-dir {:dir (fs/parent dir) :prefix (str (name tool) "-unpacking-")})
+        unpacked (str (fs/path tmp "unpacked"))]
     (try
-      (unpack! download (:unpack (get matrix tool)) tmp)
-      (fs/delete-tree dir)
-      (if (= :clojure tool)
-        (lay-out! (cli-layout version dir) (fs/path tmp "clojure-tools"))
-        (fs/move tmp dir))
+      (unpack! download (:unpack (get matrix tool)) unpacked)
+      (let [staged (if (= :clojure tool)
+                     (let [s (str (fs/path tmp "laid-out"))]
+                       (lay-out! (for [f (cli-layout version dir)] (update f :to #(str s (subs % (count dir)))))
+                                 (fs/path unpacked "clojure-tools"))
+                       s)
+                     unpacked)]
+        (fs/set-posix-file-permissions (str staged (subs bin (count dir))) "rwxr-xr-x")
+        (swap-in! staged dir))
       (finally (fs/delete-tree tmp))))
-  (fs/set-posix-file-permissions bin "rwxr-xr-x")
   bin)
 
 (defn link-targets
@@ -232,14 +255,18 @@
                                          (install-step! matrix s)
                                          (println (format "  %-11s %-16s installed, %s" (name tool) version bin))
                                          (assoc s :step :installed))))))]
+        ;; the status before the links, so a link that fails loses no line of it
+        (run! println (status/lines cache platform
+                                    (status/rows matrix cache platform fs/executable?
+                                                 {:running {:bb (System/getProperty "babashka.version")}
+                                                  :config (str pack-dir "/bb.edn")})))
         (when (and link (not dry-run?))
           (fs/create-dirs link)
           (doseq [[n target] (link-targets done #(sort (fs/list-dir %)))
                   :let [l (fs/path link n)]]
             (fs/delete-if-exists l)
             (fs/create-sym-link l target))
-          (println "  linked into" link))
-        (run! println (status/lines cache platform (status/rows matrix cache platform fs/executable?)))))
+          (println "  linked into" link))))
     (catch Exception e
       (binding [*out* *err*] (println (str "toolchain-install: " (or (ex-message e) (str e)))))
       (System/exit 1))))

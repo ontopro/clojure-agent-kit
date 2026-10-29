@@ -13,6 +13,8 @@
 
 (def matrix (dm/read-matrix "../tools/toolchain/download-matrix.edn"))
 
+;; a map of the steps by tool; `(keys …)` keeps the plan's order because it has no more than eight
+;; entries, which Clojure keeps as an array map (From Fable 5.1's read of cf554a7)
 (defn- steps [platform opts]
   (into {} (map (juxt :tool identity)) (dm/plan matrix "/c" platform opts)))
 
@@ -83,6 +85,22 @@
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"a.zip: its sha256 is [0-9a-f]{64}, the download matrix says 00 - deleted, nothing installed"
                           (install/verify! f "00")))
     (is (not (fs/exists? f)))))
+
+(deftest a-tool-in-place-is-moved-aside-not-deleted-first
+  ;; From Fable 5.1's read of cf554a7: links and PATH point at the folder, so it is never missing
+  ;; longer than a rename, and a failed move puts the old one back
+  (let [root (fs/create-temp-dir)
+        dir (str (fs/path root "t" "1.0"))
+        staged (str (fs/path root "staged"))]
+    (fs/create-dirs dir) (spit (str dir "/old") "old")
+    (fs/create-dirs staged) (spit (str staged "/new") "new")
+    (install/swap-in! staged dir)
+    (is (= ["new"] (map (comp str fs/file-name) (fs/list-dir dir))))
+    (is (not (fs/exists? (str dir ".old"))) "the old one gone once the new is in")
+    (testing "a move that fails puts the old one back"
+      (is (thrown? Exception (install/swap-in! (str (fs/path root "no-such")) dir)))
+      (is (= ["new"] (map (comp str fs/file-name) (fs/list-dir dir))))
+      (is (not (fs/exists? (str dir ".old")))))))
 
 (deftest the-links-and-the-arguments
   (is (= [["java" "/c/java/v/jdk/bin/java"] ["javac" "/c/java/v/jdk/bin/javac"]

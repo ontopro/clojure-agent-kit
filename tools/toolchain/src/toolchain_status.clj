@@ -16,21 +16,31 @@
     (if (str/blank? d) (str home "/.kit/toolchain") d)))
 
 (defn rows
-  "A row per tool `platform` takes - `{:tool :version :path :present?}`, and `:fix` when it is not
-  present: the pack's command that installs it - `present?` the test of a path."
-  [matrix cache platform present?]
+  "A row per tool `platform` takes - `{:tool :version :path :present?}` - `present?` the test of a
+  path. bb is present when the bb running this (`running`'s `:bb`) is at or above the matrix's, as
+  `toolchain-install` skips it then (the plan's rule), the row carrying `:running`. A row not
+  present carries `:fix`, the pack's command that installs it, runnable as printed: `config` is the
+  pack's `bb.edn`."
+  [matrix cache platform present? {:keys [running config]}]
   (for [t (dm/machine-tools matrix platform nil)
-        :let [p (dm/bin-path matrix cache t platform)
-              here? (boolean (present? p))]]
-    (cond-> {:tool t :version (:version (get matrix t)) :path p :present? here?}
-      (not here?) (assoc :fix (str "bb --config <kit>/tools/toolchain/bb.edn toolchain-install --only " (name t))))))
+        :let [v (:version (get matrix t))
+              p (dm/bin-path matrix cache t platform)
+              run (when (= :bb t) (get running :bb))
+              running? (boolean (and run (not (neg? (dm/compare-versions run v)))))
+              here? (or running? (boolean (present? p)))]]
+    (cond-> {:tool t :version v :path p :present? here?}
+      running? (assoc :running run)
+      (not here?) (assoc :fix (str "bb --config " config " toolchain-install --only " (name t))))))
 
 (defn lines
-  "The rows as a person reads them."
+  "The rows as a person reads them, a row not present with the command that installs it."
   [cache platform rows]
   (into [(str "toolchain cache " cache " (" (name platform) ")")]
-        (for [{:keys [tool version path present?]} rows]
-          (format "  %-10s %-16s %s" (name tool) version (if present? path "not installed")))))
+        (for [{:keys [tool version path present? running fix]} rows]
+          (format "  %-10s %-16s %s" (name tool) version
+                  (cond running (str "the bb running this, " running)
+                        present? path
+                        :else (str "not installed - " fix))))))
 
 (defn main
   "The `status` task: the rows for this machine, `--edn` as the map the doctor will read."
@@ -38,7 +48,8 @@
   (let [matrix (dm/read-matrix (str pack-dir "/download-matrix.edn"))
         platform (dm/platform-key (System/getProperty "os.name") (System/getProperty "os.arch"))
         cache (cache-dir (System/getenv) (System/getProperty "user.home"))
-        rs (rows matrix cache platform fs/executable?)]
+        rs (rows matrix cache platform fs/executable?
+                 {:running {:bb (System/getProperty "babashka.version")} :config (str pack-dir "/bb.edn")})]
     (if (some #{"--edn"} args)
       (prn {:cache cache :platform platform :rows (vec rs)})
       (run! println (lines cache platform rs)))))

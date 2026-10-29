@@ -65,6 +65,22 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### `status` and the install say one thing of bb; the fix is runnable; a tool in place is moved aside, not deleted first (From Fable 5.1's read of `cf554a7`)
+
+The person: "yes, go on both follow-ups". The lows: after an install on a machine whose bb is at or
+above the matrix's - which the plan skips, the person's rule - `status` said bb "not installed" and
+offered a fix that skipped it again, the loop the doctor would read at 8.2e; bb is present now when
+the bb running `status` is at or above the matrix's, its line "the bb running this, 1.13.229" and its
+row `:running`. And `:fix` carried a literal `<kit>`: it names the pack's own `bb.edn` now, runnable as
+printed, and the lines a person reads show it under a row not present. On the reader's answers: a
+tool in place is moved aside to `<dir>.old` and put back if the move fails (`swap-in!`), since
+`--link`'s links and `toolchain-env`'s PATH point at it; the Clojure CLI is laid out beside its place
+with its place's paths, then swapped in; tar's own error is in the one line ("tar could not unpack
+bad.tar.gz: tar: Error opening archive: …"); the pack's README says `--link` replaces names and is the
+image's. The nits: the status lines print before the links; the plan test says why its keys keep their
+order. Tried into the scratch cache: both tools reinstalled and linked, a tool whose executable was
+gone reinstalled over its folder with no `.old` left.
+
 ### The KIT's toolchain image is built on `ubuntu:noble` and installs its tools by running the pack (plan 7.0, item 8.1c)
 
 D-9 (the person, 2026-10-28: "yes to both"), Q1 ("go with option (a)"). The image was `eclipse-temurin`'s
