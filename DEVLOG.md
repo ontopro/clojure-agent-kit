@@ -65,6 +65,32 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### `bb toolchain-newer` is the version report: each pin as installed here, as pinned, and its newest release (plan 7.0, item 8.1d)
+
+The person, 2026-10-29: "in KIT's development, known-good is a record of everything that has been
+tested and known to work. The process starts with the versions in the matrix, then a check for
+latest versions available is made. This should result in a report showing a table of what is
+currently installed, what is in the matrix, and latest version available for each of the
+tools/libraries in the spec. I will be reviewing the report and give the go/no-go to update them - to
+the latest version or if necessary to the matrix version." `bb toolchain-newer` compared known-good
+with the newest tags; it now reads each pin where it is owned - the download matrix for the tools the
+pack fetches, the pack's `bb.edn` deps for its libraries (the Dockerfile's `ARG`s until 8.2a and 8.2d
+move cljfmt and clojure-mcp-light there), `project-set.edn` for tailwindcss and beside each tool a
+project shares, `template-pins.edn` for the template and deps-new - and prints a table: tool,
+installed (`bb doctor --edn`'s version, in a subprocess, the doctor's table being the harness's
+resource; for a library the pack loads, its pinned version and whether `~/.m2` has it - the person:
+"cljfmt may be a library, but it is still tooling. So why not show its version?"), pinned (where),
+latest, and the marks: newer released, latest unknown, installed differs, project set differs.
+Temurin's `+8` build is not part of the version compared. Run on this machine:
+
+    bb                 1.13.229     1.13.226 (matrix; project set 1.13.226)        1.13.229     newer released; installed differs
+    clj-kondo          2026.10.26   2026.08.04 (matrix; project set 2026.08.04)    2026.10.26   newer released; installed differs
+    deps-new           -            0.8.0 (template-pins)                          0.17.0       newer released
+
+and every other row the same three ways. `bb kit-status` and `bb tag-check` print its newer lines as
+before. The kit-session skill says it: the report at a plan's start and again before a tag, a go or
+no-go per row, a version moving only on that go with its health runs.
+
 ### Every Argon role goes direct to Google's API: one model, one route (plan 7.0, item 1.8)
 
 The person, 2026-10-29, asked whether the security panel's Argon stays on OpenRouter as in the

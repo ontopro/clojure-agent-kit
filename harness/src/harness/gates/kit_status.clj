@@ -156,5 +156,5 @@
                                                 :when (not (str/blank? l))]
                                             (str/split l #" " 2)))]
                 (str "`" (subs sha 0 7) "` " subject))))
-    (report "The toolchain's newer releases (`bb toolchain-newer`; a move is the person's, at a branch's cut):"
+    (report "The toolchain's newer releases (`bb toolchain-newer`, the version report; a go or no-go per row is the person's, at a plan's start and before a tag):"
             (toolchain-newer/newer-lines (toolchain-newer/check root)))))

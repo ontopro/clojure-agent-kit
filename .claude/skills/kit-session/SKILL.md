@@ -18,9 +18,13 @@ commands that check each step. Nothing here is shipped: `bb init` copies `skills
    `**Next:**` line says what is next, since the order differs from the numbering - and the last
    entry of its Sessions log.
 3. `bb hooks-install` once per clone if `git config core.hooksPath` is not `.githooks`.
-4. At a plan's first session, its branch just cut: `bb toolchain-newer`, read with the person. They
-   decide what moves; a move is the plan's first item, with its health runs (`bb health --record`,
-   `bb docker-health`, `bb health-sync`). Nothing moves later except for an advisory (below).
+4. At a plan's first session, its branch just cut, and again before a tag: `bb toolchain-newer`, the
+   version report - each tool and library the KIT pins, as installed here, as pinned, and its newest
+   release - read with the person, who gives a go or no-go per row: to the latest, or back to the pin
+   where this machine drifted. A version moves only on that go, a commit of its own (`toolchain-sum`
+   for the download matrix), with its health runs (`bb health --record`, `bb docker-health`, `bb
+   health-sync`), so known-good records what the pins are; and a HIGH or CRITICAL advisory moves a pin
+   (below).
 
 ## The seats
 
@@ -108,7 +112,8 @@ Said plainly:
      left on purpose, said so.
    - **The Sessions log behind** - write the item's entry.
    - **A `.local/` folder or entry its README does not name** - name it.
-   - **The toolchain's newer releases** - information; they wait for the next plan's start.
+   - **The toolchain's newer releases** - information; the go or no-go on them is the version report's,
+     at a plan's start and before a tag ("At the start", step 4).
    - **Commits with no read mark** - each sent to be read and its mark written as the read arrives
      ("The seats"); a commit made since is listed until then.
 2. The plan: tick the item in `## Task Status` with its commit and move the `**Next:**` line;
@@ -163,8 +168,9 @@ The checklist at the head of `DEVLOG.md`, with `bb tag-check` as its mechanism. 
 5. The person's bear-claw secrets scan, by hand: a second rule set the KIT's scan does not
    carry. And Docker Scout on the KIT's toolchain image, by hand (a Docker login), the command as
    `tag-check` prints it. `tag-check` names both and runs neither. A HIGH or CRITICAL against a
-   pinned tool moves that pin before the tag - the one move a tag waits for; the rest of
-   `tag-check`'s toolchain lines are information for the next plan's start.
+   pinned tool moves that pin before the tag. And the version report (`bb toolchain-newer`, "At the
+   start", step 4) read with the person, a go or no-go per row; a row that goes moves before the tag,
+   with its health runs.
 6. To the person, as commands for them to run: the merge to `main`, the annotated tag on the
    commit `tag-check` passed (its message lists what the plan ADDED), the push of `main` and the
    tag. Never run them yourself.

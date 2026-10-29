@@ -34,7 +34,7 @@
 ;;                      `bb gates` (.local/gates/last.edn, written green or red) was green on
 ;;                      exactly the tree being committed. `git commit --no-verify` skips it
 ;;   bb kit-status      what an item's end should look at; prints, never refuses
-;;   bb toolchain-newer each pin of the toolchain beside its newest release; prints, never refuses
+;;   bb toolchain-newer the version report: each pin as installed, pinned and newest; prints, never refuses
 ;;   bb tag-check <tag> whether the pre-tag checklist (DEVLOG.md's head) holds for a tag on HEAD;
 ;;                      never tags. --run does what is stale, --landed checks origin after the push
 {:paths ["harness/src"]
@@ -140,7 +140,7 @@
              :requires ([harness.gates.tag-check :as tag-check])
              :task (apply tag-check/-main *command-line-args*)}
 
-  toolchain-newer {:doc "Each pin of the toolchain (known-good, the Dockerfile's own, the template's) beside its newest release, by git ls-remote; information, exit 0. A move is the person's (kit-session skill)"
+  toolchain-newer {:doc "The version report: each tool and library the KIT pins (the download matrix, the pack's deps, the Dockerfile's own, the project set, the template's) as installed here, as pinned, and its newest release by git ls-remote; information, exit 0. A go or no-go per row is the person's (kit-session skill)"
                    :requires ([harness.gates.toolchain-newer :as toolchain-newer])
                    :task (toolchain-newer/-main)}
 

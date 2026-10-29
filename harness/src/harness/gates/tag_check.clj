@@ -329,7 +329,7 @@
                           "local://clojure-agent-kit-toolchain:" (known-good-as-of root) " --only-severity critical,high`; "
                           "a HIGH or CRITICAL against a pinned tool moves the pin before the tag"))
             (doseq [l (toolchain-newer/newer-lines (toolchain-newer/check root))]
-              (println (str "  information: " l " (`bb toolchain-newer`; a move is the person's, at a branch's cut)")))
+              (println (str "  information: " l " (`bb toolchain-newer`, the version report; a go or no-go per row is the person's, before the tag)")))
             (if (every? :ok? cs)
               (println (str "\nevery check holds: `" tag "` may be cut on HEAD, by the person"))
               (do (println (str "\n" (count (remove :ok? cs)) " check(s) fail: no tag")) (System/exit 1))))))))

@@ -1,21 +1,28 @@
 (ns harness.gates.toolchain-newer
-  "`bb toolchain-newer`: each pin of the KIT's toolchain beside its newest
-  release - information for the person, never a fault, exit 0 always.
+  "`bb toolchain-newer`: the version report - each pin as installed, as pinned, and newest.
 
-  The pins: the known-good set (`harness/resources/known-good.edn`, what a
-  recorded health run ran together), the three versions only the `Dockerfile`
-  pins (clojure-mcp-light's tag - known-good records its commit -,
-  geckodriver, bbin), and the template's and deps-new's tags
-  (`template-pins.edn`). The releases: each repository's tags by
-  `git ls-remote`, no API and no token, the ones matching a release's shape -
-  so a pre-release (`v2.56.0-rc1`) is never newest. A repository that does not
-  answer is `unknown`, said as such.
+  Each tool and library the KIT pins, as installed here, as pinned, and its newest release -
+  information for the person, never a fault, exit 0 always.
 
-  What moves is the person's, by the rule in the kit-session skill: at a
-  branch's cut they read this and decide, a move being the plan's first item
-  with its health runs; before a tag only an advisory moves a pin (register
-  row 131). `bb kit-status` and `bb tag-check` print its newer lines. The
-  KIT's own development only."
+  THE PERSON'S TWO SCENARIOS (plan 7.0, item 8.1d, 2026-10-29). In the KIT's development the pins
+  are the start; this report sets beside each what this machine runs and the newest release, and the
+  person gives a go or no-go per row - to the latest, or back to the pin where the machine drifted.
+  A version moves only on that go, and a health run then records it as known-good. The KIT an
+  adopter gets has its pins equal to known-good, the JDK apart.
+
+  The pins: the download matrix (`tools/toolchain/download-matrix.edn`) for the tools the pack
+  fetches; the pack's `bb.edn` deps for its libraries, the Dockerfile's own until a library is the
+  pack's (cljfmt, clojure-mcp-light, bbin); the project set (`project-set.edn`) for what only a
+  project runs (tailwindcss), and beside each tool it shares with the matrix; the template's and
+  deps-new's tags (`template-pins.edn`). Installed: the doctor's probe of this machine where the
+  doctor has a row, read from `bb doctor --edn` in a subprocess (the doctor's table is the harness's
+  resource, not on the root task's classpath); a library the pack loads, its pinned version and whether bb has fetched it;
+  `-` otherwise. The releases: each repository's tags by `git ls-remote`, no API and no token, the
+  ones matching a release's shape - so a pre-release (`v2.56.0-rc1`) is never newest. A repository
+  that does not answer is `unknown`, said as such.
+
+  Run at a plan's start and before a tag (the kit-session skill); `bb kit-status` and `bb
+  tag-check` print its newer lines. The KIT's own development only."
   (:require
    [babashka.fs :as fs]
    [babashka.process :as p]
@@ -23,27 +30,35 @@
    [clojure.string :as str]))
 
 (def sources
-  "Each pin: where its releases are tagged, the shape of a release tag (its
-  group the version), and where the pin is read."
-  [{:tool :bb :repo "babashka/babashka" :tag #"v(\d+\.\d+\.\d+)" :pin [:known-good :bb]}
-   {:tool :clj-kondo :repo "clj-kondo/clj-kondo" :tag #"v(\d+\.\d+\.\d+)" :pin [:known-good :clj-kondo]}
-   {:tool :cljfmt :repo "weavejester/cljfmt" :tag #"(\d+\.\d+\.\d+)" :pin [:known-good :cljfmt]}
-   {:tool :clojure :repo "clojure/brew-install" :tag #"(\d+\.\d+\.\d+\.\d+)" :pin [:known-good :clojure]}
-   {:tool :git :repo "git/git" :tag #"v(\d+\.\d+\.\d+)" :pin [:known-good :git]}
-   ;; the JDK's major is a constraint (toolchain.edn), so only 21's releases are asked
-   {:tool :java :repo "adoptium/temurin25-binaries" :tag #"jdk-(25\.\d+\.\d+(?:\.\d+)?)\+\d+" :pin [:known-good :java]}
-   {:tool :clojure-mcp-light :repo "bhauman/clojure-mcp-light" :tag #"v(\d+\.\d+\.\d+)" :pin [:dockerfile "MCP_LIGHT_TAG"]}
-   {:tool :geckodriver :repo "mozilla/geckodriver" :tag #"v(\d+\.\d+\.\d+)" :pin [:dockerfile "GECKODRIVER_VERSION"]}
-   {:tool :bbin :repo "babashka/bbin" :tag #"v(\d+\.\d+\.\d+)" :pin [:dockerfile "BBIN_VERSION"]}
-   {:tool :template :repo "ontopro/clojure-stack-lite" :tag #"(kit-v\d+(?:\.\d+)*)" :pin [:template :git/tag]}
-   {:tool :deps-new :repo "seancorfield/deps-new" :tag #"v(\d+\.\d+\.\d+)" :pin [:template :deps-new]}])
+  "Each pin: where its releases are tagged, the shape of a release tag (its group the version),
+  where the pin is read - the first place that has it - the doctor's row that probes it, and the
+  project set's key for a tool a project runs too."
+  [{:tool :bb :repo "babashka/babashka" :tag #"v(\d+\.\d+\.\d+)" :pin [[:download-matrix :bb]] :probe :bb :project :babashka}
+   ;; the JDK the KIT installs is Temurin 25: only 25's releases are asked
+   {:tool :java :repo "adoptium/temurin25-binaries" :tag #"jdk-(25\.\d+\.\d+(?:\.\d+)?)\+\d+" :pin [[:download-matrix :java]] :probe :java}
+   {:tool :clj-kondo :repo "clj-kondo/clj-kondo" :tag #"v(\d+\.\d+\.\d+)" :pin [[:download-matrix :clj-kondo]] :probe :clj-kondo :project :clj-kondo}
+   {:tool :clojure :repo "clojure/brew-install" :tag #"(\d+\.\d+\.\d+\.\d+)" :pin [[:download-matrix :clojure]] :probe :clojure :project :clojure}
+   {:tool :git :repo "git/git" :tag #"v(\d+\.\d+\.\d+)" :pin [[:download-matrix :git]] :probe :git}
+   {:tool :geckodriver :repo "mozilla/geckodriver" :tag #"v(\d+\.\d+\.\d+)" :pin [[:download-matrix :geckodriver]] :probe :geckodriver}
+   {:tool :cljfmt :repo "weavejester/cljfmt" :tag #"(\d+\.\d+\.\d+)"
+    :pin [[:pack-deps 'dev.weavejester/cljfmt] [:dockerfile "CLJFMT_VERSION"]] :probe :cljfmt :project :cljfmt}
+   {:tool :clojure-mcp-light :repo "bhauman/clojure-mcp-light" :tag #"v(\d+\.\d+\.\d+)" :pin [[:dockerfile "MCP_LIGHT_TAG"]] :probe :clj-nrepl-eval}
+   {:tool :bbin :repo "babashka/bbin" :tag #"v(\d+\.\d+\.\d+)" :pin [[:dockerfile "BBIN_VERSION"]] :probe :bbin}
+   {:tool :tailwindcss :repo "tailwindlabs/tailwindcss" :tag #"v(\d+\.\d+\.\d+)" :pin [[:project-set :tailwindcss]]}
+   {:tool :template :repo "ontopro/clojure-stack-lite" :tag #"(kit-v\d+(?:\.\d+)*)" :pin [[:template :git/tag]]}
+   {:tool :deps-new :repo "seancorfield/deps-new" :tag #"v(\d+\.\d+\.\d+)" :pin [[:template :deps-new]]}])
+
+(def ^:private where
+  {:download-matrix "matrix" :pack-deps "pack bb.edn" :dockerfile "Dockerfile" :project-set "project set"
+   :template "template-pins"})
 
 ;; ---------------------------------------------------------------- pure
 
 (defn version-key
-  "`v` as a vector of its numbers, for comparing: `kit-v1.3` -> [1 3]."
+  "`v` as a vector of its numbers, for comparing: `kit-v1.3` -> [1 3]. A build after `+` is not
+  the version: Temurin's `25.0.5+8` is 25.0.5."
   [v]
-  (mapv parse-long (re-seq #"\d+" (str v))))
+  (mapv parse-long (re-seq #"\d+" (first (str/split (str v) #"\+")))))
 
 (defn compare-versions
   "Negative, zero or positive as `a` is older than, the same as or newer than
@@ -53,6 +68,8 @@
         n (max (count ka) (count kb))
         pad #(into % (repeat (- n (count %)) 0))]
     (compare (pad ka) (pad kb))))
+
+(defn- version? [v] (boolean (and v (re-find #"^\d" (str v)))))
 
 (defn newest
   "The newest release among `tags` whose whole name matches `pattern`, as its
@@ -69,48 +86,77 @@
   (into {} (for [[_ k v] (re-seq #"(?m)^ARG ([A-Z_]+)=(\S+)" (or text ""))] [k v])))
 
 (defn pins
-  "Each source's pin from the three files' contents, as {tool version}; a pin a
-  file does not carry is left out. The Dockerfile's `v` prefix is dropped, so a
-  pin and a release are compared as the same shape."
-  [{:keys [known-good dockerfile template-pins]}]
+  "Each source's pin from the files' contents, as {tool {:version :from}} - the first place of its
+  `:pin` that carries it; a pin no file carries is left out. The Dockerfile's `v` prefix is
+  dropped, so a pin and a release are compared as the same shape."
+  [{:keys [matrix pack-deps dockerfile template-pins]} & [project-set]]
   (let [args (dockerfile-args dockerfile)
-        template (get-in template-pins [:templates (:default template-pins)])]
+        template (get-in template-pins [:templates (:default template-pins)])
+        read (fn [[place k]]
+               (case place
+                 :download-matrix (get-in matrix [k :version])
+                 :pack-deps (get-in pack-deps [k :mvn/version])
+                 :dockerfile (some-> (get args k) (str/replace #"^v" ""))
+                 :project-set (get-in project-set [:tools k])
+                 :template (case k
+                             :git/tag (:git/tag template)
+                             :deps-new (some-> (get-in template [:deps-new :git/tag]) (str/replace #"^v" "")))))]
     (into {}
           (keep (fn [{:keys [tool pin]}]
-                  (when-let [v (case (first pin)
-                                 :known-good (get-in known-good [:tools (second pin)])
-                                 :dockerfile (some-> (get args (second pin)) (str/replace #"^v" ""))
-                                 :template (case (second pin)
-                                             :git/tag (:git/tag template)
-                                             :deps-new (some-> (get-in template [:deps-new :git/tag]) (str/replace #"^v" ""))))]
-                    [tool v])))
+                  (some (fn [place] (when-let [v (read place)] [tool {:version v :from (first place)}])) pin)))
           sources)))
 
 (defn rows
-  "One row per pinned source: {:tool :pin :newest :status}, `:status` :newer
-  when a release is newer than the pin, :ok when none is, :unknown when the
-  repository did not answer. `releases` is {tool newest-or-nil}."
-  [pins releases]
-  (for [{:keys [tool]} sources
-        :let [pin (get pins tool)]
+  "One row per pinned source: {:tool :pin :from :installed :project :newest :marks}. `installed` is
+  {tool version-or-text} (absent: `-`), `releases` {tool newest-or-nil}, `project-set` the project
+  set. `:marks`, in order: `:newer` when a release is newer than the pin, `:unknown` when the
+  repository did not answer, `:installed-differs` when this machine runs another version than the
+  pin, `:project-differs` when the project set writes another version than the pin."
+  [pins installed releases project-set]
+  (for [{:keys [tool project]} sources
+        :let [{pin :version from :from} (get pins tool)]
         :when pin
-        :let [nw (get releases tool)]]
-    {:tool tool :pin pin :newest nw
-     :status (cond (nil? nw) :unknown
-                   (pos? (compare-versions nw pin)) :newer
-                   :else :ok)}))
+        :let [nw (get releases tool)
+              inst (get installed tool)
+              proj (when (and project (not= :project-set from)) (get-in project-set [:tools project]))
+              differs? (fn [v] (and (version? v) (version? pin) (not (zero? (compare-versions v pin)))))]]
+    {:tool tool :pin pin :from from :installed inst :project proj :newest nw
+     :marks (cond-> []
+              (and nw (pos? (compare-versions nw pin))) (conj :newer)
+              (nil? nw) (conj :unknown)
+              (differs? inst) (conj :installed-differs)
+              (differs? proj) (conj :project-differs))}))
 
-(defn line [{:keys [tool pin newest status]}]
-  (case status
-    :newer (str (name tool) " " pin " -> " newest " released")
-    :unknown (str (name tool) " " pin " - newest unknown (its repository did not answer)")
-    :ok (str (name tool) " " pin " - the newest")))
+(defn line
+  "A row as one line, for `bb kit-status` and `bb tag-check`."
+  [{:keys [tool pin newest marks]}]
+  (cond (some #{:newer} marks) (str (name tool) " " pin " -> " newest " released")
+        (some #{:unknown} marks) (str (name tool) " " pin " - newest unknown (its repository did not answer)")
+        :else (str (name tool) " " pin " - the newest")))
 
 (defn newer-lines
   "The lines worth a reader's eye: a newer release, or a repository that did
   not answer. What `bb kit-status` and `bb tag-check` print."
   [rows]
-  (map line (remove #(= :ok (:status %)) rows)))
+  (map line (filter #(some #{:newer :unknown} (:marks %)) rows)))
+
+(def ^:private mark-text
+  {:newer "newer released" :unknown "latest unknown" :installed-differs "installed differs"
+   :project-differs "project set differs"})
+
+(defn table
+  "The report: a header and a line per row - tool, installed, pinned (where), latest, marks - the
+  columns padded to their widest cell."
+  [rows]
+  (let [cells (cons ["tool" "installed" "pinned (where)" "latest" "marks"]
+                    (for [{:keys [tool pin from installed project newest marks]} rows]
+                      [(name tool) (or installed "-")
+                       (str pin " (" (where from) (when project (str "; project set " project)) ")")
+                       (or newest "unknown")
+                       (str/join "; " (map mark-text marks))]))
+        widths (apply map (fn [& col] (apply max (map count col))) cells)]
+    (for [row cells]
+      (str/trimr (str/join "  " (map (fn [c w] (format (str "%-" w "s") c)) row widths))))))
 
 ;; ---------------------------------------------------------------- facts
 
@@ -125,29 +171,68 @@
       (map #(str/replace % #"^.*refs/tags/" "") (str/split-lines (:out res)))
       (do (when-not res (p/destroy-tree proc)) nil))))
 
+(defn- read-files [root]
+  (let [read #(let [f (fs/path root %)] (when (fs/exists? f) (slurp (str f))))]
+    {:matrix (some-> (read "tools/toolchain/download-matrix.edn") edn/read-string)
+     :pack-deps (some-> (read "tools/toolchain/bb.edn") edn/read-string :deps)
+     :dockerfile (read "Dockerfile")
+     :template-pins (some-> (read "harness/resources/template-pins.edn") edn/read-string)
+     :project-set (some-> (read "harness/resources/project-set.edn") edn/read-string)}))
+
 (defn read-pins
   "The pins as the clone at `root` has them."
   [root]
-  (let [read #(let [f (fs/path root %)] (when (fs/exists? f) (slurp (str f))))]
-    (pins {:known-good (some-> (read "harness/resources/known-good.edn") edn/read-string)
-           :dockerfile (read "Dockerfile")
-           :template-pins (some-> (read "harness/resources/template-pins.edn") edn/read-string)})))
+  (let [files (read-files root)] (pins files (:project-set files))))
+
+(defn fetched
+  "A library the pack loads: its pinned version and whether bb has fetched it - Maven's into
+  `~/.m2`. Nil for a pin that is not the pack's."
+  [{:keys [version from]} lib home]
+  (when (= :pack-deps from)
+    (let [[group artifact] (str/split (str lib) #"/")
+          dir (fs/path home ".m2" "repository" (str/replace group "." "/") artifact version)]
+      (str version (if (fs/exists? dir) ", fetched" ", not fetched")))))
+
+(defn installed
+  "What this machine has of each source: a library the pack loads by `fetched`, else the doctor's
+  probe of its row (`doctor` is `bb doctor --edn`'s map) - the version, or the doctor's status when
+  it found none."
+  [pins doctor home]
+  (let [by-probe (update-vals doctor #(or (:version %) (some-> (:status %) name)))]
+    (into {}
+          (keep (fn [{:keys [tool probe pin]}]
+                  (let [lib (some (fn [[place k]] (when (= :pack-deps place) k)) pin)]
+                    (when-let [v (or (some-> lib (#(fetched (get pins tool) % home)))
+                                     (get by-probe probe))]
+                      [tool v]))))
+          sources)))
+
+(defn- doctor-edn
+  "`bb doctor --edn` run in the clone's `harness/`, read; {} when it does not answer."
+  [root]
+  (let [{:keys [exit out]} (p/shell {:out :string :err :string :continue true :dir (str (fs/path root "harness"))}
+                                    "bb" "doctor" "--edn")]
+    (or (when (zero? exit) (try (edn/read-string out) (catch Exception _ nil))) {})))
 
 (defn check
-  "The rows for the clone at `root`, every repository asked at once."
-  ([root] (check root 20000))
-  ([root timeout-ms]
-   (let [ps (read-pins root)
-         asked (into {} (for [{:keys [tool repo tag]} sources :when (get ps tool)]
+  "The rows for the clone at `root`, every repository asked at once. With `installed?` false the
+  machine is not probed - `bb kit-status` and `bb tag-check` want the releases alone."
+  ([root] (check root {}))
+  ([root {:keys [timeout-ms installed?] :or {timeout-ms 20000 installed? false}}]
+   (let [files (read-files root)
+         ps (pins files (:project-set files))
+         asked (into {} (for [{:keys [tool repo tag]} sources :when (get-in ps [tool :version])]
                           [tool (future (some->> (tags repo timeout-ms) (newest tag)))]))]
-     (rows ps (update-vals asked deref)))))
+     (rows ps (if installed? (installed ps (doctor-edn root) (System/getProperty "user.home")) {}) (update-vals asked deref) (:project-set files)))))
 
 (defn -main [& _]
   (let [root (let [{:keys [exit out]} (p/shell {:out :string :err :string :continue true}
                                                "git" "rev-parse" "--show-toplevel")]
                (if (zero? exit) (str/trim out) "."))
-        rs (check root)]
-    (println "toolchain-newer: each pin beside its newest release (git ls-remote) - information, never a fault")
-    (doseq [r rs] (println (str "  " (line r))))
-    (println (str "\n" (count (filter #(= :newer (:status %)) rs)) " newer. A move is the person's: at a branch's cut, "
-                  "the plan's first item with its health runs; before a tag, only for an advisory (kit-session skill)."))))
+        rs (check root {:installed? true})]
+    (println "toolchain-newer: the version report - each pin as installed here, as pinned, and its newest release (git ls-remote); information, never a fault")
+    (doseq [l (table rs)] (println (str "  " l)))
+    (println (str "\n" (count (filter #(some #{:newer} (:marks %)) rs)) " newer released, "
+                  (count (filter #(some #{:installed-differs} (:marks %)) rs)) " installed differ. "
+                  "Each row is the person's go or no-go - to the latest, or back to the pin where this machine drifted; "
+                  "a version moves only on that go, and a health run then records it (kit-session skill)."))))
