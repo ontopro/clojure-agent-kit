@@ -1,7 +1,7 @@
 ;; The `agy-ide` seat's profile: the model each dispatched role uses and how it is reached. A
 ;; worked example - `bb init --seat agy-ide` copies it to <name>-build/profile.edn; edit it
 ;; there, and `bb profile` checks it. No build has run this seat yet. Its roles are the `claude`
-;; example's, all but the orchestrator.
+;; example's, all but the orchestrator and the security panel.
 ;;
 ;; - :key-env NAMES an environment variable; never put a key in this file.
 ;; - The verifiers - the Tester, the code reviewer, the spec and plan reviewers, the security

@@ -65,6 +65,15 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### `bb roster-sync` says a missing file in one line too; the `agy-ide` header says what differs (From Fable 5.1's read of `85419dc` and `5b3eb7d`)
+
+`roster-sync-main` caught only the KIT's own refusals, so a `roster.md` or `portability.md` gone from
+the clone still left a stack trace - under the person's "tooling that crashes ... is bad" it catches
+every exception now, the same one line and exit 1, nothing written (probed: `../portability.md (No such
+file or directory) - nothing written`). And `agy-ide.edn`'s header said its roles are the `claude`
+example's "all but the orchestrator"; the security panel differs too (two members to three). The
+person: "yes".
+
 ### The `agy-ide` example's Argon roles go direct to Google's API, as the `claude` example's Coder does (plan 7.0, item 1.8)
 
 The person, 2026-10-29: "the agy-ide profile: update the 'gemini-4-argon' references to use the

@@ -559,7 +559,7 @@
         jobs [["roster.md" #(render-roster % (example! exs "claude")) "the Model column"]
               ["../portability.md" #(render-portability % exs) "the two tables of models"]]
         done (try (mapv (fn [[f render what]] (let [before (slurp f)] [f before (render before) what])) jobs)
-                  (catch clojure.lang.ExceptionInfo e
+                  (catch Exception e
                     (binding [*out* *err*] (println (str "roster-sync: " (ex-message e) " - nothing written")))
                     (System/exit 1)))]
     (doseq [[f before after what] done]
