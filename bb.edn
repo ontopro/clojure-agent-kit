@@ -20,7 +20,7 @@
 ;;
 ;;   bb docker-gates    `bb gates` on a clone of HEAD inside the KIT's toolchain image - a fresh
 ;;                      Linux machine in Docker with only the KIT's toolchain (the `Dockerfile` beside this file,
-;;                      every version from harness/resources/known-good.edn)
+;;                      every version from tools/toolchain/download-matrix.edn)
 ;;   bb docker-health   the same container running `bb health --record`; its platform's record
 ;;                      is copied out to harness/health/records/ for `bb health-sync`
 ;;
@@ -45,26 +45,31 @@
   :init (do (defn harness [& args]
               (apply shell {:dir "harness"} "bb" args))
 
-            ;; The KIT's toolchain image. `docker-image!` builds it, tagged by
-            ;; known-good's date, each ARG from that file and the date one too (KIT_AS_OF), with the
-            ;; base pulled - so a new health record rebuilds the operating-system layer, which the
-            ;; cache had kept as old as the first build (register row 131); `in-container!` clones HEAD from the
-            ;; read-only mount and runs one script, everything to a log under .local/gates/ and
-            ;; to the terminal, and the script's exit is the task's.
+            ;; The KIT's toolchain image. `docker-image!` builds it, tagged by known-good's date,
+            ;; with the base pulled and that date a build argument (KIT_AS_OF) - so a new health
+            ;; record rebuilds the operating-system layer, which the cache had kept as old as the
+            ;; first build (register row 131). The image installs its tools by running the toolchain
+            ;; pack; bb and git, which it fetches before bb exists, come in as build arguments the
+            ;; pack prints from the download matrix for the platform Docker builds (plan 7.0, item
+            ;; 8.1c). `in-container!` clones HEAD from the read-only mount and runs one script,
+            ;; everything to a log under .local/gates/ and to the terminal, and the script's exit
+            ;; is the task's.
             (def known-good-file "harness/resources/known-good.edn")
-            (def build-args
-              {:java "JAVA_VERSION" :bb "BB_VERSION" :clojure "CLOJURE_VERSION"
-               :clj-kondo "CLJ_KONDO_VERSION" :cljfmt "CLJFMT_VERSION" :git "GIT_VERSION"
-               :clj-nrepl-eval "MCP_LIGHT_SHA"})
+            (defn docker-platform []
+              (let [arch (str/trim (:out (shell {:out :string} "docker" "info" "--format" "{{.Architecture}}")))]
+                (case arch
+                  ("aarch64" "arm64") "linux-aarch64"
+                  ("x86_64" "amd64") "linux-amd64"
+                  (throw (ex-info (str "no KIT toolchain image for Docker's " arch) {:arch arch})))))
             (defn docker-image! []
-              (let [{:keys [as-of tools]} (edn/read-string (slurp known-good-file))
+              (let [{:keys [as-of]} (edn/read-string (slurp known-good-file))
+                    platform (docker-platform)
+                    image-args (edn/read-string (:out (shell {:out :string} "bb" "--config" "tools/toolchain/bb.edn"
+                                                             "image-args" platform)))
                     tag (str "clojure-agent-kit-toolchain:" as-of)
-                    args (concat ["--build-arg" (str "KIT_AS_OF=" as-of)]
-                                 (mapcat (fn [[tool arg]]
-                                           (when-let [v (get tools tool)]
-                                             ["--build-arg" (str arg "=" v)]))
-                                         build-args))]
-                (println "image" tag "- the toolchain of" known-good-file)
+                    args (mapcat (fn [[k v]] ["--build-arg" (str k "=" v)])
+                                 (assoc image-args "KIT_AS_OF" as-of))]
+                (println "image" tag "for" platform "- the toolchain of tools/toolchain/download-matrix.edn")
                 (apply shell "docker" "build" "--pull" "-t" tag (concat args ["."]))
                 tag))
             (defn sh-quote [s]
@@ -148,7 +153,7 @@
               :requires ([harness.gates.kit-status :as kit-status])
               :task (kit-status/-main)}
 
-  docker-gates {:doc "The gates in the KIT's toolchain image - a fresh Linux machine in Docker with only the KIT's toolchain: build it from the Dockerfile (every version from harness/resources/known-good.edn), clone HEAD inside from a read-only mount, run bb gates there, require a clean tree after. Log: .local/gates/docker-gates.log; record (the commit, the exit), red or green: .local/gates/docker-gates.edn, the newest, which `bb tag-check` reads, and every run kept under .local/gates/docker-gates/. Needs Docker running"
+  docker-gates {:doc "The gates in the KIT's toolchain image - a fresh Linux machine in Docker with only the KIT's toolchain: build it from the Dockerfile (every version from tools/toolchain/download-matrix.edn, the tools installed by the toolchain pack), clone HEAD inside from a read-only mount, run bb gates there, require a clean tree after. Log: .local/gates/docker-gates.log; record (the commit, the exit), red or green: .local/gates/docker-gates.edn, the newest, which `bb tag-check` reads, and every run kept under .local/gates/docker-gates/. Needs Docker running"
                 :requires ([harness.gates.tag-check :as tag-check])
                 :task (tag-check/docker-recorded!
                        (fn []

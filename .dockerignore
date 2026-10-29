@@ -1,4 +1,5 @@
-# The build context is EMPTY on purpose: the image is the toolchain alone, and the KIT reaches
-# it by `git clone` from a read-only mount at run time, never by COPY. BuildKit still sends the
-# Dockerfile itself.
+# The build context is the TOOLCHAIN PACK ALONE: the image is the toolchain, installed by running
+# the pack (plan 7.0, item 8.1c, D-9), and the KIT reaches it by `git clone` from a read-only mount
+# at run time, never by COPY. BuildKit still sends the Dockerfile itself.
 *
+!tools/toolchain

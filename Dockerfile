@@ -4,69 +4,63 @@
 # `bb docker-gates` and `bb docker-health` at the root of the clone; the GitHub workflow runs on
 # the same image.
 #
-# EVERY VERSION IS A BUILD ARG, and the two tasks read each value from
-# `harness/resources/known-good.edn` - the set a recorded health run actually ran together -
-# so the container is the known-good set and not a second list someone types. The defaults
-# below are that file's values on the day this was written; the tasks override them, so a
-# recorded health run moves the container with it. Three things known-good does not carry
-# and this file pins alone, said here: Temurin's build number behind the JDK version,
-# geckodriver's version, and Firefox ESR, which Mozilla's repository serves as its current
-# ESR and which nothing here pins.
+# THE VERSIONS ARE THE DOWNLOAD MATRIX'S (`tools/toolchain/download-matrix.edn`), and the image
+# installs its tools BY RUNNING THE TOOLCHAIN PACK (plan 7.0, item 8.1c, D-9): one implementation
+# of every layout and sha256 check, and `toolchain-install` proved on Linux at every build. Only
+# what the shell fetches before bb exists comes in as build arguments - bb and git, each its
+# version, URL and sha256, which `docker-image!` reads from the matrix for the platform built
+# (`bb --config tools/toolchain/bb.edn image-args <platform>`) - with no defaults here, since a
+# default is a second owner of the version; and KIT_AS_OF, the date below. Until the fold (8.2a,
+# 8.2d) cljfmt, bbin and clojure-mcp-light are pinned here alone, said where they are installed.
+# Firefox ESR is Mozilla's repository's current ESR, which nothing here pins.
 #
 # NEVER A MOUNT OF THE WORKING TREE: the tasks mount the repository read-only and `git clone`
 # HEAD inside, so what is checked is what is committed, and nothing the container writes
 # reaches the tree.
 
-ARG JAVA_VERSION=21.0.12.1
-ARG JAVA_BUILD=1
-ARG JAVA_IMAGE_TAG=${JAVA_VERSION}_${JAVA_BUILD}-jdk-noble
-
 # ---------------------------------------------------------------------------------------
-# git at the known-good version, built from source: Ubuntu 24.04's package is older than
-# the version the record names, and a floor the image falls under is a doctor note on every
-# run. Built in its own stage so the KIT's toolchain image carries no compiler; without its Rust
-# parts, optional until git 3.0, so no cargo.
-FROM eclipse-temurin:${JAVA_IMAGE_TAG} AS git-build
-ARG GIT_VERSION=2.56.0
+# git at the matrix's version, built from source: Ubuntu 24.04's package is older, and a floor
+# the image falls under is a doctor note on every run. Built in its own stage so the KIT's
+# toolchain image carries no compiler; without its Rust parts, optional until git 3.0.
+FROM ubuntu:noble AS git-build
+ARG GIT_VERSION
+ARG GIT_URL
+ARG GIT_SHA256
 RUN apt-get update && apt-get install -y --no-install-recommends \
       build-essential ca-certificates curl gettext libcurl4-openssl-dev libexpat1-dev \
-      libssl-dev zlib1g-dev \
+      libssl-dev xz-utils zlib1g-dev \
  && rm -rf /var/lib/apt/lists/*
-RUN curl -fsSL "https://mirrors.edge.kernel.org/pub/software/scm/git/git-${GIT_VERSION}.tar.xz" \
-      | tar -xJ -C /tmp \
+RUN curl -fsSL -o /tmp/git.tar.xz "${GIT_URL}" \
+ && echo "${GIT_SHA256}  /tmp/git.tar.xz" | sha256sum -c - \
+ && tar -xJ -C /tmp -f /tmp/git.tar.xz \
  && cd "/tmp/git-${GIT_VERSION}" \
  && make -j"$(nproc)" prefix=/opt/git NO_RUST=1 NO_TCLTK=1 NO_GETTEXT=1 NO_PERL=1 NO_PYTHON=1 install \
- && rm -rf "/tmp/git-${GIT_VERSION}"
+ && rm -rf /tmp/git.tar.xz "/tmp/git-${GIT_VERSION}"
 
 # ---------------------------------------------------------------------------------------
-# The KIT's toolchain image: Ubuntu 24.04 (noble) with Temurin 21, from Adoptium's own image.
-FROM eclipse-temurin:${JAVA_IMAGE_TAG}
+# The KIT's toolchain image: Ubuntu 24.04 (noble); the JDK is the matrix's Temurin, installed by
+# the pack (Q1: no eclipse-temurin base, a second owner of the JDK's version).
+FROM ubuntu:noble
 
-ARG BB_VERSION=1.13.226
-ARG CLOJURE_VERSION=1.12.6.1673
-ARG CLJ_KONDO_VERSION=2026.08.04
-ARG CLJFMT_VERSION=0.16.6
-ARG BBIN_VERSION=0.2.5
-# clojure-mcp-light: the tag the doctor's install command names, and the commit known-good
-# records for its tools; the build fails when the tag no longer resolves to that commit.
-ARG MCP_LIGHT_TAG=v0.2.2
-ARG MCP_LIGHT_SHA=d341c23
-ARG GECKODRIVER_VERSION=0.37.1
+ARG BB_VERSION
+ARG BB_URL
+ARG BB_SHA256
 ARG TARGETARCH
 
 ENV DEBIAN_FRONTEND=noninteractive \
+    KIT_TOOLCHAIN_DIR=/opt/kit-toolchain \
     PATH=/opt/git/bin:/root/.local/bin:/root/.babashka/bbin/bin:${PATH}
 
 # THE SET'S DATE, known-good's `:as-of`, used before the first layer that installs packages: a
 # new health record rebuilds the operating-system layer and every layer after it, where the
 # cache had kept them as old as the image's first build (register row 131). The tasks build
 # with `--pull` too, so the base is the newest published under its tag.
-ARG KIT_AS_OF=2026-10-16
+ARG KIT_AS_OF
 RUN echo "${KIT_AS_OF}" > /etc/kit-toolchain-as-of
 
-# What the tools and the health check lean on: a shell, curl and unzip for the downloads,
-# rlwrap for the Clojure CLI's `clj`, the libraries git links, and Firefox ESR with its
-# fonts from Mozilla's apt repository (ESR, the one the KIT's browser pack is tried on).
+# What the tools and the health check lean on: a shell, curl, unzip and xz for the downloads,
+# rlwrap for the Clojure CLI's `clj`, the libraries git links, and Firefox ESR with its fonts
+# from Mozilla's apt repository (ESR, the one the KIT's browser pack is tried on).
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates curl gnupg unzip xz-utils rlwrap \
       libcurl4 libexpat1 zlib1g \
@@ -83,28 +77,40 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY --from=git-build /opt/git /opt/git
 
-# The release binaries, each at its ARG's version, named by the architecture Docker builds
-# for (arm64 on Apple silicon, amd64 on a GitHub runner): Babashka, clj-kondo, cljfmt,
-# geckodriver, and the Clojure CLI's own Linux installer.
+# bb, the one tool the pack cannot install, since the pack runs on it: the matrix's archive for
+# this platform, its sha256 checked before it is opened.
+RUN curl -fsSL -o /tmp/bb.tar.gz "${BB_URL}" \
+ && echo "${BB_SHA256}  /tmp/bb.tar.gz" | sha256sum -c - \
+ && tar -xz -C /usr/local/bin -f /tmp/bb.tar.gz bb \
+ && rm /tmp/bb.tar.gz \
+ && bb --version | grep -q "v${BB_VERSION}\$"
+
+# The rest by the pack: the JDK, clj-kondo, the Clojure CLI and geckodriver into the toolchain
+# folder, each archive checked against the matrix's sha256, linked into /usr/local/bin. The
+# fetched archives stay in a BuildKit cache across builds, so a change to the pack reruns the
+# unpacking and the checks but not the JDK's 200 MB download.
+COPY tools/toolchain /opt/kit/tools/toolchain
+RUN --mount=type=cache,target=/opt/kit-toolchain/downloads \
+    bb --config /opt/kit/tools/toolchain/bb.edn toolchain-install \
+      --only java,clj-kondo,clojure,geckodriver --link /usr/local/bin
+
+# cljfmt, pinned here until it is the pack's dependency (8.2a).
+ARG CLJFMT_VERSION=0.16.6
 RUN set -eu; \
     case "${TARGETARCH}" in \
-      arm64) BB_ARCH=aarch64; KONDO_ARCH=aarch64; CLJFMT_ARCH=aarch64; GECKO_ARCH=linux-aarch64 ;; \
-      amd64) BB_ARCH=amd64;   KONDO_ARCH=static-amd64; CLJFMT_ARCH=amd64; GECKO_ARCH=linux64 ;; \
+      arm64) CLJFMT_ARCH=aarch64 ;; \
+      amd64) CLJFMT_ARCH=amd64 ;; \
       *) echo "no release binaries for ${TARGETARCH}" >&2; exit 1 ;; \
     esac; \
-    curl -fsSL "https://github.com/babashka/babashka/releases/download/v${BB_VERSION}/babashka-${BB_VERSION}-linux-${BB_ARCH}-static.tar.gz" \
-      | tar -xz -C /usr/local/bin bb; \
-    curl -fsSL -o /tmp/kondo.zip "https://github.com/clj-kondo/clj-kondo/releases/download/v${CLJ_KONDO_VERSION}/clj-kondo-${CLJ_KONDO_VERSION}-linux-${KONDO_ARCH}.zip" \
-      && unzip -q /tmp/kondo.zip -d /usr/local/bin && rm /tmp/kondo.zip; \
     curl -fsSL "https://github.com/weavejester/cljfmt/releases/download/${CLJFMT_VERSION}/cljfmt-${CLJFMT_VERSION}-linux-${CLJFMT_ARCH}.tar.gz" \
-      | tar -xz -C /usr/local/bin cljfmt; \
-    curl -fsSL "https://github.com/mozilla/geckodriver/releases/download/v${GECKODRIVER_VERSION}/geckodriver-v${GECKODRIVER_VERSION}-${GECKO_ARCH}.tar.gz" \
-      | tar -xz -C /usr/local/bin geckodriver; \
-    curl -fsSL -o /tmp/clojure-install.sh "https://github.com/clojure/brew-install/releases/download/${CLOJURE_VERSION}/linux-install.sh" \
-      && bash /tmp/clojure-install.sh && rm /tmp/clojure-install.sh
+      | tar -xz -C /usr/local/bin cljfmt
 
-# bbin, then the three clojure-mcp-light tools by the doctor's own install command, held to
-# the commit known-good records.
+# bbin, then the three clojure-mcp-light tools by the doctor's own install command, held to the
+# commit known-good records - pinned here until clojure-mcp-light is the pack's dependency and
+# bbin goes (8.2d).
+ARG BBIN_VERSION=0.2.5
+ARG MCP_LIGHT_TAG=v0.2.2
+ARG MCP_LIGHT_SHA=d341c23
 RUN set -eu; \
     install -d /root/.local/bin; \
     curl -fsSL -o /root/.local/bin/bbin "https://raw.githubusercontent.com/babashka/bbin/v${BBIN_VERSION}/bbin" \

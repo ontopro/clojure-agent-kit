@@ -132,6 +132,11 @@
                No profile example yet, so bb init --seat refuses it; no build
                has run from it"}
 
+ {:tool :docker :via :flag :cmd ["docker" "--version"] :req :optional
+  :does "Runs containers"
+  :needed-for "Optional, and only for these: the code reviewer's REPL; the security review's sandbox (`bb security-review`, `--kit`, `bb security-panel`); `bb health`'s XTDB check over pgwire and its check of the generated application's image; the KIT's toolchain image (`bb docker-gates`, `bb docker-health`)"
+  :install "https://docs.docker.com/get-docker/"}
+
  {:tool :mise :via :flag :cmd ["mise" "--version"] :req :optional
   :does "Pins language/tool versions per project"
   :needed-for "The template's projects ship a .mise.toml; `mise install` is one route to the JDK and tools"

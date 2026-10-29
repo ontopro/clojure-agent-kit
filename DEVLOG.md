@@ -65,6 +65,30 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### The KIT's toolchain image is built on `ubuntu:noble` and installs its tools by running the pack (plan 7.0, item 8.1c)
+
+D-9 (the person, 2026-10-28: "yes to both"), Q1 ("go with option (a)"). The image was `eclipse-temurin`'s
+Temurin 21 with every version a build argument from `known-good.edn`, each tool fetched by its own
+`curl` line and none checked. It is now `ubuntu:noble`:
+- git built from source in its own stage and bb fetched, each by shell before bb exists, from
+  `GIT_URL`/`GIT_SHA256` and `BB_URL`/`BB_SHA256` - `sha256sum -c` before either is opened;
+- then the pack, `COPY tools/toolchain` (the build context is the pack alone, `.dockerignore`), and
+  `toolchain-install --only java,clj-kondo,clojure,geckodriver --link /usr/local/bin` under a
+  BuildKit cache mount on `<cache>/downloads/` - the JDK is the matrix's Temurin `25.0.5+8`, no second
+  owner of its version; the same code, layouts and sha256 checks as on a machine, proved on Linux at
+  every build;
+- cljfmt, bbin and clojure-mcp-light still by their own lines, pinned in the Dockerfile alone until
+  8.2a and 8.2d, each said where it is.
+`docker-image!` asks Docker its architecture (`docker info`), and the pack's new `image-args
+<platform>` prints the six build arguments from the matrix (`asset`, one implementation); `KIT_AS_OF`
+stays known-good's date. The ARGs carry no defaults for these. A test holds the Dockerfile's ARG set
+to `image-args`' keys, `KIT_AS_OF`, `TARGETARCH` and Q3's four leaving with their sub-tasks. The
+environment table gains Docker's row, optional, `:needed-for` naming each use. Built here
+(linux-aarch64): `/tmp/git.tar.xz: OK`, `/tmp/bb.tar.gz: OK`, the four tools installed and linked;
+in the image, `bb` v1.13.229, `java` 25.0.5, `clj-kondo` v2026.10.26, `clojure` 1.12.6.1673,
+`geckodriver` 0.37.1, `git` 2.56.0, `cljfmt` 0.16.6, and `clojure -M -e` evaluated. The doctor's
+`docker info` probe ("daemon not running") is left to 8.2e, the doctor's commit.
+
 ### The toolchain pack installs: `toolchain-install`, its plan pure, each archive checked before it is unpacked (plan 7.0, item 8.1c)
 
 The install's core, which the KIT's toolchain image will run (D-9). `toolchain-download-matrix/plan`

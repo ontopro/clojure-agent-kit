@@ -386,7 +386,7 @@
         from-text (doctor/read-toolchain text)]
     (is (= doctor/toolchain from-text) "the doctor's table is the file, nothing added in code")
     (is (not (str/includes? text "#(")) "plain EDN: no reader macros, readable at any tag")
-    (is (= 17 (count from-text)))
+    (is (= 18 (count from-text)) "docker's row since plan 7.0, item 8.1c")
     (doseq [{:keys [tool via cmd req tier install]} from-text]
       (is (#{:flag :bbin :which} via) (str tool))
       (is (#{:required :recommended :optional} req) (str tool))

@@ -135,3 +135,18 @@
           (let [a (asset matrix t platform)]
             (assoc base :step :install :asset a :dir (str cache "/" (name t) "/" v)
                    :download (str cache "/downloads/" (:file a)))))))
+
+(def image-tools
+  "What the KIT's toolchain image fetches by shell, before bb exists, and so takes as build
+  arguments; every other tool it installs by running the pack (plan 7.0, item 8.1c, D-9)."
+  [[:bb "BB"] [:git "GIT"]])
+
+(defn image-args
+  "The KIT's toolchain image's build arguments for the Linux `platform` it is built for:
+  `<P>_VERSION`, `<P>_URL` and `<P>_SHA256` of each of `image-tools` - pure."
+  [matrix platform]
+  (into (sorted-map)
+        (mapcat (fn [[tool prefix]]
+                  (let [{:keys [version url sha256]} (asset matrix tool platform)]
+                    [[(str prefix "_VERSION") version] [(str prefix "_URL") url] [(str prefix "_SHA256") sha256]])))
+        image-tools))

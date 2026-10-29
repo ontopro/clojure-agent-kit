@@ -97,3 +97,26 @@
   (is (= {:only [:java :clojure] :link "/usr/local/bin" :dry-run? true}
          (install/parse-args ["--only" "java,clojure" "--link" "/usr/local/bin" "--dry-run"])))
   (is (thrown-with-msg? clojure.lang.ExceptionInfo #"toolchain-install \[--only" (install/parse-args ["--everything"]))))
+
+(def leaving
+  "The Dockerfile's ARGs of tools the pack does not hold yet, each with the sub-task that removes it
+  - deleted from this list by the commit that deletes its ARG (plan 7.0, item 8.1c, Q3)."
+  {"CLJFMT_VERSION" "8.2a: cljfmt the pack's dependency"
+   "BBIN_VERSION" "8.2d: bbin goes"
+   "MCP_LIGHT_TAG" "8.2d: clojure-mcp-light the pack's dependency"
+   "MCP_LIGHT_SHA" "8.2d: clojure-mcp-light the pack's dependency"})
+
+(deftest the-images-build-arguments-are-the-matrixs
+  ;; D-9: the image installs by running the pack; only what the shell fetches before bb exists is
+  ;; a build argument, from the matrix, with no default - a default is a second owner
+  (let [dockerfile (slurp "../Dockerfile")
+        declared (into {} (for [[_ k v] (re-seq #"(?m)^ARG ([A-Z_0-9]+)(?:=(\S+))?" dockerfile)] [k v]))
+        args (dm/image-args matrix :linux-aarch64)]
+    (is (= (set (concat (keys args) ["KIT_AS_OF" "TARGETARCH"] (keys leaving))) (set (keys declared)))
+        "every ARG is the matrix's, the date, Docker's own, or one leaving with its sub-task")
+    (is (every? nil? (map declared (cons "KIT_AS_OF" (keys args)))) "no default for the matrix's or the date")
+    (is (= {"BB_VERSION" "1.13.229" "GIT_VERSION" "2.56.0"} (select-keys args ["BB_VERSION" "GIT_VERSION"])))
+    (is (= "https://github.com/babashka/babashka/releases/download/v1.13.229/babashka-1.13.229-linux-amd64-static.tar.gz"
+           (get (dm/image-args matrix :linux-amd64) "BB_URL")))
+    (is (str/includes? dockerfile "toolchain-install \\\n      --only java,clj-kondo,clojure,geckodriver --link /usr/local/bin")
+        "the rest by the pack")))
