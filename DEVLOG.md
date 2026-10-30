@@ -68,6 +68,32 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### One harness reader of the download matrix; the JDK a recorded tool like the rest (plan 7.0, item 8.3a, the first of three commits)
+
+The design note, read twice by Fable 5.1 (GO both times), and the person: "go 8.3a, (a) fold java in".
+- **`harness.setup.download-matrix`**, a new leaf (the read's change 2): the clone found from the harness's
+  own resources, the matrix read as EDN, a bbin row's version its commit's seven (`commit-version`), this
+  machine's platform or nil (`platform`), and the doctor's reference - each row the matrix names at its
+  version, clojure-mcp-light's commit on its three commands (`reference`, `matrix-tool`). The harness never
+  loads the pack, so its two copied rules are held to the pack's own by a test (`download_matrix_test`).
+  `bb kit-pins` reads the matrix through it; its own copy of the commit rule goes. `layers.edn` gains the
+  leaf and kit-pins' edge; the doctor's comes with its commit.
+- **The JDK folded in** (the person's answer to the second read's question): "the JDK apart" - kit-pins'
+  `recorded-tools`, `bb health --record`'s drift guard, `bb tag-check`'s `versions` line and its stale-set
+  test, and kit-pins' `:other-major` mark ("a JDK of another major is allowed and said apart") - existed
+  because a record was made on the recording machine's own JDK. 8.3a's doctor holds the JDK to the matrix
+  like every tool, so a record is only made at the matrix's, and the exception described a case that cannot
+  occur. Now the JDK is one of the recorded tools; another JDK is `installed differs` like any tool; the
+  versions line compares it without the build after `+` - `java -version` prints `25.0.5` for the matrix's
+  `25.0.5+8` (the second read probed it: the doctor's own `version-cmp` would call that newer; the doctor's
+  commit compares without it too). `rows` loses its `notes` argument with the mark that used it. known-good's
+  `:java "25.0.5"` and both health records are the matrix's JDK already, so nothing goes stale.
+
+Proved: `download_matrix_test` (the path from the resources, every version as the pack reads it, the platform
+on six machines as `platform-key` gives it, the reference's rows), `kit_pins_test` (the JDK's build no
+difference, another patch or major a difference; the drift guard naming the JDK), `tag_check_test` (the JDK
+compared, its build no difference; a record on another JDK stale).
+
 ### A machine the download matrix publishes no build for is told so in one sentence, naming the machines it does - never a stack trace (From Fable 5.1's read of `1aa6603`; the person's sentence)
 
 `platform-key` threw off the three platforms, and `status/main` did not catch it: an Intel Mac's `status

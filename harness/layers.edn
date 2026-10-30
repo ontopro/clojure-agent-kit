@@ -32,10 +32,11 @@
  harness.models.catalogue #{}
  harness.models.provenance #{}
  harness.setup.doctor #{}
+ harness.setup.download-matrix #{}
  harness.setup.template #{}
  harness.setup.workspace #{}
  harness.setup.init-args #{}
- harness.gates.kit-pins #{}
+ harness.gates.kit-pins #{harness.setup.download-matrix}
  harness.gates.toolchain-image #{}
  harness.setup.stages #{}
  harness.setup.project-set #{}

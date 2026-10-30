@@ -120,26 +120,27 @@
                             (str/join ", " (map #(str (:platform %) " " (subs (:sha %) 0 7)) (keep by (sort platforms)))) ")")))))
 
 (defn versions-check
-  "THE KIT AN ADOPTER GETS HAS ITS PINS EQUAL TO KNOWN-GOOD, the JDK apart (the person, 2026-10-29:
-  \"The KIT that an Adopter gets should have matrix = known-good versions (with the Java exception
-  noted)\"). `pins` as `kit-pins/pins` reads them, `good` known-good's `:tools` (the Mac
-  host's recorded run). Compared: bb, clj-kondo, the Clojure CLI and cljfmt with known-good;
-  clojure-mcp-light's commit (the download matrix's, plan 7.0, item 8.2d)
-  with known-good's `clj-nrepl-eval`. The JDK is not compared: known-good records the recording
-  machine's, and any 21 or newer is allowed (Fable 5.1's read of the versions decision). git is not:
-  the KIT pins none since 8.2e - Ubuntu's in the image, the person's own on a machine."
+  "THE KIT AN ADOPTER GETS HAS ITS PINS EQUAL TO KNOWN-GOOD (the person, 2026-10-29: \"The KIT that an
+  Adopter gets should have matrix = known-good versions (with the Java exception noted)\"; the exception
+  folded in 2026-10-30, \"(a) fold java in\": the doctor holds the JDK to the matrix, so a record is only
+  made at it). `pins` as `kit-pins/pins` reads them, `good` known-good's `:tools` (the Mac host's
+  recorded run). Compared: bb, clj-kondo, the Clojure CLI, cljfmt and the JDK with known-good - a build
+  after `+` no difference, `java -version` prints none (Temurin's `25.0.5+8` is `25.0.5`); clojure-mcp-light's
+  commit (the download matrix's, plan 7.0, item 8.2d) with known-good's `clj-nrepl-eval`. git is not: the
+  KIT pins none since 8.2e - Ubuntu's in the image, the person's own on a machine."
   [pins good]
   (let [pairs (concat
                ;; the tools a record must run at the pins, one list with `bb health --record`'s guard
                ;; (From Fable 5.1's read of `f9b5af8`)
                (for [t (sort kit-pins/recorded-tools)] [(name t) (get-in pins [t :version]) (get good t)])
                [["clojure-mcp-light" (get-in pins [:clojure-mcp-light :version]) (:clj-nrepl-eval good)]])
-        off (remove (fn [[_ pinned recorded]] (= pinned recorded)) pairs)]
+        build-off #(some-> % (str/split #"\+") first)
+        off (remove (fn [[_ pinned recorded]] (= (build-off pinned) (build-off recorded))) pairs)]
     (check :versions (empty? off)
            (if (seq off)
              (str (str/join "; " (for [[t pinned recorded] off] (str t " pinned " (or pinned "nowhere") ", recorded " (or recorded "nowhere"))))
                   " - a health run records the pins: `bb tag-check <tag> --run`")
-             (str "the pins are what the health runs recorded, the JDK apart ("
+             (str "the pins are what the health runs recorded ("
                   (str/join ", " (map (fn [[t v]] (str t " " v)) (map (juxt first second) pairs))) ")")))))
 
 (defn stale-platforms
@@ -211,8 +212,8 @@
 (defn set-stales?
   "Whether known-good's move between a record's commit and HEAD makes the record stale: when the set
   says something new (`known-good-moved?`, `then` and `now` its EDN text) AND the record did not run
-  what HEAD's set now says, over the tools the pins hold (`kit-pins/recorded-tools`; the JDK, git
-  and the rest apart). A health run that moves the set - every pin move - is evidence for the set it
+  what HEAD's set now says, over the tools the pins hold (`kit-pins/recorded-tools`, the JDK among them
+  since 8.3a; git and the rest apart). A health run that moves the set - every pin move - is evidence for the set it
   wrote, not stale against the commit that holds it (From Fable 5.1's read of `4eab9df`; register
   row 127 was the first half, the date). `record-tools` the record's `:tools`."
   [record-tools then now]

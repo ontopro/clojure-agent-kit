@@ -8,7 +8,9 @@
   are the start; this report sets beside each what this machine runs and the newest release, and the
   person gives a go or no-go per row - to the latest, or back to the pin where the machine drifted.
   A version moves only on that go, and a health run then records it as known-good. The KIT an
-  adopter gets has its pins equal to known-good, the JDK apart.
+  adopter gets has its pins equal to known-good - the JDK among them since 8.3a (the person,
+  2026-10-30: \"(a) fold java in\"): the doctor holds the JDK to the matrix like every tool, so a record
+  is only made at the matrix's, and a JDK of another version is `installed differs` like any other.
 
   The pins: the download matrix (`tools/toolchain/download-matrix.edn`) for the tools the pack
   fetches, cljfmt among them (plan 7.0, item 8.2a), and bbin and clojure-mcp-light (8.2d) - the
@@ -31,7 +33,8 @@
    [babashka.fs :as fs]
    [babashka.process :as p]
    [clojure.edn :as edn]
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [harness.setup.download-matrix :as download-matrix]))
 
 (def sources
   "Each pin: where its releases are tagged, the shape of a release tag (its group the version),
@@ -96,8 +99,8 @@
                 :deps-new (some->> (get-in template [:deps-new :git/sha]) (hash-map :lib 'io.github.seancorfield/deps-new :sha))}
         read (fn [[place k]]
                (case place
-                 ;; a bbin row names its commit alone: its first seven characters, as the pack reads it
-                 :download-matrix (or (get-in matrix [k :version]) (some-> (get-in matrix [k :git/sha]) (subs 0 7)))
+                 ;; a bbin row names its commit alone: its seven, as the harness's one reader gives it
+                 :download-matrix (:version (download-matrix/commit-version (get matrix k)))
                  :xtdb-deps (get-in xtdb-deps [k :mvn/version])
                  :project-set (get-in project-set [:tools k])
                  :template (case k
@@ -113,40 +116,33 @@
           sources)))
 
 (defn rows
-  "One row per source: {:tool :pin :from :installed :project :newest :note :marks}. `installed` is
+  "One row per source: {:tool :pin :from :installed :project :newest :marks}. `installed` is
   {tool version-or-text} (absent: `-`), `releases` {tool newest-or-nil}, `project-set` the project
-  set, `notes` {tool the doctor's note}. `:marks`, in order: `:unpinned` when no file carries the
+  set. `:marks`, in order: `:unpinned` when no file carries the
   pin - the row kept, so a lost pin shows; `:newer` when a release is newer than the pin; `:unknown`
-  when the repository did not answer; `:other-major` when this machine runs a JDK of another major
-  than the pin's - allowed, 21 and newer, so not a difference, said in the doctor's own words;
-  `:installed-differs` when this machine runs another version than the pin; `:project-differs`
+  when the repository did not answer; `:installed-differs` when this machine runs another version than
+  the pin - a build after `+` no difference (Temurin's `25.0.5+8` is `25.0.5`); `:project-differs`
   when the project set writes another version than the pin."
-  ([pins installed releases project-set] (rows pins installed releases project-set {}))
-  ([pins installed releases project-set notes]
-   (for [{:keys [tool project]} sources
-         :let [{pin :version from :from} (get pins tool)
-               nw (get releases tool)
-               inst (get installed tool)
-               proj (when (and project pin (not= :project-set from)) (get-in project-set [:tools project]))
+  [pins installed releases project-set]
+  (for [{:keys [tool project]} sources
+        :let [{pin :version from :from} (get pins tool)
+              nw (get releases tool)
+              inst (get installed tool)
+              proj (when (and project pin (not= :project-set from)) (get-in project-set [:tools project]))
                ;; a commit pin (clojure-mcp-light) is equal or not: a commit has no order
-               differs? (fn [v] (if (commit? pin)
-                                  (and (commit? v) (not (str/starts-with? pin v)) (not (str/starts-with? v pin)))
-                                  (and (version? v) (version? pin) (not (zero? (compare-versions v pin))))))
-               other-major? (and (= :java tool) (version? inst) (version? pin)
-                                 (not= (first (version-key inst)) (first (version-key pin))))]]
-     (if-not pin
+              differs? (fn [v] (if (commit? pin)
+                                 (and (commit? v) (not (str/starts-with? pin v)) (not (str/starts-with? v pin)))
+                                 (and (version? v) (version? pin) (not (zero? (compare-versions v pin))))))]]
+    (if-not pin
        ;; what this machine runs is so whether or not a file pins it (From Fable 5.1's read of 2267ee7)
-       {:tool tool :installed inst :marks [:unpinned]}
-       (cond-> {:tool tool :pin pin :from from :installed inst :project proj :newest nw
-                :marks (cond-> []
-                         (and nw (not (commit? pin)) (pos? (compare-versions nw pin))) (conj :newer)
-                         (and nw (commit? pin) (not (str/starts-with? nw pin)) (not (str/starts-with? pin nw))) (conj :moved)
-                         (nil? nw) (conj :unknown)
-                         other-major? (conj :other-major)
-                         (and (differs? inst) (not other-major?)) (conj :installed-differs)
-                         (differs? proj) (conj :project-differs))}
-         other-major? (assoc :note (or (get notes tool)
-                                       (str "installed major " (first (version-key inst)) ", allowed"))))))))
+      {:tool tool :installed inst :marks [:unpinned]}
+      {:tool tool :pin pin :from from :installed inst :project proj :newest nw
+       :marks (cond-> []
+                (and nw (not (commit? pin)) (pos? (compare-versions nw pin))) (conj :newer)
+                (and nw (commit? pin) (not (str/starts-with? nw pin)) (not (str/starts-with? pin nw))) (conj :moved)
+                (nil? nw) (conj :unknown)
+                (differs? inst) (conj :installed-differs)
+                (differs? proj) (conj :project-differs))})))
 
 (defn line
   "A row as one line, for `bb kit-status` and `bb tag-check`."
@@ -171,11 +167,11 @@
   columns padded to their widest cell."
   [rows]
   (let [cells (cons ["tool" "installed" "pinned (where)" "latest" "marks"]
-                    (for [{:keys [tool pin from installed project newest note marks]} rows]
+                    (for [{:keys [tool pin from installed project newest marks]} rows]
                       [(name tool) (or installed "-")
                        (if pin (str pin " (" (where from) (when project (str "; project set " project)) ")") "-")
                        (if pin (or newest "unknown") "-")
-                       (str/join "; " (map #(if (= :other-major %) note (mark-text %)) marks))]))
+                       (str/join "; " (map mark-text marks))]))
         widths (apply map (fn [& col] (apply max (map count col))) cells)]
     (for [row cells]
       (str/trimr (str/join "  " (map (fn [c w] (format (str "%-" w "s") c)) row widths))))))
@@ -206,7 +202,7 @@
 
 (defn- read-files [root]
   (let [read #(let [f (fs/path root %)] (when (fs/exists? f) (slurp (str f))))]
-    {:matrix (some-> (read "tools/toolchain/download-matrix.edn") edn/read-string)
+    {:matrix (download-matrix/read-matrix root)
      :template-pins (some-> (read "harness/resources/template-pins.edn") edn/read-string)
      :project-set (some-> (read "harness/resources/project-set.edn") edn/read-string)
      :xtdb-deps (some-> (read "harness/health/xtdb/deps.edn") edn/read-string :deps)}))
@@ -276,7 +272,7 @@
                                           (head repo timeout-ms)
                                           (some->> (tags repo timeout-ms) (newest tag))))]))]
      (rows ps (if installed? (installed ps doctor (System/getProperty "user.home")) {}) (update-vals asked deref)
-           (:project-set files) (into {} (keep (fn [[t {:keys [note]}]] (when note [t note]))) doctor)))))
+           (:project-set files)))))
 
 (defn -main [& _]
   (let [root (let [{:keys [exit out]} (p/shell {:out :string :err :string :continue true}
@@ -294,10 +290,10 @@
 
 (def recorded-tools
   "The tools whose versions a health record must have run at the KIT's pins - what `bb tag-check`'s
-  `versions` line holds to known-good: bb, clj-kondo, the Clojure CLI and cljfmt. The JDK apart: any
-  21 or newer is allowed. git is no pin since 8.2e: a prerequisite, Ubuntu's in the KIT's toolchain
-  image."
-  #{:bb :clj-kondo :clojure :cljfmt})
+  `versions` line holds to known-good: bb, clj-kondo, the Clojure CLI, cljfmt and the JDK (8.3a: the
+  doctor holds it to the matrix too, so no record is made at another). git is no pin since 8.2e: a
+  prerequisite, Ubuntu's in the KIT's toolchain image."
+  #{:bb :clj-kondo :clojure :cljfmt :java})
 
 (defn record-drift
   "The rows of `rows` a health record must not be written over: one of `recorded-tools` that this

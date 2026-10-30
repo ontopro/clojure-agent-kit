@@ -93,21 +93,25 @@
   ;; is not stale against that commit - the set's move stales a record only when the record did not run it
   (let [then "{:as-of \"2026-10-22\" :tools {:bb \"1.13.226\" :clj-kondo \"2026.08.04\" :java \"21.0.12.1\"}}"
         now "{:as-of \"2026-10-29\" :tools {:bb \"1.13.229\" :clj-kondo \"2026.10.26\" :java \"25.0.5\" :git \"2.57.0\"}}"]
-    (is (not (tc/set-stales? {:bb "1.13.229" :clj-kondo "2026.10.26" :java "25.0.4" :git "2.56.0"} then now))
-        "the run that wrote the set: fresh - its JDK and its git apart")
+    (is (not (tc/set-stales? {:bb "1.13.229" :clj-kondo "2026.10.26" :java "25.0.5" :git "2.56.0"} then now))
+        "the run that wrote the set: fresh - its git apart")
+    (is (tc/set-stales? {:bb "1.13.229" :clj-kondo "2026.10.26" :java "25.0.4"} then now)
+        "a record on another JDK than the set's: stale, since 8.3a")
     (is (tc/set-stales? {:bb "1.13.228" :clj-kondo "2026.10.26"} then now) "a record one patch behind the set: stale")
     (is (not (tc/set-stales? {:bb "1.13.226"} then then)) "the set unmoved: never stale by it")))
 
-(deftest the-pins-are-what-the-health-runs-recorded-the-jdk-apart
+(deftest the-pins-are-what-the-health-runs-recorded
   ;; the person, 2026-10-29: "The KIT that an Adopter gets should have matrix = known-good versions
-  ;; (with the Java exception noted)"
+  ;; (with the Java exception noted)"; 2026-10-30, the exception folded in: "(a) fold java in"
   (let [pins {:bb {:version "1.13.229"} :clj-kondo {:version "2026.10.26"} :clojure {:version "1.12.6.1673"}
               :cljfmt {:version "0.16.6"} :git {:version "2.56.0"} :java {:version "25.0.5+8"}
               :clojure-mcp-light {:version "d341c23"}}
         good {:bb "1.13.229" :clj-kondo "2026.10.26" :clojure "1.12.6.1673" :cljfmt "0.16.6"
-              :clj-nrepl-eval "d341c23" :git "2.57.0" :java "21.0.12.1"}]
+              :clj-nrepl-eval "d341c23" :git "2.57.0" :java "25.0.5"}]
     (is (:ok? (tc/versions-check pins good))
-        "the JDK not compared, nor git - whatever either side says")
+        "the JDK's build no difference (25.0.5 is 25.0.5+8); git not compared, whatever either side says")
+    (is (str/includes? (:detail (tc/versions-check pins (assoc good :java "21.0.12.1"))) "java pinned 25.0.5+8, recorded 21.0.12.1")
+        "the JDK compared since 8.3a")
     (let [c (tc/versions-check (assoc-in pins [:bb :version] "1.13.230") good)]
       (is (not (:ok? c)))
       (is (= "bb pinned 1.13.230, recorded 1.13.229 - a health run records the pins: `bb tag-check <tag> --run`" (:detail c))))

@@ -96,21 +96,14 @@
       (is (some #{"clojure-mcp-light d341c23 - its default branch is at e3cdd0d (a commit pin: moved, not newer)"}
                 (tn/newer-lines (rows-for "d341c23" "e3cdd0d")))))))
 
-(deftest a-jdk-of-another-major-is-allowed-and-said-apart
-  ;; From Fable 5.1's read of 51ce107: 21 and newer, 25 preferred (the person, 2026-10-26) - a machine
-  ;; on 21 is not a difference; another patch of the pin's major is
+(deftest the-jdk-is-a-pin-like-any-other
+  ;; the person, 2026-10-30: "(a) fold java in" - the doctor holds the JDK to the matrix, so another
+  ;; JDK is a difference like any tool's; a build after `+` is none (`java -version` prints none)
   (let [ps {:java {:version "25.0.5+8" :from :download-matrix}}
-        java-row (fn [inst notes] (first (filter #(= :java (:tool %))
-                                                 (tn/rows ps {:java inst} {:java "25.0.5"} {} notes))))]
-    (is (= [:other-major] (:marks (java-row "21.0.12.1" {}))))
-    (is (= "installed major 21, allowed" (:note (java-row "21.0.12.1" {}))))
-    (is (= "major 25 is preferred, the one the KIT tests on; 21 works - 21 and newer"
-           (:note (java-row "21.0.12.1" {:java "major 25 is preferred, the one the KIT tests on; 21 works - 21 and newer"})))
-        "the doctor's own words, never the report's restatement")
-    (is (= [:installed-differs] (:marks (java-row "25.0.4" {}))))
-    (is (= [] (:marks (java-row "25.0.5" {}))))
-    (is (some #(str/ends-with? % "major 25 is preferred")
-              (tn/table [(assoc (java-row "21.0.12.1" {:java "major 25 is preferred"}) :installed "21.0.12.1")])))))
+        java-row (fn [inst] (first (filter #(= :java (:tool %)) (tn/rows ps {:java inst} {:java "25.0.5"} {}))))]
+    (is (= [] (:marks (java-row "25.0.5"))) "25.0.5 is 25.0.5+8")
+    (is (= [:installed-differs] (:marks (java-row "25.0.4"))))
+    (is (= [:installed-differs] (:marks (java-row "21.0.12.1"))) "another major: a difference, no longer said apart")))
 
 (deftest the-doctors-map-is-read-whatever-its-exit
   ;; From Fable 5.1's read of 51ce107: the doctor prints its map and exits 1 when a required tool is
@@ -156,9 +149,10 @@
               :java {:version "25.0.5+8" :from :download-matrix} :geckodriver {:version "0.37.1" :from :download-matrix}
               :clj-kondo {:version "2026.10.26" :from :download-matrix}}
         rows (tn/rows pins {:bb "1.13.230" :git "2.57.0" :java "25.0.4" :geckodriver "0.36.0" :clj-kondo "2026.10.26"} {} nil)]
-    (is (= [:bb] (map :tool (tn/record-drift rows)))
-        "git no pin, the JDK any 21 and newer, geckodriver no record's - only bb")
-    (is (nil? (tn/drift-refusal (tn/record-drift (tn/rows pins {:bb "1.13.229"} {} nil)))) "no drift, no refusal")
+    (is (= [:bb :java] (map :tool (tn/record-drift rows)))
+        "git no pin, geckodriver no record's - bb, and the JDK since 8.3a")
+    (is (nil? (tn/drift-refusal (tn/record-drift (tn/rows pins {:bb "1.13.229" :java "25.0.5"} {} nil))))
+        "no drift, no refusal - 25.0.5 is the pin's 25.0.5+8")
     (let [r (tn/drift-refusal (tn/record-drift rows))]
       (is (str/starts-with? r "--record refused: this machine runs other versions than the KIT pins"))
       (is (str/includes? r "    bb  installed 1.13.230, pinned 1.13.229 (matrix)"))
