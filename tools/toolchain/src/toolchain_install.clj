@@ -1,17 +1,20 @@
 (ns toolchain-install
-  "The pack's edge: fetching an archive, taking its sha256, unpacking it into the cache.
+  "The pack's edge: fetching an archive, taking its sha256, unpacking it into the toolchain folder.
 
   `toolchain-sum` (plan 7.0, item 8.1b): each platform's archive of a tool fetched once into a
   temporary folder, its sha256 taken and set beside the publisher's, the lines to paste into the
   matrix printed; the paste is the person's, as a pin move is.
 
-  `toolchain-install` (8.1c): the steps of `toolchain-download-matrix/plan`, walked - an archive
-  fetched into `<cache>/downloads/` (or the copy there reused while its sha256 is the matrix's),
-  its sha256 compared with the matrix's before anything is unpacked (a mismatch deletes the file
-  and fails by name - never installed), unpacked into `<cache>/<tool>/<version>/`; the Clojure
-  CLI laid out by `cli-layout`, as the official posix-install.sh does, its own `install.sh` being
-  Homebrew's. `--link <dir>` puts each tool's executables in `<dir>`, for the KIT's toolchain
-  image, whose PATH names no version.
+  `toolchain-install` (8.1c, 8.2b): the steps of `toolchain-download-matrix/plan`, walked - an
+  archive fetched into `<folder>/downloads/`, its sha256 compared with the matrix's before anything is
+  unpacked (a mismatch deletes the file and fails by name - never installed), unpacked into
+  `<folder>/<tool>/<version>/`, then deleted: downloads are not kept (the person, 2026-10-30) -
+  `--keep-downloads` keeps them, for the KIT's toolchain image, whose build caches that folder, and a
+  copy there is reused while its sha256 is the matrix's. The Clojure CLI laid out by `cli-layout`, as
+  the official posix-install.sh does, its own `install.sh` being Homebrew's. Each tool's executables
+  are linked into `<folder>/bin/` - the one folder callers put first on the PATH, a version moved by a
+  re-link - or into `--link <dir>`, the image's `/usr/local/bin`. The folder is the project's, the one
+  above the clone (`toolchain-status/place`); a home folder or `/` there is refused.
 
   `fetch!` and `sha256-of` are the seam a test redefines; `sum-row`, `cli-layout` and the plan are
   pure."
@@ -190,8 +193,9 @@
 (defn install-step!
   "One `:install` step: the archive downloaded and verified, unpacked into a folder beside its
   place - the Clojure CLI laid out there by `cli-layout`, its paths the place's - the executable
-  made one, and the folder swapped into place (`swap-in!`)."
-  [matrix {:keys [tool version dir bin download] :as step}]
+  made one, and the folder swapped into place (`swap-in!`). The archive deleted after, unless
+  `keep?`."
+  [matrix {:keys [tool version dir bin download] :as step} keep?]
   (download! step)
   (fs/create-dirs (fs/parent dir))
   (let [tmp (fs/create-temp-dir {:dir (fs/parent dir) :prefix (str (name tool) "-unpacking-")})
@@ -206,7 +210,11 @@
                      unpacked)]
         (fs/set-posix-file-permissions (str staged (subs bin (count dir))) "rwxr-xr-x")
         (swap-in! staged dir))
-      (finally (fs/delete-tree tmp))))
+      (finally (fs/delete-tree tmp)
+               (when-not keep?
+                 (fs/delete-if-exists download)
+                 (let [d (fs/parent download)]
+                   (when (and (fs/directory? d) (empty? (fs/list-dir d))) (fs/delete d)))))))
   bin)
 
 (defn link-targets
@@ -222,28 +230,34 @@
           (filter #(#{:installed :kept} (:step %)) steps)))
 
 (defn parse-args
-  "`[--only a,b] [--link <dir>] [--dry-run]`."
+  "`[--only a,b] [--link <dir>] [--keep-downloads] [--dry-run]`."
   [args]
   (loop [[a & more] args opts {}]
     (case a
       nil opts
       "--only" (recur (rest more) (assoc opts :only (mapv keyword (str/split (first more) #","))))
       "--link" (recur (rest more) (assoc opts :link (first more)))
+      "--keep-downloads" (recur more (assoc opts :keep? true))
       "--dry-run" (recur more (assoc opts :dry-run? true))
-      (throw (ex-info (str "toolchain-install [--only <tool>,…] [--link <dir>] [--dry-run] - not " a) {:arg a})))))
+      (throw (ex-info (str "toolchain-install [--only <tool>,…] [--link <dir>] [--keep-downloads] [--dry-run] - not " a) {:arg a})))))
 
 (defn install-main
-  "The `toolchain-install` task: the plan for this machine, walked; a line per tool; with `--link`,
-  the executables linked; then `status`. Exit 1 on a refusal or a failure, said in one line - never
+  "The `toolchain-install` task: the plan for this machine, walked; a line per tool; the executables
+  linked into `<folder>/bin/`, or `--link <dir>`; then `status`. A folder that is no project folder is
+  refused before anything is fetched. Exit 1 on a refusal or a failure, said in one line - never
   a stack trace (the person, 2026-10-29: \"tooling that crashes … is bad\")."
   [pack-dir args]
   (try
-    (let [{:keys [only link dry-run?]} (parse-args args)
+    (let [{:keys [only link keep? dry-run?]} (parse-args args)
+          {:keys [cache refusal note] :as at} (status/current-place pack-dir)
+          _ (when refusal (throw (ex-info refusal {})))
+          link (or link (str cache "/bin"))
           matrix (dm/read-matrix (str pack-dir "/download-matrix.edn"))
           platform (dm/platform-key (System/getProperty "os.name") (System/getProperty "os.arch"))
-          cache (status/cache-dir (System/getenv) (System/getProperty "user.home"))
           steps (dm/plan matrix cache platform {:only only :running {:bb (System/getProperty "babashka.version")}
                                                 :present? fs/executable?})]
+      (println (status/place-line at))
+      (when note (println (str "  note: " note)))
       (println (str "toolchain-install into " cache " (" (name platform) ")" (when dry-run? " - a dry run, nothing fetched")))
       (let [done (vec (for [{:keys [tool version step why bin] :as s} steps]
                         (case step
@@ -252,7 +266,7 @@
                           :install (if dry-run?
                                      (do (println (format "  %-11s %-16s to install from %s" (name tool) version (:url (:asset s)))) s)
                                      (do (println (format "  %-11s %-16s installing" (name tool) version))
-                                         (install-step! matrix s)
+                                         (install-step! matrix s keep?)
                                          (println (format "  %-11s %-16s installed, %s" (name tool) version bin))
                                          (assoc s :step :installed))))))]
         ;; the status before the links, so a link that fails loses no line of it
@@ -260,7 +274,7 @@
                                     (status/rows matrix cache platform fs/executable?
                                                  {:running {:bb (System/getProperty "babashka.version")}
                                                   :config (str pack-dir "/bb.edn")})))
-        (when (and link (not dry-run?))
+        (when-not dry-run?
           (fs/create-dirs link)
           (doseq [[n target] (link-targets done #(sort (fs/list-dir %)))
                   :let [l (fs/path link n)]]

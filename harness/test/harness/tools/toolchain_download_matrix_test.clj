@@ -4,6 +4,8 @@
   rows (`toolchain_status.clj`, `toolchain_install.clj`) on canned input. The fetching is tried by
   running `toolchain-sum`, which fills the matrix's sha256s."
   (:require
+   [babashka.fs :as fs]
+   [babashka.process :as p]
    [clojure.edn :as edn]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
@@ -72,9 +74,31 @@
     (is (nil? (dm/published-sha256 (str h "  b.tar.gz\n" h2 "  c.tar.gz\n") "a.tar.gz")) "a list without it")
     (is (nil? (dm/published-sha256 nil "a.tar.gz")) "none published")))
 
+(deftest the-project-folder-is-the-one-above-the-clone
+  ;; plan 7.0, item 8.2b (the person, 2026-10-30: "the folder above the clone, KIT/.kit/toolchain is
+  ;; fine - for KIT development too")
+  (is (= "/w/p/KIT" (status/clone-of "/w/p/KIT/tools/toolchain")))
+  (is (= "/w/p/KIT" (status/clone-of "/w/p/KIT/tools/toolchain/")) "a trailing slash")
+  (is (= "/w/p" (status/project-folder "/w/p/KIT")))
+  (is (nil? (status/folder-refusal "/w/p" "/home/u")))
+  (is (str/includes? (status/folder-refusal "/home/u" "/home/u") "your home folder")
+      "a clone straight under home: the .env would be ~/.env")
+  (is (str/includes? (status/folder-refusal "/home/u" "/home/u/") "your home folder") "home as the JVM gives it")
+  (is (str/includes? (status/folder-refusal "/" "/home/u") "the file system's root"))
+  (testing "the place: the folder, the tools and the keys in it; a note inside a git repository"
+    (let [root (fs/create-temp-dir)
+          pack (str (fs/path root "p" "KIT" "tools" "toolchain"))
+          folder (str (fs/normalize (fs/absolutize (fs/path root "p"))))]
+      (fs/create-dirs pack)
+      (is (= {:folder folder :cache (str folder "/.kit/toolchain") :env (str folder "/.env")}
+             (status/place pack {} "/home/u")))
+      (is (= "/t" (:cache (status/place pack {"KIT_TOOLCHAIN_DIR" "/t"} "/home/u"))))
+      (p/shell {:dir (str root) :out :string :err :string} "git" "init" "-q")
+      (is (str/includes? (:note (status/place pack {} "/home/u")) "inside a git repository")))))
+
 (deftest the-status-rows-are-the-contract-the-doctor-will-read
-  (is (= "/k" (status/cache-dir {"KIT_TOOLCHAIN_DIR" "/k"} "/home/u")))
-  (is (= "/home/u/.kit/toolchain" (status/cache-dir {} "/home/u")))
+  (is (= "/k" (status/cache-dir {"KIT_TOOLCHAIN_DIR" "/k"} "/w/p")))
+  (is (= "/w/p/.kit/toolchain" (status/cache-dir {} "/w/p")) "the project folder's (plan 7.0, item 8.2b)")
   (is (= [{:tool :bb :version "1.13.229" :path "/c/bb/1.13.229/bb" :present? true}
           {:tool :java :version "25.0.5+8" :path "/c/java/25.0.5+8/jdk-25.0.5+8/bin/java" :present? false
            :fix "bb --config /k/bb.edn toolchain-install --only java"}
@@ -92,7 +116,7 @@
     (is (= {:tool :bb :version "1.13.229" :path "/c/bb/1.13.229/bb" :present? false
             :fix "bb --config /k/bb.edn toolchain-install --only bb"}
            (bb-row "1.13.226")))
-    (is (= ["toolchain cache /c (linux-amd64)"
+    (is (= ["toolchain folder /c (linux-amd64)"
             "  bb         1.13.229         the bb running this, 1.13.229"
             "  java       25.0.5+8         not installed - bb --config /k/bb.edn toolchain-install --only java"]
            (status/lines "/c" :linux-amd64 (status/rows (select-keys matrix [:bb :java]) "/c" :linux-amd64 #{}

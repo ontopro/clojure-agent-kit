@@ -68,6 +68,35 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### The project's folder is the one above the KIT's clone: the tools in its `.kit/toolchain`, linked into `bin/`, the keys in its `.env`; downloads not kept (plan 7.0, item 8.2b)
+
+The person (2026-10-30): "the folder above the clone, KIT/.kit/toolchain is fine - for KIT development too,
+we are using the 'KIT' folder above 'clojure-agent-kit' as the project workspace folder"; ".env move to
+KIT/.env, beside KIT/.kit/ - agree"; on a KIT kept outside its workspace, "go with A" - one clone per
+project, inside it. The README clones the KIT into the project's folder, which `bb init` makes the
+workspace, so one rule names the folder before `bb init` and after it - no `workspace.edn` lookup, and
+the first true-up already fills the folder `bb init` will use: one folder, one JDK.
+- `toolchain-status/place`: the folder above the clone, the toolchain folder in it (`.kit/toolchain`,
+  `KIT_TOOLCHAIN_DIR` overriding) and the `.env` beside it. A home folder or `/` above the clone is
+  refused by every task - `~/.env` is a file people already have - and a folder inside a git repository
+  is said (Fable 5.1's read of the third fold). `status`, `toolchain-install`, `toolchain-env` and
+  `env-accept` name the folder and the `.env` every run; `status --edn` carries them.
+- `toolchain-install` links each tool's executables into `<folder>/bin/` by default (`--link <dir>`
+  instead, the image's `/usr/local/bin`), and deletes each archive after it is unpacked - the person:
+  downloads not kept. `--keep-downloads` keeps them for the KIT's toolchain image, whose build caches
+  that folder.
+- `toolchain-env` and `env-accept` take no folder: the `.env` is the project's, `env-file` one path where
+  it chose between the workspace's and the clone's, and the `[<dir>]` argument with its `KIT_WORKSPACE`
+  fallback is gone from the pack and both `bb.edn`s. A folder given is refused by name.
+- The KIT's own session: the clone's committed `.claude/settings.json` denies `Read(//**/.env)`,
+  `Edit(//**/.env)` and `Edit(//**/.env-record.edn)` - Claude Code's permissions page: a rule matches
+  only under its anchor, `..` is not documented, and `//**/.env` is "any `.env` anywhere on the
+  filesystem" (Fable 5.1's read of the third fold, the simpler route). Register row 236 says it.
+- From Fable 5.1's read of `a388a1b` (a nit): `format!` is tried against the real cljfmt on a file it
+  cannot parse - exit 2 and "Failed to format file", run by hand first.
+
+For the KIT's own development, the person moves the clone's `.env` and `.env-record.edn` up to `KIT/`.
+
 ### Item 8's stragglers: what still promised the dropped design, swept before 8.2b (plan 7.0, item 8)
 
 The person (2026-10-30), before 8.2b: "run a sweep of the full project to make sure all the item 8 stuff

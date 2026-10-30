@@ -12,8 +12,8 @@ bb --config <kit>/tools/<pack>/bb.edn <task> [flags] [args]
 the way a project already runs the boundary gate (`bb --config <kit>/harness/bb.edn
 boundary`). `git pull` in the clone upgrades every project's packs at once; nothing is copied
 into a project. What a pack needs on the machine, `bb doctor` names; the KIT's own toolchain is
-installed by the toolchain pack's `toolchain-install`, into one folder (`~/.kit/toolchain/`), never
-by a package manager.
+installed by the toolchain pack's `toolchain-install`, into the project's folder
+(`<project>/.kit/toolchain/`, the folder above the clone), never by a package manager.
 
 WHY HERE AND NOT IN THE TEMPLATE. The loop never looks inside a framework: a project generated
 from the pinned template, a project that brought its own application, and a project on another

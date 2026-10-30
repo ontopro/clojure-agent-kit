@@ -41,15 +41,24 @@
       (is (= [] (:repaired res)))
       (is (zero? (:exit res))))))
 
-(deftest a-format-that-cannot-run-is-gate-0s-failure-in-the-packs-words
-  ;; Fable 5.1's read of a2fcad2: the pack's exit was discarded, so a cljfmt that could not run left
-  ;; files reported repaired that the fmt gate then failed - the failure `format!` names.
+(deftest a-format-that-cannot-run-is-gate-0s-failure-in-cljfmts-words
+  ;; Fable 5.1's read of a2fcad2: the formatter's exit was discarded, so a cljfmt that could not run
+  ;; left files reported repaired that the fmt gate then failed - the failure `format!` names.
   (let [dir (str (fs/create-temp-dir))]
     (spit (str (fs/path dir "fine.clj")) "(defn bar [x]\n  (dec x))\n")
-    (with-redefs [harness.gates.repair/format! (fn [_ _] {:exit 2 :out "" :err "fmt: no cljfmt - toolchain-install --only cljfmt\n"})]
+    (with-redefs [harness.gates.repair/format! (fn [_ _] {:exit 2 :out "" :err "Failed to format file: fine.clj\n"})]
       (let [res (repair/repair! dir ["fine.clj"])]
         (is (= 2 (:exit res)))
-        (is (str/includes? (:out res) "no cljfmt"))))))
+        (is (str/includes? (:out res) "Failed to format file"))))))
+
+(deftest format-reads-cljfmts-own-exit-and-words-on-a-file-it-cannot-parse
+  ;; Fable 5.1's read of a388a1b (a nit, taken in 8.2b): the real cljfmt, not a stand-in - a file it
+  ;; cannot read is its exit 2 and its own words, which `repair!` then carries.
+  (let [dir (str (fs/create-temp-dir))]
+    (spit (str (fs/path dir "b.clj")) "(ns b)\n(defn f [] (\n")
+    (let [res (#'repair/format! dir ["b.clj"])]
+      (is (= 2 (:exit res)))
+      (is (str/includes? (:err res) "Failed to format file")))))
 
 (deftest ensures-a-trailing-newline
   ;; cljfmt does not enforce one, and no later gate catches its absence —

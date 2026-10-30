@@ -2,11 +2,12 @@
 ;; anywhere through this file:
 ;;
 ;;   bb --config <kit>/tools/toolchain/bb.edn status [--edn]
-;;   bb --config <kit>/tools/toolchain/bb.edn toolchain-install [--only <tool>,…] [--link <dir>] [--dry-run]
+;;   bb --config <kit>/tools/toolchain/bb.edn toolchain-install [--only <tool>,…] [--link <dir>] [--keep-downloads] [--dry-run]
 ;;   bb --config <kit>/tools/toolchain/bb.edn toolchain-sum <tool> [<version>]
 ;;
 ;; `<kit>` is the KIT's clone. download-matrix.edn beside this file names what the pack fetches;
-;; README.md says what each task does and where the tools go (`~/.kit/toolchain/`). The harness
+;; README.md says what each task does and where the tools go
+;; (`<project>/.kit/toolchain/`, the folder above the clone). The harness
 ;; reaches the pack only as a subprocess, never by requiring it. Plan 7.0, item 8, adds the tasks
 ;; that install the tools; it never runs them (the reshape, 2026-10-30).
 {:paths ["src"]
@@ -19,15 +20,15 @@
           :requires ([toolchain-status :as status])
           :task (status/main pack-dir *command-line-args*)}
 
-  toolchain-install {:doc "Fetch each tool of the download matrix this machine takes into the toolchain cache, its sha256 checked before it is unpacked (a mismatch is deleted and refused); the archives kept in <cache>/downloads/. --only <tool>,… (an image-only tool only when named; the JDK only when named), --link <dir> the executables linked there, --dry-run the plan alone"
+  toolchain-install {:doc "Fetch each tool of the download matrix this machine takes into the project's toolchain folder (the folder above the clone's .kit/toolchain), its sha256 checked before it is unpacked (a mismatch is deleted and refused), the archive deleted after; each tool's executables linked into <folder>/bin/. --only <tool>,… (an image-only tool only when named; the JDK only when named), --link <dir> linked there instead, --keep-downloads the archives kept (the image's build), --dry-run the plan alone"
                      :requires ([toolchain-install :as install])
                      :task (install/install-main pack-dir *command-line-args*)}
 
-  toolchain-env {:doc "The shell lines for `eval \"$(bb toolchain-env)\"`: JAVA_HOME and PATH for the JDK the project pins (the download matrix's when none), and the line that has the shell load the workspace's .env - no value ever printed; any name taken, held by no repository, a line the shell would run or a program hook flagged, and a flagged file not loaded unless `env-accept` accepted it; a change to the file is added to the .env record (.env-record.edn beside it) - names, never a value. [<dir>], default KIT_WORKSPACE or here. Exit 1: nothing on stdout when the .env is flagged or a repository holds it; the keys line alone when no JDK of that major is found. JDK-only until 8.3c: the cache's bb, clj-kondo and clojure are not on its PATH line"
+  toolchain-env {:doc "The shell lines for `eval \"$(bb toolchain-env)\"`: JAVA_HOME and PATH for the JDK the project pins (the download matrix's when none), and the line that has the shell load the project's .env (in the folder above the clone) - no value ever printed; any name taken, held by no repository, a line the shell would run or a program hook flagged, and a flagged file not loaded unless `env-accept` accepted it; a change to the file is added to the .env record (.env-record.edn beside it) - names, never a value. Exit 1: nothing on stdout when the .env is flagged or a repository holds it; the keys line alone when no JDK of that major is found. JDK-only until 8.3c: the folder's bb, clj-kondo and clojure are not on its PATH line"
                  :requires ([toolchain-env :as env])
                  :task (env/main pack-dir *command-line-args*)}
 
-  env-accept {:doc "The person's acceptance of the .env as it is now, flagged lines and all: the flags shown by line number (never the text), their name and the word accept typed at a terminal, the file's sha256 added to the .env record (.env-record.edn beside it) - every load after says who accepted it and when. [<dir>] as toolchain-env's. Refused with no terminal (a command an agent runs has none), for a file a repository holds, or one that changed while the answers were given"
+  env-accept {:doc "The person's acceptance of the .env as it is now, flagged lines and all: the flags shown by line number (never the text), their name and the word accept typed at a terminal, the file's sha256 added to the .env record (.env-record.edn beside it) - every load after says who accepted it and when. Refused with no terminal (a command an agent runs has none), for a file a repository holds, or one that changed while the answers were given"
               :requires ([toolchain-env :as env])
               :task (env/accept-main pack-dir *command-line-args*)}
 

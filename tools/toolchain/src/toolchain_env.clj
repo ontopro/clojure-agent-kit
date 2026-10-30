@@ -1,6 +1,7 @@
 (ns toolchain-env
-  "`toolchain-env [<dir>]`: the shell lines for `eval \"$(bb toolchain-env)\"` - the JDK the project
-  pins, and the line that has the shell load the workspace's keys (plan 7.0, items 8.3c and 8.6a).
+  "`toolchain-env`: the shell lines for `eval \"$(bb toolchain-env)\"` - the JDK the project pins, and
+  the line that has the shell load the project's keys, the `.env` in the folder above the KIT's clone
+  (plan 7.0, items 8.3c, 8.6a and 8.2b; `toolchain-status/place`).
 
   TOOLING, NEVER THE HARNESS (the person, 2026-10-28: \"setting the Java version to use seems like a
   tooling concern or belongs in a bb script - not in the harness\"; \"this is environment setup. so
@@ -199,12 +200,10 @@
     (when ls (repo-verdict ls (when (= 1 ls) (git "check-ignore" "-q" "--" nm))))))
 
 (defn env-file
-  "The `.env` the keys line loads: in a workspace (the nearest folder up from `dir` holding
-  `workspace.edn`) the workspace's alone, never the clone's; outside one, the KIT clone's own at `kit`
-  (its `--kit` review and bake-offs). Nil when that one is absent. With the path looked at."
-  [dir kit]
-  (let [path (str (fs/path (or (:dir (find-workspace dir)) kit) ".env"))]
-    {:file (when (fs/exists? path) path) :looked [path]}))
+  "The `.env` at `path` - the project's, in the folder above the clone (plan 7.0, item 8.2b: one rule,
+  where the workspace's and the clone's were two) - or nil when it is absent. With the path looked at."
+  [path]
+  {:file (when (fs/exists? path) path) :looked [path]})
 
 (defn others-read?
   "Whether the group or others can read the file at `path` - a secrets file is `600`. A wide mode is a
@@ -290,12 +289,19 @@
 
 (defn- now [] (str (java.time.Instant/now)))
 
-(defn- where-env
-  "The `.env` the command is about: `<dir>` from `args`, else `KIT_WORKSPACE`, else the folder it is
-  run in; the clone's own outside a workspace."
-  [pack-dir args]
-  (env-file (or (first args) (not-empty (System/getenv "KIT_WORKSPACE")) ".")
-            (str (fs/parent (fs/parent (fs/absolutize pack-dir))))))
+(defn- placed
+  "`toolchain-status/place` for this process, said on stderr - the folder and the `.env` named every
+  run - and the command refused when it takes an argument (the folder is the clone's, never given) or
+  the folder is no project folder."
+  [cmd pack-dir args]
+  (let [{:keys [refusal note] :as at} (status/current-place pack-dir)]
+    (when (seq args)
+      (say cmd (str "takes no folder - the project's is the one above the KIT's clone (" (:folder at) ")"))
+      (System/exit 1))
+    (say cmd (status/place-line at))
+    (when note (say cmd (str "note: " note)))
+    (when refusal (say cmd refusal) (System/exit 1))
+    at))
 
 (defn load-env!
   "The `.env` at `file` read for a load - the record's entry added when the file is not what the last
@@ -317,23 +323,22 @@
     {:load? load? :accepted accepted :checked checked}))
 
 (defn main
-  "The `toolchain-env [<dir>]` task. `<dir>` defaults to `KIT_WORKSPACE`, else the folder it is run
-  in. A `.env` a repository holds, or one with a flagged line no acceptance in the `.env` record names:
+  "The `toolchain-env` task, for the project folder above the clone. A `.env` a repository holds, or one with a flagged line no acceptance in the `.env` record names:
   exit 1, nothing on stdout - a fault, nothing from the run is taken until a person has read why. No
   JDK of the pinned major: exit 1, and the keys line still printed - what holds is loaded, the missing
   JDK said with the install that brings it."
   [pack-dir args]
   (let [say (partial say "toolchain-env")
-        dir (or (first args) (not-empty (System/getenv "KIT_WORKSPACE")) ".")
-        pinned (java-pin (pin-dir dir))
+        at (placed "toolchain-env" pack-dir args)
+        pinned (java-pin (pin-dir (:folder at)))
         matrix (dm/read-matrix (str pack-dir "/download-matrix.edn"))
         major (or pinned (major-of (get-in matrix [:java :version])))
-        env {:cache (status/cache-dir (System/getenv) (System/getProperty "user.home"))
+        env {:cache (:cache at)
              :matrix matrix
              :platform (dm/platform-key (System/getProperty "os.name") (System/getProperty "os.arch"))
              :home (System/getProperty "user.home")}
         jdk (find-jdk major (lookups env) jdk-home?)
-        {:keys [file looked]} (where-env pack-dir args)
+        {:keys [file looked]} (env-file (:env at))
         held (some-> file repo-check)]
     (when held (say (held-line file held)) (System/exit 1))
     (when (and file (others-read? file))
@@ -357,7 +362,7 @@
       (when-not jdk (System/exit 1)))))
 
 (defn accept-main
-  "The `env-accept [<dir>]` task: the person's acceptance of the `.env` as it is now, flagged lines and
+  "The `env-accept` task: the person's acceptance of the `.env` as it is now, flagged lines and
   all, added to the `.env` record - their name, the time, the file's sha256. At a terminal only
   (`System/console`): a command an agent runs has none. Said plainly: a program can fake a terminal,
   so this is not a lock - every load says who accepted the file and when, in front of the person each
@@ -365,7 +370,7 @@
   [pack-dir args]
   (let [say (partial say "env-accept")
         console (System/console)
-        {:keys [file looked]} (where-env pack-dir args)
+        {:keys [file looked]} (env-file (:env (placed "env-accept" pack-dir args)))
         held (some-> file repo-check)]
     (cond
       (nil? console) (do (say "needs a terminal - run it yourself, in the shell that starts the session, not through an agent") (System/exit 1))

@@ -89,12 +89,13 @@ RUN curl -fsSL -o /tmp/bb.tar.gz "${BB_URL}" \
 
 # The rest by the pack: the JDK, clj-kondo, the Clojure CLI, cljfmt and geckodriver into the toolchain
 # folder, each archive checked against the matrix's sha256, linked into /usr/local/bin. The
-# fetched archives stay in a BuildKit cache across builds, so a change to the pack reruns the
-# unpacking and the checks but not the JDK's 200 MB download.
+# fetched archives stay in a BuildKit cache across builds (`--keep-downloads`: a project's folder
+# keeps none), so a change to the pack reruns the unpacking and the checks but not the JDK's 200 MB
+# download.
 COPY tools/toolchain /opt/kit/tools/toolchain
 RUN --mount=type=cache,target=/opt/kit-toolchain/downloads \
     bb --config /opt/kit/tools/toolchain/bb.edn toolchain-install \
-      --only java,clj-kondo,clojure,cljfmt,geckodriver --link /usr/local/bin
+      --only java,clj-kondo,clojure,cljfmt,geckodriver --link /usr/local/bin --keep-downloads
 
 # bbin, then the three clojure-mcp-light tools by the doctor's own install command, held to the
 # commit known-good records - pinned here until 8.2d makes bbin a row of the matrix and installs

@@ -82,16 +82,15 @@
     (spit (str (fs/path ws "workspace.edn")) "{:workspace/app \"xyx-app\"}")
     (fs/create-dirs (fs/path ws "xyx-app"))
     (spit (str (fs/path ws "xyx-app" ".mise.toml")) "[tools]\njava = \"temurin-21\"\n")
-    (is (= 21 (env/java-pin (env/pin-dir (str ws)))))
-    (spit (str (fs/path ws ".env")) "K=\n")
-    (is (= (str (fs/path ws ".env")) (:file (env/env-file (str ws) "/no-kit"))) "the workspace's .env")
-    (let [kit (fs/create-temp-dir)]
-      (spit (str (fs/path kit ".env")) "K=\n")
-      (is (= (str (fs/path kit ".env")) (:file (env/env-file (str (fs/create-temp-dir)) (str kit))))
-          "no workspace: the clone's")
-      (fs/delete (fs/path ws ".env"))
-      (is (nil? (:file (env/env-file (str ws) (str kit)))) "in a workspace without one: none, never the clone's"))
-    (is (nil? (:file (env/env-file (str (fs/create-temp-dir)) "/no-kit"))) "neither: no line")))
+    (is (= 21 (env/java-pin (env/pin-dir (str ws)))))))
+
+(deftest the-env-file-is-the-one-it-is-given-when-it-is-there
+  ;; plan 7.0, item 8.2b: the path is `toolchain-status/place`'s - the folder above the clone - one rule
+  ;; where the workspace's and the clone's were two
+  (let [f (str (fs/path (fs/create-temp-dir) ".env"))]
+    (is (= {:file nil :looked [f]} (env/env-file f)) "absent: none, the path said")
+    (spit f "K=\n")
+    (is (= {:file f :looked [f]} (env/env-file f)))))
 
 (deftest the-jdk-is-the-first-lookup-that-finds-the-major
   (let [lookups [["the toolchain cache" (constantly nil)]
@@ -173,14 +172,37 @@
       (let [record (slurp rec)]
         (doseq [s secrets] (is (not (str/includes? record s)) "no value or flagged text in the record"))))))
 
+(defn- scratch-project
+  "A project folder holding a copy of the pack as a clone's `KIT/tools/toolchain` - the pack's tasks then
+  read the project folder above that clone (plan 7.0, item 8.2b) - with `env` as its `.env`."
+  [env]
+  (let [d (fs/create-temp-dir)
+        pack (fs/path d "KIT" "tools" "toolchain")]
+    (fs/create-dirs (fs/parent pack))
+    (fs/copy-tree "../tools/toolchain" pack)
+    (spit (str (fs/path d ".env")) env)
+    {:dir d :config (str (fs/path pack "bb.edn"))}))
+
 (deftest env-accept-needs-a-terminal
-  (let [d (fs/create-temp-dir)]
-    (spit (str (fs/path d ".env")) "rm -rf ~\n")
-    (let [{:keys [exit err]} (p/shell {:out :string :err :string :continue true :in ""}
-                                      "bb" "--config" "../tools/toolchain/bb.edn" "env-accept" (str d))]
-      (is (= 1 exit))
-      (is (str/includes? err "needs a terminal"))
-      (is (not (fs/exists? (fs/path d ".env-record.edn"))) "nothing written"))))
+  (let [{:keys [dir config]} (scratch-project "rm -rf ~\n")
+        {:keys [exit err]} (p/shell {:out :string :err :string :continue true :in ""}
+                                    "bb" "--config" config "env-accept")]
+    (is (= 1 exit))
+    (is (str/includes? err (str "the keys in " (fs/path (fs/real-path dir) ".env")))
+        "the .env it is about, named: the one above the clone")
+    (is (str/includes? err "needs a terminal"))
+    (is (not (fs/exists? (fs/path dir ".env-record.edn"))) "nothing written")))
+
+(deftest the-env-commands-take-no-folder
+  ;; plan 7.0, item 8.2b: the .env is the project's, the folder above the clone - a folder given, the
+  ;; way the workspace's and the clone's were once chosen between, is refused by name
+  (let [{:keys [dir config]} (scratch-project "K=\n")]
+    (doseq [task ["toolchain-env" "env-accept"]]
+      (let [{:keys [exit out err]} (p/shell {:out :string :err :string :continue true :in ""}
+                                            "bb" "--config" config task (str dir))]
+        (is (= 1 exit) task)
+        (is (= "" out) task)
+        (is (str/includes? err "takes no folder") task)))))
 
 (deftest a-keys-file-others-can-read-is-said
   (let [f (str (fs/path (fs/create-temp-dir) ".env"))]
