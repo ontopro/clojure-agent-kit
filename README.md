@@ -99,9 +99,10 @@ There are basically 2 steps to use KIT:
 
 5. Put this project's keys in the workspace's `.env`. `bb init` wrote the names its profile needs,
    each empty, with what uses it and where it is sent. One key per project, with a spending limit
-   set at the provider's console. The file is yours alone (mode `600`), no repository holds it, and
-   the Claude Code session is denied reading or editing it (`.claude/settings.json`). It may hold
-   what else the application needs too - a `DATABASE_URL`, a `PORT`.
+   set at the provider's console. The file is yours alone (mode `600`); a `.env` a repository holds
+   is refused at load; and the session's file tools are denied it (`.claude/settings.json` - a rail,
+   not a lock: [`NOTES.md`](NOTES.md) row 236). It may hold what else the application needs too - a
+   `DATABASE_URL`, a `PORT`.
 
 6. Load the JDK and the keys into this terminal, then check the profile sees them:
 

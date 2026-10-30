@@ -68,6 +68,17 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### The README's `.env` step says the check and the rail, not facts; row 236's status dated (From Fable 5.1's read of `38e34ea`)
+
+The person: "go, take them as one commit". A medium-low: the README's step 5 said "no repository holds
+it" - nothing makes that so; `toolchain-env` refuses at load a `.env` a repository tracks or does not
+ignore - and "the Claude Code session is denied reading or editing it", true of its file tools and the
+shell commands it recognizes, not of a program that opens the file. It now says the check and the
+rail, pointing at row 236. And row 236's Status in the form the column has, dated - with the time, the
+person's word: "it should be a date and time here". A low, that the `--kit` review's sandbox carries
+the clone's `.env`, was checked against the code - `kit-clone!` is a git clone of HEAD, which carries
+no ignored file - and withdrawn by the reader.
+
 ### The workspace `.env` in the documents: setup's last two steps, the orientation, the profile's rule, and its limit in the register (plan 7.0, item 8.6c)
 
 Written once, with 8.6d's final shape (the person: "go, 8.6d before 8.6c"). `workflow.md`: SETUP's
