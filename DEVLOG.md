@@ -68,6 +68,25 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### `bb init` writes the `.env` at 600 and the session's deny rules; `bb upgrade` adds them; a readable `.env` is said (plan 7.0, item 8.6d, step 3)
+
+The design note's layer 2, as Fable 5.1's read corrected it. `bb init` writes the `.env` template with
+mode `600` (owner read and write) and the workspace's `.claude/settings.json` with three deny rules,
+`init/env-deny-rules`: `Read(/.env)`, `Edit(/.env)`, `Edit(/.env-record.edn)`. No `Write` rule - Claude
+Code matches path rules for `Read` and `Edit` only, accepts a `Write` rule and never matches it, and a
+`Read` deny blocks Edit and Write too (its permissions page). `/path` is relative to the settings
+file's folder, and the file is read by a session opened in the workspace, the one kit-start opens. A
+guard rail, not a lock: Claude's file tools, the shell commands Claude Code recognizes and redirections,
+never a program that opens the file itself - the docstring says so. The keys still reach the build: the
+person's shell sources the file before `claude` starts, and the harness reads keys by `System/getenv`
+(the person's question, 2026-10-30). `bb upgrade`'s orientation step writes the settings file where
+there is none; one that exists is the project's, never merged into - the rules it lacks are said
+(`settings-missing`, which takes the project's own rules beside them and a file that is not JSON).
+`toolchain-env` says when the group or others can read the `.env`, with `chmod 600` - a leak to other
+users, not the agent's write, so a line, not a flag. Tests: init's file list, the `.env`'s mode and the
+settings' three rules in `init_test`; the upgrade's file holding them and `settings-missing`'s cases in
+`upgrade_run_test`; `others-read?` in `toolchain_env_test`.
+
 ### The program hooks gain `KIT_` and `DOCKER_`; an acceptance names the file's names; the first sight says so (From Fable 5.1's reads of `bd26fdb` and `956ea06`)
 
 The person: "go, take them as one commit". From the read of `bd26fdb`, two lows: the hooks list lacked

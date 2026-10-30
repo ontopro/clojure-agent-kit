@@ -2,6 +2,7 @@
   (:require
    [babashka.fs :as fs]
    [babashka.process :as p]
+   [cheshire.core :as json]
    [clojure.edn :as edn]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
@@ -37,7 +38,7 @@
             :workspace/records "xyx-build/runs" :workspace/run-tables "xyx-build/RUNS.md"}
            (:workspace lay))
         "the KIT is named relatively, so the workspace can be moved whole")
-    (is (= #{"workspace.edn" "bb.edn" "README.md" "CLAUDE.md" ".claude/agents/interactive-programmer.md"
+    (is (= #{"workspace.edn" "bb.edn" "README.md" "CLAUDE.md" ".claude/agents/interactive-programmer.md" ".claude/settings.json"
              ".claude/skills/kit-plan/SKILL.md" ".claude/skills/kit-scoping/SKILL.md"
              ".claude/skills/kit-stage-end/SKILL.md" ".claude/skills/kit-stage-plan/SKILL.md" ".claude/skills/kit-start/SKILL.md" ".claude/skills/kit-where-am-i/SKILL.md"
              "xyx-app" "xyx-build" "xyx-build/README.md" "xyx-build/rules.edn" "xyx-build/profile.edn"
@@ -238,6 +239,11 @@
             "the build's README says why it is called the build: settings and records beside the plan"))
       (testing "the workspace itself is not a repository"
         (is (not (fs/exists? (fs/path ws ".git")))))
+      (testing "the keys' file at 600, and the session's deny rules for it and its record (item 8.6d)"
+        (is (= "rw-------" (fs/posix->str (fs/posix-file-permissions (fs/path ws ".env")))))
+        (is (= {"permissions" {"deny" ["Read(/.env)" "Edit(/.env)" "Edit(/.env-record.edn)"]}}
+               (json/parse-string (slurp (str (fs/path ws ".claude" "settings.json")))))
+            "no Write rule: Claude Code matches Read and Edit path rules only"))
       (testing "the harness finds it from a run directory, with the KIT absolute"
         (let [found (workspace/find-workspace (str (fs/path ws "work" "runs")))]
           (is (= ws (:workspace/dir found)))
@@ -258,7 +264,7 @@
         (is (= kit-before (git-out kit-dir "status" "--porcelain"))))
       (testing "a second run refuses, naming what is there"
         (let [facts (init/survey req lay (constantly true))]
-          (is (= ["workspace.edn" "bb.edn" ".env" "README.md" "CLAUDE.md" ".claude/agents/interactive-programmer.md"
+          (is (= ["workspace.edn" "bb.edn" ".env" "README.md" "CLAUDE.md" ".claude/agents/interactive-programmer.md" ".claude/settings.json"
                   ".claude/skills/kit-plan/SKILL.md" ".claude/skills/kit-scoping/SKILL.md"
                   ".claude/skills/kit-stage-end/SKILL.md" ".claude/skills/kit-stage-plan/SKILL.md" ".claude/skills/kit-start/SKILL.md" ".claude/skills/kit-where-am-i/SKILL.md"
                   "xyx-build" "work"]

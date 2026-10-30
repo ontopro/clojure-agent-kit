@@ -55,6 +55,7 @@
    [babashka.fs :as fs]
    [babashka.http-client :as http]
    [babashka.process :as p]
+   [cheshire.core :as json]
    [clojure.edn :as edn]
    [clojure.pprint :as pp]
    [clojure.set :as set]
@@ -77,6 +78,7 @@
 
 (def role-file ".claude/agents/interactive-programmer.md")
 (def role-source "harness/agents/interactive-programmer.md")
+(def settings-file ".claude/settings.json")
 
 ;; ---------------------------------------------------------------------------
 ;; pure
@@ -286,6 +288,27 @@
                   (when (seq pruned) (str "; removed, no longer shipped: " (str/join ", " pruned)))
                   (when (seq refused) (str "; " (str/join "; " refused))))}))
 
+(defn settings-missing
+  "The `init/env-deny-rules` a workspace's `.claude/settings.json` text lacks - pure; every rule when
+  the text is not JSON or has no `permissions.deny` list."
+  [text]
+  (let [deny (try (get-in (json/parse-string text) ["permissions" "deny"]) (catch Exception _ nil))]
+    (vec (remove (set (when (sequential? deny) deny)) init/env-deny-rules))))
+
+(defn- settings-step!
+  "The session's deny rules (plan 7.0, item 8.6d): `.claude/settings.json` written when absent; when
+  present it is the project's - never merged into, the rules it lacks said."
+  [ws-dir]
+  (let [f (fs/path ws-dir settings-file)]
+    (if-not (fs/exists? f)
+      (do (fs/create-dirs (fs/parent f)) (spit (str f) (init/session-settings))
+          (str settings-file " written: the session's deny rules for the .env and its record"))
+      (let [missing (settings-missing (slurp (str f)))]
+        (if (empty? missing)
+          (str settings-file " has the .env's deny rules")
+          (str settings-file " is the project's and was not changed - add to permissions.deny: "
+               (str/join ", " missing)))))))
+
 (defn- step-orientation! [{:keys [ws kit before from head version]}]
   (let [ws-dir (:workspace/dir ws)
         raw (raw-workspace ws)
@@ -311,7 +334,7 @@
         new-files (cond-> []
                     (str/includes? claude-r ".new") (conj "CLAUDE.md.new")
                     (str/includes? role-r ".new") (conj (str role-file ".new")))]
-    {:status :done :detail (str claude-r "; " role-r) :new new-files}))
+    {:status :done :detail (str claude-r "; " role-r "; " (settings-step! ws-dir)) :new new-files}))
 
 (defn- step-stage-folders! [{:keys [ws head version]}]
   (let [kit (str "KIT " (or version (subs head 0 7)))

@@ -206,6 +206,14 @@
   (let [path (str (fs/path (or (:dir (find-workspace dir)) kit) ".env"))]
     {:file (when (fs/exists? path) path) :looked [path]}))
 
+(defn others-read?
+  "Whether the group or others can read the file at `path` - a secrets file is `600`. A wide mode is a
+  leak to other users of the machine, not the agent's write: said, never a flag. False where the file
+  system has no POSIX modes."
+  [path]
+  (boolean (try (some #{"GROUP_READ" "OTHERS_READ"} (map str (fs/posix-file-permissions path)))
+                (catch Exception _ false))))
+
 ;; ---------------------------------------------------------------- the `.env` record
 
 (defn sha256 "The hex sha256 of `text`'s UTF-8 bytes." [text]
@@ -328,6 +336,8 @@
         {:keys [file looked]} (where-env pack-dir args)
         held (some-> file repo-check)]
     (when held (say (held-line file held)) (System/exit 1))
+    (when (and file (others-read? file))
+      (say (str file " can be read by other users of this machine - `chmod 600 " file "`")))
     (let [{:keys [load? accepted checked]} (when file (load-env! "toolchain-env" file))]
       (when (and file (not load?))
         (say (str file " is not loaded - each line flagged, by number (the text never shown):"))

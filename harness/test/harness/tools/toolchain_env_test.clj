@@ -181,3 +181,12 @@
       (is (= 1 exit))
       (is (str/includes? err "needs a terminal"))
       (is (not (fs/exists? (fs/path d ".env-record.edn"))) "nothing written"))))
+
+(deftest a-keys-file-others-can-read-is-said
+  (let [f (str (fs/path (fs/create-temp-dir) ".env"))]
+    (spit f "K=\n")
+    (fs/set-posix-file-permissions f "rw-r--r--")
+    (is (env/others-read? f))
+    (fs/set-posix-file-permissions f "rw-------")
+    (is (not (env/others-read? f)))
+    (is (not (env/others-read? (str f ".absent"))) "no file: nothing to say")))

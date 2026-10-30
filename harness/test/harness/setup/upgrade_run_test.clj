@@ -212,7 +212,9 @@
         (is (= :current (init/marker-state claude)))
         (is (str/includes? claude "at 0.6.5 ("))
         (is (not (fs/exists? (fs/path ws-dir "CLAUDE.md.new"))))
-        (is (str/ends-with? (slurp (str (fs/path ws-dir ur/role-file))) "A line the release adds.\n"))))
+        (is (str/ends-with? (slurp (str (fs/path ws-dir ur/role-file))) "A line the release adds.\n"))
+        (is (= [] (ur/settings-missing (slurp (str (fs/path ws-dir ur/settings-file)))))
+            "the session's deny rules there (item 8.6d)")))
     (testing "the build documents, hunk by hunk: the content applied, the reworded instruction dropped, the filled row a conflict; the new document added; committed"
       (let [overview (slurp (str (fs/path build "docs" "00-overview.md")))
             detail (:detail (:build-docs records))]
@@ -621,3 +623,11 @@
         (is (= (:dir r1) (:dir r2)) "the same folder")
         (is (= :awaiting-merge (get-in r2 [:records :app :app :state])))
         (is (= :awaiting-merge (get-in (upgrade/open-after-upgrade ws (raw ws)) [:app :state])))))))
+
+(deftest a-projects-settings-file-is-never-merged-into-the-rules-it-lacks-said
+  (is (= [] (ur/settings-missing (init/session-settings))))
+  (is (= ["Edit(/.env-record.edn)"]
+         (ur/settings-missing "{\"permissions\": {\"deny\": [\"Read(/.env)\", \"Edit(/.env)\", \"Bash(rm:*)\"]}}"))
+      "the project's own rules kept; only the missing one said")
+  (is (= init/env-deny-rules (ur/settings-missing "{\"model\": \"x\"}")) "no deny list: every rule")
+  (is (= init/env-deny-rules (ur/settings-missing "not json {")) "not JSON: every rule, nothing thrown"))

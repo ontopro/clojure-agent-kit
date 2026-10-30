@@ -193,6 +193,24 @@
            ";;\n"
            (slurp source)))))
 
+(def env-deny-rules
+  "The workspace session's deny rules for the `.env` and its record (plan 7.0, item 8.6d): Claude Code
+  matches path rules for `Read` and `Edit` only - a `Write` rule is accepted and never matched - and a
+  `Read` deny blocks Edit and Write on the path too. `/path` is relative to the settings file's folder,
+  the workspace; the file is read by a session opened there, the one kit-start opens. A guard rail, not
+  a lock: they cover Claude's file tools, the shell commands Claude Code recognizes (`cat`, `sed`,
+  `tee`...) and redirections, never a program that opens the file itself. The record's Read stays open:
+  names and sha256s, never a value. The keys still reach the build - the person's shell sources the
+  file before `claude` starts, and the harness reads keys by `System/getenv`."
+  ["Read(/.env)" "Edit(/.env)" "Edit(/.env-record.edn)"])
+
+(defn session-settings
+  "The workspace's `.claude/settings.json` as `bb init` writes it: `env-deny-rules`, nothing else."
+  []
+  (str "{\n  \"permissions\": {\n    \"deny\": [\n"
+       (str/join ",\n" (map #(str "      \"" % "\"") env-deny-rules))
+       "\n    ]\n  }\n}\n"))
+
 (defn env-template
   "The workspace `.env` as `bb init` writes it (plan 7.0, item 8.6b; the person, 2026-10-28: \"one of
   the steps needs to be to initialize a '.env' file with just the KEYS so that the Adopter can put in
@@ -485,7 +503,7 @@
            (when-let [env (some-> (shipped-profile kit-dir seat) (#(when (fs/exists? %) (profile/read-profile %)))
                                   (env-template build))]
              [{:path ".env" :what "this project's keys: the names its profile needs, empty, to fill - never committed"
-               :content env}])
+               :content env :mode "rw-------"}])
            [{:path "README.md" :what "one screen on the folders"
              :content (workspace-readme project ws)}
             {:path "CLAUDE.md" :what "orientation for a session started here (no rules, no import)"
@@ -493,7 +511,9 @@
              :content (with-marker (workspace-claude-md project ws) kit-version kit-commit)}
             {:path ".claude/agents/interactive-programmer.md"
              :what "the off-loop role, copied from the KIT"
-             :copy-from (kit-path "harness/agents/interactive-programmer.md")}]
+             :copy-from (kit-path "harness/agents/interactive-programmer.md")}
+            {:path ".claude/settings.json" :what "the session's deny rules: the .env and its record kept from Claude's file tools (a rail, not a lock)"
+             :content (session-settings)}]
            ;; THE SKILLS, RENDERED: the fifth part's conversational steps as Claude Code
            ;; loads them, each copy a rendering of `<kit>/skills/<name>/SKILL.md` noting the
            ;; KIT commit, held to its source by `bb skills-sync --check` and reported by the
@@ -682,7 +702,7 @@
   template. `:git-env` is extra environment for git (a test's identity).
   Returns the layout with `:app/created?`."
   [{ws-dir :workspace/dir :keys [entries repos] :as lay} & [{:keys [app-fn git-env]}]]
-  (doseq [{:keys [path content copy-from dir? app?]} entries
+  (doseq [{:keys [path content copy-from dir? app? mode]} entries
           :let [target (fs/path ws-dir path)]]
     (when (fs/exists? target)
       (throw (ex-info (str target " appeared while `bb init` was running; nothing more was written")
@@ -693,7 +713,9 @@
       :else (do (fs/create-dirs (fs/parent target))
                 (if copy-from
                   (fs/copy copy-from target)
-                  (spit (str target) content)))))
+                  (spit (str target) content))
+                ;; THE KEYS' FILE AT 600 (item 8.6d): owner read and write - a secrets file
+                (when mode (fs/set-posix-file-permissions target mode)))))
   (doseq [repo repos
           :let [dir (fs/path ws-dir repo)]]
     (git! dir git-env "init" "-q" "-b" "main")
