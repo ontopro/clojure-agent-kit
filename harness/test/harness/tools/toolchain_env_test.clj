@@ -13,9 +13,9 @@
 
 (deftest the-env-file-is-checked-before-the-shell-sources-it
   (let [ok (env/check-env (str "# a comment\n\nA_KEY=bare-value\nB='single quoted, spaces'\n"
-                               "C=\"double quoted\"\nEMPTY=\n"))]
+                               "C=\"double quoted\"\nEMPTY=\nD=a=b\n"))]
     (is (:ok? ok))
-    (is (= ["A_KEY" "B" "C" "EMPTY"] (:names ok)) "an empty value is taken - the template's state"))
+    (is (= ["A_KEY" "B" "C" "EMPTY" "D"] (:names ok)) "an empty value is taken - the template's state; a second `=` is the value's"))
   (testing "refused by line number, the value never in the reason"
     (let [{:keys [ok? refused]} (env/check-env (str "export A=1\nB\n1X=2\nD=$(touch /tmp/x)\nE=`id`\n"
                                                     "F=a b\nG='it's'\nH=\"$HOME\"\nI=x;rm\n"))]
@@ -23,7 +23,18 @@
       (is (= [1 2 3 4 5 6 7 8 9] (map :line refused)))
       (is (= "an `export` keyword - write NAME=value alone" (:why (first refused))))
       (is (= "no `=` - a line is NAME=value" (:why (second refused))))
-      (is (not-any? #(re-find #"touch|id|rm|HOME" (:why %)) refused) "no value echoed"))))
+      (is (not-any? #(re-find #"touch|id|rm|HOME" (:why %)) refused) "no value echoed")))
+  (testing "a name the shell or the JVM reads, in any case, is refused - the file is sourced after the JDK's lines"
+    (let [names ["PATH" "path" "JAVA_HOME" "IFS" "BASH_ENV" "ZDOTDIR" "PROMPT_COMMAND" "LD_PRELOAD"
+                 "DYLD_INSERT_LIBRARIES" "JAVA_TOOL_OPTIONS"]
+          {:keys [ok? refused]} (env/check-env (str/join (map #(str % "=/w\n") names)))]
+      (is (not ok?))
+      (is (= (count names) (count refused)))
+      (is (every? #(= "a name the shell or the JVM reads - a .env holds keys alone" (:why %)) refused))))
+  (testing "a carriage return is refused on any line - the shell keeps it in the value"
+    (let [{:keys [ok? refused]} (env/check-env "A=1\r\n# c\r\n\r\nB=2\n")]
+      (is (not ok?))
+      (is (= [1 2 3] (map :line refused))))))
 
 (deftest the-pin-is-read-as-the-doctor-reads-it
   ;; the pack cannot require the doctor, so a test holds the two readers to one answer
@@ -49,6 +60,12 @@
     (is (= 21 (env/java-pin (env/pin-dir (str ws)))))
     (spit (str (fs/path ws ".env")) "K=\n")
     (is (= (str (fs/path ws ".env")) (:file (env/env-file (str ws) "/no-kit"))) "the workspace's .env")
+    (let [kit (fs/create-temp-dir)]
+      (spit (str (fs/path kit ".env")) "K=\n")
+      (is (= (str (fs/path kit ".env")) (:file (env/env-file (str (fs/create-temp-dir)) (str kit))))
+          "no workspace: the clone's")
+      (fs/delete (fs/path ws ".env"))
+      (is (nil? (:file (env/env-file (str ws) (str kit)))) "in a workspace without one: none, never the clone's"))
     (is (nil? (:file (env/env-file (str (fs/create-temp-dir)) "/no-kit"))) "neither: no line")))
 
 (deftest the-jdk-is-the-first-lookup-that-finds-the-major
@@ -71,4 +88,5 @@
   (is (= ["export JAVA_HOME='/j d'" "export PATH='/j d/bin':\"$PATH\"" "set -a; . '/w/.env'; set +a"]
          (env/env-lines "/j d" "/w/.env")))
   (is (= 2 (count (env/env-lines "/j" nil))) "no .env: no keys line")
+  (is (= ["set -a; . '/w/.env'; set +a"] (env/env-lines nil "/w/.env")) "no JDK: the keys line still")
   (is (= "'it'\\''s'" (env/sq "it's")) "a quote in a path stays a path"))

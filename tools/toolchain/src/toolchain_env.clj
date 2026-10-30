@@ -12,21 +12,24 @@
   `set -a; . '<.env>'; set +a`, so the shell reads the file itself and no key passes through this
   command's output - a bare run, or an agent's, puts nothing secret on a screen or in a transcript.
   And the file is checked first (`check-env`): a `.env` is sourced, so `$(...)` in it would run - a
-  line the shell would expand or run is refused by its line number, its value never echoed.
+  line the shell would expand or run is refused by its line number, its value never echoed, and so
+  is a name the shell owns (`PATH`, `IFS`, `BASH_ENV`, `LD_PRELOAD`...): the file is sourced after the
+  JDK's lines, and a key file never sets how the shell finds or runs a command.
 
   The JDK: the major the project pins - the `java` line of `.mise.local.toml` over `.mise.toml`, read
-  as `harness.setup.doctor/mise-pins` reads it (a test holds the two readers to one answer) - else 25,
-  the KIT's preferred; then the first JDK of that major in the toolchain cache, macOS's `java_home`,
+  as `harness.setup.doctor/mise-pins` reads it (a test holds the two readers to one answer) - else the
+  download matrix's `java`, the KIT's preferred; then the first JDK of that major in the toolchain cache, macOS's `java_home`,
   jenv's, mise's, Linux's `/usr/lib/jvm`, each a home whose own `release` file says that major. Said on
-  stderr; stdout carries only the lines to eval, and nothing at all when a step refuses."
+  stderr; stdout carries only the lines to eval.
+
+  JDK-ONLY UNTIL 8.3c: the PATH line puts the JDK's `bin` first and nothing else; the toolchain
+  cache's bb, clj-kondo and clojure join it with 8.3c's cache lines."
   (:require [babashka.fs :as fs]
             [babashka.process :as p]
             [clojure.edn :as edn]
             [clojure.string :as str]
             [toolchain-download-matrix :as dm]
             [toolchain-status :as status]))
-
-(def preferred-major 25)
 
 ;; ---------------------------------------------------------------- the pin
 
@@ -105,7 +108,8 @@
       (when (= major (major-of (get-in matrix [:java :version])))
         (some-> (dm/bin-path matrix cache :java platform) fs/parent fs/parent str)))]
    ["macOS's java_home"
-    (fn [major] (when (fs/exists? "/usr/libexec/java_home") (sh-out "/usr/libexec/java_home" "-v" (str major))))]
+    ;; -F: no JDK of that major is a failure, never the default JDK printed with exit 0
+    (fn [major] (when (fs/exists? "/usr/libexec/java_home") (sh-out "/usr/libexec/java_home" "-v" (str major) "-F")))]
    ["jenv"
     (fn [major] (let [d (fs/path home ".jenv" "versions" (str major))] (when (fs/exists? d) (str (fs/real-path d)))))]
    ["mise"
@@ -124,6 +128,17 @@
 
 (def ^:private name-re #"[A-Za-z_][A-Za-z0-9_]*")
 
+(def shell-owned
+  "Names a `.env` never sets, in any case (zsh ties `path` to `PATH`): how the shell finds and runs a
+  command, reads its own startup and splits words, and what the JVM loads - the JDK's lines come
+  first and a key file must not undo them. With every `LD_` and `DYLD_` name."
+  #{"PATH" "JAVA_HOME" "HOME" "IFS" "ENV" "BASH_ENV" "ZDOTDIR" "SHELL" "CDPATH" "FPATH"
+    "PROMPT_COMMAND" "PS4" "JAVA_TOOL_OPTIONS" "JDK_JAVA_OPTIONS" "_JAVA_OPTIONS" "CLASSPATH"})
+
+(defn- shell-owned? [nm]
+  (let [n (str/upper-case nm)]
+    (or (contains? shell-owned n) (str/starts-with? n "LD_") (str/starts-with? n "DYLD_"))))
+
 (defn- value-ok?
   "Whether a `.env` value is one the shell takes as it is: bare with nothing it would expand or run,
   single-quoted with no `'` inside, or double-quoted with no `$`, backquote, `\\` or `\"` inside."
@@ -135,52 +150,57 @@
 (defn check-env
   "A `.env`'s text checked before the shell sources it - pure: `{:ok? :names :refused [{:line :why}]}`.
   Taken: blank lines, `#` comments, `NAME=value` with a value `value-ok?`. Refused by line number, the
-  value never in the reason: an `export` keyword, a line with no `=`, a name that is not one, a value
-  the shell would expand or run - a `.env` is sourced, so `$(...)` in it would execute."
+  value never in the reason: a carriage return (a Windows line end - the shell keeps it in the value),
+  an `export` keyword, a line with no `=`, a name that is not one, a name the shell or the JVM reads
+  (`shell-owned`), a value the shell would expand or run - a `.env` is sourced, so `$(...)` in it
+  would execute. A second `=` is taken: the shell reads it as part of the value."
   [text]
-  (let [rows (for [[i line] (map-indexed vector (str/split-lines (or text "")))
+  (let [rows (for [[i line] (map-indexed vector (str/split (or text "") #"\n"))
                    :let [l (str/trim line)]
-                   :when (not (or (str/blank? l) (str/starts-with? l "#")))]
+                   :when (or (str/includes? line "\r") (not (or (str/blank? l) (str/starts-with? l "#"))))]
                (let [[_ nm v] (re-matches #"([^=]*)=(.*)" l)]
-                 (cond (str/starts-with? l "export ") {:line (inc i) :why "an `export` keyword - write NAME=value alone"}
+                 (cond (str/includes? line "\r") {:line (inc i) :why "a carriage return - save the file with Unix line ends"}
+                       (str/starts-with? l "export ") {:line (inc i) :why "an `export` keyword - write NAME=value alone"}
                        (nil? nm) {:line (inc i) :why "no `=` - a line is NAME=value"}
                        (not (re-matches name-re nm)) {:line (inc i) :why "not a variable's name before the `=`"}
+                       (shell-owned? nm) {:line (inc i) :why "a name the shell or the JVM reads - a .env holds keys alone"}
                        (not (value-ok? v)) {:line (inc i) :why "a value the shell would expand or run - quote it in '...'"}
                        :else {:name nm})))
         refused (vec (filter :line rows))]
     {:ok? (empty? refused) :names (vec (keep :name rows)) :refused refused}))
 
 (defn env-file
-  "The `.env` the keys line loads: the workspace's (the nearest folder up from `dir` holding
-  `workspace.edn`), else the KIT clone's own at `kit` (its `--kit` review and bake-offs); nil when
-  neither has one. With the paths looked at."
+  "The `.env` the keys line loads: in a workspace (the nearest folder up from `dir` holding
+  `workspace.edn`) the workspace's alone, never the clone's; outside one, the KIT clone's own at `kit`
+  (its `--kit` review and bake-offs). Nil when that one is absent. With the path looked at."
   [dir kit]
-  (let [paths (distinct (keep identity [(some-> (find-workspace dir) :dir (fs/path ".env") str)
-                                        (str (fs/path kit ".env"))]))]
-    {:file (first (filter fs/exists? paths)) :looked paths}))
+  (let [path (str (fs/path (or (:dir (find-workspace dir)) kit) ".env"))]
+    {:file (when (fs/exists? path) path) :looked [path]}))
 
 ;; ---------------------------------------------------------------- the lines
 
 (defn sq "`s` single-quoted for a shell." [s] (str "'" (str/replace s "'" "'\\''") "'"))
 
 (defn env-lines
-  "The lines to eval - pure: the JDK's home and its `bin` first on the PATH, then the keys line when
-  there is a `.env`."
+  "The lines to eval - pure: the JDK's home and its `bin` first on the PATH when there is a JDK, then
+  the keys line when there is a `.env`."
   [home env]
-  (cond-> [(str "export JAVA_HOME=" (sq home))
-           (str "export PATH=" (sq (str home "/bin")) ":\"$PATH\"")]
+  (cond-> []
+    home (conj (str "export JAVA_HOME=" (sq home))
+               (str "export PATH=" (sq (str home "/bin")) ":\"$PATH\""))
     env (conj (str "set -a; . " (sq env) "; set +a"))))
 
 (defn main
   "The `toolchain-env [<dir>]` task. `<dir>` defaults to `KIT_WORKSPACE`, else the folder it is run
-  in. Exit 1, nothing on stdout, when no JDK of the pinned major is found or the `.env` is refused."
+  in. A refused `.env`: exit 1, nothing on stdout. No JDK of the pinned major: exit 1, and the keys
+  line still printed - what holds is loaded, the missing JDK said with the install that brings it."
   [pack-dir args]
   (let [say #(binding [*out* *err*] (println (str "toolchain-env: " %)))
         dir (or (first args) (not-empty (System/getenv "KIT_WORKSPACE")) ".")
         kit (str (fs/parent (fs/parent (fs/absolutize pack-dir))))
         pinned (java-pin (pin-dir dir))
-        major (or pinned preferred-major)
         matrix (dm/read-matrix (str pack-dir "/download-matrix.edn"))
+        major (or pinned (major-of (get-in matrix [:java :version])))
         env {:cache (status/cache-dir (System/getenv) (System/getProperty "user.home"))
              :matrix matrix
              :platform (dm/platform-key (System/getProperty "os.name") (System/getProperty "os.arch"))
@@ -188,18 +208,16 @@
         jdk (find-jdk major (lookups env) jdk-home?)
         {:keys [file looked]} (env-file dir kit)
         checked (some-> file slurp check-env)]
-    (cond
-      (nil? jdk)
-      (do (say (str "no JDK " major " found (" (if pinned "the project's pin" "the KIT's preferred, no pin") ") - looked in "
-                    (str/join ", " (map first (lookups env))) "; `bb --config " pack-dir "/bb.edn toolchain-install --only java`"))
-          (System/exit 1))
-      (and checked (not (:ok? checked)))
+    (if (and checked (not (:ok? checked)))
       (do (say (str file " is not sourced - each line the shell would not take as it is:"))
           (doseq [{:keys [line why]} (:refused checked)] (say (str "  line " line ": " why)))
           (System/exit 1))
-      :else
-      (do (say (str "the JDK " major " (" (if pinned "the project's pin" "the KIT's preferred") ") from " (:from jdk) ": " (:home jdk)))
+      (do (say (if jdk
+                 (str "the JDK " major " (" (if pinned "the project's pin" "the KIT's preferred") ") from " (:from jdk) ": " (:home jdk))
+                 (str "no JDK " major " found (" (if pinned "the project's pin" "the KIT's preferred, no pin") ") - looked in "
+                      (str/join ", " (map first (lookups env))) "; `bb --config " pack-dir "/bb.edn toolchain-install --only java`")))
           (say (if file
                  (str "the keys: " file " - " (count (:names checked)) " names, loaded by the shell, no value printed")
                  (str "no .env (looked at " (str/join ", " looked) ") - the keys stay what the shell has")))
-          (run! println (env-lines (:home jdk) file))))))
+          (run! println (env-lines (:home jdk) file))
+          (when-not jdk (System/exit 1))))))

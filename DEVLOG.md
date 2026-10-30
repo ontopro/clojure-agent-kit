@@ -68,6 +68,25 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### `toolchain-env`'s `.env` refuses the names the shell and the JVM read; the workspace's `.env` alone; what holds is printed (From Fable 5.1's read of `82b99ed`)
+
+The medium: the keys line is sourced after the JDK's lines, and a Coder can write the workspace's
+`.env`, so a `PATH=` or `BASH_ENV=` line in it was code run at the next command. `check-env` now refuses,
+in any case (zsh ties `path` to `PATH`), the names the shell finds and runs commands by, reads at start or
+splits words by, and the ones the JVM loads from - `PATH`, `JAVA_HOME`, `HOME`, `IFS`, `ENV`, `BASH_ENV`,
+`ZDOTDIR`, `SHELL`, `CDPATH`, `FPATH`, `PROMPT_COMMAND`, `PS4`, `JAVA_TOOL_OPTIONS`, `JDK_JAVA_OPTIONS`,
+`_JAVA_OPTIONS`, `CLASSPATH`, every `LD_` and `DYLD_` - and any line with a carriage return (the shell
+keeps it in the value), each by its line number, no value echoed. A list of names refused, not of names
+taken: a key file's names are the profile's, but the profile is not read here. The lows: in a workspace
+the workspace's `.env` alone, never the clone's (the design's rule; the clone's only outside one); the
+preferred JDK is the download matrix's `java` major, not a constant `25`; and the command says it is
+JDK-only until 8.3c - the cache's bb, clj-kondo and clojure join the PATH line with 8.3c's cache lines
+(the person: "JDK-only until 8.3c"). And: `java_home -v N -F`, so an absent major fails rather than
+printing the default JDK with exit 0 (the reader's probe), the `release` check kept; with no JDK of the
+pin, the keys line is still printed and the exit is 1 - a refused `.env` still prints nothing. Tried
+here: this clone gives Temurin 25 by `java_home`; a scratch workspace pinned to 11 gives the keys line
+alone, exit 1; a `path=/x` line refused by its number, nothing on stdout. `toolchain_env_test` holds each.
+
 ### `bb toolchain-env`: the JDK the project pins and the workspace's keys, loaded by the shell, no value printed (plan 7.0, items 8.3c pulled forward and 8.6a)
 
 D-6 (the person, 2026-10-28: "setting the Java version to use seems like a tooling concern or belongs in a

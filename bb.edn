@@ -146,7 +146,7 @@
              :requires ([harness.gates.tag-check :as tag-check])
              :task (apply tag-check/-main *command-line-args*)}
 
-  toolchain-env {:doc "The shell lines for `eval \"$(bb toolchain-env)\"` in this clone: the JDK it pins (25) and its own .env, for the KIT's `--kit` review and bake-offs - the toolchain pack's `toolchain-env`"
+  toolchain-env {:doc "The shell lines for `eval \"$(bb toolchain-env)\"` in this clone: the KIT's preferred JDK (the download matrix's) and its own .env (a workspace's, when the clone is its KIT/), for the KIT's `--kit` review and bake-offs - the toolchain pack's `toolchain-env`"
                  :task (let [{:keys [exit]} (shell {:continue true} "bb" "--config" "tools/toolchain/bb.edn" "toolchain-env" ".")]
                          (System/exit exit))}
 
