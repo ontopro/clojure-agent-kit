@@ -68,6 +68,23 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### 8.2e's leftovers: the image's no-op PATH line goes; what `46eb281` dropped from the apt line, said (From Fable 5.1's read of `46eb281`)
+
+- **Said here, missing from 8.2e's entry**: the image's apt line also lost `libcurl4 libexpat1 zlib1g`, the
+  libraries the git built from source linked. Nothing lost: the reader probed a plain `ubuntu:noble` -
+  `zlib1g` is Priority: required and in the base image, Ubuntu's `git` package depends on `libexpat1`,
+  `libcurl3t64-gnutls` and `zlib1g`, and `curl` brings `libcurl4t64`. The one dynamic binary that links
+  zlib, the linux-aarch64 build of clj-kondo and cljfmt, is the image `bb docker-gates` builds on this Mac,
+  and `46eb281`'s run was green.
+- **git's versions now**: this Mac's brew git 2.56.0, which known-good and both health records carry; the
+  image's Ubuntu 2.43.0 (`2.43.0-1ubuntu7.4`), which the next `bb docker-health` writes into the Linux
+  record. Information, never a check: the newest flag the KIT calls git with, `safe.directory`, is 2.35.2's.
+- **The Dockerfile**: `PATH=${PATH}`, a no-op once `/opt/git/bin` left it, goes from the `ENV`; the blank
+  line the removed `COPY` doubled, single again.
+- **`bb docker-gates` on `46eb281`**: green, 179 s end to end with every image layer cached by the timing
+  build before it - so about three minutes is the gates inside the container, as before; the git change saves
+  a cold build's time (74.5 s → 59.8 s), not a run's.
+
 ### The KIT's toolchain image takes Ubuntu's git: its build stage, the matrix's git row and every check of the image's git go (plan 7.0, item 8.2e)
 
 git is a prerequisite, as bb is ("The second fold"): the KIT pins no git on a machine, and the image built

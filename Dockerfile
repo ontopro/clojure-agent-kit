@@ -31,8 +31,7 @@ ARG BB_SHA256
 ARG TARGETARCH
 
 ENV DEBIAN_FRONTEND=noninteractive \
-    KIT_TOOLCHAIN_DIR=/opt/kit-toolchain \
-    PATH=${PATH}
+    KIT_TOOLCHAIN_DIR=/opt/kit-toolchain
 
 # THE SET'S DATE, known-good's `:as-of`, used before the first layer that installs packages: a
 # new health record rebuilds the operating-system layer and every layer after it, where the
@@ -56,7 +55,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && apt-get update && apt-get install -y --no-install-recommends firefox-esr fonts-dejavu-core \
  && ln -s /usr/bin/firefox-esr /usr/local/bin/firefox \
  && rm -rf /var/lib/apt/lists/*
-
 
 # bb, the one tool the pack cannot install, since the pack runs on it: the matrix's archive for
 # this platform, its sha256 checked before it is opened.
