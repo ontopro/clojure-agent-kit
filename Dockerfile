@@ -11,8 +11,9 @@
 # what the shell fetches before bb exists comes in as build arguments - bb and git, each its
 # version, URL and sha256, which `docker-image!` reads from the matrix for the platform built
 # (`bb --config tools/toolchain/bb.edn image-args <platform>`) - with no defaults here, since a
-# default is a second owner of the version; and KIT_AS_OF, the date below. Until the fold (8.2d)
-# bbin and clojure-mcp-light are pinned here alone, said where they are installed.
+# default is a second owner of the version; and KIT_AS_OF, the date below. bbin and
+# clojure-mcp-light are pinned here alone, said where they are installed, until 8.2d moves them to
+# the matrix - bbin a row, clojure-mcp-light installed by it.
 # Firefox ESR is Mozilla's repository's current ESR, which nothing here pins.
 #
 # NEVER A MOUNT OF THE WORKING TREE: the tasks mount the repository read-only and `git clone`
@@ -96,8 +97,8 @@ RUN --mount=type=cache,target=/opt/kit-toolchain/downloads \
       --only java,clj-kondo,clojure,cljfmt,geckodriver --link /usr/local/bin
 
 # bbin, then the three clojure-mcp-light tools by the doctor's own install command, held to the
-# commit known-good records - pinned here until clojure-mcp-light is the pack's dependency and
-# bbin goes (8.2d).
+# commit known-good records - pinned here until 8.2d makes bbin a row of the matrix and installs
+# clojure-mcp-light by it at the matrix's commit.
 ARG BBIN_VERSION=0.2.5
 ARG MCP_LIGHT_TAG=v0.2.2
 ARG MCP_LIGHT_SHA=d341c23

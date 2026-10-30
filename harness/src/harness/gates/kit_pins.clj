@@ -11,14 +11,15 @@
   adopter gets has its pins equal to known-good, the JDK apart.
 
   The pins: the download matrix (`tools/toolchain/download-matrix.edn`) for the tools the pack
-  fetches, cljfmt among them (plan 7.0, item 8.2a); the pack's `bb.edn` deps for its libraries, the
-  Dockerfile's own until a library is the pack's (clojure-mcp-light, bbin); the project set (`project-set.edn`) for what only a
+  fetches, cljfmt among them (plan 7.0, item 8.2a); the Dockerfile's own for bbin and
+  clojure-mcp-light until 8.2d makes bbin a row of the matrix; the project set (`project-set.edn`) for what only a
   project runs (tailwindcss), and beside each tool it shares with the matrix; XTDB's, the one
   place the KIT writes it (`harness/health/xtdb/deps.edn`, plan 7.0, item 7.3); the template's and
   deps-new's tags (`template-pins.edn`). Installed: the doctor's probe of this machine where the
   doctor has a row, read from `bb doctor --edn` in a subprocess (the doctor's table is the harness's
-  resource, not on the root task's classpath); a library the pack loads, its pinned version and whether bb has fetched it;
-  `-` otherwise. The releases: each repository's tags by `git ls-remote`, no API and no token, the
+  resource, not on the root task's classpath); a library, its pinned version and whether it is fetched;
+  `-` otherwise. The pack loads no library: it installs the tools and never runs them (the reshape,
+  2026-10-30), so it has no `:deps` to read. The releases: each repository's tags by `git ls-remote`, no API and no token, the
   ones matching a release's shape - so a pre-release (`v2.56.0-rc1`) is never newest. A repository
   that does not answer is `unknown`, said as such.
 
@@ -51,7 +52,7 @@
    {:tool :deps-new :repo "seancorfield/deps-new" :tag #"v(\d+\.\d+\.\d+)" :pin [[:template :deps-new]]}])
 
 (def ^:private where
-  {:download-matrix "matrix" :pack-deps "pack bb.edn" :dockerfile "Dockerfile" :project-set "project set"
+  {:download-matrix "matrix" :dockerfile "Dockerfile" :project-set "project set"
    :template "template-pins" :xtdb-deps "health/xtdb deps.edn"})
 
 ;; ---------------------------------------------------------------- pure
@@ -92,7 +93,7 @@
   `:pin` that carries it; a pin no file carries is left out. The Dockerfile's `v` prefix is
   dropped, so a pin and a release are compared as the same shape. A pin the Clojure CLI fetches as
   a git dep - the template, deps-new - carries `:gitlib {:lib :sha}` too, for `fetched`."
-  [{:keys [matrix pack-deps dockerfile template-pins xtdb-deps]} & [project-set]]
+  [{:keys [matrix dockerfile template-pins xtdb-deps]} & [project-set]]
   (let [args (dockerfile-args dockerfile)
         template (get-in template-pins [:templates (:default template-pins)])
         gitlib {:git/tag (some->> (:git/sha template) (hash-map :lib (:template template) :sha))
@@ -100,7 +101,6 @@
         read (fn [[place k]]
                (case place
                  :download-matrix (get-in matrix [k :version])
-                 :pack-deps (get-in pack-deps [k :mvn/version])
                  :xtdb-deps (get-in xtdb-deps [k :mvn/version])
                  :dockerfile (some-> (get args k) (str/replace #"^v" ""))
                  :project-set (get-in project-set [:tools k])
@@ -195,7 +195,6 @@
 (defn- read-files [root]
   (let [read #(let [f (fs/path root %)] (when (fs/exists? f) (slurp (str f))))]
     {:matrix (some-> (read "tools/toolchain/download-matrix.edn") edn/read-string)
-     :pack-deps (some-> (read "tools/toolchain/bb.edn") edn/read-string :deps)
      :dockerfile (read "Dockerfile")
      :template-pins (some-> (read "harness/resources/template-pins.edn") edn/read-string)
      :project-set (some-> (read "harness/resources/project-set.edn") edn/read-string)
@@ -207,12 +206,12 @@
   (let [files (read-files root)] (pins files (:project-set files))))
 
 (defn fetched
-  "A library: its pinned version and whether it is fetched - a Maven dep (the pack's `bb.edn`, the
-  health check's XTDB) into `~/.m2`; a git dep the Clojure CLI fetches (the template, deps-new) into
+  "A library: its pinned version and whether it is fetched - a Maven dep (the health check's XTDB)
+  into `~/.m2`; a git dep the Clojure CLI fetches (the template, deps-new) into
   `~/.gitlibs/libs/<lib>/<full sha>`, the pin's short sha a prefix of the folder's name. Nil for a pin
   that is neither."
   [{:keys [version from gitlib]} lib home]
-  (cond (#{:pack-deps :xtdb-deps} from)
+  (cond (= :xtdb-deps from)
         (let [[group artifact] (str/split (str lib) #"/")
               dir (fs/path home ".m2" "repository" (str/replace group "." "/") artifact version)]
           (str version (if (fs/exists? dir) ", fetched" ", not fetched")))
@@ -225,14 +224,14 @@
 (defn installed
   "What this machine has of each source: the doctor's probe of its row where the doctor has one
   (`doctor` is `bb doctor --edn`'s map) - the version, or the doctor's status when it found none -
-  else, for a library the pack loads, `fetched`. THE PROBE FIRST (Fable 5.1's watch on `f9b5af8`,
-  plan 7.0, item 8.2a): a tool that is a pack dependency and a binary the doctor probes would read
-  its pin back by `fetched` - the drift `record-drift` exists to see, compared with itself."
+  else, for a library, `fetched`. THE PROBE FIRST (Fable 5.1's watch on `f9b5af8`, plan 7.0, item
+  8.2a): a tool pinned as a library and probed as a binary would read its pin back by `fetched` - the
+  drift `record-drift` exists to see, compared with itself."
   [pins doctor home]
   (let [by-probe (update-vals doctor #(or (:version %) (some-> (:status %) name)))]
     (into {}
           (keep (fn [{:keys [tool probe pin]}]
-                  (let [lib (some (fn [[place k]] (when (#{:pack-deps :xtdb-deps} place) k)) pin)]
+                  (let [lib (some (fn [[place k]] (when (= :xtdb-deps place) k)) pin)]
                     (when-let [v (if (contains? doctor probe)
                                    (get by-probe probe)
                                    (fetched (get pins tool) lib home))]

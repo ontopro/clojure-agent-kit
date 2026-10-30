@@ -119,9 +119,9 @@
 (def leaving
   "The Dockerfile's ARGs of tools the pack does not hold yet, each with the sub-task that removes it
   - deleted from this list by the commit that deletes its ARG (plan 7.0, item 8.1c, Q3)."
-  {"BBIN_VERSION" "8.2d: bbin goes"
-   "MCP_LIGHT_TAG" "8.2d: clojure-mcp-light the pack's dependency"
-   "MCP_LIGHT_SHA" "8.2d: clojure-mcp-light the pack's dependency"})
+  {"BBIN_VERSION" "8.2d: bbin a row of the matrix"
+   "MCP_LIGHT_TAG" "8.2d: clojure-mcp-light installed by bbin at the matrix's commit"
+   "MCP_LIGHT_SHA" "8.2d: clojure-mcp-light installed by bbin at the matrix's commit"})
 
 (deftest the-images-build-arguments-are-the-matrixs
   ;; D-9: the image installs by running the pack; only what the shell fetches before bb exists is

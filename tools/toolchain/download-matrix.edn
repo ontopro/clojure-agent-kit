@@ -17,7 +17,8 @@
 ;; A sha256 is pasted from `toolchain-sum <tool>`, which takes it from the archive itself and sets it
 ;; beside the publisher's: a version moves with its sha256s, by the person, as a pin move does.
 ;; The floors a machine must meet stay in harness/resources/toolchain.edn (:min); a test holds bb
-;; and java here at or above them. clojure-mcp-light will be the pack's bb.edn :deps (8.2d).
+;; and java here at or above them. bbin will be a row here, and
+;; clojure-mcp-light installed by it at the commit a row names (8.2d).
 {:bb {:version "1.13.229"
       :url "https://github.com/babashka/babashka/releases/download/v{version}/babashka-{version}-{asset}.tar.gz"
       :checksum-url "https://github.com/babashka/babashka/releases/download/v{version}/babashka-{version}-{asset}.tar.gz.sha256"
@@ -64,7 +65,7 @@
        :os :linux
        :image-only true}
 
- ;; the formatter, run by the pack's fmt and fmt-check - the KIT's fmt gate, gate 0 - and by a
+ ;; the formatter, called by name by the KIT's fmt gate, gate 0 and a
  ;; project's gate 1 (plan 7.0, item 8.2a); no darwin-amd64 build, so no Intel Mac
  :cljfmt {:version "0.16.6"
           :url "https://github.com/weavejester/cljfmt/releases/download/{version}/cljfmt-{version}-{asset}.tar.gz"

@@ -4,7 +4,7 @@ The KIT's own toolchain, held by the KIT: Babashka, the JDK, clj-kondo, cljfmt a
 Clojure CLI, each at one exact version whose archive has one sha256, written once in
 [`download-matrix.edn`](download-matrix.edn). Plan 7.0, item 8: the matrix, the tasks that read
 it, and the install are here. The pack installs the tools; it does not run them - the KIT calls
-each by its path in the project's toolchain folder (item 8, reshaped 2026-10-30).
+each by name, the project's toolchain folder first on the PATH (item 8, reshaped 2026-10-30).
 
 ```
 bb --config <kit>/tools/toolchain/bb.edn <task> [args]
@@ -37,8 +37,8 @@ image does - never on a machine, where git and a browser are the person's own. g
 tarball is one archive for every platform, and its `:os :linux` keeps it to Linux's two.
 
 The floors a machine must meet stay in `harness/resources/toolchain.edn`, which `bb doctor` reads;
-a test holds the matrix's `bb` and `java` at or above them. clojure-mcp-light will be this pack's
-`bb.edn` dependency (8.2d), held by git's own integrity, not by the matrix.
+a test holds the matrix's `bb` and `java` at or above them. bbin will be a row of the matrix, and
+clojure-mcp-light installed by it at the commit the matrix names (8.2d).
 
 > [!NOTE]
 > cljfmt is the matrix's binary, not a library bb loads: the library cost 75 ms a call over the

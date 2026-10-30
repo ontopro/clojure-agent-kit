@@ -1,7 +1,7 @@
 (ns toolchain-status
   "What of the download matrix this machine has: a row per tool it takes, the matrix's version,
-  where the pack puts it, and whether it is there. `bb doctor` will read these rows from the pack
-  as `status --edn` (plan 7.0, item 8.2e) - the format is the contract, held by a test.
+  where the pack puts it, and whether it is there. `bb doctor`'s report will read these rows
+  as `status --edn` (plan 7.0, item 8.3a) - the format is the contract, held by a test.
 
   The cache is `KIT_TOOLCHAIN_DIR`, else `~/.kit/toolchain/`. A tool is present when its executable
   is at its cache path; nothing here runs it."

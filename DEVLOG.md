@@ -68,6 +68,33 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### Item 8's stragglers: what still promised the dropped design, swept before 8.2b (plan 7.0, item 8)
+
+The person (2026-10-30), before 8.2b: "run a sweep of the full project to make sure all the item 8 stuff
+that was undone was complete and there are no stragglers left ... If we don't do this now, it will get
+far more difficult later with everything getting intertwined." Two sweeps of the tracked tree at
+`a388a1b`, the writer's and Fable 5.1's, made apart and compared. The undo's code was complete: no task
+of the pack runs a tool, no `toolchain_fmt`, no `harness/.cljfmt.edn` named, no Intel Mac supported.
+Left, and fixed here:
+- **Dead code** (the reader's find): `bb kit-pins` read a `:pack-deps` source, the toolchain pack's
+  `bb.edn` `:deps` - which has none (`:paths`, `:tasks`), built for a pack that would load clojure-mcp-light
+  as a library. The pack installs and never loads, so the source, its `where` label and its `fetched`
+  branch go; XTDB's Maven pin keeps the branch it shares. The root task's doc and the harness README's row
+  say the pins as they are.
+- **Words promising what the reshape dropped:** the matrix's cljfmt comment and the pack's `bb.edn` head
+  ("run by the pack's fmt", "install the tools and run them"); the pack README's "calls each by its path"
+  (the tools are called by name, the folder first on the PATH); "clojure-mcp-light will be the pack's
+  dependency" in the pack README and the matrix (bbin will be a row, clojure-mcp-light installed by it);
+  the Dockerfile's "until the fold ... bbin goes" and the test's reasons for the leaving ARGs; the
+  `--java` flag in the install's plan docstring.
+- **A dropped sub-task's number:** the doctor reading the pack was 8.2e, dropped; the rows `status --edn`
+  prints reach `bb doctor`'s report in 8.3a, and JAVA_HOME as `probe`'s input with them - the pack's
+  `status` docstrings, `doctor_test`'s fixture note and NOTES row 233 say 8.3a.
+- **A row missing:** `tools/README.md`'s toolchain pack row now lists cljfmt.
+
+The code each later sub-task changes, file by file, is in the reshaped note's "The straggler sweep" - a
+checklist per sub-task, so none is left behind.
+
 ### Item 8 reshaped: the pack installs the tools and no longer runs them - its `fmt`/`fmt-check` undone; the KIT's format rules at the clone's root (plan 7.0, item 8.2a')
 
 The person (2026-10-30), at 8.2b: "I feel like this is getting way too complicated. The goal of item 8 -

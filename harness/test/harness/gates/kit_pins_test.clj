@@ -118,9 +118,9 @@
                 :clj-nrepl-eval {:version "d341c23" :status :ok} :git {:version nil :status :missing}}]
     (is (= {:bb "1.13.229" :cljfmt "0.16.6" :clojure-mcp-light "d341c23" :git "missing"}
            (tn/installed pins doctor home))
-        "a tool the doctor probes is its probe, a pack dependency too - its pin would read itself back (Fable 5.1's watch on f9b5af8)")
+        "a tool the doctor probes is its probe, never its pin read back (Fable 5.1's watch on f9b5af8)")
     (is (= "0.16.5" (:cljfmt (tn/installed pins (assoc-in doctor [:cljfmt :version] "0.16.5") home)))
-        "a drifted binary shows, though the pack's pin is fetched")
+        "a drifted binary shows, not its pin")
     (is (= "missing" (:cljfmt (tn/installed pins {:cljfmt {:version nil :status :missing}} home)))
         "the doctor's row says missing: missing, not the pin")
     (is (not (contains? (tn/installed pins (dissoc doctor :cljfmt) home) :cljfmt))

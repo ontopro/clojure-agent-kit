@@ -7,7 +7,7 @@
 
 ;; NO TEST SEES THIS MACHINE'S JAVA_HOME. A probe of :java reads it (7.4.3), and a test that faked
 ;; PATH java at 21 went red the day this machine's JAVA_HOME moved to 25. A test that wants one
-;; redefines `doctor/java-home` itself. Until 8.2e makes JAVA_HOME an input of `probe`, as `pins` is.
+;; redefines `doctor/java-home` itself. Until 8.3a makes JAVA_HOME an input of `probe`, as `pins` is.
 (use-fixtures :each
   (fn [t] (with-redefs [doctor/java-home (constantly nil)] (t))))
 

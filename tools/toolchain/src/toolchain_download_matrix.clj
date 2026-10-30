@@ -119,7 +119,7 @@
     `:skip`    bb, when the bb running the install (`running`'s `:bb`) is at or above the matrix's -
                the install cannot replace the bb that runs it, and a newer one is used as it is (the
                person, 2026-10-29); the JDK when `only` does not name it - 200 MB, fetched only when
-               asked (the --java flag and the lookup of a JDK already on the machine are 8.3a's);
+               asked;
     `:install` the archive, the folder it lands in, the executable, and where the archive is kept
                (`<cache>/downloads/`, reused while its sha256 is the matrix's).
   Each step `{:tool :version :step …}`."
