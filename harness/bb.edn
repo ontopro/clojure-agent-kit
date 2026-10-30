@@ -230,6 +230,12 @@
            :requires ([harness.models.profile :as profile])
            :task (apply profile/-main *command-line-args*)}
 
+  toolchain-env {:doc "The shell lines for `eval \"$(bb toolchain-env)\"`, run in the shell that starts the session: the JDK the project pins and the workspace's .env loaded by the shell, no value printed - the toolchain pack's `toolchain-env`, for the workspace (KIT_WORKSPACE) or the clone"
+                 :task (let [{:keys [exit]} (shell {:continue true} "bb" "--config" "../tools/toolchain/bb.edn" "toolchain-env"
+                                                   (or (first *command-line-args*) (System/getenv "KIT_WORKSPACE")
+                                                       (str (fs/parent (fs/absolutize ".")))))]
+                         (System/exit exit))}
+
   roster-sync {:doc "Write roster.md's Model column from the shipped claude example, and portability.md's two tables of models from the shipped examples (resources/profiles/); a test holds both"
                :requires ([harness.models.profile :as profile])
                :task (profile/roster-sync-main)}

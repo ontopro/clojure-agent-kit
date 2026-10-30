@@ -146,6 +146,10 @@
              :requires ([harness.gates.tag-check :as tag-check])
              :task (apply tag-check/-main *command-line-args*)}
 
+  toolchain-env {:doc "The shell lines for `eval \"$(bb toolchain-env)\"` in this clone: the JDK it pins (25) and its own .env, for the KIT's `--kit` review and bake-offs - the toolchain pack's `toolchain-env`"
+                 :task (let [{:keys [exit]} (shell {:continue true} "bb" "--config" "tools/toolchain/bb.edn" "toolchain-env" ".")]
+                         (System/exit exit))}
+
   kit-pins {:doc "The KIT's pins: each tool and library the KIT pins (the download matrix, the pack's deps, the Dockerfile's own, the project set, the template's) as installed here, as pinned, and its newest release by git ls-remote; information, exit 0. A go or no-go per row is the person's (kit-session skill)"
             :requires ([harness.gates.kit-pins :as kit-pins])
             :task (kit-pins/-main)}

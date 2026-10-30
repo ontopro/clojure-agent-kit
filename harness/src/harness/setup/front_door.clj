@@ -50,7 +50,8 @@
   ["next" "roadmap-page" "brief" "doctor" "plan-check" "plan-review" "blueprint-review" "packet-tests" "spec-from-blueprint" "sigs"
    "run-loop" "stage-report" "profile" "models" "balance" "bake-off" "rules-sync" "rules-check"
    "rules-prompt" "skills-sync" "boundary" "report" "report-check" "reprice"
-   "security-review" "security-route" "security-panel" "stage-progress" "stage-amend" "front-door-sync" "workspace-gates" "template-upgrade" "upgrade"])
+   "security-review" "security-route" "security-panel" "stage-progress" "stage-amend" "front-door-sync" "workspace-gates" "template-upgrade" "upgrade"
+   "toolchain-env"])
 
 (def door-names
   "A harness task the front door offers under another name: the workspace's gates are `bb gates`

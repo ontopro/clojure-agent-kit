@@ -210,16 +210,13 @@
                     (group-by (fn [[_ r]] (:key-env r))))
         host #(some-> % java.net.URI. .getHost)]
     (when (seq by-key)
-      (str "# THIS PROJECT'S KEYS - written by `bb init` with the names its profile (" build "/profile.edn)
-"
-           "# needs, each empty: put the key after the `=`, nothing else on the line. One key per project,
-"
-           "# with a spending limit set at the provider (`bb balance` shows the key's limit beside the
-"
-           "# account's credit). This folder is not a repository, and nothing commits this file.
-"
-           "# Loaded into the shell before the session starts: `eval \"$(bb toolchain-env)\"`, then `claude`.
-"
+      (str (str/join "\n" [(str "# THIS PROJECT'S KEYS - written by `bb init` with the names its profile (" build "/profile.edn)")
+                           "# needs, each empty: put the key after the `=`, nothing else on the line. One key per project,"
+                           "# with a spending limit set at the provider's console (for an OpenRouter key, `bb balance`"
+                           "# shows the limit beside the account's credit). This folder is not a repository, and nothing"
+                           "# commits this file. Loaded into the shell before the session starts: `eval \"$(bb"
+                           "# toolchain-env)\"`, then `claude` - the file is checked first, and no value is ever printed."])
+           "\n"
            (str/join (for [k (sort (keys by-key))
                            :let [rs (by-key k)]]
                        (str "\n# " (str/join ", " (distinct (map first rs)))

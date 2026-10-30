@@ -23,6 +23,10 @@
                      :requires ([toolchain-install :as install])
                      :task (install/install-main pack-dir *command-line-args*)}
 
+  toolchain-env {:doc "The shell lines for `eval \"$(bb toolchain-env)\"`: JAVA_HOME and PATH for the JDK the project pins (25 when none), and the line that has the shell load the workspace's .env - checked first, no value ever printed. [<dir>], default KIT_WORKSPACE or here. Exit 1, nothing on stdout, when no JDK of that major is found or the .env is refused"
+                 :requires ([toolchain-env :as env])
+                 :task (env/main pack-dir *command-line-args*)}
+
   image-args {:doc "The KIT's toolchain image's build arguments for a Linux platform (linux-aarch64, linux-amd64), as an EDN map: bb's and git's version, URL and sha256 from the download matrix - what the image fetches by shell before bb exists. Read by the root `docker-image!`"
               :requires ([toolchain-download-matrix :as dm])
               :task (try (prn (dm/image-args (dm/read-matrix (str pack-dir "/download-matrix.edn"))

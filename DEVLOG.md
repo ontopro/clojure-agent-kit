@@ -68,6 +68,26 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### `bb toolchain-env`: the JDK the project pins and the workspace's keys, loaded by the shell, no value printed (plan 7.0, items 8.3c pulled forward and 8.6a)
+
+D-6 (the person, 2026-10-28: "setting the Java version to use seems like a tooling concern or belongs in a
+bb script - not in the harness") and 8.6a ("this is environment setup. so it does not belong in the
+harness code"; "1. Yes 2. Yes" - no value printed). The toolchain pack's `toolchain-env [<dir>]` prints the
+lines for `eval "$(bb toolchain-env)"`: `JAVA_HOME` and `PATH` for the JDK the project pins - the `java`
+line of `.mise.local.toml` over `.mise.toml`, the application's in a workspace, read by `java-pin` as the
+doctor's `mise-pins` reads it (a test holds them to one answer on three shapes), 25 when none - the first
+JDK of that major in the toolchain cache, macOS's `java_home`, jenv's, mise's or Linux's `/usr/lib/jvm`,
+each a home whose own `release` says that major; then `set -a; . '<.env>'; set +a`, the workspace's
+`.env` (else the clone's own), after `check-env` - a sourced file runs `$(...)`, so a line the shell would
+expand or run, an `export`, a bare word is refused by its number, no value echoed. Stdout carries only
+the lines, and nothing when a step refuses. The harness task (offered by the front door, for
+`KIT_WORKSPACE`) and the root task run the pack as a subprocess. Tried in a scratch workspace: a local
+pin of 21 over the project's 25 gave Homebrew's 21 by `java_home`, `java -version` 21 after the eval, two
+dummy keys set and none printed; a `$(touch …)` line and an `export` refused, exit 1, nothing on stdout,
+nothing touched. With it, Fable 5.1's read of `71ccf65`: the `.env` header says a limit is set at the
+provider's console and that `bb balance` shows it for an OpenRouter key alone; the header is one
+`str/join` of lines; `.gitignore`'s comment says "anywhere in the clone". The person: "go".
+
 ### `bb init` writes the workspace `.env` template, and the KIT ignores `.env`, `.env.local`, `.mise.local.toml` (plan 7.0, items 8.6b and 8.6c's ignore lines)
 
 The person, 2026-10-28: "one of the steps needs to be to initialize a '.env' file with just the KEYS so
