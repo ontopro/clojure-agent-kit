@@ -31,7 +31,7 @@
              (dissoc (:clj-kondo s) :asset)))
       (is (= "https://download.clojure.org/install/clojure-tools-1.12.6.1673.tar.gz" (get-in s [:clojure :asset :url])))))
   (testing "an older running bb: the matrix's is installed beside it"
-    (is (= :install (:step (:bb (steps :macos-amd64 {:running {:bb "1.13.226"}}))))))
+    (is (= :install (:step (:bb (steps :linux-aarch64 {:running {:bb "1.13.226"}}))))))
   (testing "a newer running bb is used as it is"
     (is (= :skip (:step (:bb (steps :linux-amd64 {:running {:bb "1.13.300"}}))))))
   (testing "a cache that has a tool keeps it"

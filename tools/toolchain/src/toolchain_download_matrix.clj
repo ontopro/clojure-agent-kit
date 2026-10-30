@@ -6,11 +6,13 @@
   and a publisher's checksum read out of the file it publishes. `toolchain_status.clj` and the
   `toolchain-sum` task do the looking and the fetching.
 
-  A platform is one of `platforms`; a fifth is refused by name, never guessed."
+  A platform is one of `platforms`; any other is refused by name, never guessed. An Intel Mac is not
+  one (the person, 2026-10-30): cljfmt publishes no build for it, and the KIT runs on Apple silicon
+  and on Linux."
   (:require [clojure.edn :as edn]
             [clojure.string :as str]))
 
-(def platforms [:macos-aarch64 :macos-amd64 :linux-aarch64 :linux-amd64])
+(def platforms [:macos-aarch64 :linux-aarch64 :linux-amd64])
 
 (defn read-matrix [f] (edn/read-string (slurp f)))
 
@@ -23,7 +25,7 @@
                ("aarch64" "arm64") "aarch64"
                ("amd64" "x86_64") "amd64"
                nil)]
-    (if (and os arch)
+    (if (and os arch (some #{(keyword (str os "-" arch))} platforms))
       (keyword (str os "-" arch))
       (throw (ex-info (str "no toolchain for " os-name " " os-arch
                            " - the download matrix has " (str/join ", " (map name platforms)))

@@ -14,12 +14,11 @@
 
 (def matrix (dm/read-matrix "../tools/toolchain/download-matrix.edn"))
 
-(deftest the-platform-is-one-of-four-and-a-fifth-is-refused-by-name
+(deftest the-platform-is-one-of-three-and-any-other-is-refused-by-name
   (is (= :macos-aarch64 (dm/platform-key "Mac OS X" "aarch64")))
-  (is (= :macos-amd64 (dm/platform-key "Mac OS X" "x86_64")))
   (is (= :linux-aarch64 (dm/platform-key "Linux" "aarch64")))
   (is (= :linux-amd64 (dm/platform-key "Linux" "amd64")))
-  (doseq [[os arch] [["Windows 11" "amd64"] ["Linux" "riscv64"] ["FreeBSD" "amd64"]]]
+  (doseq [[os arch] [["Mac OS X" "x86_64"] ["Windows 11" "amd64"] ["Linux" "riscv64"] ["FreeBSD" "amd64"]]]
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
                           (re-pattern (str "no toolchain for " os " " arch " - the download matrix has macos-aarch64"))
                           (dm/platform-key os arch)))))

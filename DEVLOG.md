@@ -68,6 +68,18 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### An Intel Mac is no longer a platform the KIT runs on (plan 7.0, item 8.2a)
+
+The person (2026-10-30), choosing cljfmt as a pinned binary over the pack's library for its speed (one
+file through gate 0: 12-28 ms by the binary, 87-103 ms by the library, measured here): "go with B. We
+can remove 'Intel Mac (darwin-amd64) build' from the list of machines this will work on" - cljfmt
+publishes no darwin-amd64 build (its 0.16.6 release: darwin-aarch64, linux-aarch64, linux-amd64 and
+-static, win-amd64, the standalone jar). The download matrix's platforms are three - `macos-aarch64`,
+`linux-aarch64`, `linux-amd64` - and its `macos-amd64` rows (bb, the JDK, clj-kondo) go; `platform-key`
+refuses an Intel Mac by name, as it refuses any platform not in the list. The root README says where
+KIT runs, in an IMPORTANT callout before the three installs. No health record was ever made on an Intel
+Mac. The binary itself comes in the next commit.
+
 ### cljfmt is the toolchain pack's dependency: the KIT's fmt gate and gate 0 run the pack's `fmt-check` and `fmt` (plan 7.0, item 8.2a)
 
 The design note's 8.2a, the person's go. The pack's `bb.edn` gains `:deps` - `dev.weavejester/cljfmt`

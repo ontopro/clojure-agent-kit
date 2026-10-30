@@ -17,8 +17,8 @@ bb --config <kit>/tools/toolchain/bb.edn <task> [args]
 ## The download matrix
 
 A map keyed by tool. For each, the exact version, the archive's URL with `{version}` and
-`{asset}` to fill, and per platform - `macos-aarch64`, `macos-amd64`, `linux-aarch64`,
-`linux-amd64` - the asset's spelling and its sha256. A fifth platform is refused by name.
+`{asset}` to fill, and per platform - `macos-aarch64`, `linux-aarch64`, `linux-amd64` - the
+asset's spelling and its sha256. Any other platform is refused by name; an Intel Mac among them.
 
 | Tool | Where from | The publisher's checksum |
 |---|---|---|

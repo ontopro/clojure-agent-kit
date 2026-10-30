@@ -24,7 +24,6 @@
       :unpack :tar.gz
       :bin "bb"
       :platforms {:macos-aarch64 {:asset "macos-aarch64" :sha256 "2d96ff06ce66883caa873fb717941a58c45523e3db9d91424e9f81b038896331"}
-                  :macos-amd64 {:asset "macos-amd64" :sha256 "5d7aff8ffa8237f6e12cf879fde98777d9378e7fa78bb943815c3cfba184d78f"}
                   :linux-aarch64 {:asset "linux-aarch64-static" :sha256 "d85a95210efe6d8fd3b534f3d594948e3f30fa1c5864044773105ad3e2d79096"}
                   :linux-amd64 {:asset "linux-amd64-static" :sha256 "64fb984991c6e68f44e8a9391176a9bb411f9b9ae9959a6bca5307c75a7414da"}}}
 
@@ -35,7 +34,6 @@
         :home {:macos "jdk-{version}/Contents/Home" :linux "jdk-{version}"}
         :bin "bin/java"
         :platforms {:macos-aarch64 {:asset "aarch64_mac" :sha256 "36dc14d797aaff6d89aab302cd053fdba6207dfdcf772052fa7b023a94b0e857"}
-                    :macos-amd64 {:asset "x64_mac" :sha256 "32cd4d2151c91aa00d0fc911edfd05245ed40fa6b1aa894d5f35c928cd67a59d"}
                     :linux-aarch64 {:asset "aarch64_linux" :sha256 "bb5b2ded252f21c6090cf780b0a408ad0d83bbb557e702955643557f13231880"}
                     :linux-amd64 {:asset "x64_linux" :sha256 "68982529869257d0ee6b824ec5aa270ff8b118bb438670da0b97ebdab178d7fb"}}}
 
@@ -45,7 +43,6 @@
              :unpack :zip
              :bin "clj-kondo"
              :platforms {:macos-aarch64 {:asset "macos-aarch64" :sha256 "167c9fa6cb7e2b50370e05d9a2dd536fdcec9aa207c94ae82813738894f9580a"}
-                         :macos-amd64 {:asset "macos-amd64" :sha256 "46716b2c4fa250f9c267c8f6d140ef7ed6d5a1c4c3798720c634142b5fa35bf9"}
                          :linux-aarch64 {:asset "linux-aarch64" :sha256 "8825e6bcdc443d222dd86d0167fea7e59342446f31de591e089a04b029fbf352"}
                          :linux-amd64 {:asset "linux-static-amd64" :sha256 "cb56971158407311d469e2a639347efb19b9cc34f07ed9d9b3013fb975cba0a3"}}}
 
