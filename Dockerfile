@@ -12,8 +12,7 @@
 # version, URL and sha256, which `docker-image!` reads from the matrix for the platform built
 # (`bb --config tools/toolchain/bb.edn image-args <platform>`) - with no defaults here, since a
 # default is a second owner of the version; and KIT_AS_OF, the date below. Until the fold (8.2d)
-# bbin and clojure-mcp-light are pinned here alone, and cljfmt's binary stays for the application
-# template's gates (8.4), each said where it is installed.
+# bbin and clojure-mcp-light are pinned here alone, said where they are installed.
 # Firefox ESR is Mozilla's repository's current ESR, which nothing here pins.
 #
 # NEVER A MOUNT OF THE WORKING TREE: the tasks mount the repository read-only and `git clone`
@@ -87,31 +86,14 @@ RUN curl -fsSL -o /tmp/bb.tar.gz "${BB_URL}" \
  && rm /tmp/bb.tar.gz \
  && bb --version | grep -q "v${BB_VERSION}\$"
 
-# The rest by the pack: the JDK, clj-kondo, the Clojure CLI and geckodriver into the toolchain
+# The rest by the pack: the JDK, clj-kondo, the Clojure CLI, cljfmt and geckodriver into the toolchain
 # folder, each archive checked against the matrix's sha256, linked into /usr/local/bin. The
 # fetched archives stay in a BuildKit cache across builds, so a change to the pack reruns the
 # unpacking and the checks but not the JDK's 200 MB download.
 COPY tools/toolchain /opt/kit/tools/toolchain
 RUN --mount=type=cache,target=/opt/kit-toolchain/downloads \
     bb --config /opt/kit/tools/toolchain/bb.edn toolchain-install \
-      --only java,clj-kondo,clojure,geckodriver --link /usr/local/bin
-
-# The pack's libraries (cljfmt, plan 7.0, item 8.2a) fetched into the image's ~/.m2 at build, so a
-# gate in a fresh container finds them there, as a clone's pack names the same versions.
-RUN bb --config /opt/kit/tools/toolchain/bb.edn prepare
-
-# cljfmt's binary, for the application template's gates, which run `cljfmt` until its next release
-# (8.4). The KIT's own gates and gate 0 run the toolchain pack's cljfmt (8.2a), at the version its
-# bb.edn pins - `bb kit-pins` holds the two to one version.
-ARG CLJFMT_VERSION=0.16.6
-RUN set -eu; \
-    case "${TARGETARCH}" in \
-      arm64) CLJFMT_ARCH=aarch64 ;; \
-      amd64) CLJFMT_ARCH=amd64 ;; \
-      *) echo "no release binaries for ${TARGETARCH}" >&2; exit 1 ;; \
-    esac; \
-    curl -fsSL "https://github.com/weavejester/cljfmt/releases/download/${CLJFMT_VERSION}/cljfmt-${CLJFMT_VERSION}-linux-${CLJFMT_ARCH}.tar.gz" \
-      | tar -xz -C /usr/local/bin cljfmt
+      --only java,clj-kondo,clojure,cljfmt,geckodriver --link /usr/local/bin
 
 # bbin, then the three clojure-mcp-light tools by the doctor's own install command, held to the
 # commit known-good records - pinned here until clojure-mcp-light is the pack's dependency and

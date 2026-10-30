@@ -1,20 +1,43 @@
 (ns harness.tools.toolchain-fmt-test
   "The toolchain pack's `fmt` and `fmt-check` (`tools/toolchain/src/toolchain_fmt.clj`, plan 7.0, item
-  8.2a): cljfmt as the pack's dependency, run as the gates run it - a subprocess, `bb --config <pack>`,
-  since the harness never requires the pack and cljfmt is not on its classpath. Each file held to the
-  first config from its own folder up, else `--dir`'s; cljfmt's own words and exits."
+  8.2a): cljfmt's binary at the matrix's version, each path held to the first config from its own
+  folder up, else `--dir`'s - the search and the runs as data, then the tasks run as the gates run
+  them, `bb --config <pack>`, in cljfmt's own words and exits."
   (:require
    [babashka.fs :as fs]
    [babashka.process :as p]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
-   [harness.gates.repair :as repair]))
+   [harness.gates.repair :as repair]
+   [toolchain-fmt :as fmt]))
 
 (defn- pack [dir & args]
   (apply p/shell {:dir (str dir) :out :string :err :string :continue true}
          "bb" "--config" (repair/toolchain-pack) args))
 
 (def ^:private padded "(ns a)\n\n(def m {:a  1})\n")
+
+(deftest the-config-is-cljfmts-own-search-from-the-path-else-from-dir
+  (let [root (fs/create-temp-dir)
+        proj (fs/path root "proj")]
+    (fs/create-dirs (fs/path proj "src" "deep"))
+    (fs/create-dirs (fs/path root "sibling" "src"))
+    (fs/create-dirs (fs/path proj "own"))
+    (spit (str (fs/path proj ".cljfmt.edn")) "{}\n")
+    (spit (str (fs/path proj "own" "cljfmt.edn")) "{}\n")
+    (spit (str (fs/path proj "own" ".cljfmt.clj")) "{}\n")
+    (is (= (str (fs/path proj ".cljfmt.edn")) (fmt/config-file (str proj) "src/deep")) "found walking up")
+    (is (= (str (fs/path proj ".cljfmt.edn")) (fmt/config-file (str proj) "../sibling/src"))
+        "a folder with none of its own up to the root: --dir's")
+    (is (= (str (fs/path proj "own" "cljfmt.edn")) (fmt/config-file (str proj) "own"))
+        "a folder's own, by either name - never the .clj form, which cljfmt reads only when told")
+    (is (nil? (fmt/config-file (str (fs/path root "sibling")) "src")) "none anywhere: cljfmt's defaults")
+    (testing "one run per config, the paths in the order given, from --dir"
+      (is (= [["cljfmt" "check" "--config" (str (fs/path proj ".cljfmt.edn")) "src" "../sibling/src"]
+              ["cljfmt" "check" "--config" (str (fs/path proj "own" "cljfmt.edn")) "own"]]
+             (fmt/runs "cljfmt" :check (str proj) ["src" "own" "../sibling/src"])))
+      (is (= [["cljfmt" "fix" "a.clj"]] (fmt/runs "cljfmt" :fix (str (fs/path root "sibling" "src")) ["a.clj"]))
+          "no config: no --config, cljfmt's defaults"))))
 
 (deftest each-file-is-held-to-the-config-found-from-its-folder-else-the-dirs
   (let [root (fs/create-temp-dir)

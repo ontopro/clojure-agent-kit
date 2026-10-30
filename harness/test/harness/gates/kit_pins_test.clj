@@ -23,8 +23,8 @@
 
 (def files
   {:matrix {:bb {:version "1.13.225"} :clj-kondo {:version "2026.08.04"} :java {:version "25.0.5+8"}
-            :geckodriver {:version "0.37.1"}}
-   :dockerfile "ARG BB_VERSION=1.13.0\nARG MCP_LIGHT_TAG=v0.2.2\n  ARG INDENTED=1\nARG CLJFMT_VERSION=0.16.5\n"
+            :geckodriver {:version "0.37.1"} :cljfmt {:version "0.16.5"}}
+   :dockerfile "ARG BB_VERSION=1.13.0\nARG MCP_LIGHT_TAG=v0.2.2\n  ARG INDENTED=1\n"
    :template-pins {:default :t :templates {:t {:template 'io.github.o/t :git/tag "kit-v1.3" :git/sha "f12268d"
                                                :deps-new {:git/tag "v0.8.0" :git/sha "2f96530"}}}}})
 
@@ -35,16 +35,13 @@
           :clj-kondo {:version "2026.08.04" :from :download-matrix}
           :java {:version "25.0.5+8" :from :download-matrix}
           :geckodriver {:version "0.37.1" :from :download-matrix}
-          :cljfmt {:version "0.16.5" :from :dockerfile}
+          :cljfmt {:version "0.16.5" :from :download-matrix}
           :clojure-mcp-light {:version "0.2.2" :from :dockerfile}
           :tailwindcss {:version "4.3.3" :from :project-set}
           :template {:version "kit-v1.3" :from :template :gitlib {:lib 'io.github.o/t :sha "f12268d"}}
           :deps-new {:version "0.8.0" :from :template :gitlib {:lib 'io.github.seancorfield/deps-new :sha "2f96530"}}}
          (tn/pins files project-set))
       "the matrix before the Dockerfile; a pin no file carries is left out")
-  (is (= {:version "0.16.6" :from :pack-deps}
-         (:cljfmt (tn/pins (assoc files :pack-deps {'dev.weavejester/cljfmt {:mvn/version "0.16.6"}}) project-set)))
-      "once the pack's bb.edn has the library, it is the pin")
   (is (= {:version "2.2.0" :from :xtdb-deps}
          (:xtdb (tn/pins (assoc files :xtdb-deps {'com.xtdb/xtdb-api {:mvn/version "2.2.0"}}) project-set)))
       "XTDB from the health check's deps.edn, the one place the KIT writes it"))
@@ -114,7 +111,7 @@
 (deftest installed-is-the-doctors-probe-first-then-the-librarys-fetch
   (let [home (str (fs/create-temp-dir))
         pins {:bb {:version "1.13.225" :from :download-matrix}
-              :cljfmt {:version "0.16.6" :from :pack-deps}
+              :cljfmt {:version "0.16.6" :from :download-matrix}
               :clojure-mcp-light {:version "0.2.2" :from :dockerfile}
               :git {:version "2.56.0" :from :download-matrix}}
         doctor {:bb {:version "1.13.229" :status :ok} :cljfmt {:version "0.16.6" :status :ok}
@@ -126,10 +123,8 @@
         "a drifted binary shows, though the pack's pin is fetched")
     (is (= "missing" (:cljfmt (tn/installed pins {:cljfmt {:version nil :status :missing}} home)))
         "the doctor's row says missing: missing, not the pin")
-    (testing "a pack dependency the doctor has no row for: its pin and whether bb fetched it"
-      (is (= "0.16.6, not fetched" (:cljfmt (tn/installed pins (dissoc doctor :cljfmt) home))))
-      (fs/create-dirs (fs/path home ".m2" "repository" "dev" "weavejester" "cljfmt" "0.16.6"))
-      (is (= "0.16.6, fetched" (:cljfmt (tn/installed pins (dissoc doctor :cljfmt) home)))))
+    (is (not (contains? (tn/installed pins (dissoc doctor :cljfmt) home) :cljfmt))
+        "a binary the doctor has no row for, and no library: nothing to say")
     (testing "a git dep the Clojure CLI fetches, by its sha; XTDB a Maven dep (the person: why is 0.8.0 not shown)"
       (let [ps {:deps-new {:version "0.8.0" :from :template :gitlib {:lib 'io.github.seancorfield/deps-new :sha "2f96530"}}
                 :xtdb {:version "2.2.0" :from :xtdb-deps}}]

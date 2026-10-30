@@ -36,8 +36,8 @@
            (:url (dm/asset {:java (assoc (:java matrix) :version "25.0.5+8")} :java :macos-aarch64))))))
 
 (deftest a-machine-takes-every-tool-but-the-image-only-ones-unless-named
-  (is (= [:bb :java :clj-kondo :clojure] (dm/machine-tools matrix :macos-aarch64 nil)))
-  (is (= [:bb :java :clj-kondo :clojure] (dm/machine-tools matrix :linux-amd64 nil)))
+  (is (= [:bb :java :clj-kondo :clojure :cljfmt] (dm/machine-tools matrix :macos-aarch64 nil)))
+  (is (= [:bb :java :clj-kondo :clojure :cljfmt] (dm/machine-tools matrix :linux-amd64 nil)))
   (is (= [:java :clj-kondo :clojure :geckodriver]
          (dm/machine-tools matrix :linux-aarch64 [:java :clj-kondo :clojure :geckodriver]))
       "the KIT's toolchain image names them")

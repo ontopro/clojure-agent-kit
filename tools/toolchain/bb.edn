@@ -11,9 +11,6 @@
 ;; reaches the pack only as a subprocess, never by requiring it. Plan 7.0, item 8, adds the tasks
 ;; that install the tools and run them.
 {:paths ["src"]
- ;; THE LIBRARIES THE PACK LOADS, at exact versions (plan 7.0, item 8.2): bb fetches each into ~/.m2 at
- ;; first use - `toolchain-install` ahead of time - and `bb kit-pins` reads its pin from here.
- :deps {dev.weavejester/cljfmt {:mvn/version "0.16.6"}}
  :tasks
  {:init (do (require '[babashka.fs :as fs])
             ;; where this pack is: the config bb was given, which is this file
@@ -27,13 +24,13 @@
                      :requires ([toolchain-install :as install])
                      :task (install/install-main pack-dir *command-line-args*)}
 
-  fmt {:doc "cljfmt fix over <paths…> from --dir (default here): each file held to the first cljfmt config found from its own folder up, else from --dir's; `Reformatted <path>` for each it changed. Exit 2 when a file could not be read"
+  fmt {:doc "cljfmt fix over <paths…> from --dir (default here) - the matrix's binary, the toolchain cache's else the PATH's - each path held to the first cljfmt config found from its own folder up, else from --dir's; `Reformatted <path>` for each it changed. Exit 2 when a file could not be read, or there is no cljfmt"
        :requires ([toolchain-fmt :as fmt])
-       :task (fmt/main :fix *command-line-args*)}
+       :task (fmt/main pack-dir :fix *command-line-args*)}
 
-  fmt-check {:doc "cljfmt check over <paths…> from --dir (default here), each file's config as `fmt` finds it: `<path> has incorrect formatting` and the diff, then the count, as cljfmt says them. Exit 1 for a file formatted incorrectly, 2 for one that could not be read"
+  fmt-check {:doc "cljfmt check over <paths…> from --dir (default here), the binary and each path's config as `fmt` finds them: `<path> has incorrect formatting` and the diff, then the count, as cljfmt says them. Exit 1 for a file formatted incorrectly, 2 for one that could not be read, or no cljfmt"
              :requires ([toolchain-fmt :as fmt])
-             :task (fmt/main :check *command-line-args*)}
+             :task (fmt/main pack-dir :check *command-line-args*)}
 
   toolchain-env {:doc "The shell lines for `eval \"$(bb toolchain-env)\"`: JAVA_HOME and PATH for the JDK the project pins (the download matrix's when none), and the line that has the shell load the workspace's .env - no value ever printed; any name taken, held by no repository, a line the shell would run or a program hook flagged, and a flagged file not loaded unless `env-accept` accepted it; a change to the file is added to the .env record (.env-record.edn beside it) - names, never a value. [<dir>], default KIT_WORKSPACE or here. Exit 1: nothing on stdout when the .env is flagged or a repository holds it; the keys line alone when no JDK of that major is found. JDK-only until 8.3c: the cache's bb, clj-kondo and clojure are not on its PATH line"
                  :requires ([toolchain-env :as env])

@@ -11,8 +11,8 @@
   adopter gets has its pins equal to known-good, the JDK apart.
 
   The pins: the download matrix (`tools/toolchain/download-matrix.edn`) for the tools the pack
-  fetches; the pack's `bb.edn` deps for its libraries, the Dockerfile's own until a library is the
-  pack's (cljfmt, clojure-mcp-light, bbin); the project set (`project-set.edn`) for what only a
+  fetches, cljfmt among them (plan 7.0, item 8.2a); the pack's `bb.edn` deps for its libraries, the
+  Dockerfile's own until a library is the pack's (clojure-mcp-light, bbin); the project set (`project-set.edn`) for what only a
   project runs (tailwindcss), and beside each tool it shares with the matrix; XTDB's, the one
   place the KIT writes it (`harness/health/xtdb/deps.edn`, plan 7.0, item 7.3); the template's and
   deps-new's tags (`template-pins.edn`). Installed: the doctor's probe of this machine where the
@@ -42,7 +42,7 @@
    {:tool :git :repo "git/git" :tag #"v(\d+\.\d+\.\d+)" :pin [[:download-matrix :git]] :probe :git}
    {:tool :geckodriver :repo "mozilla/geckodriver" :tag #"v(\d+\.\d+\.\d+)" :pin [[:download-matrix :geckodriver]] :probe :geckodriver}
    {:tool :cljfmt :repo "weavejester/cljfmt" :tag #"(\d+\.\d+\.\d+)"
-    :pin [[:pack-deps 'dev.weavejester/cljfmt] [:dockerfile "CLJFMT_VERSION"]] :probe :cljfmt :project :cljfmt}
+    :pin [[:download-matrix :cljfmt]] :probe :cljfmt :project :cljfmt}
    {:tool :clojure-mcp-light :repo "bhauman/clojure-mcp-light" :tag #"v(\d+\.\d+\.\d+)" :pin [[:dockerfile "MCP_LIGHT_TAG"]] :probe :clj-nrepl-eval}
    {:tool :bbin :repo "babashka/bbin" :tag #"v(\d+\.\d+\.\d+)" :pin [[:dockerfile "BBIN_VERSION"]] :probe :bbin}
    {:tool :xtdb :repo "xtdb/xtdb" :tag #"v(\d+\.\d+\.\d+)" :pin [[:xtdb-deps 'com.xtdb/xtdb-api]]}
@@ -226,8 +226,8 @@
   "What this machine has of each source: the doctor's probe of its row where the doctor has one
   (`doctor` is `bb doctor --edn`'s map) - the version, or the doctor's status when it found none -
   else, for a library the pack loads, `fetched`. THE PROBE FIRST (Fable 5.1's watch on `f9b5af8`,
-  plan 7.0, item 8.2a): cljfmt is a pack dependency and a binary the doctor probes, and its pin's
-  `fetched` would read the pin back - the drift `record-drift` exists to see, compared with itself."
+  plan 7.0, item 8.2a): a tool that is a pack dependency and a binary the doctor probes would read
+  its pin back by `fetched` - the drift `record-drift` exists to see, compared with itself."
   [pins doctor home]
   (let [by-probe (update-vals doctor #(or (:version %) (some-> (:status %) name)))]
     (into {}

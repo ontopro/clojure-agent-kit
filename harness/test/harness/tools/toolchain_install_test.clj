@@ -21,7 +21,7 @@
 (deftest the-plan-on-each-platform-and-cache
   (testing "a fresh cache on a Mac: bb kept as it runs, the JDK only when named, the rest installed"
     (let [s (steps :macos-aarch64 {:running {:bb "1.13.229"}})]
-      (is (= [:bb :java :clj-kondo :clojure] (keys s)) "no image-only tool")
+      (is (= [:bb :java :clj-kondo :clojure :cljfmt] (keys s)) "no image-only tool")
       (is (= :skip (:step (:bb s))))
       (is (str/includes? (:why (:bb s)) "the bb running this is 1.13.229, at or above 1.13.229"))
       (is (= "fetched only when named: --only java" (:why (:java s))))
@@ -119,8 +119,7 @@
 (def leaving
   "The Dockerfile's ARGs of tools the pack does not hold yet, each with the sub-task that removes it
   - deleted from this list by the commit that deletes its ARG (plan 7.0, item 8.1c, Q3)."
-  {"CLJFMT_VERSION" "8.2a: cljfmt the pack's dependency"
-   "BBIN_VERSION" "8.2d: bbin goes"
+  {"BBIN_VERSION" "8.2d: bbin goes"
    "MCP_LIGHT_TAG" "8.2d: clojure-mcp-light the pack's dependency"
    "MCP_LIGHT_SHA" "8.2d: clojure-mcp-light the pack's dependency"})
 
@@ -136,7 +135,7 @@
     (is (= {"BB_VERSION" "1.13.229" "GIT_VERSION" "2.56.0"} (select-keys args ["BB_VERSION" "GIT_VERSION"])))
     (is (= "https://github.com/babashka/babashka/releases/download/v1.13.229/babashka-1.13.229-linux-amd64-static.tar.gz"
            (get (dm/image-args matrix :linux-amd64) "BB_URL")))
-    (is (str/includes? dockerfile "toolchain-install \\\n      --only java,clj-kondo,clojure,geckodriver --link /usr/local/bin")
+    (is (str/includes? dockerfile "toolchain-install \\\n      --only java,clj-kondo,clojure,cljfmt,geckodriver --link /usr/local/bin")
         "the rest by the pack")
     ;; From Fable 5.1's read of 720f2af: a platform with no image is refused, never a map of nils
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no KIT toolchain image for macos-aarch64 - it is built for linux-aarch64, linux-amd64"

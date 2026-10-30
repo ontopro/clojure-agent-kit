@@ -68,6 +68,34 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### cljfmt is the download matrix's binary, run by the pack's `fmt` and `fmt-check`; gate 0 reads the pack's exit (plan 7.0, item 8.2a, as the person chose; From Fable 5.1's read of `a2fcad2`)
+
+`a2fcad2` made cljfmt a library the pack loads. The person, shown the cost - one file through gate 0,
+cljfmt alone, 87-103 ms by the library against 12-28 ms by the binary, on every write gate 0 repairs -
+chose the binary: "go with B. We can remove 'Intel Mac (darwin-amd64) build'" (the commit before this
+one). cljfmt is now a row of the download matrix: 0.16.6, darwin-aarch64, linux-aarch64 and
+linux-amd64-static, each sha256 taken by `toolchain-sum` and matching the publisher's `.sha256`;
+`toolchain-install` fetches it on a machine and the image installs and links it with the rest of the
+pack's tools. The library goes - the pack's `bb.edn` has no `:deps` again, and the image's `bb prepare`
+with it - and so does the Dockerfile's `CLJFMT_VERSION`: one owner of the version, the matrix, for the
+KIT's fmt gate, gate 0 and a project's gate 1 alike; `kit-pins` reads it there. The pack's `fmt` and
+`fmt-check` keep their arguments and the config rule - each path held to the first config found from
+its own folder up (a folder's from itself), else `--dir`'s - and run the binary, the cache's else the
+PATH's, once per config with `--config`; the config search is cljfmt's own names and order
+(`.cljfmt.edn`, `cljfmt.edn`; its `.clj` forms only when told). Exit 2 for no cljfmt, with the install
+command. From Fable 5.1's read of `a2fcad2`: the medium - gate 0 discarded the pack's exit, so a cljfmt
+that could not run left files reported repaired that the fmt gate then failed, the failure `format!`'s
+own docstring names - `repair!` now takes the first non-zero exit of the two and the pack's words into
+its `:out`; the low, `kit_pins`' docstring. Its low-medium (a second owner of the version unchecked) and
+its question on the doctor row's tier are answered by the binary: the matrix is the one owner, and the
+binary is the KIT's gate engine, so the row stays `:gates`. Measured here (macOS arm64, medians of five):
+one file through the pack 42-62 ms (bb's start about 30 of it) against 87-103 by the library; the KIT's
+whole fmt gate 7.3 s - the release binary is slower than Homebrew's build of the same version over a
+large batch, 7.3 s against 5.8 s run bare, and the matrix pins the release, whose sha256 the publisher
+states. Tests: `toolchain_fmt_test` (the config search and the runs as data, then the tasks as the gates
+run them), `repair_test` (a format that cannot run is gate 0's failure, in the pack's words),
+`kit_pins_test`, the matrix's and the install's.
+
 ### An Intel Mac is no longer a platform the KIT runs on (plan 7.0, item 8.2a)
 
 The person (2026-10-30), choosing cljfmt as a pinned binary over the pack's library for its speed (one

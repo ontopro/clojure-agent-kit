@@ -41,6 +41,16 @@
       (is (= [] (:repaired res)))
       (is (zero? (:exit res))))))
 
+(deftest a-format-that-cannot-run-is-gate-0s-failure-in-the-packs-words
+  ;; Fable 5.1's read of a2fcad2: the pack's exit was discarded, so a cljfmt that could not run left
+  ;; files reported repaired that the fmt gate then failed - the failure `format!` names.
+  (let [dir (str (fs/create-temp-dir))]
+    (spit (str (fs/path dir "fine.clj")) "(defn bar [x]\n  (dec x))\n")
+    (with-redefs [harness.gates.repair/format! (fn [_ _] {:exit 2 :out "" :err "fmt: no cljfmt - toolchain-install --only cljfmt\n"})]
+      (let [res (repair/repair! dir ["fine.clj"])]
+        (is (= 2 (:exit res)))
+        (is (str/includes? (:out res) "no cljfmt"))))))
+
 (deftest ensures-a-trailing-newline
   ;; cljfmt does not enforce one, and no later gate catches its absence —
   ;; only a code reviewer noticed, which is a frontier model doing a job a

@@ -44,7 +44,7 @@
 
  {:tool :cljfmt :via :flag :cmd ["cljfmt" "--version"] :req :required :tier :gates
   :does "Formatter"
-  :needed-for "A project's gate 1 - the application template's `bb fmt-check` runs the binary; the KIT's own gates and gate 0 run the toolchain pack's cljfmt"
+  :needed-for "Gate 1 and gate 0's format-on-write - the toolchain pack's `fmt` and `fmt-check` run it, and a project's `bb fmt-check`"
   :install "https://github.com/weavejester/cljfmt#installation"}
 
  {:tool :clj-kondo :via :flag :cmd ["clj-kondo" "--version"] :req :required :tier :gates

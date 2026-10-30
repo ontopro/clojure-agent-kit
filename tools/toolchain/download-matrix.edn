@@ -17,7 +17,7 @@
 ;; A sha256 is pasted from `toolchain-sum <tool>`, which takes it from the archive itself and sets it
 ;; beside the publisher's: a version moves with its sha256s, by the person, as a pin move does.
 ;; The floors a machine must meet stay in harness/resources/toolchain.edn (:min); a test holds bb
-;; and java here at or above them. cljfmt and clojure-mcp-light are the pack's bb.edn :deps.
+;; and java here at or above them. clojure-mcp-light will be the pack's bb.edn :deps (8.2d).
 {:bb {:version "1.13.229"
       :url "https://github.com/babashka/babashka/releases/download/v{version}/babashka-{version}-{asset}.tar.gz"
       :checksum-url "https://github.com/babashka/babashka/releases/download/v{version}/babashka-{version}-{asset}.tar.gz.sha256"
@@ -63,6 +63,17 @@
        :bin "bin/git"
        :os :linux
        :image-only true}
+
+ ;; the formatter, run by the pack's fmt and fmt-check - the KIT's fmt gate, gate 0 - and by a
+ ;; project's gate 1 (plan 7.0, item 8.2a); no darwin-amd64 build, so no Intel Mac
+ :cljfmt {:version "0.16.6"
+          :url "https://github.com/weavejester/cljfmt/releases/download/{version}/cljfmt-{version}-{asset}.tar.gz"
+          :checksum-url "https://github.com/weavejester/cljfmt/releases/download/{version}/cljfmt-{version}-{asset}.tar.gz.sha256"
+          :unpack :tar.gz
+          :bin "cljfmt"
+          :platforms {:macos-aarch64 {:asset "darwin-aarch64" :sha256 "6c357434d2c1f4d46e1f54d1c2954cb3d2f65cc158fcd3df91bc4f0231fa19bf"}
+                      :linux-aarch64 {:asset "linux-aarch64" :sha256 "ecda99b7270daa649ef0bfc01f15e73201e87917940642fde132ce8fc589bace"}
+                      :linux-amd64 {:asset "linux-amd64-static" :sha256 "a01efb0e42a10d0f448f0dfd6740d62ced058d6649487c608710c6378b73f1cb"}}}
 
  ;; the image's browser fallback; on a machine, geckodriver and Firefox stay the adopter's own
  :geckodriver {:version "0.37.1"

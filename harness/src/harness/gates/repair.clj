@@ -98,7 +98,8 @@
                 "tools" "toolchain" "bb.edn")))
 
 (defn- format!
-  "Run cljfmt over `files` - the toolchain pack's `fmt` (plan 7.0, item 8.2a), one call from `dir`.
+  "Run cljfmt over `files` - the toolchain pack's `fmt` (plan 7.0, item 8.2a), one call from `dir`;
+  the process's `{:exit :out :err}`.
 
   cljfmt searches ancestors for its config, so a file's config is the one found
   from beside it: whatever that file's project declares — and finds it by whatever name
@@ -151,15 +152,19 @@
               ;; "a well-placed gate 0 makes gate 1 nearly a no-op" is this
               ;; namespace's own claim, and it was not true of the one
               ;; mechanical difference that kept arising.
-              ;; Each file's config as cljfmt finds it — see `format!`.
-              _ (format! dir existing)
+              ;; Each file's config as cljfmt finds it — see `format!`. ITS EXIT IS READ
+              ;; (Fable 5.1's read of `a2fcad2`): a pack that cannot run - no cljfmt,
+              ;; a file it cannot read - is gate 0's failure, said with the pack's words,
+              ;; never files reported repaired that the fmt gate then fails.
+              fmt (format! dir existing)
               ;; after both, so neither can strip what we just added
               newlines (vec (keep #(ensure-trailing-newline! dir %) existing))]
           {:repaired (vec existing)
            :missing (vec missing)
            :newlines newlines
-           :exit (:exit res)
-           :out (str (:out res) (:err res))}))
+           :exit (if (zero? (:exit res)) (:exit fmt) (:exit res))
+           :out (str (:out res) (:err res)
+                     (when-not (zero? (:exit fmt)) (str (:out fmt) (:err fmt))))}))
       {:repaired [] :missing (vec missing) :newlines [] :exit 0 :out ""})))
 
 (defn -main
