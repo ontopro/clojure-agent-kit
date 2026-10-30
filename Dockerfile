@@ -8,36 +8,17 @@
 # THE VERSIONS ARE THE DOWNLOAD MATRIX'S (`tools/toolchain/download-matrix.edn`), and the image
 # installs its tools BY RUNNING THE TOOLCHAIN PACK (plan 7.0, item 8.1c, D-9): one implementation
 # of every layout and sha256 check, and `toolchain-install` proved on Linux at every build. Only
-# what the shell fetches before bb exists comes in as build arguments - bb and git, each its
-# version, URL and sha256, which `docker-image!` reads from the matrix for the platform built
-# (`bb --config tools/toolchain/bb.edn image-args <platform>`) - with no defaults here, since a
-# default is a second owner of the version; and KIT_AS_OF, the date below. bbin and
-# clojure-mcp-light are pinned here alone, said where they are installed, until 8.2d moves them to
-# the matrix - bbin a row, clojure-mcp-light installed by it.
+# what the shell fetches before bb exists comes in as build arguments - bb's version, URL and
+# sha256, which `docker-image!` reads from the matrix for the platform built (`bb --config
+# tools/toolchain/bb.edn image-args <platform>`) - with no defaults here, since a default is a
+# second owner of the version; and KIT_AS_OF, the date below. bbin and clojure-mcp-light are the
+# matrix's too (plan 7.0, item 8.2d). git is Ubuntu's package: a prerequisite the KIT pins nowhere
+# (8.2e), which the image had built from source to match a version no machine was held to.
 # Firefox ESR is Mozilla's repository's current ESR, which nothing here pins.
 #
 # NEVER A MOUNT OF THE WORKING TREE: the tasks mount the repository read-only and `git clone`
 # HEAD inside, so what is checked is what is committed, and nothing the container writes
 # reaches the tree.
-
-# ---------------------------------------------------------------------------------------
-# git at the matrix's version, built from source: Ubuntu 24.04's package is older, and a floor
-# the image falls under is a doctor note on every run. Built in its own stage so the KIT's
-# toolchain image carries no compiler; without its Rust parts, optional until git 3.0.
-FROM ubuntu:noble AS git-build
-ARG GIT_VERSION
-ARG GIT_URL
-ARG GIT_SHA256
-RUN apt-get update && apt-get install -y --no-install-recommends \
-      build-essential ca-certificates curl gettext libcurl4-openssl-dev libexpat1-dev \
-      libssl-dev xz-utils zlib1g-dev \
- && rm -rf /var/lib/apt/lists/*
-RUN curl -fsSL -o /tmp/git.tar.xz "${GIT_URL}" \
- && echo "${GIT_SHA256}  /tmp/git.tar.xz" | sha256sum -c - \
- && tar -xJ -C /tmp -f /tmp/git.tar.xz \
- && cd "/tmp/git-${GIT_VERSION}" \
- && make -j"$(nproc)" prefix=/opt/git NO_RUST=1 NO_TCLTK=1 NO_GETTEXT=1 NO_PERL=1 NO_PYTHON=1 install \
- && rm -rf /tmp/git.tar.xz "/tmp/git-${GIT_VERSION}"
 
 # ---------------------------------------------------------------------------------------
 # The KIT's toolchain image: Ubuntu 24.04 (noble); the JDK is the matrix's Temurin, installed by
@@ -51,7 +32,7 @@ ARG TARGETARCH
 
 ENV DEBIAN_FRONTEND=noninteractive \
     KIT_TOOLCHAIN_DIR=/opt/kit-toolchain \
-    PATH=/opt/git/bin:${PATH}
+    PATH=${PATH}
 
 # THE SET'S DATE, known-good's `:as-of`, used before the first layer that installs packages: a
 # new health record rebuilds the operating-system layer and every layer after it, where the
@@ -60,12 +41,11 @@ ENV DEBIAN_FRONTEND=noninteractive \
 ARG KIT_AS_OF
 RUN echo "${KIT_AS_OF}" > /etc/kit-toolchain-as-of
 
-# What the tools and the health check lean on: a shell, curl, unzip and xz for the downloads,
-# rlwrap for the Clojure CLI's `clj`, the libraries git links, and Firefox ESR with its fonts
-# from Mozilla's apt repository (ESR, the one the KIT's browser pack is tried on).
+# What the tools and the health check lean on: a shell, git (Ubuntu's), curl, unzip and xz for the
+# downloads, rlwrap for the Clojure CLI's `clj`, and Firefox ESR with its fonts from Mozilla's apt
+# repository (ESR, the one the KIT's browser pack is tried on).
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      ca-certificates curl gnupg unzip xz-utils rlwrap \
-      libcurl4 libexpat1 zlib1g \
+      ca-certificates curl git gnupg unzip xz-utils rlwrap \
  && install -d -m 0755 /etc/apt/keyrings \
  && curl -fsSL https://packages.mozilla.org/apt/repo-signing-key.gpg \
       -o /etc/apt/keyrings/packages.mozilla.org.asc \
@@ -77,7 +57,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && ln -s /usr/bin/firefox-esr /usr/local/bin/firefox \
  && rm -rf /var/lib/apt/lists/*
 
-COPY --from=git-build /opt/git /opt/git
 
 # bb, the one tool the pack cannot install, since the pack runs on it: the matrix's archive for
 # this platform, its sha256 checked before it is opened.

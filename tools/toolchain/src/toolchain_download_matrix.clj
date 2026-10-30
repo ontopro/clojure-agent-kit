@@ -78,16 +78,15 @@
 (defn asset
   "Tool `tool`'s archive for `platform`: `{:tool :version :platform :url :file :sha256 :checksum-url}`,
   `:checksum-url` nil where the publisher publishes none. A tool with one archive for every
-  platform (no `:platforms`) gives that one - on every platform of its `:os` when it names one, a
-  source tarball that builds on one OS. A platform the tool has no archive for is nil."
+  platform (no `:platforms`) gives that one. A platform the tool has no archive for is nil."
   [matrix tool platform]
-  (let [{:keys [version url checksum-url platforms sha256 os] :as row} (get matrix tool)
+  (let [{:keys [version url checksum-url platforms sha256] :as row} (get matrix tool)
         p (if platforms (get platforms platform) {:sha256 sha256})]
     (cond
       ;; no archive: the repository and its commit, on every platform
       (bbin? matrix tool) {:tool tool :version version :platform platform
                            :git/url (:git/url row) :git/sha (:git/sha row)}
-      (and version p (or (nil? os) (nil? platform) (= os (os-of platform))))
+      (and version p)
       (let [u (fill url version (:asset p))]
         {:tool tool :version version :platform platform
          :url u :file (subs u (inc (str/last-index-of u "/")))
@@ -197,8 +196,9 @@
 
 (def image-tools
   "What the KIT's toolchain image fetches by shell, before bb exists, and so takes as build
-  arguments; every other tool it installs by running the pack (plan 7.0, item 8.1c, D-9)."
-  [[:bb "BB"] [:git "GIT"]])
+  arguments; every other tool it installs by running the pack (plan 7.0, item 8.1c, D-9). git is
+  Ubuntu's package there since 8.2e."
+  [[:bb "BB"]])
 
 (defn image-args
   "The KIT's toolchain image's build arguments for the Linux `platform` it is built for:

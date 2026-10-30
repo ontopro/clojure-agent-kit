@@ -10,10 +10,8 @@
 ;;   :platforms      per platform, the asset's spelling and its sha256; a tool without them has one
 ;;                   archive for every platform and its :sha256 beside :url
 ;;   :bin            the executable, under <cache>/<tool>/<version>/ - for the JDK, under its :home
-;;   :os             for an archive of every platform that builds on one OS (a source tarball):
-;;                   that OS's platforms alone take it
 ;;   :image-only     installed only where named (`--only`): the KIT's toolchain image names them
-;;   :unpack         how the file becomes the tool: :tar.gz, :zip, :tar.xz, :file (the download is the
+;;   :unpack         how the file becomes the tool: :tar.gz, :zip, :file (the download is the
 ;;                   executable), :bbin (no download: installed by the folder's bbin from :git/url at
 ;;                   :git/sha, each of :commands into bin/, its header naming the commit)
 ;;
@@ -56,16 +54,6 @@
            :sha256 "fe9194858e75d5af13c2e2aff92d710674d5bc5105f2b42f90a7d94d82ec023c"
            :unpack :tar.gz
            :bin "bin/clojure"}
-
- ;; the KIT's toolchain image builds git from its source; never installed on a machine
- :git {:version "2.56.0"
-       :url "https://mirrors.edge.kernel.org/pub/software/scm/git/git-{version}.tar.xz"
-       :checksum-url "https://mirrors.edge.kernel.org/pub/software/scm/git/sha256sums.asc"
-       :sha256 "26c56c296b38c0695b26fa95f475f1d01704d2d38e73465ca30b0b2f5dc789d3"
-       :unpack :tar.xz
-       :bin "bin/git"
-       :os :linux
-       :image-only true}
 
  ;; the formatter, called by name by the KIT's fmt gate, gate 0 and a
  ;; project's gate 1 (plan 7.0, item 8.2a); no darwin-amd64 build, so no Intel Mac

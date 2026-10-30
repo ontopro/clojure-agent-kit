@@ -68,6 +68,38 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### The KIT's toolchain image takes Ubuntu's git: its build stage, the matrix's git row and every check of the image's git go (plan 7.0, item 8.2e)
+
+git is a prerequisite, as bb is ("The second fold"): the KIT pins no git on a machine, and the image built
+git 2.56.0 from source only to match a version no one was held to. The person: "go 8.2e".
+- **The Dockerfile**: the `git-build` stage (its compiler, its source fetch, its `GIT_*` arguments), the
+  `COPY --from=git-build` and `/opt/git/bin` on the PATH go; `git` joins the one apt layer. Its header says
+  so, and no longer that bbin and clojure-mcp-light are pinned there (8.2d's straggler).
+- **The download matrix**: the git row goes, and with it the `:os` key only it used (the format's comment,
+  `asset`'s branch). `image-tools` is bb alone, so `image-args` gives `BB_*` alone.
+- **The checks**: `kit-pins` has no git row; `recorded-tools`' Linux git and `record-drift`'s `linux?`
+  argument go (`bb health --record` calls it with the rows alone); `tag-check`'s `versions` line loses its
+  git pair, and so its `linux` argument and the Linux record's read. known-good keeps git as recorded only;
+  the next `bb docker-health` records Ubuntu's.
+- **The documents**: the pack's README (the git row, the image-only paragraph), `tools/README.md`, the
+  harness README's image paragraph, the root `bb.edn`'s comment and `kit-pins`' doc (which still named "the
+  Dockerfile's own" pins - 8.2d's straggler).
+
+**What it changed in time** (the person: "time it and see if this git change makes it quicker"). The image
+built cold, `docker build --no-cache --pull` with `docker-image!`'s arguments, from a clone of `edbefdb` and
+from this tree, one run each on this Mac (`.local/timing/image-build/time-build.bb`, its logs beside it):
+
+| | wall | the apt layer | the toolchain install | export | image | git |
+|---|---|---|---|---|---|---|
+| before | 74.5 s | 39.8 s | 13.0 s | 18.4 s | 1.89 GB | 2.56.0 |
+| after | 59.8 s | 27.5 s | 11.6 s | 18.1 s | 1.72 GB | 2.43.0 |
+
+Before, BuildKit ran the git stage (its apt 15.3 s, the compile 19.6 s) beside the main apt layer, not before
+it, so the compile was off the critical path; the 15 s are mostly that apt layer, which shared the machine
+with it. One run each: a second pair could move the gap by seconds. A warm build was not slower before - the
+git stage was cached (0 s) on every build that did not change its inputs - and `bb docker-gates`' four minutes
+are mostly the gates inside the container, about three, which this does not touch.
+
 ### A second install no longer replaces `clj-nrepl-eval` with a link to itself; bbin's failure said by its message (From Fable 5.1's read of `db92690`)
 
 The defect `db92690`'s entry named open, in `3dbdcda`: the plan's `:kept` step for clojure-mcp-light

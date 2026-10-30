@@ -1166,7 +1166,7 @@
             doctor (into {} (map (juxt :tool #(select-keys % [:version :status]))) doctor-results)
             rows (kit-pins/rows pins (kit-pins/installed pins doctor (System/getProperty "user.home")) {} nil)]
         (when-let [why (kit-pins/drift-refusal
-                        (kit-pins/record-drift rows (str/starts-with? (System/getProperty "os.name") "Linux")))]
+                        (kit-pins/record-drift rows))]
           (say "  " why)
           (System/exit 1))))
     (say "\n  doctor: gates tier " (if (doctor/ok? doctor-results :gates) "ok" "NOT OK")

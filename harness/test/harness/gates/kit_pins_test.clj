@@ -13,7 +13,7 @@
   (is (zero? (tn/compare-versions "25.0.5" "25.0.5+8")) "Temurin's build is not the version"))
 
 (deftest the-newest-release-skips-what-is-not-one
-  (let [git-pattern (:tag (first (filter #(= :git (:tool %)) tn/sources)))
+  (let [git-pattern (:tag (first (filter #(= :bb (:tool %)) tn/sources)))
         java-pattern (:tag (first (filter #(= :java (:tool %)) tn/sources)))]
     (is (= "2.56.0" (tn/newest git-pattern ["v2.55.1" "v2.56.0" "v2.56.0-rc2" "v2.57.0-rc0"]))
         "a release candidate is never newest")
@@ -55,7 +55,7 @@
         by (into {} (map (juxt :tool :marks)) rows)]
     (is (= {:bb [:newer :installed-differs] :clj-kondo [:project-differs] :java [] :geckodriver [:unknown]
             :cljfmt [:unknown] :clojure-mcp-light [:unknown] :tailwindcss [:unknown] :template [:newer]
-            :deps-new [:unknown] :clojure [:unpinned] :git [:unpinned] :bbin [:unknown] :xtdb [:unpinned]}
+            :deps-new [:unknown] :clojure [:unpinned] :bbin [:unknown] :xtdb [:unpinned]}
            by)
         (str "the JDK's build is not a difference; a commit installed is not compared with a tag; a source "
              "no file carries is a row, unpinned (From Fable 5.1's read of 51ce107)"))
@@ -77,10 +77,10 @@
                (second t)))
         (is (some #(str/starts-with? % "tailwindcss        -           4.3.3 (project set) ") t)
             "a tool only a project runs: nothing installed here, no project column of its own")
-        (is (some #(re-matches #"git +- +- +- +no file carries its pin" %) t) "a lost pin shows")))
+        (is (some #(re-matches #"clojure +- +- +- +no file carries its pin" %) t) "a lost pin shows")))
     ;; From Fable 5.1's read of 2267ee7: what this machine runs is so whether or not a file pins it
-    (is (some #(re-matches #"git +2\.56\.0 +- +- +no file carries its pin" %)
-              (tn/table (tn/rows (tn/pins files project-set) {:git "2.56.0"} {} project-set))))
+    (is (some #(re-matches #"clojure +1\.12\.6\.1673 +- +- +no file carries its pin" %)
+              (tn/table (tn/rows (tn/pins files project-set) {:clojure "1.12.6.1673"} {} project-set))))
     ;; plan 7.0, item 8.2d: a commit pin is equal or not, its newest the default branch's tip - moved,
     ;; never newer (From Fable 5.1's read of 3dbdcda)
     (let [rows-for (fn [installed newest]
@@ -117,9 +117,9 @@
   ;; unusable - the machine the report is most for
   (is (= {:bb {:version "1.13.229" :status :ok} :git {:version nil :status :missing :req :required}}
          (tn/read-doctor "{:bb {:version \"1.13.229\" :status :ok} :git {:version nil :status :missing :req :required}}")))
-  (is (= {:bb "1.13.229" :git "missing"}
-         (tn/installed {:bb {:version "1.13.225" :from :download-matrix} :git {:version "2.56.0" :from :download-matrix}}
-                       (tn/read-doctor "{:bb {:version \"1.13.229\" :status :ok} :git {:version nil :status :missing}}")
+  (is (= {:bb "1.13.229" :clj-kondo "missing"}
+         (tn/installed {:bb {:version "1.13.225" :from :download-matrix} :clj-kondo {:version "2026.10.26" :from :download-matrix}}
+                       (tn/read-doctor "{:bb {:version \"1.13.229\" :status :ok} :clj-kondo {:version nil :status :missing}}")
                        "/nowhere")))
   (is (= {} (tn/read-doctor "")) "no output")
   (is (= {} (tn/read-doctor "toolchain: not ready")) "not a map"))
@@ -129,10 +129,10 @@
         pins {:bb {:version "1.13.225" :from :download-matrix}
               :cljfmt {:version "0.16.6" :from :download-matrix}
               :clojure-mcp-light {:version "d341c23" :from :download-matrix}
-              :git {:version "2.56.0" :from :download-matrix}}
+              :clj-kondo {:version "2026.10.26" :from :download-matrix}}
         doctor {:bb {:version "1.13.229" :status :ok} :cljfmt {:version "0.16.6" :status :ok}
-                :clj-nrepl-eval {:version "d341c23" :status :ok} :git {:version nil :status :missing}}]
-    (is (= {:bb "1.13.229" :cljfmt "0.16.6" :clojure-mcp-light "d341c23" :git "missing"}
+                :clj-nrepl-eval {:version "d341c23" :status :ok} :clj-kondo {:version nil :status :missing}}]
+    (is (= {:bb "1.13.229" :cljfmt "0.16.6" :clojure-mcp-light "d341c23" :clj-kondo "missing"}
            (tn/installed pins doctor home))
         "a tool the doctor probes is its probe, never its pin read back (Fable 5.1's watch on f9b5af8)")
     (is (= "0.16.5" (:cljfmt (tn/installed pins (assoc-in doctor [:cljfmt :version] "0.16.5") home)))
@@ -151,16 +151,15 @@
 
 (deftest a-record-is-refused-over-a-drifted-tool
   ;; the person, 2026-10-29: "As part of the 'bb health --record' run, it runs the report and if there
-  ;; are differences, it stops" - over the tools tag-check's versions line holds, git only in the image
+  ;; are differences, it stops" - over the tools tag-check's versions line holds; git is no pin (8.2e)
   (let [pins {:bb {:version "1.13.229" :from :download-matrix} :git {:version "2.56.0" :from :download-matrix}
               :java {:version "25.0.5+8" :from :download-matrix} :geckodriver {:version "0.37.1" :from :download-matrix}
               :clj-kondo {:version "2026.10.26" :from :download-matrix}}
         rows (tn/rows pins {:bb "1.13.230" :git "2.57.0" :java "25.0.4" :geckodriver "0.36.0" :clj-kondo "2026.10.26"} {} nil)]
-    (is (= [:bb] (map :tool (tn/record-drift rows false)))
-        "a Mac's git is brew's, the JDK any 21 and newer, geckodriver no record's - only bb")
-    (is (= [:bb :git] (map :tool (tn/record-drift rows true))) "in the image, its git is the matrix's")
-    (is (nil? (tn/drift-refusal (tn/record-drift (tn/rows pins {:bb "1.13.229"} {} nil) false))) "no drift, no refusal")
-    (let [r (tn/drift-refusal (tn/record-drift rows false))]
+    (is (= [:bb] (map :tool (tn/record-drift rows)))
+        "git no pin, the JDK any 21 and newer, geckodriver no record's - only bb")
+    (is (nil? (tn/drift-refusal (tn/record-drift (tn/rows pins {:bb "1.13.229"} {} nil)))) "no drift, no refusal")
+    (let [r (tn/drift-refusal (tn/record-drift rows))]
       (is (str/starts-with? r "--record refused: this machine runs other versions than the KIT pins"))
       (is (str/includes? r "    bb  installed 1.13.230, pinned 1.13.229 (matrix)"))
       (is (str/ends-with? r "then run this again. Nothing was run.")))))

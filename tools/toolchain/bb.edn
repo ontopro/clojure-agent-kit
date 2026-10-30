@@ -32,7 +32,7 @@
               :requires ([toolchain-env :as env])
               :task (env/accept-main pack-dir *command-line-args*)}
 
-  image-args {:doc "The KIT's toolchain image's build arguments for a Linux platform (linux-aarch64, linux-amd64), as an EDN map: bb's and git's version, URL and sha256 from the download matrix - what the image fetches by shell before bb exists. Read by the root `docker-image!`"
+  image-args {:doc "The KIT's toolchain image's build arguments for a Linux platform (linux-aarch64, linux-amd64), as an EDN map: bb's version, URL and sha256 from the download matrix - what the image fetches by shell before bb exists. Read by the root `docker-image!`"
               :requires ([toolchain-download-matrix :as dm])
               :task (try (prn (dm/image-args (dm/read-matrix (str pack-dir "/download-matrix.edn"))
                                              (some-> (first *command-line-args*) keyword)))

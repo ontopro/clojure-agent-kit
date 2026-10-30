@@ -50,9 +50,9 @@
             ;; with the base pulled and that date a build argument (KIT_AS_OF) - so a new health
             ;; record rebuilds the operating-system layer, which the cache had kept as old as the
             ;; first build (register row 131). The image installs its tools by running the toolchain
-            ;; pack; bb and git, which it fetches before bb exists, come in as build arguments the
-            ;; pack prints from the download matrix for the platform Docker builds (plan 7.0, item
-            ;; 8.1c). `in-container!` clones HEAD from the read-only mount and runs one script,
+            ;; pack; bb, which it fetches before bb exists, comes in as build arguments the pack
+            ;; prints from the download matrix for the platform Docker builds (plan 7.0, item 8.1c);
+            ;; git is Ubuntu's package (8.2e). `in-container!` clones HEAD from the read-only mount and runs one script,
             ;; everything to a log under .local/gates/ and to the terminal, and the script's exit
             ;; is the task's.
             (def known-good-file "harness/resources/known-good.edn")
@@ -164,7 +164,7 @@
               :task (let [{:keys [exit]} (apply shell {:continue true} "bb" "--config" "tools/toolchain/bb.edn" "env-accept" *command-line-args*)]
                       (System/exit exit))}
 
-  kit-pins {:doc "The KIT's pins: each tool and library the KIT pins (the download matrix, the Dockerfile's own, XTDB's, the project set, the template's) as installed here, as pinned, and its newest release by git ls-remote; information, exit 0. A go or no-go per row is the person's (kit-session skill)"
+  kit-pins {:doc "The KIT's pins: each tool and library the KIT pins (the download matrix, XTDB's, the project set, the template's) as installed here, as pinned, and its newest release by git ls-remote; information, exit 0. A go or no-go per row is the person's (kit-session skill)"
             :requires ([harness.gates.kit-pins :as kit-pins])
             :task (kit-pins/-main)}
 

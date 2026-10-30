@@ -105,14 +105,11 @@
               :cljfmt {:version "0.16.6"} :git {:version "2.56.0"} :java {:version "25.0.5+8"}
               :clojure-mcp-light {:version "d341c23"}}
         good {:bb "1.13.229" :clj-kondo "2026.10.26" :clojure "1.12.6.1673" :cljfmt "0.16.6"
-              :clj-nrepl-eval "d341c23" :git "2.57.0" :java "21.0.12.1"}
-        linux {:git "2.56.0"}]
-    (is (:ok? (tc/versions-check pins good linux))
-        "the JDK not compared; git the image's record's, not the Mac's brew")
-    (let [c (tc/versions-check (assoc-in pins [:bb :version] "1.13.230") good linux)]
+              :clj-nrepl-eval "d341c23" :git "2.57.0" :java "21.0.12.1"}]
+    (is (:ok? (tc/versions-check pins good))
+        "the JDK not compared, nor git - whatever either side says")
+    (let [c (tc/versions-check (assoc-in pins [:bb :version] "1.13.230") good)]
       (is (not (:ok? c)))
       (is (= "bb pinned 1.13.230, recorded 1.13.229 - a health run records the pins: `bb tag-check <tag> --run`" (:detail c))))
-    (is (str/includes? (:detail (tc/versions-check pins good {:git "2.55.0"})) "git (the image's) pinned 2.56.0, recorded 2.55.0"))
-    (is (str/includes? (:detail (tc/versions-check (assoc-in pins [:clojure-mcp-light :version] "aaaaaaa") good linux)) "clojure-mcp-light pinned aaaaaaa, recorded d341c23"))
-    (is (str/includes? (:detail (tc/versions-check pins good nil)) "git (the image's) pinned 2.56.0, recorded nowhere")
-        "no Linux record")))
+    (is (str/includes? (:detail (tc/versions-check (assoc-in pins [:clojure-mcp-light :version] "aaaaaaa") good)) "clojure-mcp-light pinned aaaaaaa, recorded d341c23"))
+    (is (not (str/includes? (:detail (tc/versions-check pins good)) "git")) "git is no pin since 8.2e")))

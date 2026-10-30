@@ -45,8 +45,6 @@
          (dm/machine-tools matrix :linux-aarch64 [:java :clj-kondo :clojure :geckodriver]))
       "the KIT's toolchain image names them")
   (is (= [] (dm/machine-tools matrix :macos-aarch64 [:geckodriver])) "no archive for the platform")
-  (is (= [] (dm/machine-tools matrix :macos-aarch64 [:git])) "git builds on Linux alone (:os)")
-  (is (= [:git] (dm/machine-tools matrix :linux-amd64 [:git])))
   (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not in the download matrix: jaava - it has bb, java"
                         (dm/machine-tools matrix :linux-amd64 [:java :jaava]))))
 
@@ -136,9 +134,9 @@
                         "the publisher's checksum matches, the matrix has none yet"))))
 
 (deftest the-matrix-keeps-the-files-order
-  ;; plan 7.0, item 8.2d: nine tools - more than an array map holds when EDN reads them
-  (is (< 8 (count matrix)))
-  (is (= [:bb :java :clj-kondo :clojure :git :cljfmt :geckodriver :bbin :clojure-mcp-light] (keys matrix)))
+  ;; plan 7.0, item 8.2d: the order is read from the text, whatever the count (eight since 8.2e)
+  (is (= 8 (count matrix)))
+  (is (= [:bb :java :clj-kondo :clojure :cljfmt :geckodriver :bbin :clojure-mcp-light] (keys matrix)))
   (let [f (str (fs/create-temp-file {:prefix "matrix-" :suffix ".edn"}))]
     (spit f "{:a {:version \"1\"}\n :b {:version \"2\"}\n  :nested {:x {}}}")
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"each tool's key must open its line" (dm/read-matrix f))

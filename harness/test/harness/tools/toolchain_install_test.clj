@@ -44,8 +44,6 @@
       (is (= "/c/java/25.0.5+8" (get-in s [:java :dir])))
       (is (= "/c/java/25.0.5+8/jdk-25.0.5+8/bin/java" (get-in s [:java :bin])))
       (is (= "geckodriver-v0.37.1-linux-aarch64.tar.gz" (get-in s [:geckodriver :asset :file])))))
-  (testing "git is Linux's alone, and a Mac never takes it"
-    (is (empty? (dm/plan matrix "/c" :macos-aarch64 {:only [:git]}))))
   (testing "an unknown tool is refused by name"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not in the download matrix: nope"
                           (dm/plan matrix "/c" :linux-amd64 {:only [:nope]})))))
@@ -132,7 +130,8 @@
     (is (= (set (concat (keys args) ["KIT_AS_OF" "TARGETARCH"] (keys leaving))) (set (keys declared)))
         "every ARG is the matrix's, the date, Docker's own, or one leaving with its sub-task")
     (is (every? nil? (map declared (cons "KIT_AS_OF" (keys args)))) "no default for the matrix's or the date")
-    (is (= {"BB_VERSION" "1.13.229" "GIT_VERSION" "2.56.0"} (select-keys args ["BB_VERSION" "GIT_VERSION"])))
+    (is (= #{"BB_VERSION" "BB_URL" "BB_SHA256"} (set (keys args))) "bb alone: git is Ubuntu's (8.2e)")
+    (is (= "1.13.229" (get args "BB_VERSION")))
     (is (= "https://github.com/babashka/babashka/releases/download/v1.13.229/babashka-1.13.229-linux-amd64-static.tar.gz"
            (get (dm/image-args matrix :linux-amd64) "BB_URL")))
     (is (str/includes? dockerfile "toolchain-install \\\n      --only java,clj-kondo,clojure,cljfmt,geckodriver,bbin,clojure-mcp-light --link /usr/local/bin")

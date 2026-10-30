@@ -29,14 +29,13 @@ among them.
 | `clj-kondo` | clj-kondo's GitHub release | `.sha256` beside each archive |
 | `cljfmt` | cljfmt's GitHub release (darwin-aarch64, linux-aarch64, linux-amd64-static) | `.sha256` beside each archive |
 | `clojure` | the official CLI's tools tarball, one for every platform | none of its own; the sha256 is the one the official `posix-install.sh` embeds |
-| `git` | the source tarball, for the KIT's toolchain image only | `sha256sums.asc` at kernel.org |
 | `geckodriver` | Mozilla's GitHub release, Linux, for the KIT's toolchain image only | none: computed by `toolchain-sum` |
 | `bbin` | the one script at its release tag, `raw.githubusercontent.com` | none: computed by `toolchain-sum` |
 | `clojure-mcp-light` | its repository at a commit, installed by the `bbin` above: `clj-nrepl-eval`, `clj-paren-repair`, `clj-paren-repair-claude-hook` | none needed: git's own integrity, the commit named in full |
 
-`git` and `geckodriver` are `:image-only`: installed only where named, which the KIT's toolchain
-image does - never on a machine, where git and a browser are the person's own. git's source
-tarball is one archive for every platform, and its `:os :linux` keeps it to Linux's two.
+`geckodriver` is `:image-only`: installed only where named, which the KIT's toolchain image does -
+never on a machine, where a browser is the person's own. git is no row (plan 7.0, item 8.2e): a
+prerequisite, as bb is, the person's own on a machine and Ubuntu's package in the image.
 
 The floors a machine must meet stay in `harness/resources/toolchain.edn`, which `bb doctor` reads;
 a test holds the matrix's `bb` and `java` at or above them.

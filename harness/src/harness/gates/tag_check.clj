@@ -123,19 +123,17 @@
   "THE KIT AN ADOPTER GETS HAS ITS PINS EQUAL TO KNOWN-GOOD, the JDK apart (the person, 2026-10-29:
   \"The KIT that an Adopter gets should have matrix = known-good versions (with the Java exception
   noted)\"). `pins` as `kit-pins/pins` reads them, `good` known-good's `:tools` (the Mac
-  host's recorded run), `linux` the Linux health record's `:tools` (the KIT's toolchain image's
-  run). Compared: bb, clj-kondo, the Clojure CLI and cljfmt
-  with known-good; git with the Linux record's - the image's git is the matrix's, the Mac's is brew's,
-  moved by no one's decision; clojure-mcp-light's commit (the download matrix's, plan 7.0, item 8.2d)
+  host's recorded run). Compared: bb, clj-kondo, the Clojure CLI and cljfmt with known-good;
+  clojure-mcp-light's commit (the download matrix's, plan 7.0, item 8.2d)
   with known-good's `clj-nrepl-eval`. The JDK is not compared: known-good records the recording
-  machine's, and any 21 or newer is allowed (Fable 5.1's read of the versions decision)."
-  [pins good linux]
+  machine's, and any 21 or newer is allowed (Fable 5.1's read of the versions decision). git is not:
+  the KIT pins none since 8.2e - Ubuntu's in the image, the person's own on a machine."
+  [pins good]
   (let [pairs (concat
                ;; the tools a record must run at the pins, one list with `bb health --record`'s guard
                ;; (From Fable 5.1's read of `f9b5af8`)
                (for [t (sort kit-pins/recorded-tools)] [(name t) (get-in pins [t :version]) (get good t)])
-               [["clojure-mcp-light" (get-in pins [:clojure-mcp-light :version]) (:clj-nrepl-eval good)]
-                ["git (the image's)" (get-in pins [:git :version]) (:git linux)]])
+               [["clojure-mcp-light" (get-in pins [:clojure-mcp-light :version]) (:clj-nrepl-eval good)]])
         off (remove (fn [[_ pinned recorded]] (= pinned recorded)) pairs)]
     (check :versions (empty? off)
            (if (seq off)
@@ -269,8 +267,7 @@
     [(tree-check (git root "branch" "--show-current") (git root "status" "--porcelain"))
      (health-check (read-records root))
      (versions-check (kit-pins/read-pins root)
-                     (:tools (read-edn (fs/path root known-good-path)))
-                     (some->> (fs/glob (fs/path root records-dir) "linux-*.edn") (map str) sort first read-edn :tools))
+                     (:tools (read-edn (fs/path root known-good-path))))
      (devlog-check (slurp (str (fs/path root "DEVLOG.md"))) tag)
      (readme-check (slurp (str (fs/path root "README.md"))) tag)
      (tag-absent-check tag (git root "rev-parse" "-q" "--verify" (str "refs/tags/" tag))

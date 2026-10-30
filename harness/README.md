@@ -370,9 +370,10 @@ when the KIT held 21 exactly). Beside
 the machine's versions the doctor shows the KIT's known-good set, `resources/known-good.edn`,
 written by `bb health --record` from a run that passed - *newer than tested* is information.
 The KIT's toolchain image is built from the download matrix (`tools/toolchain/download-matrix.edn`):
-it installs its tools by running the toolchain pack, and only bb and git, which it fetches before
-bb exists, come in as the `Dockerfile`'s build arguments, read from the matrix - so there is no
-second list to keep; a health run in it records what the matrix's versions ran.
+it installs its tools by running the toolchain pack, and only bb, which it fetches before bb
+exists, comes in as the `Dockerfile`'s build arguments, read from the matrix - so there is no
+second list to keep; git is Ubuntu's package (plan 7.0, item 8.2e); a health run in it records
+what the matrix's versions ran.
 
 It also warns when `JAVA_HOME` is on a different major than the `java` on PATH. A pin that
 only checks PATH is defeated by any launcher that honours `JAVA_HOME`, and the two

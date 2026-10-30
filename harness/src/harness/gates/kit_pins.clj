@@ -42,7 +42,6 @@
    {:tool :java :repo "adoptium/temurin25-binaries" :tag #"jdk-(25\.\d+\.\d+(?:\.\d+)?)\+\d+" :pin [[:download-matrix :java]] :probe :java}
    {:tool :clj-kondo :repo "clj-kondo/clj-kondo" :tag #"v(\d+\.\d+\.\d+)" :pin [[:download-matrix :clj-kondo]] :probe :clj-kondo :project :clj-kondo}
    {:tool :clojure :repo "clojure/brew-install" :tag #"(\d+\.\d+\.\d+\.\d+)" :pin [[:download-matrix :clojure]] :probe :clojure :project :clojure}
-   {:tool :git :repo "git/git" :tag #"v(\d+\.\d+\.\d+)" :pin [[:download-matrix :git]] :probe :git}
    {:tool :geckodriver :repo "mozilla/geckodriver" :tag #"v(\d+\.\d+\.\d+)" :pin [[:download-matrix :geckodriver]] :probe :geckodriver}
    {:tool :cljfmt :repo "weavejester/cljfmt" :tag #"(\d+\.\d+\.\d+)"
     :pin [[:download-matrix :cljfmt]] :probe :cljfmt :project :cljfmt}
@@ -295,17 +294,16 @@
 
 (def recorded-tools
   "The tools whose versions a health record must have run at the KIT's pins - what `bb tag-check`'s
-  `versions` line holds to known-good: bb, clj-kondo, the Clojure CLI and cljfmt; and git where the
-  record is the KIT's toolchain image's (Linux), whose git is the matrix's - a Mac's is brew's. The
-  JDK apart: any 21 or newer is allowed."
+  `versions` line holds to known-good: bb, clj-kondo, the Clojure CLI and cljfmt. The JDK apart: any
+  21 or newer is allowed. git is no pin since 8.2e: a prerequisite, Ubuntu's in the KIT's toolchain
+  image."
   #{:bb :clj-kondo :clojure :cljfmt})
 
 (defn record-drift
-  "The rows of `rows` a health record must not be written over: one of `recorded-tools` (git too when
-  `linux?`) that this machine runs at another version than the KIT pins - pure."
-  [rows linux?]
-  (let [guarded (cond-> recorded-tools linux? (conj :git))]
-    (filter #(and (guarded (:tool %)) (some #{:installed-differs} (:marks %))) rows)))
+  "The rows of `rows` a health record must not be written over: one of `recorded-tools` that this
+  machine runs at another version than the KIT pins - pure."
+  [rows]
+  (filter #(and (recorded-tools (:tool %)) (some #{:installed-differs} (:marks %))) rows))
 
 (defn drift-refusal
   "What `bb health --record` says when `drift` is not empty, or nil: each row, then the two ways out
