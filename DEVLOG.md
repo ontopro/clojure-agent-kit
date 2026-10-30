@@ -68,14 +68,34 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### The workspace `.env` in the documents: setup's last two steps, the orientation, the profile's rule, and its limit in the register (plan 7.0, item 8.6c)
+
+Written once, with 8.6d's final shape (the person: "go, 8.6d before 8.6c"). `workflow.md`: SETUP's
+boxes end with the keys into `.env`, `eval "$(bb toolchain-env)"`, `bb profile` and `claude` from that
+shell, and step 0's row says so and lists the `.env` among what setup leaves. The root README's *How to
+use KIT* gains steps 5 and 6 - fill the `.env` (one key per project, a limit at the provider; mode 600,
+no repository, the session denied it; a `DATABASE_URL` or a `PORT` beside the keys), load it and check
+with `bb profile`, what a flag means and `bb env-accept`, the `.env` record - and an IMPORTANT callout:
+the keys reach a session only through the shell that starts it, so the `eval` is run in that terminal
+and again, with `claude` restarted, after a change. `kit-start`'s part 1 names the file and tells the
+session never to read it. `portability.md`: where a `:key-env`'s value lives, and that the harness never
+reads the file. `harness/AGENTS.md`: the init row names the `.env` and `settings.json`; rows for `bb
+toolchain-env` and `bb env-accept`. And Fable 5.1's wording nit from the read of `cef1494`: `/path` in a
+deny rule is relative to the session's primary working directory, the folder a project settings file
+is read from - `init/env-deny-rules`' docstring and step 3's entry say so. `NOTES.md` row 236, on watch
+by design: the keys reach the session's Coder (its nREPL runs on the host as the same user), and every
+guard on the file is said with what it does not cover - a rail, not a lock; containment stays the
+sandbox's. `harness/README.md`'s Prerequisites wait for 8.3's rewrite, as the design note placed them.
+
 ### `bb init` writes the `.env` at 600 and the session's deny rules; `bb upgrade` adds them; a readable `.env` is said (plan 7.0, item 8.6d, step 3)
 
 The design note's layer 2, as Fable 5.1's read corrected it. `bb init` writes the `.env` template with
 mode `600` (owner read and write) and the workspace's `.claude/settings.json` with three deny rules,
 `init/env-deny-rules`: `Read(/.env)`, `Edit(/.env)`, `Edit(/.env-record.edn)`. No `Write` rule - Claude
 Code matches path rules for `Read` and `Edit` only, accepts a `Write` rule and never matches it, and a
-`Read` deny blocks Edit and Write too (its permissions page). `/path` is relative to the settings
-file's folder, and the file is read by a session opened in the workspace, the one kit-start opens. A
+`Read` deny blocks Edit and Write too (its permissions page). `/path` is relative to the session's
+primary working directory, which for a project settings file is the folder it was read from - the
+workspace, for a session opened there, the one kit-start opens (worded so at Fable 5.1's read of `cef1494`). A
 guard rail, not a lock: Claude's file tools, the shell commands Claude Code recognizes and redirections,
 never a program that opens the file itself - the docstring says so. The keys still reach the build: the
 person's shell sources the file before `claude` starts, and the harness reads keys by `System/getenv`

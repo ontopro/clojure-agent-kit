@@ -196,8 +196,10 @@
 (def env-deny-rules
   "The workspace session's deny rules for the `.env` and its record (plan 7.0, item 8.6d): Claude Code
   matches path rules for `Read` and `Edit` only - a `Write` rule is accepted and never matched - and a
-  `Read` deny blocks Edit and Write on the path too. `/path` is relative to the settings file's folder,
-  the workspace; the file is read by a session opened there, the one kit-start opens. A guard rail, not
+  `Read` deny blocks Edit and Write on the path too. `/path` is relative to the session's primary
+  working directory, which for a project settings file is the folder it was read from: the workspace,
+  for a session opened there - the one kit-start opens. Moved into `~/.claude/settings.json`, the same
+  rule would name `~/.claude/.env`. A guard rail, not
   a lock: they cover Claude's file tools, the shell commands Claude Code recognizes (`cat`, `sed`,
   `tee`...) and redirections, never a program that opens the file itself. The record's Read stays open:
   names and sha256s, never a value. The keys still reach the build - the person's shell sources the

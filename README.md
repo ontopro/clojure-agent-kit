@@ -97,12 +97,36 @@ There are basically 2 steps to use KIT:
     cd ..
     ```
 
+5. Put this project's keys in the workspace's `.env`. `bb init` wrote the names its profile needs,
+   each empty, with what uses it and where it is sent. One key per project, with a spending limit
+   set at the provider's console. The file is yours alone (mode `600`), no repository holds it, and
+   the Claude Code session is denied reading or editing it (`.claude/settings.json`). It may hold
+   what else the application needs too - a `DATABASE_URL`, a `PORT`.
+
+6. Load the JDK and the keys into this terminal, then check the profile sees them:
+
+    ```shell
+    eval "$(bb toolchain-env)"
+    bb profile
+    ```
+
+    - `toolchain-env` prints no value: it checks the `.env`, then prints the line that has your shell
+      read it. A line the shell would run (`$(...)`, a bare word) or a name a program reads its hooks
+      from (`PATH`, `GIT_*`, `BABASHKA_*`...) is flagged by its line number and nothing is loaded:
+      read it, change it, or accept the file as it is with `bb env-accept`.
+    - Each change it sees is noted in `.env-record.edn` beside it - the names added and removed, never
+      a value - so a `.env` that changed when you did not change it shows.
+
+> [!IMPORTANT]
+> The keys reach a session only through the shell that starts it. Run the `eval` in the terminal you
+> start `claude` from, and again - with `claude` restarted - after you change the `.env`.
+
 At this point you are all set to build your application.
 
 #### 2. Build the application
 
-- Make sure you are in the `<xyx>` directory.
-- Start a Claude Code session and type `/kit-start`.
+- Make sure you are in the `<xyx>` directory, in the terminal step 6 loaded.
+- Start a Claude Code session there (`claude`) and type `/kit-start`.
 - Claude walks you through:
   - the workspace directory structure
   - the approach: the opening of KIT's [`method.md`](method.md), then the steps in order from [`workflow.md`](workflow.md)

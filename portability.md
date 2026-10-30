@@ -461,6 +461,12 @@ The checks run in three tiers, because they answer differently:
 committed; a field that could hold a secret would eventually be handed one,
 and the violation reports the variable's name, never its value.
 
+The value lives in the workspace's `.env`, written by `bb init` with the profile's names, empty, and
+filled by the person. The harness never reads that file: the person's shell loads it before the
+session starts (`eval "$(bb toolchain-env)"`, which checks it first and prints no value), and the
+harness reads the variable from its environment, as it always has. A seat that starts its agent some
+other way loads the same file the same way, or sets the variables as it likes - the rule is the name.
+
 ## What the runner needed — all of it built
 
 Written up here before any of it existed; every line is now `harness.models.adapter`,

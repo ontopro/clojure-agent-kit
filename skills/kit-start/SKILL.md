@@ -51,7 +51,10 @@ Type next, or ask a question about the workspace.
 
 1. **The workspace.** Each folder and what it is for - KIT's clone (never written to; `bb upgrade`
    upgrades it), the application, the build (the plan, the settings, the records), `work/`,
-   `workspace.edn`, and `bb.edn`: every command is run from this folder.
+   `workspace.edn`, and `bb.edn`: every command is run from this folder. And the workspace `.env` -
+   this project's keys, loaded by the shell before the session starts (`eval "$(bb toolchain-env)"`),
+   never committed, and kept from this session's file tools by `.claude/settings.json`: never read it,
+   and send the person to it for a key.
 2. **The approach.** `method.md` from its opening to the "Distilled from…" callout: the stages
    and their kinds, the four steps every stage has, the plan thin at the start and revised at
    every stage's end. The phases as a table with a Status column, filled from the workspace's files
