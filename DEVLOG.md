@@ -68,6 +68,32 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### `--only clojure-mcp-light` finds the folder's bbin; kept-ness and the closing status follow `--link`; the commit one field; kit-pins' latest for a commit pin the default branch's tip (From Fable 5.1's read of `3dbdcda`)
+
+The person: "go, 1-3 plus the \"latest\" display".
+1. **The fix line `status` prints failed.** `toolchain-install --only clojure-mcp-light` filtered bbin out of
+   the steps, so the bbin step found no bbin and refused, with bbin sitting in the folder. `bbin-path`: an
+   earlier step's bbin, else the folder's at its cache path. Proved on a fresh scratch folder: `--only bbin`,
+   then `--only clojure-mcp-light`, the three wrappers written.
+2. **`--link` named where bbin writes, and nothing read there.** The plan's kept-ness and the closing
+   status looked in `<cache>/bin` while the image's wrappers went to `/usr/local/bin` - its build log said
+   "installed" and then "not installed". `plan` and `status/rows` take `:bin-dir`, `<cache>/bin` unless
+   the install's `--link` names another, and a bbin row's path is there.
+3. **One field for the commit.** The row carries `:git/sha` alone; `read-matrix` derives `:version`, its
+   first seven characters (`commit-version`), as known-good writes it, and `kit-pins` reads it the same way
+   (the harness cannot load the pack). No test holding two fields equal.
+4. **`bb kit-pins`' latest for a commit pin** is the default branch's tip, `git ls-remote <url> HEAD` -
+   the newest release tag, `v0.2.2`, beside a pin nine commits past it misled. A tip that is another commit
+   is marked `default branch moved` (`:moved`), never `newer released`: a commit has no order. Its line is
+   among those `bb kit-status` and `bb tag-check` print. Live: `clojure-mcp-light d341c23 … latest d341c23`.
+
+**Found while proving 1, in `3dbdcda` itself - not fixed here.** A second `toolchain-install` over a folder
+that already has clojure-mcp-light replaces `<folder>/bin/clj-nrepl-eval` with a symbolic link to itself:
+the plan's `:kept` step carries no `:kind :bbin`, so `link-targets` links it, deleting the wrapper first. Its
+DEVLOG entry's "a second run kept both" was true of the line printed and not of the folder: the `--help`
+check after it ran the other two commands. The image installs once and is not touched. It goes to the
+person as the next commit.
+
 ### bbin a row of the download matrix; clojure-mcp-light installed by it at the matrix's commit, each wrapper's header checked; the doctor reads that header, no `bbin ls` (plan 7.0, item 8.2d)
 
 **What was found first.** The KIT said it pinned clojure-mcp-light at its `v0.2.2` tag (the Dockerfile's

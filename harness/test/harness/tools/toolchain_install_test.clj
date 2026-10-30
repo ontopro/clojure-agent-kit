@@ -215,3 +215,18 @@
     (spit f "#!/usr/bin/env bb\n")
     (install/unpack! f :file (str (fs/path dir "out")) "bbin")
     (is (= "#!/usr/bin/env bb\n" (slurp (str (fs/path dir "out" "bbin")))))))
+
+(deftest the-folders-bbin-and-where-bbin-writes
+  ;; From Fable 5.1's read of 3dbdcda
+  (testing "--only clojure-mcp-light: the folder's bbin, by its path, when no step brought it"
+    (is (= "/c/bbin/0.2.5/bbin" (install/bbin-path [] matrix "/c" :linux-amd64 #{"/c/bbin/0.2.5/bbin"})))
+    (is (nil? (install/bbin-path [] matrix "/c" :linux-amd64 #{})) "none in the folder: the step refuses")
+    (is (= "/s/bbin" (install/bbin-path [{:tool :bbin :step :installed :bin "/s/bbin"}] matrix "/c" :linux-amd64 #{}))
+        "an earlier step's first"))
+  (testing "--link: kept-ness and the step's path follow where bbin writes"
+    (let [heads (into {} (for [n ["clj-nrepl-eval" "clj-paren-repair" "clj-paren-repair-claude-hook"]] [(str "/usr/local/bin/" n) mcp-sha]))
+          s (steps :linux-amd64 {:bin-dir "/usr/local/bin" :commit-of heads})]
+      (is (= {:step :kept :bin "/usr/local/bin/clj-nrepl-eval"} (select-keys (:clojure-mcp-light s) [:step :bin])))
+      (is (= "/c/bbin/0.2.5/bbin" (get-in s [:bbin :bin])) "an archive's tool stays in the cache")
+      (is (= :install (:step (:clojure-mcp-light (steps :linux-amd64 {:commit-of heads}))))
+          "the same wrappers are not in <cache>/bin"))))

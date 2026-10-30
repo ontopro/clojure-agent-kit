@@ -82,14 +82,16 @@
   `toolchain-install` skips it then (the plan's rule), the row carrying `:running`. A row not
   present carries `:fix`, the pack's command that installs it, runnable as printed: `config` is the
   pack's `bb.edn`. A bbin row is present when each command in `<cache>/bin/` names its commit
-  (`commit-of`, a path to the commit its header names; `toolchain-download-matrix/in-cache?`)."
-  [matrix cache platform present? {:keys [running config commit-of] :or {commit-of (constantly nil)}}]
+  (`commit-of`, a path to the commit its header names; `toolchain-download-matrix/in-cache?`) - in
+  `bin-dir`, where bbin wrote them: `<cache>/bin` unless the install's `--link` named another."
+  [matrix cache platform present? {:keys [running config commit-of bin-dir] :or {commit-of (constantly nil)}}]
   (for [t (dm/machine-tools matrix platform nil)
         :let [v (:version (get matrix t))
-              p (dm/bin-path matrix cache t platform)
+              bin-dir (or bin-dir (str cache "/bin"))
+              p (if (dm/bbin? matrix t) (str bin-dir "/" (get-in matrix [t :bin])) (dm/bin-path matrix cache t platform))
               run (when (= :bb t) (get running :bb))
               running? (boolean (and run (not (neg? (dm/compare-versions run v)))))
-              here? (or running? (dm/in-cache? matrix t p (str cache "/bin") present? commit-of))]]
+              here? (or running? (dm/in-cache? matrix t p bin-dir present? commit-of))]]
     (cond-> {:tool t :version v :path p :present? here?}
       running? (assoc :running run)
       (not here?) (assoc :fix (str "bb --config " config " toolchain-install --only " (name t))))))

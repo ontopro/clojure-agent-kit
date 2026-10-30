@@ -263,6 +263,14 @@
                       {:command n :commit got}))))
   (:bin step))
 
+(defn bbin-path
+  "The bbin a bbin step runs: the one an earlier step of `done` installed or kept, else the folder's at
+  its cache path when it is there (`executable?`) - `--only clojure-mcp-light`, the fix line `status`
+  prints, names no bbin (From Fable 5.1's read of `3dbdcda`). Nil when neither."
+  [done matrix cache platform executable?]
+  (or (some #(when (and (= :bbin (:tool %)) (#{:installed :kept} (:step %))) (:bin %)) done)
+      (let [p (dm/bin-path matrix cache :bbin platform)] (when (executable? p) p))))
+
 (defn link-targets
   "What `--link <dir>` links for each tool installed or kept, as `[name target]` - pure over the
   steps and `list-dir`: the JDK's every executable in its `bin/`, the Clojure CLI's `clojure` and
@@ -301,9 +309,9 @@
           matrix (dm/read-matrix (str pack-dir "/download-matrix.edn"))
           platform (dm/platform-key (System/getProperty "os.name") (System/getProperty "os.arch"))
           steps (dm/plan matrix cache platform {:only only :running {:bb (System/getProperty "babashka.version")}
-                                                :present? fs/executable? :commit-of status/commit-of})
-          ;; bbin, installed or kept by an earlier step, run by its path for a bbin step
-          bbin-of (fn [done] (some #(when (and (= :bbin (:tool %)) (#{:installed :kept} (:step %))) (:bin %)) done))]
+                                                :present? fs/executable? :commit-of status/commit-of
+                                                :bin-dir link})
+          bbin-of #(bbin-path % matrix cache platform fs/executable?)]
       (println (status/place-line at))
       (when note (println (str "  note: " note)))
       (println (str "toolchain-install into " cache " (" (name platform) ")" (when dry-run? " - a dry run, nothing fetched")))
@@ -323,8 +331,7 @@
                                            (if (= :bbin kind)
                                              (bbin-step! s (bbin-of done) link)
                                              (install-step! matrix s keep?))
-                                           (println (format "  %-17s %-16s installed, %s" (name tool) version
-                                                            (if (= :bbin kind) (str link "/" (fs/file-name bin)) bin)))
+                                           (println (format "  %-17s %-16s installed, %s" (name tool) version bin))
                                            (assoc s :step :installed))))))
                   [] steps)]
         ;; the status before the links, so a link that fails loses no line of it
@@ -332,7 +339,7 @@
                                     (status/rows matrix cache platform fs/executable?
                                                  {:running {:bb (System/getProperty "babashka.version")}
                                                   :config (str pack-dir "/bb.edn")
-                                                  :commit-of status/commit-of})))
+                                                  :commit-of status/commit-of :bin-dir link})))
         (when-not dry-run?
           (fs/create-dirs link)
           (doseq [[n target] (link-targets done #(sort (fs/list-dir %)))

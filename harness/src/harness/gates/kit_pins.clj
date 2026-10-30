@@ -12,7 +12,9 @@
 
   The pins: the download matrix (`tools/toolchain/download-matrix.edn`) for the tools the pack
   fetches, cljfmt among them (plan 7.0, item 8.2a), and bbin and clojure-mcp-light (8.2d) - the
-  latter a commit, compared by equality, never as a version; the project set (`project-set.edn`) for what only a
+  latter a commit, compared by equality, never as a version, its newest the default branch's tip
+  (`git ls-remote <url> HEAD`), marked `:moved` when it is another commit - never `:newer` (From Fable
+  5.1's read of `3dbdcda`: v0.2.2 beside a pin nine commits past it misled); the project set (`project-set.edn`) for what only a
   project runs (tailwindcss), and beside each tool it shares with the matrix; XTDB's, the one
   place the KIT writes it (`harness/health/xtdb/deps.edn`, plan 7.0, item 7.3); the template's and
   deps-new's tags (`template-pins.edn`). Installed: the doctor's probe of this machine where the
@@ -44,7 +46,7 @@
    {:tool :geckodriver :repo "mozilla/geckodriver" :tag #"v(\d+\.\d+\.\d+)" :pin [[:download-matrix :geckodriver]] :probe :geckodriver}
    {:tool :cljfmt :repo "weavejester/cljfmt" :tag #"(\d+\.\d+\.\d+)"
     :pin [[:download-matrix :cljfmt]] :probe :cljfmt :project :cljfmt}
-   {:tool :clojure-mcp-light :repo "bhauman/clojure-mcp-light" :tag #"v(\d+\.\d+\.\d+)" :pin [[:download-matrix :clojure-mcp-light]] :probe :clj-nrepl-eval}
+   {:tool :clojure-mcp-light :repo "bhauman/clojure-mcp-light" :head true :pin [[:download-matrix :clojure-mcp-light]] :probe :clj-nrepl-eval}
    {:tool :bbin :repo "babashka/bbin" :tag #"v(\d+\.\d+\.\d+)" :pin [[:download-matrix :bbin]] :probe :bbin}
    {:tool :xtdb :repo "xtdb/xtdb" :tag #"v(\d+\.\d+\.\d+)" :pin [[:xtdb-deps 'com.xtdb/xtdb-api]]}
    {:tool :tailwindcss :repo "tailwindlabs/tailwindcss" :tag #"v(\d+\.\d+\.\d+)" :pin [[:project-set :tailwindcss]]}
@@ -95,7 +97,8 @@
                 :deps-new (some->> (get-in template [:deps-new :git/sha]) (hash-map :lib 'io.github.seancorfield/deps-new :sha))}
         read (fn [[place k]]
                (case place
-                 :download-matrix (get-in matrix [k :version])
+                 ;; a bbin row names its commit alone: its first seven characters, as the pack reads it
+                 :download-matrix (or (get-in matrix [k :version]) (some-> (get-in matrix [k :git/sha]) (subs 0 7)))
                  :xtdb-deps (get-in xtdb-deps [k :mvn/version])
                  :project-set (get-in project-set [:tools k])
                  :template (case k
@@ -138,6 +141,7 @@
        (cond-> {:tool tool :pin pin :from from :installed inst :project proj :newest nw
                 :marks (cond-> []
                          (and nw (not (commit? pin)) (pos? (compare-versions nw pin))) (conj :newer)
+                         (and nw (commit? pin) (not (str/starts-with? nw pin)) (not (str/starts-with? pin nw))) (conj :moved)
                          (nil? nw) (conj :unknown)
                          other-major? (conj :other-major)
                          (and (differs? inst) (not other-major?)) (conj :installed-differs)
@@ -149,17 +153,18 @@
   "A row as one line, for `bb kit-status` and `bb tag-check`."
   [{:keys [tool pin newest marks]}]
   (cond (some #{:newer} marks) (str (name tool) " " pin " -> " newest " released")
+        (some #{:moved} marks) (str (name tool) " " pin " - its default branch is at " newest " (a commit pin: moved, not newer)")
         (some #{:unknown} marks) (str (name tool) " " pin " - newest unknown (its repository did not answer)")
         :else (str (name tool) " " pin " - the newest")))
 
 (defn newer-lines
-  "The lines worth a reader's eye: a newer release, or a repository that did
-  not answer. What `bb kit-status` and `bb tag-check` print."
+  "The lines worth a reader's eye: a newer release, a commit pin's default branch moved, or a
+  repository that did not answer. What `bb kit-status` and `bb tag-check` print."
   [rows]
-  (map line (filter #(some #{:newer :unknown} (:marks %)) rows)))
+  (map line (filter #(some #{:newer :moved :unknown} (:marks %)) rows)))
 
 (def ^:private mark-text
-  {:unpinned "no file carries its pin" :newer "newer released" :unknown "latest unknown"
+  {:unpinned "no file carries its pin" :newer "newer released" :moved "default branch moved" :unknown "latest unknown"
    :installed-differs "installed differs" :project-differs "project set differs"})
 
 (defn table
@@ -177,6 +182,17 @@
       (str/trimr (str/join "  " (map (fn [c w] (format (str "%-" w "s") c)) row widths))))))
 
 ;; ---------------------------------------------------------------- facts
+
+(defn- head
+  "The first seven characters of a GitHub repository's default branch's tip, by `git ls-remote <url>
+  HEAD`; nil when it does not answer within `timeout-ms`."
+  [repo timeout-ms]
+  (let [proc (p/process {:out :string :err :string :extra-env {"GIT_TERMINAL_PROMPT" "0"}}
+                        "git" "ls-remote" (str "https://github.com/" repo ".git") "HEAD")
+        res (deref proc timeout-ms nil)]
+    (if (and res (zero? (:exit res)))
+      (some->> (:out res) (re-find #"(?m)^([0-9a-f]{40})\s+HEAD$") second (#(subs % 0 7)))
+      (do (when-not res (p/destroy-tree proc)) nil))))
 
 (defn- tags
   "The tag names of a GitHub repository, by `git ls-remote`; nil when it does
@@ -256,8 +272,10 @@
    (let [files (read-files root)
          ps (pins files (:project-set files))
          doctor (if installed? (doctor-edn root) {})
-         asked (into {} (for [{:keys [tool repo tag]} sources :when (get-in ps [tool :version])]
-                          [tool (future (some->> (tags repo timeout-ms) (newest tag)))]))]
+         asked (into {} (for [{:keys [tool repo tag] :as src} sources :when (get-in ps [tool :version])]
+                          [tool (future (if (:head src)
+                                          (head repo timeout-ms)
+                                          (some->> (tags repo timeout-ms) (newest tag))))]))]
      (rows ps (if installed? (installed ps doctor (System/getProperty "user.home")) {}) (update-vals asked deref)
            (:project-set files) (into {} (keep (fn [[t {:keys [note]}]] (when note [t note]))) doctor)))))
 

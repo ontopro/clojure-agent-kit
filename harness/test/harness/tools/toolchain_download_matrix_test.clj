@@ -172,3 +172,15 @@
   (is (nil? (dm/bbin-commit "(def c {:git/sha \"0000000000000000000000000000000000000000\"})"))
       "a sha outside the header is not the header's")
   (is (nil? (dm/bbin-commit nil))))
+
+(deftest a-commit-is-one-field
+  ;; From Fable 5.1's read of 3dbdcda: the file names the commit once; its version is derived
+  (is (nil? (:version (:clojure-mcp-light (edn/read-string (slurp "../tools/toolchain/download-matrix.edn"))))))
+  (is (= "d341c23" (:version (:clojure-mcp-light matrix))))
+  (is (= {:version "1.0" :git/sha "abcdef0123"} (dm/commit-version {:version "1.0" :git/sha "abcdef0123"})) "a version given is kept")
+  (is (= {:version "0.2.5"} (dm/commit-version {:version "0.2.5"})))
+  (testing "status's row follows --link's folder"
+    (is (= [{:tool :clojure-mcp-light :version "d341c23" :path "/l/clj-nrepl-eval" :present? true}]
+           (status/rows (select-keys matrix [:clojure-mcp-light]) "/c" :linux-amd64 #{}
+                        {:config "/k/bb.edn" :bin-dir "/l"
+                         :commit-of (constantly (get-in matrix [:clojure-mcp-light :git/sha]))})))))

@@ -98,10 +98,10 @@
  ;; clojure-mcp-light, installed by the bbin above from its repository at a commit - git's own
  ;; integrity, no archive. The commit known-good records: `main` on 2026-06-19, nine commits after
  ;; v0.2.2 (cf48cc6), which no release tag names - bbin 0.2.5 drops `--tag` and installed the
- ;; default branch's tip, so `--git/sha` names it (8.2d). :version is the commit as known-good
- ;; writes it; a command with no :main takes the repository's own (its `:bbin/bin`)
- :clojure-mcp-light {:version "d341c23"
-                     :git/url "https://github.com/bhauman/clojure-mcp-light.git"
+ ;; default branch's tip, so `--git/sha` names it (8.2d). No :version: the commit's first seven
+ ;; characters are read as it, as known-good writes it; a command with no :main takes the
+ ;; repository's own (its `:bbin/bin`)
+ :clojure-mcp-light {:git/url "https://github.com/bhauman/clojure-mcp-light.git"
                      :git/sha "d341c239d4b1faa58ccefaf8bc0b1e2a312e2af4"
                      :unpack :bbin
                      :bin "clj-nrepl-eval"

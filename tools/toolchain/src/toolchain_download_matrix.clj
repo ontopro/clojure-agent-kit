@@ -14,10 +14,18 @@
 
 (def platforms [:macos-aarch64 :linux-aarch64 :linux-amd64])
 
+(defn commit-version
+  "`row` with its `:version` the first seven characters of its `:git/sha` when it has a sha and no
+  version - pure; the harness's `kit-pins` reads the matrix the same way."
+  [{:keys [version] sha :git/sha :as row}]
+  (if (and sha (nil? version)) (assoc row :version (subs sha 0 7)) row))
+
 (defn read-matrix
   "The matrix in `f`, its tools in the file's order - the install's order: bbin before what it installs.
   EDN reads more than eight keys as a hash map, so the order is taken from the text, each top-level key
-  at the start of its line (` :bbin {`) - and the keys found must be the map's, or the file is refused."
+  at the start of its line (` :bbin {`) - and the keys found must be the map's, or the file is refused.
+  A bbin row's `:version` is its `:git/sha`'s first seven characters, as known-good writes a commit -
+  one field in the file, not two held equal (From Fable 5.1's read of `3dbdcda`)."
   [f]
   (let [text (slurp f)
         m (edn/read-string text)
@@ -25,7 +33,7 @@
     (when-not (and (= (count ks) (count m)) (= (set ks) (set (keys m))))
       (throw (ex-info (str f ": each tool's key must open its line, as ` :bb {` does - the order is read from them")
                       {:found ks :keys (keys m)})))
-    (apply array-map (mapcat (fn [k] [k (get m k)]) ks))))
+    (apply array-map (mapcat (fn [k] [k (commit-version (get m k))]) ks))))
 
 (defn bbin? "Whether `tool` is installed by bbin from a repository at a commit (`:unpack :bbin`)."
   [matrix tool]
@@ -161,15 +169,17 @@
     `:install` the archive, the folder it lands in, the executable, and where the archive is kept
                (`<cache>/downloads/`, reused while its sha256 is the matrix's) - for a bbin row (`:kind
                :bbin`), its repository, commit and commands, no archive. A bbin row is `:kept` when each
-               command in `<cache>/bin/` names its commit (`in-cache?`).
+               command in `bin-dir` - where bbin writes them, `<cache>/bin` unless `--link` names
+               another - names its commit (`in-cache?`).
   Each step `{:tool :version :step …}`."
-  [matrix cache platform {:keys [only running present? commit-of]
+  [matrix cache platform {:keys [only running present? commit-of bin-dir]
                           :or {present? (constantly false) commit-of (constantly nil)}}]
   (for [t (machine-tools matrix platform only)
         :let [v (:version (get matrix t))
-              bin (bin-path matrix cache t platform)
+              bin-dir (or bin-dir (str cache "/bin"))
+              bin (if (bbin? matrix t) (str bin-dir "/" (get-in matrix [t :bin])) (bin-path matrix cache t platform))
               base {:tool t :version v :bin bin}]]
-    (cond (in-cache? matrix t bin (str cache "/bin") present? commit-of) (assoc base :step :kept)
+    (cond (in-cache? matrix t bin bin-dir present? commit-of) (assoc base :step :kept)
           (and (= :bb t) (get running :bb) (not (neg? (compare-versions (get running :bb) v))))
           (assoc base :step :skip :why (str "the bb running this is " (get running :bb) ", at or above " v))
           (and (= :java t) (not (some #{:java} only)))
