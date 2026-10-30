@@ -103,8 +103,8 @@
   "`<kit>/harness/health/selfcheck`, COPIED into a scratch workspace and made a repository of its
   own: the checked-in project is never written to, and the loop's branches land
   in a repository that is gone afterwards, not in the KIT's clone. Its gates are
-  its own `bb` tasks, but the boundary gate by the KIT's path, since `..` no
-  longer leads to the harness."
+  its own `bb` tasks, but the boundary gate and the format gate by the KIT's path, since `..` no
+  longer leads to the harness or the toolchain pack."
   [kit]
   (let [ws (str (fs/path (fs/create-temp-dir {:prefix "kit-health-selfcheck"}) "selfcheck"))
         dir (str (fs/path ws "selfcheck"))]
@@ -122,7 +122,7 @@
      :workspace ws
      :dir dir
      :root "selfcheck"
-     :gates [[:fmt "bb fmt-check"] [:lint "bb lint"] [:test "bb test"]
+     :gates [[:fmt (str "bb --config " kit "/tools/toolchain/bb.edn fmt-check --dir . src test dev")] [:lint "bb lint"] [:test "bb test"]
              [:deps (str "bb --config " kit "/harness/bb.edn boundary")]]
      :nrepl/cmd ["bb" "nrepl"]
      ;; no plan in this workspace, so the driver resolves it against harness/, where this runs

@@ -11,8 +11,9 @@
 # what the shell fetches before bb exists comes in as build arguments - bb and git, each its
 # version, URL and sha256, which `docker-image!` reads from the matrix for the platform built
 # (`bb --config tools/toolchain/bb.edn image-args <platform>`) - with no defaults here, since a
-# default is a second owner of the version; and KIT_AS_OF, the date below. Until the fold (8.2a,
-# 8.2d) cljfmt, bbin and clojure-mcp-light are pinned here alone, said where they are installed.
+# default is a second owner of the version; and KIT_AS_OF, the date below. Until the fold (8.2d)
+# bbin and clojure-mcp-light are pinned here alone, and cljfmt's binary stays for the application
+# template's gates (8.4), each said where it is installed.
 # Firefox ESR is Mozilla's repository's current ESR, which nothing here pins.
 #
 # NEVER A MOUNT OF THE WORKING TREE: the tasks mount the repository read-only and `git clone`
@@ -95,7 +96,13 @@ RUN --mount=type=cache,target=/opt/kit-toolchain/downloads \
     bb --config /opt/kit/tools/toolchain/bb.edn toolchain-install \
       --only java,clj-kondo,clojure,geckodriver --link /usr/local/bin
 
-# cljfmt, pinned here until it is the pack's dependency (8.2a).
+# The pack's libraries (cljfmt, plan 7.0, item 8.2a) fetched into the image's ~/.m2 at build, so a
+# gate in a fresh container finds them there, as a clone's pack names the same versions.
+RUN bb --config /opt/kit/tools/toolchain/bb.edn prepare
+
+# cljfmt's binary, for the application template's gates, which run `cljfmt` until its next release
+# (8.4). The KIT's own gates and gate 0 run the toolchain pack's cljfmt (8.2a), at the version its
+# bb.edn pins - `bb kit-pins` holds the two to one version.
 ARG CLJFMT_VERSION=0.16.6
 RUN set -eu; \
     case "${TARGETARCH}" in \

@@ -22,6 +22,7 @@
   (:require
    [babashka.fs :as fs]
    [babashka.process :as p]
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [harness.setup.doctor :as doctor]))
 
@@ -89,11 +90,18 @@
   [root]
   (filterv #(re-find clojure-file %) (changed-files root)))
 
-(defn- format!
-  "Run cljfmt over `files`, once per directory, FROM that directory.
+(defn toolchain-pack
+  "The KIT's toolchain pack's `bb.edn`, found from the harness's own resources - wherever the
+  process runs."
+  []
+  (str (fs/path (-> (io/resource "toolchain.edn") io/file fs/parent fs/parent fs/parent)
+                "tools" "toolchain" "bb.edn")))
 
-  cljfmt searches ancestors for its config, so running it from beside a file
-  finds whatever that file's project declares — and finds it by whatever name
+(defn- format!
+  "Run cljfmt over `files` - the toolchain pack's `fmt` (plan 7.0, item 8.2a), one call from `dir`.
+
+  cljfmt searches ancestors for its config, so a file's config is the one found
+  from beside it: whatever that file's project declares — and finds it by whatever name
   cljfmt itself accepts, which is more than one: `.cljfmt.edn` and
   `cljfmt.edn` both work, and a hand-rolled search for the dotted name alone
   silently misses the other.
@@ -104,17 +112,19 @@
   directory and lets it search. Any rule of our own for locating config is a
   way for the two to disagree.
 
-  One call per directory rather than per file: a process start is the
-  expensive part, and files in one directory share an answer.
+  The pack holds each file to the first config found from its own folder up,
+  else the one found from `dir`'s - the fmt gate's - so the two agree on a file
+  in a folder with no config of its own. Gate 0 ran cljfmt from each file's
+  folder, once per directory, until the pack: one call now, the pack doing the
+  search per file.
 
   What this replaced: a single call from the repository root, which in a repo
   whose projects are subdirectories formatted everything by the root's rules —
   here, none. `bb repair` reported success and `bb gates` then failed on the
   file it had just repaired."
   [dir files]
-  (doseq [[parent group] (group-by #(fs/parent (fs/absolutize (fs/path dir %))) files)]
-    (apply p/shell {:dir (str parent) :out :string :err :string :continue true}
-           "cljfmt" "fix" (map #(str (fs/file-name %)) group))))
+  (apply p/shell {:dir (str dir) :out :string :err :string :continue true}
+         "bb" "--config" (toolchain-pack) "fmt" "--dir" "." files))
 
 (defn repair!
   "Run gate 0 over `files` (paths relative to `dir`). Files the agent never
@@ -129,7 +139,6 @@
     (if (seq existing)
       (do
         (doctor/require-tool! :clj-paren-repair)
-        (doctor/require-tool! :cljfmt)
         (let [res (apply p/shell {:dir dir :out :string :err :string :continue true}
                          "clj-paren-repair" existing)
               ;; THEN cljfmt, in that order: balance the brackets before asking
@@ -142,7 +151,7 @@
               ;; "a well-placed gate 0 makes gate 1 nearly a no-op" is this
               ;; namespace's own claim, and it was not true of the one
               ;; mechanical difference that kept arising.
-              ;; Once per directory, from that directory — see `format!`.
+              ;; Each file's config as cljfmt finds it — see `format!`.
               _ (format! dir existing)
               ;; after both, so neither can strip what we just added
               newlines (vec (keep #(ensure-trailing-newline! dir %) existing))]

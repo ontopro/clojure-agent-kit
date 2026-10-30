@@ -223,16 +223,19 @@
           (str version (if have? ", fetched" ", not fetched")))))
 
 (defn installed
-  "What this machine has of each source: a library the pack loads by `fetched`, else the doctor's
-  probe of its row (`doctor` is `bb doctor --edn`'s map) - the version, or the doctor's status when
-  it found none."
+  "What this machine has of each source: the doctor's probe of its row where the doctor has one
+  (`doctor` is `bb doctor --edn`'s map) - the version, or the doctor's status when it found none -
+  else, for a library the pack loads, `fetched`. THE PROBE FIRST (Fable 5.1's watch on `f9b5af8`,
+  plan 7.0, item 8.2a): cljfmt is a pack dependency and a binary the doctor probes, and its pin's
+  `fetched` would read the pin back - the drift `record-drift` exists to see, compared with itself."
   [pins doctor home]
   (let [by-probe (update-vals doctor #(or (:version %) (some-> (:status %) name)))]
     (into {}
           (keep (fn [{:keys [tool probe pin]}]
                   (let [lib (some (fn [[place k]] (when (#{:pack-deps :xtdb-deps} place) k)) pin)]
-                    (when-let [v (or (fetched (get pins tool) lib home)
-                                     (get by-probe probe))]
+                    (when-let [v (if (contains? doctor probe)
+                                   (get by-probe probe)
+                                   (fetched (get pins tool) lib home))]
                       [tool v]))))
           sources)))
 

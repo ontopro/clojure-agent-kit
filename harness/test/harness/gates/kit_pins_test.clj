@@ -111,7 +111,7 @@
   (is (= {} (tn/read-doctor "")) "no output")
   (is (= {} (tn/read-doctor "toolchain: not ready")) "not a map"))
 
-(deftest installed-is-the-doctors-probe-or-the-librarys-fetch
+(deftest installed-is-the-doctors-probe-first-then-the-librarys-fetch
   (let [home (str (fs/create-temp-dir))
         pins {:bb {:version "1.13.225" :from :download-matrix}
               :cljfmt {:version "0.16.6" :from :pack-deps}
@@ -119,11 +119,17 @@
               :git {:version "2.56.0" :from :download-matrix}}
         doctor {:bb {:version "1.13.229" :status :ok} :cljfmt {:version "0.16.6" :status :ok}
                 :clj-nrepl-eval {:version "d341c23" :status :ok} :git {:version nil :status :missing}}]
-    (is (= {:bb "1.13.229" :cljfmt "0.16.6, not fetched" :clojure-mcp-light "d341c23" :git "missing"}
+    (is (= {:bb "1.13.229" :cljfmt "0.16.6" :clojure-mcp-light "d341c23" :git "missing"}
            (tn/installed pins doctor home))
-        "a library the pack loads is its pin and whether bb fetched it, not the binary's probe")
-    (fs/create-dirs (fs/path home ".m2" "repository" "dev" "weavejester" "cljfmt" "0.16.6"))
-    (is (= "0.16.6, fetched" (:cljfmt (tn/installed pins doctor home))))
+        "a tool the doctor probes is its probe, a pack dependency too - its pin would read itself back (Fable 5.1's watch on f9b5af8)")
+    (is (= "0.16.5" (:cljfmt (tn/installed pins (assoc-in doctor [:cljfmt :version] "0.16.5") home)))
+        "a drifted binary shows, though the pack's pin is fetched")
+    (is (= "missing" (:cljfmt (tn/installed pins {:cljfmt {:version nil :status :missing}} home)))
+        "the doctor's row says missing: missing, not the pin")
+    (testing "a pack dependency the doctor has no row for: its pin and whether bb fetched it"
+      (is (= "0.16.6, not fetched" (:cljfmt (tn/installed pins (dissoc doctor :cljfmt) home))))
+      (fs/create-dirs (fs/path home ".m2" "repository" "dev" "weavejester" "cljfmt" "0.16.6"))
+      (is (= "0.16.6, fetched" (:cljfmt (tn/installed pins (dissoc doctor :cljfmt) home)))))
     (testing "a git dep the Clojure CLI fetches, by its sha; XTDB a Maven dep (the person: why is 0.8.0 not shown)"
       (let [ps {:deps-new {:version "0.8.0" :from :template :gitlib {:lib 'io.github.seancorfield/deps-new :sha "2f96530"}}
                 :xtdb {:version "2.2.0" :from :xtdb-deps}}]

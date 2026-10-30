@@ -68,6 +68,37 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### cljfmt is the toolchain pack's dependency: the KIT's fmt gate and gate 0 run the pack's `fmt-check` and `fmt` (plan 7.0, item 8.2a)
+
+The design note's 8.2a, the person's go. The pack's `bb.edn` gains `:deps` - `dev.weavejester/cljfmt`
+0.16.6, the version the binary is - and two tasks in `toolchain_fmt.clj`, `fmt` and `fmt-check [--dir
+<d>] <paths…>`, over `cljfmt.tool`'s `fix-no-config` and `check-no-config` (they load under bb 1.13.229,
+verified here - the note's one open line) with a report that collects instead of cljfmt's console one,
+which calls `System/exit`. The output is cljfmt's own words and exits: `<path> has incorrect
+formatting` and the diff, the count, 1 for a file formatted incorrectly, 2 for one it cannot read.
+THE CONFIG, FILE BY FILE: cljfmt's command line reads the config it finds from the folder it runs in,
+so gate 0 (run from each file's folder) gave the KIT's `tools/*/src` - no config of their own -
+cljfmt's defaults, and gate 1 (run from `harness/`) the harness's: two gates, two rules. The pack holds
+each file to the first config found from its own folder up, else the one from `--dir` up, else the
+defaults - one answer for both. Callers: the harness's `fmt` and `fmt-check`; `repair`'s `format!`, one
+call with `--dir` where it ran cljfmt once per folder (`toolchain-pack` finds the pack from the
+harness's own resources), and its `require-tool! :cljfmt` gone - the pack fails by name; the selfcheck
+project's two tasks, and `bb health`'s copy of it names the pack by the KIT's path, as it does the
+boundary gate. Fable 5.1's watch on `f9b5af8` taken: `kit-pins/installed` is the doctor's probe where the
+doctor has a row and `fetched` only where it has none - else cljfmt's pin, fetched, would read itself
+back and a drifted binary would never show. NOT DONE, AND WHY: the design said the Dockerfile's
+`CLJFMT_VERSION` leaves here, but the application template's `bb fmt-check` runs the `cljfmt` binary
+until its next release (8.4) - and `bb health` and `bb docker-health` run a generated application's
+gates - so the binary stays, on the machine (the doctor's row, its `needed-for` now saying whose gate)
+and in the image, at the version the pack pins; `bb kit-pins` holds the two to one. The image fetches
+the pack's libraries at build (`bb prepare`). Measured here (macOS arm64): the KIT's whole fmt gate
+8.1 s by the pack against 5.7 s by the binary, the same verdict on every file; one file, gate 0's call
+per write, 0.08 s against 0.01 s. Tests: `toolchain_fmt_test` (a project's config, a folder with none
+held to `--dir`'s, a nearer config winning; fix and check in cljfmt's words, exit 2 for a file it cannot
+read, no path refused), `kit_pins_test` (the probe first, a drifted binary shown, a pack dependency with
+no doctor row its pin and fetch), `repair_test` unchanged and green - its gate-1 case runs the binary,
+as a project's gate 1 still does.
+
 ### The README's `.env` step says the check and the rail, not facts; row 236's status dated (From Fable 5.1's read of `38e34ea`)
 
 The person: "go, take them as one commit". A medium-low: the README's step 5 said "no repository holds
