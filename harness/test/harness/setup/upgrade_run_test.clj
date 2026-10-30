@@ -126,6 +126,10 @@
 
 ;; ---------------------------------------------------------------------------
 
+(def ^:private toolchain-stand-in
+  ;; plan 7.0, item 8.3b: phase 2's :toolchain step, never a real download in a test
+  (fn [_] {:status :done :detail "the toolchain: a stand-in"}))
+
 (deftest the-pure-parts
   (testing "the upgrade's id is deterministic"
     (is (= "to-0.6.5-from-abc1234" (ur/upgrade-id "abc1234567" "def4567890" "0.6.5")))
@@ -194,11 +198,12 @@
         _ (git-out build "commit" "-q" "-m" "an older build")
         to (release! kit)
         sw (java.io.StringWriter.)
-        r (binding [*out* sw] (ur/after-pull! ws kit {:gates [[:fmt "true"]] :generate (fn [_] (throw (ex-info "no generation: the pin is as it was" {})))}))
+        r (binding [*out* sw] (ur/after-pull! ws kit {:toolchain toolchain-stand-in :gates [[:fmt "true"]] :generate (fn [_] (throw (ex-info "no generation: the pin is as it was" {})))}))
         out (str sw)
         records (:records r)]
     (is (:ok? r) out)
     (is (= (set ur/steps) (set (keys records))) "every step recorded")
+    (is (= "the toolchain: a stand-in" (get-in records [:toolchain :detail])) "the :toolchain step ran, its record kept")
     (is (every? #(= :done (:status (get records %))) ur/steps) (pr-str (map (juxt identity #(:status (get records %))) ur/steps)))
     (testing "the record, the report and the copies"
       (let [dir (fs/path (:workspace/work ws) "upgrades" (ur/upgrade-id from to "0.6.5"))]
@@ -263,7 +268,7 @@
         (is (some #(str/includes? % "did not apply") lines))
         (is (some #(str/includes? % "awaits its merge") (upgrade/expectations (upgrade/facts ws* kit))))))
     (testing "run again: at this KIT's commit already"
-      (let [e (try (with-out-str (ur/after-pull! ws kit {})) nil (catch clojure.lang.ExceptionInfo e e))]
+      (let [e (try (with-out-str (ur/after-pull! ws kit {:toolchain toolchain-stand-in})) nil (catch clojure.lang.ExceptionInfo e e))]
         (is (:nothing (ex-data e)))))))
 
 (deftest a-stopped-step-is-resumed-and-an-edited-orientation-gets-a-new-beside-it
@@ -275,7 +280,7 @@
         ;; the project edited its CLAUDE.md, and has uncommitted work in the overview
         _ (spit (str (fs/path ws-dir "CLAUDE.md")) (str (slurp (str (fs/path ws-dir "CLAUDE.md"))) "\nOur own note.\n"))
         _ (spit (str (fs/path build "docs" "00-overview.md")) (str (slurp (str (fs/path build "docs" "00-overview.md"))) "uncommitted\n"))
-        r1 (binding [*out* (java.io.StringWriter.)] (ur/after-pull! ws kit {:gates [[:fmt "true"]]}))]
+        r1 (binding [*out* (java.io.StringWriter.)] (ur/after-pull! ws kit {:toolchain toolchain-stand-in :gates [[:fmt "true"]]}))]
     (is (not (:ok? r1)))
     (is (= :build-docs (:stopped r1)))
     (is (str/includes? (get-in r1 [:records :build-docs :detail]) "uncommitted edits"))
@@ -286,7 +291,7 @@
       (is (= ["CLAUDE.md.new"] (get-in r1 [:records :orientation :new]))))
     (testing "the work committed, the run picks up at build-docs and finishes"
       (git-out build "commit" "-q" "-am" "the project's work")
-      (let [r2 (binding [*out* (java.io.StringWriter.)] (ur/after-pull! ws kit {:gates [[:fmt "true"]]}))]
+      (let [r2 (binding [*out* (java.io.StringWriter.)] (ur/after-pull! ws kit {:toolchain toolchain-stand-in :gates [[:fmt "true"]]}))]
         (is (:ok? r2))
         (is (= (:dir r1) (:dir r2)) "the same folder")
         (is (= :done (get-in r2 [:records :build-docs :status])))
@@ -301,7 +306,7 @@
         ws (workspace/find-workspace (:workspace/dir ws0))
         _ (is (nil? (:workspace/build ws)) "read through this version's code, the old key is nil")
         _ (release! kit)
-        r (binding [*out* (java.io.StringWriter.)] (ur/after-pull! ws kit {:gates [[:fmt "true"]]}))]
+        r (binding [*out* (java.io.StringWriter.)] (ur/after-pull! ws kit {:toolchain toolchain-stand-in :gates [[:fmt "true"]]}))]
     (is (:ok? r) (pr-str (:records r)))
     (is (= "renamed: :workspace/plan -> :workspace/build" (get-in r [:records :workspace-keys :detail])))
     (let [w (raw ws)]
@@ -315,13 +320,13 @@
         _ (release! kit)
         ;; two documents change in the release; the SECOND has uncommitted edits
         _ (spit (str (fs/path build "docs" "README.md")) "# The plan's documents\n\nmy uncommitted note\n")
-        r1 (binding [*out* (java.io.StringWriter.)] (ur/after-pull! ws kit {:gates [[:fmt "true"]]}))]
+        r1 (binding [*out* (java.io.StringWriter.)] (ur/after-pull! ws kit {:toolchain toolchain-stand-in :gates [[:fmt "true"]]}))]
     (is (= :build-docs (:stopped r1)))
     (is (str/includes? (get-in r1 [:records :build-docs :detail]) "docs/README.md has uncommitted edits"))
     (is (not (str/includes? (slurp (str (fs/path build "docs" "00-overview.md"))) "revised")) "the first document was not patched")
     (is (not (fs/exists? (fs/path build "docs" "01-new.md"))) "nothing added either")
     (git-out build "commit" "-q" "-am" "the note")
-    (let [r2 (binding [*out* (java.io.StringWriter.)] (ur/after-pull! ws kit {:gates [[:fmt "true"]]}))]
+    (let [r2 (binding [*out* (java.io.StringWriter.)] (ur/after-pull! ws kit {:toolchain toolchain-stand-in :gates [[:fmt "true"]]}))]
       (is (:ok? r2) (pr-str (:records r2)))
       (is (str/includes? (slurp (str (fs/path build "docs" "00-overview.md"))) "Content line A, revised."))
       (is (str/includes? (slurp (str (fs/path build "docs" "README.md"))) "my uncommitted note") "the project's line kept")
@@ -335,7 +340,7 @@
         _ (spit (str (fs/path build "rules.edn")) (pr-str [{:id :layer-boundaries :text "Respect the boundaries of layer {{layer}}. FILLED."}]))
         _ (git-out build "commit" "-q" "-am" "the rules filled")
         _ (release! kit)
-        r (binding [*out* (java.io.StringWriter.)] (ur/after-pull! ws kit {:gates [[:fmt "true"]]}))
+        r (binding [*out* (java.io.StringWriter.)] (ur/after-pull! ws kit {:toolchain toolchain-stand-in :gates [[:fmt "true"]]}))
         run-dir (get-in r [:records :app :app :run-dir])
         open #(upgrade/open-after-upgrade ws (raw ws))]
     (is (:ok? r))
@@ -445,7 +450,7 @@
         ws (workspace! clone)
         ws-dir (:workspace/dir ws)
         ok-probe (fn [specs] (mapv #(assoc % :status :ok) specs))
-        base {:reachable? (constantly true) :probe ok-probe :hand-over! (fn [_ _] 0)}
+        base {:reachable? (constantly true) :probe ok-probe :hand-over! (fn [_ _] 0) :toolchain toolchain-stand-in}
         run (fn [opts] (try (binding [*out* (java.io.StringWriter.)] (ur/phase-one! ws clone (merge base opts)))
                             (catch clojure.lang.ExceptionInfo e e)))
         err (fn [opts] (let [r (run opts)] (if (instance? Throwable r) {:error (:upgrade/error (ex-data r)) :message (ex-message r)} r)))]
@@ -608,7 +613,7 @@
         _ (git-out build "commit" "-q" "-am" "the rules filled")
         _ (release! kit)
         cut (fn [_] (throw (ex-info "the network is cut: github.com unreachable" {})))
-        r1 (binding [*out* (java.io.StringWriter.)] (ur/after-pull! ws kit {:gates [[:fmt "true"]] :generate cut}))]
+        r1 (binding [*out* (java.io.StringWriter.)] (ur/after-pull! ws kit {:toolchain toolchain-stand-in :gates [[:fmt "true"]] :generate cut}))]
     (is (not (:ok? r1)))
     (is (= :app (:stopped r1)))
     (is (str/includes? (get-in r1 [:records :app :detail]) "the network is cut"))
@@ -618,7 +623,7 @@
       (let [generate (fn [target] (doseq [[path content] (assoc generated-files "src/xyx/core.clj" "(ns xyx.core)\n\n(def from-the-new-template true)\n")]
                                     (fs/create-dirs (fs/parent (fs/path target path)))
                                     (spit (str (fs/path target path)) content)))
-            r2 (binding [*out* (java.io.StringWriter.)] (ur/after-pull! ws kit {:gates [[:fmt "true"]] :generate generate}))]
+            r2 (binding [*out* (java.io.StringWriter.)] (ur/after-pull! ws kit {:toolchain toolchain-stand-in :gates [[:fmt "true"]] :generate generate}))]
         (is (:ok? r2) (pr-str (:records r2)))
         (is (= (:dir r1) (:dir r2)) "the same folder")
         (is (= :awaiting-merge (get-in r2 [:records :app :app :state])))
@@ -631,3 +636,51 @@
       "the project's own rules kept; only the missing one said")
   (is (= init/env-deny-rules (ur/settings-missing "{\"model\": \"x\"}")) "no deny list: every rule")
   (is (= init/env-deny-rules (ur/settings-missing "not json {")) "not JSON: every rule, nothing thrown"))
+
+;; ---------------------------------------------------------------------------
+;; the toolchain: said before the move, installed after it (plan 7.0, item 8.3b)
+;; ---------------------------------------------------------------------------
+
+(def ^:private release-m
+  {:bb {:version "1.13.229"} :java {:version "25.0.6+7"} :clj-kondo {:version "2026.11.02"}
+   :cljfmt {:version "0.16.6"} :geckodriver {:version "0.37.1" :image-only true}
+   :clojure-mcp-light {:version "d341c23" :commands [{:name "clj-nrepl-eval"} {:name "clj-paren-repair"}]}})
+
+(deftest a-releases-matrix-is-said-against-this-machine-before-the-move
+  (is (= ["0.7.1 uses java 25.0.6+7; this machine has 25.0.5 - the upgrade installs it"
+          "0.7.1 uses clj-kondo 2026.11.02; this machine has 2026.10.26 - the upgrade installs it"]
+         (vec (ur/matrix-moves "0.7.1" release-m {:bb "1.13.229" :java "25.0.5" :clj-kondo "2026.10.26" :cljfmt "0.16.6"
+                                                  :clj-nrepl-eval "d341c23" :clj-paren-repair "d341c23"}))))
+  (is (empty? (ur/matrix-moves "0.7.1" (assoc-in release-m [:java :version] "25.0.5+8")
+                               {:bb "1.13.229" :java "25.0.5" :clj-kondo "2026.11.02" :cljfmt "0.16.6" :clj-nrepl-eval "d341c23"}))
+      "the build after + no version; a commit by prefix; an image-only tool never; clojure-mcp-light once")
+  (is (some #{"0.7.1 uses clj-kondo 2026.11.02; this machine has none - the upgrade installs it"}
+            (ur/matrix-moves "0.7.1" release-m {})))
+  (testing "the JDK line from the two matrices, from the toolchains for a release before the matrix"
+    (let [specs [{:tool :java :req :required :min "21" :prefer-major 25}]]
+      (is (= ["the JDK moves: 25.0.5+8 -> 25.0.6+7"]
+             (ur/significant-changes specs specs nil nil {:java {:version "25.0.5+8"}} release-m)))
+      (is (= [] (ur/significant-changes specs specs nil nil {:java {:version "25.0.6+7"}} release-m)))
+      (is (= ["the JDK changes: 21 exactly -> 21 and newer, preferred 25"]
+             (ur/significant-changes [{:tool :java :req :required :major 21}] specs nil nil nil release-m))))))
+
+(deftest the-toolchain-step-lists-installs-and-stops-only-on-what-it-cannot-do
+  (let [status {:cache "/w/.kit/toolchain" :rows [{:tool :java :present? false} {:tool :cljfmt :present? true}]}
+        m {:java {:version "25.0.5+8" :disk-mb 294} :cljfmt {:version "0.16.6" :disk-mb 36}}
+        room {:free-mb (* 100 1024) :total-mb (* 500 1024)}]
+    (let [{:keys [lines items]} (ur/toolchain-plan status m room)]
+      (is (= [{:tool :java :version "25.0.5+8" :disk-mb 294}] (vec items)))
+      (is (some #{"  - java 25.0.5+8 (about 294 MB on disk)"} lines) "the doctor's offer lines, no question"))
+    (is (str/starts-with? (:stop (ur/toolchain-plan status m {:free-mb 10 :total-mb 100})) "Not enough space")
+        "a total past the free space stops the step, the way out named")
+    (is (:nothing (ur/toolchain-plan (assoc-in status [:rows 0 :present?] true) m room)) "nothing to install")
+    (is (= "unpublished" (:nothing (ur/toolchain-plan (assoc status :unpublished "unpublished") m room))))
+    (is (= "refused" (:stop (ur/toolchain-plan (assoc status :refusal "refused") m room))))
+    (is (str/includes? (:stop (ur/toolchain-plan nil m room)) "did not answer")))
+  (testing "the folder's bin not on this process's PATH: said, with the eval and the resume"
+    (is (nil? (ur/path-line "/w/.kit/toolchain/bin" "/w/.kit/toolchain/bin:/usr/bin")))
+    (is (str/includes? (ur/path-line "/w/.kit/toolchain/bin" "/usr/bin:/bin")
+                       "`eval \"$(bb toolchain-env)\"`, then `bb upgrade --after-pull` picks up where it is")))
+  (testing "the step is before :app, so the application's gates run on the new tools"
+    (is (< (.indexOf ur/steps :toolchain) (.indexOf ur/steps :app)))
+    (is (= :build-ignore (nth ur/steps (dec (.indexOf ur/steps :toolchain)))))))

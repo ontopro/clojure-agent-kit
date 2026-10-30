@@ -61,6 +61,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [harness.setup.doctor :as doctor]
+   [harness.setup.download-matrix :as download-matrix]
    [harness.setup.front-door :as front-door]
    [harness.setup.init :as init]
    [harness.setup.plan :as plan]
@@ -75,7 +76,7 @@
 
 (def steps
   "The steps, in order; each is a keyword `done.edn` records."
-  [:workspace-keys :front-door :skills :orientation :stage-folders :build-docs :loop-edn :build-ignore :app :workspace-edn :doctor])
+  [:workspace-keys :front-door :skills :orientation :stage-folders :build-docs :loop-edn :build-ignore :toolchain :app :workspace-edn :doctor])
 
 (def role-file ".claude/agents/interactive-programmer.md")
 (def role-source "harness/agents/interactive-programmer.md")
@@ -487,10 +488,85 @@
     (println (upgrade/report ws* kit))
     {:status :done :detail "printed"}))
 
+;; ---------------------------------------------------------------------------
+;; the toolchain: the new release's tools, said before the move and installed after it (plan 7.0, item 8.3b)
+;; ---------------------------------------------------------------------------
+
+(defn- same-version?
+  "Whether the machine's `here` is the matrix's `pinned` - a commit by prefix, a version without the build
+  after `+`, as the doctor compares them."
+  [here pinned]
+  (if (re-matches #"[0-9a-f]{7,40}" (str pinned))
+    (or (str/starts-with? pinned here) (str/starts-with? here pinned))
+    (zero? (doctor/version-cmp (doctor/without-build here) (doctor/without-build pinned)))))
+
+(defn matrix-moves
+  "What a release's download matrix `matrix` means for this machine - pure: a line per tool it names at
+  another version than `versions` (`{doctor-row version}`, the probe's) gives, a bbin row once by its first
+  command. Information, never a refusal: phase 2's `:toolchain` step installs them."
+  [tag matrix versions]
+  (let [ref (download-matrix/reference matrix)]
+    (distinct
+     (for [[row pinned] ref
+           :let [tool (download-matrix/matrix-tool matrix row)
+                 here (get versions row)]
+           :when (and (or (= row tool) (= (name row) (get-in matrix [tool :commands 0 :name])))
+                      (not (and here (same-version? here pinned))))]
+       (str tag " uses " (name tool) " " pinned "; this machine has " (or here "none") " - the upgrade installs it")))))
+
+(defn path-line
+  "The line said when the toolchain folder's `bin` is not among `path`'s entries - nil when it is: the
+  application's gates and the doctor in this process run the PATH's tools. Said, not plumbed (From
+  Fable 5.1's read of the 8.3b design)."
+  [bin path]
+  (when-not (some #(= (str (fs/normalize bin)) (str (fs/normalize %))) (remove str/blank? (str/split (or path "") #":")))
+    (str bin " is not on this shell's PATH: the application's gates and the doctor in this upgrade run this shell's tools - "
+         "`eval \"$(bb toolchain-env)\"`, then `bb upgrade --after-pull` picks up where it is")))
+
+(defn toolchain-plan
+  "What the `:toolchain` step does - pure over the moved clone's pack `status` (`doctor/folder-status`, or
+  nil), its `matrix` and the disk's `space`: `{:stop line}`, `{:nothing line}`, or `{:lines [...]}` - the
+  offer's lines, without its question (the person: the upgrade installs)."
+  [status matrix space]
+  (cond
+    (nil? status) {:stop "the toolchain pack's status did not answer - `bb --config KIT/tools/toolchain/bb.edn status` says why"}
+    (:refusal status) {:stop (:refusal status)}
+    (:unpublished status) {:nothing (:unpublished status)}
+    :else
+    (let [items (for [{:keys [tool present?]} (:rows status) :when (not present?)]
+                  {:tool tool :version (get-in matrix [tool :version]) :disk-mb (get-in matrix [tool :disk-mb])})]
+      (if (empty? items)
+        {:nothing "every tool of the download matrix is in the project's folder at its version"}
+        (let [{:keys [lines fits?]} (doctor/offer-lines items space)]
+          (if fits? {:lines lines :items items} {:stop (last lines) :lines lines}))))))
+
+(defn toolchain!
+  "Phase 2's `:toolchain` step on the moved clone `kit`: its pack's true-up - this release's versions -
+  into the project's folder, the list said first; a step record."
+  [kit]
+  (let [status (doctor/folder-status kit)
+        {:keys [stop nothing lines items]} (toolchain-plan status (download-matrix/read-matrix kit)
+                                                           (doctor/disk-space (or (:cache status) kit)))]
+    (run! #(say %) lines)
+    (cond
+      stop {:status :stopped :detail stop}
+      nothing {:status :done :detail nothing}
+      :else
+      (let [{:keys [exit]} (p/shell {:continue true} "bb" "--config" (str (fs/path kit "tools" "toolchain" "bb.edn")) "toolchain-install")
+            warn (path-line (str (:cache status) "/bin") (System/getenv "PATH"))]
+        (when warn (say warn))
+        (if (zero? exit)
+          {:status :done :detail (str "installed " (str/join ", " (map #(str (name (:tool %)) " " (:version %)) items))
+                                      (when warn "; the folder's bin not on this shell's PATH - said above"))}
+          {:status :stopped :detail "the true-up failed - its lines above; `bb upgrade --after-pull` picks up here"})))))
+
+(defn- step-toolchain! [{:keys [kit toolchain]}]
+  ((or toolchain toolchain!) kit))
+
 (def step-fns
   {:workspace-keys step-workspace-keys! :front-door step-front-door! :skills step-skills!
    :orientation step-orientation! :stage-folders step-stage-folders! :build-docs step-build-docs! :loop-edn step-loop-edn!
-   :build-ignore step-build-ignore! :app step-app! :workspace-edn step-workspace-edn! :doctor step-doctor!})
+   :build-ignore step-build-ignore! :toolchain step-toolchain! :app step-app! :workspace-edn step-workspace-edn! :doctor step-doctor!})
 
 (defn after-pull!
   "Phase 2 over the workspace `ws` from the KIT at `kit`. Opts: `:generate` and `:gates` for
@@ -545,8 +621,9 @@
               (recur more records))))))))
 
 (defn dry-run!
-  "What `after-pull!` would do, from the same facts; nothing written."
-  [ws kit]
+  "What `after-pull!` would do, from the same facts; nothing written. `status` the clone's pack's
+  `status --edn` (the `:toolchain` step's facts), read unless given."
+  [ws kit & [{:keys [status] :or {status ::read}}]]
   (let [raw (raw-workspace ws)
         from (:workspace/kit-commit raw)
         head (git! kit "rev-parse" "HEAD")
@@ -589,6 +666,10 @@
         (say "build-ignore: " (let [f (fs/path (:workspace/build ws) ".gitignore")
                                     [_ added] (ignore-text (when (fs/exists? f) (slurp (str f))) init/build-ignored)]
                                 (if (seq added) (str "would add " (str/join ", " added)) "nothing to add")))
+        (let [st (if (= ::read status) (doctor/folder-status kit) status)
+              {:keys [stop nothing lines]} (toolchain-plan st (download-matrix/read-matrix kit) (doctor/disk-space (or (:cache st) kit)))]
+          (say "toolchain: " (cond stop (str "would stop - " stop) nothing nothing :else "would install, with no question asked:"))
+          (run! #(say "  " %) (when-not (or stop nothing) (remove str/blank? (rest lines)))))
         (say "app: " (if moved (str "the template pin moved " (:git/tag (:from moved)) " -> " (:git/tag (:to moved)) ": template-upgrade, the mirror and the tested set on its branch") "the pin as it was: a branch for the mirror and the tested set if either changed"))
         (println "bb upgrade --dry-run: nothing was written.")))))
 
@@ -707,8 +788,10 @@
 
 (defn significant-changes
   "What a release changes that a person wants said before taking it: the JDK's, a new
-  required tool, the template pin moved - from the two toolchains and the two pins files."
-  [old-specs new-specs old-pins new-pins]
+  required tool, the template pin moved - from the two toolchains and the two pins files. The JDK from
+  the two download matrices when both carry one (plan 7.0, item 8.3b: the JDK is the matrix's), else from
+  the toolchains' `:min`/`:prefer-major` (a release from before the matrix)."
+  [old-specs new-specs old-pins new-pins & [old-matrix new-matrix]]
   (let [;; the JDK as a person reads it: an exact major, or a floor with the major preferred
         jdk #(some (fn [s] (when (= :java (:tool s))
                              (cond (:major s) (str (:major s) " exactly")
@@ -718,7 +801,12 @@
         required #(set (map :tool (filter (fn [s] (= :required (:req s))) %)))
         moved (when (and old-pins new-pins) (upgrade/pin-moved old-pins new-pins))]
     (cond-> []
-      (and (jdk old-specs) (jdk new-specs) (not= (jdk old-specs) (jdk new-specs)))
+      (and (get-in old-matrix [:java :version]) (get-in new-matrix [:java :version])
+           (not= (get-in old-matrix [:java :version]) (get-in new-matrix [:java :version])))
+      (conj (str "the JDK moves: " (get-in old-matrix [:java :version]) " -> " (get-in new-matrix [:java :version])))
+
+      (and (not (and (get-in old-matrix [:java :version]) (get-in new-matrix [:java :version])))
+           (jdk old-specs) (jdk new-specs) (not= (jdk old-specs) (jdk new-specs)))
       (conj (str "the JDK changes: " (jdk old-specs) " -> " (jdk new-specs)))
 
       (seq (set/difference (required new-specs) (required old-specs)))
@@ -758,11 +846,17 @@
   (let [{:keys [exit out]} (git kit "show" (str tag ":" path))]
     (when (zero? exit) out)))
 
+(defn release-matrix
+  "The download matrix at `tag` in the clone `kit`, read as the harness reads it, or nil: a release from
+  before the matrix (0.6.x)."
+  [kit tag]
+  (some-> (show-at kit tag "tools/toolchain/download-matrix.edn") edn/read-string (update-vals download-matrix/commit-version)))
+
 (defn phase-one!
   "The check and the move. Opts, for tests: `:reachable?` (host -> bool), `:probe` (specs ->
   results), `:hand-over!` (argv dir -> exit), `:to`. Returns `{:outcome kw ...}`; a refusal
   throws `ex-info` with `:upgrade/error` and the words."
-  [ws kit {:keys [reachable? probe hand-over! to] :or {reachable? reachable?* probe #(doctor/report % nil)}}]
+  [ws kit {:keys [reachable? probe hand-over! to toolchain] :or {reachable? reachable?* probe #(doctor/report % nil)}}]
   (let [ws-dir (:workspace/dir ws)
         kit-rel (str (fs/relativize ws-dir kit))
         raw (raw-workspace ws)
@@ -785,7 +879,7 @@
     (if (not= head (:workspace/kit-commit raw))
       (do (println (str "bb upgrade: " kit-rel " is at " (subs head 0 7) (when here (str " (" here ")")) " already, past the commit the workspace records"
                         (when recorded-version (str " (" recorded-version ")")) ": the move is done, phase 2 picks up at its first step not done"))
-          {:outcome :after-pull :result (after-pull! ws kit {})})
+          {:outcome :after-pull :result (after-pull! ws kit (cond-> {} toolchain (assoc :toolchain toolchain)))})
       (let [;; THE NETWORK FIRST, before anything moves
             origin (:out (git kit "remote" "get-url" "origin"))
             hosts (remove nil? (distinct [(remote-host origin) "repo.clojars.org" "repo1.maven.org"]))
@@ -820,19 +914,25 @@
                               [t (when text (doctor/read-toolchain text))]))
             ;; THE MACHINE PROBED ONCE, over every row the newer tables carry that this version can probe
             results (let [rows (rows-to-probe (remove nil? (vals tables)))] (if (seq rows) (probe rows) []))
+            ;; EACH NEWER RELEASE'S DOWNLOAD MATRIX (plan 7.0, item 8.3b): its tools against this machine's -
+            ;; information, as phase 2's :toolchain step installs them; a release before the matrix, none
+            own-matrix (download-matrix/read-matrix kit)
+            versions (into {} (map (juxt :tool :version)) results)
             checks (for [t newer
                          :let [specs (get tables t)
                                check (if specs (requirement-check specs results) {:ok? true :missing [] :unchecked [] :no-table true})
                                pins (some-> (show-at kit t "harness/resources/template-pins.edn") java.io.StringReader. template/load-pins)
-                               changes (significant-changes own-specs (or specs own-specs) own-pins pins)]]
-                     (assoc check :tag t :changes changes))
+                               matrix (release-matrix kit t)
+                               changes (significant-changes own-specs (or specs own-specs) own-pins pins own-matrix matrix)]]
+                     (assoc check :tag t :changes changes :moves (when matrix (matrix-moves t matrix versions))))
             _ (println (str "  this clone: " (or here "no release tag") "; newer: " (str/join ", " newer)))
-            _ (doseq [{:keys [tag ok? missing unchecked no-table changes]} checks]
+            _ (doseq [{:keys [tag ok? missing unchecked no-table changes moves]} checks]
                 (println (str "  " tag ": " (cond no-table "no toolchain.edn at this tag - its requirements cannot be checked here"
                                                   ok? "requirements met here"
                                                   :else (str "NOT met here: " (str/join ", " (map #(str (name (:tool %)) " " (name (:status %))) missing))))
                               (when (seq unchecked) (str "; cannot check here: " (str/join ", " (map name unchecked))))
-                              (when (seq changes) (str "; " (str/join "; " changes))))))
+                              (when (seq changes) (str "; " (str/join "; " changes)))))
+                (doseq [m moves] (println (str "    " m))))
             target (first (filter #(= tag (:tag %)) checks))
             _ (when-not (:ok? target)
                 (let [takeable (last (filter :ok? checks))]

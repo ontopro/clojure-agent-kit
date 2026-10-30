@@ -68,6 +68,45 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### `bb upgrade` says what each newer release's tools mean here, and installs them after the move (plan 7.0, item 8.3b, the second of two)
+
+The person, 2026-10-30: "why doesn't 'bb upgrade' run this as part of the upgrade process?" - "yes to both";
+the design note read: GO, its points folded; "go, build 8.3b".
+- **Before the move**, the pre-check reads each newer release's `tools/toolchain/download-matrix.edn` at its
+  tag (`release-matrix`) and says, per tool that release names at another version than this machine's PATH
+  gives, "0.7.1 uses clj-kondo 2026.11.02; this machine has 2026.10.26 - the upgrade installs it"
+  (`matrix-moves`: a build after `+` no version, a commit by prefix, clojure-mcp-light once, an image-only tool
+  never). Information, never a refusal: the refusals stay the floors' - what no true-up fixes. A release from
+  before the matrix (0.6.x) is checked as before. The pre-check is phase 1, the clone's OLD code, so it first
+  speaks when a clone at 0.7.0 or later upgrades.
+- **The JDK line** reads the two matrices when both carry one ("the JDK moves: 25.0.5+8 -> 25.0.6+7"), the
+  toolchains' `:min`/`:prefer-major` otherwise.
+- **After the move, a phase-2 step, `:toolchain`**, between `:build-ignore` and `:app` - so the application's
+  gates, which `:app` runs, run on the new tools: the moved clone's pack's `status --edn` read, the tools the
+  project's folder lacks listed as the doctor's offer lists them - each with its size, the total, the disk's
+  free space - and its `toolchain-install` run, no question (the person's decision). A total past the free
+  space, a refusal, or a true-up that fails stops the upgrade at this step, and `bb upgrade --after-pull`
+  picks it up there; nothing to install, or a machine the matrix publishes no build for, is done with that
+  said. When the folder's `bin` is not on the process's PATH - the direct route, `bb --config
+  KIT/harness/bb.edn upgrade`, in a shell that did not run the eval - one line says the application's gates
+  and the doctor will run the shell's tools, and names the eval and the resume; said, not plumbed into the
+  gate runner. The step honours `KIT_TOOLCHAIN_DIR` through the pack, so a sandbox rehearsal installs one
+  JDK, not one per trial copy. A workspace stopped mid-upgrade under the old step list resumes with the new
+  step inserted (`done.edn` is read by name).
+- **The first upgrade into 0.7.0** runs phase 2 on 0.7.0's code, so this step: about 400 MB into the
+  workspace's `.kit/toolchain`, listed before it is fetched. The first project's upgrade (item 13) is where
+  that first happens; its hand-off says it.
+- **`bb upgrade --after-pull --dry-run`** says the step: what it would install, with sizes and the disk, or
+  why it would stop.
+
+Proved: `upgrade_run_test` (the moves against a canned release matrix - the build and the commit no
+difference, missing said; the JDK line both ways; the step's plan - installs, not fitting, nothing,
+unpublished, refused, no answer; the PATH line; the step before `:app`; the step's record in a whole phase 2
+with a stand-in, every older test given the stand-in so none downloads); by hand, the step run twice against
+a scratch folder lacking cljfmt alone - the line with its 36 MB and the disk, the true-up installing it, the
+PATH line (the scratch `bin` not on this shell's PATH), then "every tool of the download matrix is in the
+project's folder at its version".
+
 ### The true-up says what it changed (plan 7.0, item 8.3b, the first of two)
 
 The design note, read: GO; the person: "go, build 8.3b". `toolchain-install` ends with one line
