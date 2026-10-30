@@ -20,12 +20,12 @@
   (into {} (map (juxt :tool identity)) (dm/plan matrix "/c" platform opts)))
 
 (deftest the-plan-on-each-platform-and-cache
-  (testing "a fresh cache on a Mac: bb kept as it runs, the JDK only when named, the rest installed"
+  (testing "a fresh cache on a Mac: bb kept as it runs, the rest installed - the JDK among them (8.3a)"
     (let [s (steps :macos-aarch64 {:running {:bb "1.13.229"}})]
       (is (= [:bb :java :clj-kondo :clojure :cljfmt :bbin :clojure-mcp-light] (keys s)) "no image-only tool")
       (is (= :skip (:step (:bb s))))
       (is (str/includes? (:why (:bb s)) "the bb running this is 1.13.229, at or above 1.13.229"))
-      (is (= "fetched only when named: --only java" (:why (:java s))))
+      (is (= :install (:step (:java s))) "the JDK like every tool - no longer only when named")
       (is (= {:tool :clj-kondo :version "2026.10.26" :step :install
               :bin "/c/clj-kondo/2026.10.26/clj-kondo" :dir "/c/clj-kondo/2026.10.26"
               :download "/c/downloads/clj-kondo-2026.10.26-macos-aarch64.zip"}
@@ -37,7 +37,7 @@
     (is (= :skip (:step (:bb (steps :linux-amd64 {:running {:bb "1.13.300"}}))))))
   (testing "a cache that has a tool keeps it"
     (is (= :kept (:step (:clj-kondo (steps :linux-aarch64 {:present? #{"/c/clj-kondo/2026.10.26/clj-kondo"}}))))))
-  (testing "the image's --only: the image-only tools when named, the JDK when named, on Linux"
+  (testing "the image's --only: the image-only tools when named, on Linux"
     (let [s (steps :linux-aarch64 {:only [:java :clj-kondo :clojure :geckodriver]})]
       (is (= [:java :clj-kondo :clojure :geckodriver] (keys s)))
       (is (every? #(= :install (:step %)) (vals s)))

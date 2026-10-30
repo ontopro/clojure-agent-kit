@@ -186,8 +186,8 @@
     `:kept`    the tool's executable is at its cache path (`present?`);
     `:skip`    bb, when the bb running the install (`running`'s `:bb`) is at or above the matrix's -
                the install cannot replace the bb that runs it, and a newer one is used as it is (the
-               person, 2026-10-29); the JDK when `only` does not name it - 200 MB, fetched only when
-               asked;
+               person, 2026-10-29). The JDK is installed like every tool (the person, 2026-10-30) - it
+               was fetched only when named;
     `:install` the archive, the folder it lands in, the executable, and where the archive is kept
                (`<cache>/downloads/`, reused while its sha256 is the matrix's) - for a bbin row (`:kind
                :bbin`), its repository, commit and commands, no archive. A bbin row is `:kept` when each
@@ -206,8 +206,6 @@
     (cond (in-cache? matrix t bin bin-dir present? commit-of) (assoc base :step :kept)
           (and (= :bb t) (get running :bb) (not (neg? (compare-versions (get running :bb) v))))
           (assoc base :step :skip :why (str "the bb running this is " (get running :bb) ", at or above " v))
-          (and (= :java t) (not (some #{:java} only)))
-          (assoc base :step :skip :why "fetched only when named: --only java")
           (bbin? matrix t)
           (assoc base :step :install
                  :git/url (get-in matrix [t :git/url]) :git/sha (get-in matrix [t :git/sha])

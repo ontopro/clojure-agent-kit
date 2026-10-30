@@ -186,3 +186,8 @@
            (status/rows (select-keys matrix [:clojure-mcp-light]) "/c" :linux-amd64 #{}
                         {:config "/k/bb.edn" :bin-dir "/l"
                          :commit-of (constantly (get-in matrix [:clojure-mcp-light :git/sha]))})))))
+
+(deftest every-tool-a-machine-takes-says-its-size-on-disk
+  ;; the person, 2026-10-30: the offer lists each tool with its size, then the total
+  (doseq [t (dm/machine-tools matrix :macos-aarch64 nil)]
+    (is (pos? (get-in matrix [t :disk-mb] 0)) (str t " has :disk-mb"))))

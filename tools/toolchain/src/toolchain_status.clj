@@ -9,7 +9,7 @@
   after `bb init`: the tools in `<folder>/.kit/toolchain` (`KIT_TOOLCHAIN_DIR` overrides), the keys in
   `<folder>/.env`. One clone per project, always inside it (the person: \"go with A\"). A home folder or
   `/` above the clone is refused - `~/.env` is a file people already have - and a folder inside a git
-  repository is said, its 500 MB untracked there (`place`).
+  repository is said, its 400 MB untracked there (`place`).
 
   A tool is present when its executable is at its cache path; nothing here runs it."
   (:require [babashka.fs :as fs]
@@ -60,7 +60,7 @@
       (folder-refusal folder home) (assoc :refusal (folder-refusal folder home))
       ;; the repository named: a home folder kept as a git repository (dotfiles) puts every project
       ;; under it here, and the person sees it is that one (Fable 5.1's read of e7a08d3)
-      root (assoc :note (str folder " is inside the git repository at " root ": its .kit/ (about 500 MB) and "
+      root (assoc :note (str folder " is inside the git repository at " root ": its .kit/ (about 400 MB) and "
                              ".env are untracked files there - ignore them in that repository, or move the project")))))
 
 (defn place-line "The one line each command says of `place`." [{:keys [folder cache env]}]

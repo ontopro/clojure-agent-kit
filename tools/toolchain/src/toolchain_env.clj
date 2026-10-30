@@ -270,7 +270,7 @@
       (say (if home
              (str "the JDK " (get-in matrix [:java :version]) " from the folder: " home)
              (str "no JDK in the folder - the shell's own is left as it is (21 or newer is used)"
-                  (when platform (str "; `" true-up " --only java` brings the matrix's")))))
+                  (when platform (str "; `" true-up "` brings the matrix's")))))
       (when accepted
         (say (str "the .env's flagged lines were accepted by " (:accepted-by accepted) " at " (:at accepted))))
       (say (if file

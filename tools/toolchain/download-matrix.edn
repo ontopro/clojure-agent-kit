@@ -11,6 +11,11 @@
 ;;                   archive for every platform and its :sha256 beside :url
 ;;   :bin            the executable, under <cache>/<tool>/<version>/ - for the JDK, under its :home
 ;;   :image-only     installed only where named (`--only`): the KIT's toolchain image names them
+;;   :disk-mb        about how much the tool takes on disk once installed, in MB - the doctor's offer says
+;;                   it per tool and in total. Measured on macos-aarch64, 2026-10-30: `du -sk` of
+;;                   <folder>/<tool>/<version> after `toolchain-install` into a scratch folder (bb: its
+;;                   binary; clojure-mcp-light: its gitlibs, outside the folder). Measured again when a
+;;                   version moves.
 ;;   :unpack         how the file becomes the tool: :tar.gz, :zip, :file (the download is the
 ;;                   executable), :bbin (no download: installed by the folder's bbin from :git/url at
 ;;                   :git/sha, each of :commands into bin/, its header naming the commit)
@@ -24,6 +29,7 @@
       :checksum-url "https://github.com/babashka/babashka/releases/download/v{version}/babashka-{version}-{asset}.tar.gz.sha256"
       :unpack :tar.gz
       :bin "bb"
+      :disk-mb 72
       :platforms {:macos-aarch64 {:asset "macos-aarch64" :sha256 "2d96ff06ce66883caa873fb717941a58c45523e3db9d91424e9f81b038896331"}
                   :linux-aarch64 {:asset "linux-aarch64-static" :sha256 "d85a95210efe6d8fd3b534f3d594948e3f30fa1c5864044773105ad3e2d79096"}
                   :linux-amd64 {:asset "linux-amd64-static" :sha256 "64fb984991c6e68f44e8a9391176a9bb411f9b9ae9959a6bca5307c75a7414da"}}}
@@ -34,6 +40,7 @@
         :unpack :tar.gz
         :home {:macos "jdk-{version}/Contents/Home" :linux "jdk-{version}"}
         :bin "bin/java"
+        :disk-mb 294
         :platforms {:macos-aarch64 {:asset "aarch64_mac" :sha256 "36dc14d797aaff6d89aab302cd053fdba6207dfdcf772052fa7b023a94b0e857"}
                     :linux-aarch64 {:asset "aarch64_linux" :sha256 "bb5b2ded252f21c6090cf780b0a408ad0d83bbb557e702955643557f13231880"}
                     :linux-amd64 {:asset "x64_linux" :sha256 "68982529869257d0ee6b824ec5aa270ff8b118bb438670da0b97ebdab178d7fb"}}}
@@ -43,6 +50,7 @@
              :checksum-url "https://github.com/clj-kondo/clj-kondo/releases/download/v{version}/clj-kondo-{version}-{asset}.zip.sha256"
              :unpack :zip
              :bin "clj-kondo"
+             :disk-mb 53
              :platforms {:macos-aarch64 {:asset "macos-aarch64" :sha256 "167c9fa6cb7e2b50370e05d9a2dd536fdcec9aa207c94ae82813738894f9580a"}
                          :linux-aarch64 {:asset "linux-aarch64" :sha256 "8825e6bcdc443d222dd86d0167fea7e59342446f31de591e089a04b029fbf352"}
                          :linux-amd64 {:asset "linux-static-amd64" :sha256 "cb56971158407311d469e2a639347efb19b9cc34f07ed9d9b3013fb975cba0a3"}}}
@@ -53,7 +61,8 @@
            :url "https://download.clojure.org/install/clojure-tools-{version}.tar.gz"
            :sha256 "fe9194858e75d5af13c2e2aff92d710674d5bc5105f2b42f90a7d94d82ec023c"
            :unpack :tar.gz
-           :bin "bin/clojure"}
+           :bin "bin/clojure"
+           :disk-mb 13}
 
  ;; the formatter, called by name by the KIT's fmt gate, gate 0 and a
  ;; project's gate 1 (plan 7.0, item 8.2a); no darwin-amd64 build, so no Intel Mac
@@ -62,6 +71,7 @@
           :checksum-url "https://github.com/weavejester/cljfmt/releases/download/{version}/cljfmt-{version}-{asset}.tar.gz.sha256"
           :unpack :tar.gz
           :bin "cljfmt"
+          :disk-mb 36
           :platforms {:macos-aarch64 {:asset "darwin-aarch64" :sha256 "6c357434d2c1f4d46e1f54d1c2954cb3d2f65cc158fcd3df91bc4f0231fa19bf"}
                       :linux-aarch64 {:asset "linux-aarch64" :sha256 "ecda99b7270daa649ef0bfc01f15e73201e87917940642fde132ce8fc589bace"}
                       :linux-amd64 {:asset "linux-amd64-static" :sha256 "a01efb0e42a10d0f448f0dfd6740d62ced058d6649487c608710c6378b73f1cb"}}}
@@ -81,7 +91,8 @@
         :url "https://raw.githubusercontent.com/babashka/bbin/v{version}/bbin"
         :sha256 "ef3436fff67850423dec28333d69a67f5be0da075e2ac93c39fcf278d69b625b"
         :unpack :file
-        :bin "bbin"}
+        :bin "bbin"
+        :disk-mb 1}
 
  ;; clojure-mcp-light, installed by the bbin above from its repository at a commit - git's own
  ;; integrity, no archive. The commit known-good records: `main` on 2026-06-19, nine commits after
@@ -93,6 +104,7 @@
                      :git/sha "d341c239d4b1faa58ccefaf8bc0b1e2a312e2af4"
                      :unpack :bbin
                      :bin "clj-nrepl-eval"
+                     :disk-mb 1
                      :commands [{:name "clj-nrepl-eval" :main "clojure-mcp-light.nrepl-eval"}
                                 {:name "clj-paren-repair" :main "clojure-mcp-light.paren-repair"}
                                 {:name "clj-paren-repair-claude-hook"}]}}

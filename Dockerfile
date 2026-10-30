@@ -69,8 +69,8 @@ RUN curl -fsSL -o /tmp/bb.tar.gz "${BB_URL}" \
 # clojure-mcp-light's three commands, installed by that bbin into /usr/local/bin at the matrix's commit,
 # each wrapper's header checked to name it (plan 7.0, item 8.2d). The
 # fetched archives stay in a BuildKit cache across builds (`--keep-downloads`: a project's folder
-# keeps none), so a change to the pack reruns the unpacking and the checks but not the JDK's 200 MB
-# download.
+# keeps none), so a change to the pack reruns the unpacking and the checks but not the JDK's archive
+# (about 130 MB).
 COPY tools/toolchain /opt/kit/tools/toolchain
 RUN --mount=type=cache,target=/opt/kit-toolchain/downloads \
     bb --config /opt/kit/tools/toolchain/bb.edn toolchain-install \

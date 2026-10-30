@@ -68,6 +68,28 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### The pack installs the JDK like every tool; each tool's size on disk, measured, in the matrix (plan 7.0, item 8.3a, the second of three)
+
+- **The JDK by default** (the person, 2026-10-30, asked why `toolchain-install` could not install the 25 the
+  KIT recommends over a 21: "yes to both"). `plan`'s `:skip` - "fetched only when named: --only java", 8.1c's
+  opt-in for its size - goes: a true-up installs the JDK with the rest. Item 8's goal, as the reshaped note
+  has it: "everything else the KIT runs - the JDK included - comes from one pinned, checksummed file into
+  the project's own folder". `toolchain-env`'s hint names the plain true-up.
+- **Sizes, measured** (the person, on the offer: each item listed with its size, then the total and the free
+  disk space). Each row a machine takes carries `:disk-mb`: bb 72, java 294, clj-kondo 53, clojure 13,
+  cljfmt 36, bbin 1, clojure-mcp-light 1 - `du -sk` of `<folder>/<tool>/<version>` after `toolchain-install
+  --only java,clj-kondo,clojure,cljfmt,bbin,clojure-mcp-light` into a scratch folder on macos-aarch64,
+  2026-10-30 (bb: its binary, `ls -lL`, as the running bb was kept; clojure-mcp-light: its gitlibs, 0.9 MB,
+  outside the folder). The folder came to 396 MB without bb. A test holds every row a machine takes to a
+  size.
+- **The figures the documents carried were not these**: "about 500 MB, 330 of it the JDK" (the pack's
+  README, `status`' note) and the Dockerfile's "the JDK's 200 MB download". The JDK's archive is about 130
+  MB (`curl -sIL` of the matrix's URL: 130 MB macos-aarch64, 134 MB linux-aarch64), 294 MB unpacked; the
+  folder about 400 MB. Each now says which it is.
+
+Proved: the pack's tests (the JDK installed by a plain plan; every machine row sized); by hand,
+`toolchain-install --dry-run` here lists java to install.
+
 ### One harness reader of the download matrix; the JDK a recorded tool like the rest (plan 7.0, item 8.3a, the first of three commits)
 
 The design note, read twice by Fable 5.1 (GO both times), and the person: "go 8.3a, (a) fold java in".

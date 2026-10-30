@@ -204,7 +204,7 @@
   place - the Clojure CLI laid out there by `cli-layout`, its paths the place's - the executable
   made one, and the folder swapped into place (`swap-in!`). The archive deleted after a success, unless
   `keep?`: a failure keeps the verified archive, which `download!` reuses on the retry, whose success
-  deletes it - a retry never fetches the JDK's 330 MB again (Fable 5.1's read of `e7a08d3`)."
+  deletes it - a retry never fetches the JDK's archive, about 130 MB, again (Fable 5.1's read of `e7a08d3`)."
   [matrix {:keys [tool version dir bin download] :as step} keep?]
   (download! step)
   (fs/create-dirs (fs/parent dir))
