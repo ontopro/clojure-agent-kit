@@ -277,6 +277,8 @@
                  (and (= :ok status) (nil? r) (= :bbin via) good-version (not= version good-version))
                  (conj (str "not the tested commit (" good-version ")")))]
      (cond-> (assoc base :path path :version version :reference r :known-good good-version :status status)
+       ;; above the matrix, as a fact on the result - the eval line reads it, never the note's words
+       (and (= :ok status) vs-ref (pos? vs-ref)) (assoc :above? true)
        (seq (remove nil? notes)) (assoc :note (str/join "; " (remove nil? notes)))
        ;; said on a ready machine too: the one note a short report keeps
        (and (= :ok status) other-major?) (assoc :not-preferred? true)))))
@@ -341,11 +343,12 @@
   the clone's path filled for `<kit>`, where the matrix publishes no build here, for bb and git (the
   true-up cannot replace the running bb; git is no row), and for a tool no matrix row stands behind;
   `eval \"$(bb toolchain-env)\"` when the project's folder has it and this shell's PATH does not; else the
-  true-up."
-  [{:keys [tool install]} {:keys [clone true-up present unpublished matrix] :as ctx}]
+  true-up. When the pack's `status` did not answer, its own route too: the true-up would fail on what
+  stopped the pack (From Fable 5.1's read of `e0fe220`)."
+  [{:keys [tool install]} {:keys [clone true-up present unpublished matrix status] :as ctx}]
   (let [install (cond-> install (and install clone) (str/replace "<kit>" (str clone)))
         mt (when matrix (download-matrix/matrix-tool matrix tool))]
-    (cond (or (nil? ctx) unpublished (#{:bb :git} tool) (nil? mt)) install
+    (cond (or (nil? ctx) (nil? status) unpublished (#{:bb :git} tool) (nil? mt)) install
           (contains? present mt) "eval \"$(bb toolchain-env)\" in this shell - the project's folder has it"
           :else true-up)))
 
@@ -419,8 +422,7 @@
          "")
        (when note (str "\n      " note))
        ;; above the matrix, with the matrix's own in the folder: the line that runs it (Fable 5.1's answer to Q4)
-       (when (and (= :ok status) reference note (str/includes? note "newer than the KIT's download matrix")
-                  (:matrix ctx) (contains? (:present ctx) (download-matrix/matrix-tool (:matrix ctx) tool)))
+       (when (and (:above? r) (:matrix ctx) (contains? (:present ctx) (download-matrix/matrix-tool (:matrix ctx) tool)))
          "\n      for the matrix's exactly: eval \"$(bb toolchain-env)\" in this shell - the project's folder has it")
        (when-let [fix (when (unusable? status) (fix-for r ctx))]
          (str "\n      fix: " fix))))
@@ -436,14 +438,19 @@
 
 (defn- header
   "Where the project's toolchain is, from `status`, and its one note - `:note`, `:refusal` or
-  `:unpublished` - each once."
-  [{:keys [status]}]
-  (when status
+  `:unpublished` - each once; when the pack's `status` did not answer, that, with the command that says
+  why (From Fable 5.1's read of `e0fe220`). Nothing with no `ctx`."
+  [{:keys [status clone] :as ctx}]
+  (cond
+    status
     (let [{:keys [folder cache env note refusal unpublished]} status]
       (str "\nthe project folder " folder " - the tools in " cache ", the keys in " env "\n"
            (when note (str "  note: " note "\n"))
            (when refusal (str "  refused: " refusal "\n"))
-           (when unpublished (str "  " unpublished "\n"))))))
+           (when unpublished (str "  " unpublished "\n"))))
+    ctx
+    (str "\nthe toolchain pack's status did not answer - run `bb --config " (fs/path clone "tools" "toolchain" "bb.edn")
+         " status` to see why\n")))
 
 (defn render-table
   "The human report, in two parts - what KIT's gates and a loop need, and what

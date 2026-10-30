@@ -68,6 +68,26 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### The doctor says when the pack's status did not answer; above the matrix is a fact on the result (From Fable 5.1's read of `e0fe220`)
+
+The person: "go, low + nit 1, then 8.3b".
+- **The low**: when the toolchain pack's `status --edn` gives no answer (a matrix that does not read, say),
+  the doctor's header said nothing and every matrix tool's fix became the true-up, which would fail on what
+  stopped the pack. Now the header says it - "the toolchain pack's status did not answer - run `bb --config
+  <clone>/tools/toolchain/bb.edn status` to see why", `bb self-check`'s words - and each row's fix is its own
+  `:install` route.
+- **Nit 1**: the "for the matrix's exactly: eval …" line found an above-the-matrix row by matching its note's
+  words; a reworded note would have lost it silently. `probe` sets `:above? true`, and the line reads that.
+- **Nit 2**, for 8.3e, carried on its line in the plan: with mise activated in the shell, its shims come back
+  in front of the folder's `bin/` after the eval, so a `.mise.local.toml` on another JDK would win over the
+  folder's; the KIT writes `temurin-25`, the matrix's major, so by default they agree.
+
+`bb docker-gates` on `e0fe220` was green: in the image the doctor's header placed the folder at `/work`, the
+tools in `/opt/kit-toolchain`, and the JDK 25.0.5 against the matrix's 25.0.5+8 ok.
+
+Proved: `doctor_test` (the unanswered pack said, a fix its own route, nothing said with no context; `:above?`
+set above and not at equal, the eval line kept under a reworded note).
+
 ### `bb doctor` holds every tool to the download matrix, names each row's fix, and offers the true-up at a terminal (plan 7.0, item 8.3a, the third of three)
 
 The design note, read twice (GO), and the person's decisions: 8.3c first, the known-good column kept "for now

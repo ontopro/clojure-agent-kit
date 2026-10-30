@@ -372,3 +372,26 @@
               :let [i (:install (first (filter #(= t (:tool %)) from-text)))]]
         (is (str/includes? i "toolchain-install --only bbin,clojure-mcp-light") (str t))
         (is (not (re-find #"\d+\.\d+|--tag|--sha" i)) (str t))))))
+
+(deftest a-pack-that-does-not-answer-is-said-and-its-fixes-are-each-tools-own
+  ;; From Fable 5.1's read of e0fe220: the header was silent, and every fix became a true-up that would
+  ;; fail on what stopped the pack
+  (let [ctx (doctor/fix-context clone nil matrix)]
+    (is (str/includes? (doctor/render-table [] nil ctx)
+                       (str "the toolchain pack's status did not answer - run `bb --config " clone
+                            "/tools/toolchain/bb.edn status` to see why")))
+    (is (= "the page" (doctor/fix-for {:tool :cljfmt :install "the page"} ctx)))
+    (is (not (str/includes? (doctor/render-table [] nil nil) "did not answer")) "no context: nothing said")))
+
+(deftest above-the-matrix-is-a-fact-on-the-result
+  ;; From Fable 5.1's read of e0fe220: the eval line read the note's words; now it reads :above?
+  (let [kondo {:tool :clj-kondo :via :flag :cmd ["clj-kondo" "--version"] :req :required :does "Linter"}]
+    (with-redefs [fs/which (constantly "/usr/bin/clj-kondo")
+                  doctor/sh (constantly "clj-kondo v2026.11.01")]
+      (let [r (doctor/probe kondo {} {:clj-kondo "2026.10.26"})
+            ctx (assoc (doctor/fix-context clone status matrix) :present #{:clj-kondo})]
+        (is (:above? r))
+        (is (str/includes? (doctor/render-table [r] nil ctx) "for the matrix's exactly: eval"))
+        (is (str/includes? (doctor/render-table [(assoc r :note "reworded")] nil ctx) "for the matrix's exactly: eval")
+            "a reworded note keeps the line")
+        (is (nil? (:above? (doctor/probe kondo {} {:clj-kondo "2026.11.01"}))) "equal: no flag")))))
