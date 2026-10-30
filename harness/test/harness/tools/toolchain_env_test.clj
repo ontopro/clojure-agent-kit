@@ -32,7 +32,7 @@
   (testing "a name a program the KIT runs reads its hooks from, in any case, is flagged"
     (let [names ["PATH" "path" "JAVA_HOME" "IFS" "BASH_ENV" "ZDOTDIR" "PROMPT_COMMAND" "LD_PRELOAD"
                  "DYLD_INSERT_LIBRARIES" "JAVA_TOOL_OPTIONS" "java_tool_options" "BABASHKA_PRELOADS"
-                 "GIT_CONFIG_COUNT" "JAVA_CMD" "JAVA_OPTS" "CLJ_CONFIG"]
+                 "GIT_CONFIG_COUNT" "JAVA_CMD" "JAVA_OPTS" "CLJ_CONFIG" "DOCKER_HOST" "KIT_TEMPLATE_LOCAL"]
           {:keys [ok? flags]} (env/check-env (str/join (map #(str % "=/w\n") names)))]
       (is (not ok?))
       (is (= (count names) (count flags)))
@@ -120,10 +120,11 @@
   (let [entries [{:at "t1" :sha256 "a" :names ["A" "B"]}]
         e (env/seen-entry entries "t2" "b" {:names ["B" "C"] :flags []} true)]
     (is (= {:at "t2" :sha256 "b" :names ["B" "C"] :added ["C"] :removed ["A"] :flags [] :loaded? true} e))
-    (is (= "the .env changed since t1: +C, -A" (env/change-line entries e)))
+    (is (= "the .env changed since t1: +C, -A" (env/change-line entries e "/w/.env")))
     (is (= "the .env changed since t1: the same names, values or other lines changed"
-           (env/change-line entries (env/seen-entry entries "t2" "c" {:names ["A" "B"]} true))))
-    (is (nil? (env/change-line [] e)) "the first sight says nothing")
+           (env/change-line entries (env/seen-entry entries "t2" "c" {:names ["A" "B"]} true) "/w/.env")))
+    (is (= "first sight of /w/.env: 2 names, recorded in /w/.env-record.edn" (env/change-line [] e "/w/.env"))
+        "the first sight says so - a deleted record shows")
     (is (= ["A" "B"] (:added (env/seen-entry [] "t" "x" {:names ["A" "B"]} true))) "the first sight: every name added"))
   (testing "an acceptance names one sha256, the latest kept"
     (let [es [{:sha256 "a" :accepted-by "P" :at "1"} {:sha256 "b" :names []} {:sha256 "a" :accepted-by "Q" :at "2"}]]
@@ -157,6 +158,18 @@
         (is (= "P" (:accepted-by (:accepted r)))))
       (spit env (str (slurp env) "X=1\n"))
       (is (not (:load? (load!))) "changed after the acceptance: not loaded until accepted again")
+      (testing "an acceptance before any load names the file's names, so the next change is measured from it"
+        (let [d2 (fs/create-temp-dir)
+              env2 (str (fs/path d2 ".env"))
+              rec2 (env/record-file env2)
+              load2! #(binding [*err* (java.io.StringWriter.)] (env/load-env! "t" env2))]
+          (spit env2 "A=1\nrm -rf ~\n")
+          (env/append-entry! rec2 {:at "t0" :sha256 (env/sha256 (slurp env2)) :names ["A"] :accepted-by "P"})
+          (is (:load? (load2!)) "accepted: loaded")
+          (is (= 1 (count (:entries (env/read-record rec2)))) "the acceptance is what the file had: no entry")
+          (spit env2 (str (slurp env2) "X=1\n"))
+          (load2!)
+          (is (= ["X"] (:added (last (:entries (env/read-record rec2))))))))
       (let [record (slurp rec)]
         (doseq [s secrets] (is (not (str/includes? record s)) "no value or flagged text in the record"))))))
 

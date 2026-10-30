@@ -68,6 +68,22 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### The program hooks gain `KIT_` and `DOCKER_`; an acceptance names the file's names; the first sight says so (From Fable 5.1's reads of `bd26fdb` and `956ea06`)
+
+The person: "go, take them as one commit". From the read of `bd26fdb`, two lows: the hooks list lacked
+the KIT's own - a grep of `System/getenv` gives `KIT_TEMPLATE_LOCAL` (the template `bb init` runs),
+`KIT_TOOLCHAIN_DIR` (the cache 8.3c puts on the PATH) and `KIT_WORKSPACE` - and docker's, run in four
+places (`DOCKER_HOST` sends every build and container elsewhere, `DOCKER_CONFIG` names the plugins it
+runs); both prefixes added. And a nit: a comment says why a flag carries the name `select-keys` strips.
+From the read of `956ea06`, a low-medium: an acceptance given before any load saw that state left its
+names unrecorded, and the next change was measured from an older entry, so names that arrived two
+states ago read as new. The acceptance entry now carries `:names`, and every entry says what the file
+had, so the next change is measured from the last entry, whatever its kind. A low: the first sight was
+silent, so a deleted record hid a change; it now says "first sight of <file>: N names, recorded in
+<record>", and a "first sight" months in shows the record went. A doc nit: `:loaded?` is whether the
+lines were handed to the shell - seen, not sourced. `toolchain_env_test` holds each: the two new
+prefixes, the first-sight line, an acceptance before any load then `X=1` added giving `:added ["X"]`.
+
 ### A flagged `.env` loads once the person accepts it; every change seen is added to the `.env` record (plan 7.0, item 8.6d, step 2)
 
 The person (2026-10-30): a flag is "kicked out for human review and documented - a simple statement that

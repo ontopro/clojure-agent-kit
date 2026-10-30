@@ -132,14 +132,15 @@
 
 (def program-hooks
   "Names flagged, in any case (zsh ties `path` to `PATH`): how the shell finds and runs a command,
-  reads its own startup and splits words; what the JVM, the `clojure` launcher, bb and git load or
-  run from the environment - the JDK's lines come first and a `.env` must not undo them unseen. A
+  reads its own startup and splits words; what the JVM, the `clojure` launcher, bb, git, docker and
+  the KIT itself (`KIT_TEMPLATE_LOCAL` is the template `bb init` runs, `KIT_TOOLCHAIN_DIR` the cache 8.3c
+  puts on the PATH) load or run from the environment - the JDK's lines come first and a `.env` must not undo them unseen. A
   hint, never finished: a name it misses loads as any value does, and the `.env` record shows it
   arrived. `:names` exact, `:prefixes` every name they begin."
   {:names #{"PATH" "JAVA_HOME" "HOME" "IFS" "ENV" "BASH_ENV" "ZDOTDIR" "SHELL" "CDPATH" "FPATH"
             "PROMPT_COMMAND" "PS4" "JAVA_TOOL_OPTIONS" "JDK_JAVA_OPTIONS" "_JAVA_OPTIONS" "CLASSPATH"
             "JAVA_CMD" "JAVA_OPTS"}
-   :prefixes ["LD_" "DYLD_" "BABASHKA_" "GIT_" "CLJ_"]})
+   :prefixes ["LD_" "DYLD_" "BABASHKA_" "GIT_" "CLJ_" "DOCKER_" "KIT_"]})
 
 (defn- program-hook? [nm]
   (let [n (str/upper-case nm)]
@@ -166,6 +167,7 @@
                    :when (or (str/includes? line "\r") (not (or (str/blank? l) (str/starts-with? l "#"))))]
                (let [[_ nm v] (re-matches #"(?:export\s+)?([^=]*)=(.*)" l)
                      nm (when (and nm (re-matches name-re nm)) nm)
+                     ;; the name rides along for `:names`; `select-keys` strips it from the flag
                      flag #(hash-map :line (inc i) :why % :name nm)]
                  (cond (str/includes? line "\r") (flag "a carriage return - save the file with Unix line ends")
                        (nil? nm) (flag "not NAME=value - the shell would run the line as a command")
@@ -225,10 +227,11 @@
 
 (defn seen-entry
   "The entry a load adds when the file's sha256 is not the last entry's - pure: the time, the sha256,
-  every name set and those added and removed since the last entry that named them, the flags, and
-  whether it was loaded. Names, never a value."
+  every name set and those added and removed since the last entry (every entry, an acceptance too,
+  names what the file had), the flags, and `:loaded?` - whether its lines were handed to the shell:
+  the record says what was seen, not what the shell did with it. Names, never a value."
   [entries at sha {:keys [names flags]} loaded?]
-  (let [before (set (some :names (rseq (vec entries))))
+  (let [before (set (:names (last entries)))
         now (set names)]
     {:at at :sha256 sha :names (vec names)
      :added (vec (sort (remove before now))) :removed (vec (sort (remove now before)))
@@ -241,13 +244,15 @@
 
 (defn change-line
   "What a load says of a change - pure: the names added and removed, or that the names are the same
-  and other text changed; the flagged lines' count; nil for the first sight."
-  [entries entry]
-  (when-let [prev (last entries)]
+  and other text changed; the flagged lines' count. The first sight says so too, naming the record: a
+  record that announces its start makes its disappearance visible - a \"first sight\" months in."
+  [entries entry file]
+  (if-let [prev (last entries)]
     (let [moved (concat (map #(str "+" %) (:added entry)) (map #(str "-" %) (:removed entry)))]
       (str "the .env changed since " (:at prev) ": "
            (if (seq moved) (str/join ", " moved) "the same names, values or other lines changed")
-           (when-let [n (not-empty (:flags entry))] (str "; " (count n) " line(s) flagged"))))))
+           (when-let [n (not-empty (:flags entry))] (str "; " (count n) " line(s) flagged"))))
+    (str "first sight of " file ": " (count (:names entry)) " names, recorded in " (record-file file))))
 
 (defn append-entry! [path entry] (spit path (str (pr-str entry) "\n") :append true))
 
@@ -299,7 +304,7 @@
     (when (pos? unread) (say cmd (str rec ": " unread " line(s) not an EDN map, skipped")))
     (when (not= sha (:sha256 (last entries)))
       (let [entry (seen-entry entries (now) sha checked load?)]
-        (some->> (change-line entries entry) (say cmd))
+        (say cmd (change-line entries entry file))
         (append-entry! rec entry)))
     {:load? load? :accepted accepted :checked checked}))
 
@@ -371,5 +376,5 @@
                   (nil? nm) (do (say "no name - nothing accepted") (System/exit 1))
                   (not= "accept" word) (do (say "not accepted") (System/exit 1))
                   (not= sha (sha256 (slurp file))) (do (say (str file " changed while you answered - nothing accepted; run it again")) (System/exit 1))
-                  :else (do (append-entry! (record-file file) {:at (now) :sha256 sha :accepted-by nm :flags (:flags checked)})
+                  :else (do (append-entry! (record-file file) {:at (now) :sha256 sha :names (:names checked) :accepted-by nm :flags (:flags checked)})
                             (say (str "accepted by " nm " - added to " (record-file file))))))))))))
