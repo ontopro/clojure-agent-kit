@@ -68,6 +68,18 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### The true-up says what it changed (plan 7.0, item 8.3b, the first of two)
+
+The design note, read: GO; the person: "go, build 8.3b". `toolchain-install` ends with one line
+(`summary-line`): the tools it installed, those it kept at the matrix's version, those it skipped, and where
+they are linked - "installed: nothing; kept: …" on a second run, so a true-up run any time says it changed
+nothing; a dry run says what it would install. It installs only what is missing at the matrix's version, as
+before: a moved version is a new path, so it is missing; an older version's folder stays (prune was dropped)
+and `bin/` is re-linked to the new one.
+
+Proved: `toolchain_install_test` (the three shapes); by hand, a second true-up over a scratch folder
+("installed: nothing; kept: bbin 0.2.5, clojure-mcp-light d341c23") and a dry run here.
+
 ### The doctor says when the pack's status did not answer; above the matrix is a fact on the result (From Fable 5.1's read of `e0fe220`)
 
 The person: "go, low + nit 1, then 8.3b".

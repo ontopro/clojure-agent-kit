@@ -248,3 +248,14 @@
                                   "Location: /t/bbin:1946:3\n----- Stack trace -----\nbabashka.bbin.cli - /t/bbin:1944:1\n"))))
   (is (= "Invalid combination" (install/bbin-error "Message:  Invalid combination\n")) "no Location line")
   (is (= "a / b / c" (install/bbin-error "x\na\n\nb\nc\n")) "no Message line: the last three"))
+
+(deftest the-true-up-says-what-it-changed
+  ;; plan 7.0, item 8.3b: one line - installed, kept, skipped, where linked
+  (let [steps [{:tool :java :version "25.0.5+8" :step :installed} {:tool :cljfmt :version "0.16.6" :step :kept}
+               {:tool :bb :version "1.13.229" :step :skip}]]
+    (is (= "  installed: java 25.0.5+8; kept: cljfmt 0.16.6; skipped: bb 1.13.229; linked into /c/bin"
+           (install/summary-line steps "/c/bin" false)))
+    (is (= "  installed: nothing; kept: cljfmt 0.16.6; linked into /c/bin"
+           (install/summary-line [(second steps)] "/c/bin" false)) "a second true-up changes nothing, and says so")
+    (is (= "  would install: java 25.0.5+8"
+           (install/summary-line [{:tool :java :version "25.0.5+8" :step :install}] "/c/bin" true)))))

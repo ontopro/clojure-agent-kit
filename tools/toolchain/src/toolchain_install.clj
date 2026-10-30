@@ -286,6 +286,19 @@
   [l target]
   (= (fs/normalize (fs/absolutize l)) (fs/normalize (fs/absolutize target))))
 
+(defn summary-line
+  "What a true-up changed, in one line - pure (plan 7.0, item 8.3b): the tools it installed, those it
+  kept at the matrix's version, those it skipped, and where they are linked; a dry run says what it would
+  install."
+  [steps link dry-run?]
+  (let [by (group-by :step steps)
+        tools (fn [k] (str/join ", " (for [{:keys [tool version]} (get by k)] (str (name tool) " " version))))]
+    (str "  " (if dry-run? "would install: " "installed: ")
+         (if (seq (get by (if dry-run? :install :installed))) (tools (if dry-run? :install :installed)) "nothing")
+         (when (seq (:kept by)) (str "; kept: " (tools :kept)))
+         (when (seq (:skip by)) (str "; skipped: " (tools :skip)))
+         (when-not dry-run? (str "; linked into " link)))))
+
 (defn link-targets
   "What `--link <dir>` links for each tool installed or kept, as `[name target]` - pure over the
   steps and `list-dir`: the JDK's every executable in its `bin/`, the Clojure CLI's `clojure` and
@@ -363,7 +376,8 @@
                   :when (not (self-link? l target))]
             (fs/delete-if-exists l)
             (fs/create-sym-link l target))
-          (println "  linked into" link))))
+          (println (summary-line done link false)))
+        (when dry-run? (println (summary-line done link true)))))
     (catch Exception e
       (binding [*out* *err*] (println (str "toolchain-install: " (or (ex-message e) (str e)))))
       (System/exit 1))))
