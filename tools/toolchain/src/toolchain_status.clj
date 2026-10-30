@@ -71,19 +71,25 @@
   [pack-dir]
   (place pack-dir (System/getenv) (System/getProperty "user.home")))
 
+(defn commit-of
+  "The commit the bbin wrapper at `path` names in its header, or nil - no file, or no header."
+  [path]
+  (when (fs/regular-file? path) (dm/bbin-commit (slurp (str path)))))
+
 (defn rows
   "A row per tool `platform` takes - `{:tool :version :path :present?}` - `present?` the test of a
   path. bb is present when the bb running this (`running`'s `:bb`) is at or above the matrix's, as
   `toolchain-install` skips it then (the plan's rule), the row carrying `:running`. A row not
   present carries `:fix`, the pack's command that installs it, runnable as printed: `config` is the
-  pack's `bb.edn`."
-  [matrix cache platform present? {:keys [running config]}]
+  pack's `bb.edn`. A bbin row is present when each command in `<cache>/bin/` names its commit
+  (`commit-of`, a path to the commit its header names; `toolchain-download-matrix/in-cache?`)."
+  [matrix cache platform present? {:keys [running config commit-of] :or {commit-of (constantly nil)}}]
   (for [t (dm/machine-tools matrix platform nil)
         :let [v (:version (get matrix t))
               p (dm/bin-path matrix cache t platform)
               run (when (= :bb t) (get running :bb))
               running? (boolean (and run (not (neg? (dm/compare-versions run v)))))
-              here? (or running? (boolean (present? p)))]]
+              here? (or running? (dm/in-cache? matrix t p (str cache "/bin") present? commit-of))]]
     (cond-> {:tool t :version v :path p :present? here?}
       running? (assoc :running run)
       (not here?) (assoc :fix (str "bb --config " config " toolchain-install --only " (name t))))))
@@ -94,7 +100,7 @@
   [platform rows]
   (into [(str "the tools for " (name platform) ":")]
         (for [{:keys [tool version path present? running fix]} rows]
-          (format "  %-10s %-16s %s" (name tool) version
+          (format "  %-17s %-16s %s" (name tool) version
                   (cond running (str "the bb running this, " running)
                         present? path
                         :else (str "not installed - " fix))))))
@@ -107,7 +113,8 @@
         matrix (dm/read-matrix (str pack-dir "/download-matrix.edn"))
         platform (dm/platform-key (System/getProperty "os.name") (System/getProperty "os.arch"))
         rs (rows matrix cache platform fs/executable?
-                 {:running {:bb (System/getProperty "babashka.version")} :config (str pack-dir "/bb.edn")})]
+                 {:running {:bb (System/getProperty "babashka.version")} :config (str pack-dir "/bb.edn")
+                  :commit-of commit-of})]
     (if (some #{"--edn"} args)
       (prn (assoc (select-keys at [:folder :env :refusal :note]) :cache cache :platform platform :rows (vec rs)))
       (do (println (place-line at))

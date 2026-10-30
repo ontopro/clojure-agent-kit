@@ -11,8 +11,8 @@
   adopter gets has its pins equal to known-good, the JDK apart.
 
   The pins: the download matrix (`tools/toolchain/download-matrix.edn`) for the tools the pack
-  fetches, cljfmt among them (plan 7.0, item 8.2a); the Dockerfile's own for bbin and
-  clojure-mcp-light until 8.2d makes bbin a row of the matrix; the project set (`project-set.edn`) for what only a
+  fetches, cljfmt among them (plan 7.0, item 8.2a), and bbin and clojure-mcp-light (8.2d) - the
+  latter a commit, compared by equality, never as a version; the project set (`project-set.edn`) for what only a
   project runs (tailwindcss), and beside each tool it shares with the matrix; XTDB's, the one
   place the KIT writes it (`harness/health/xtdb/deps.edn`, plan 7.0, item 7.3); the template's and
   deps-new's tags (`template-pins.edn`). Installed: the doctor's probe of this machine where the
@@ -44,15 +44,15 @@
    {:tool :geckodriver :repo "mozilla/geckodriver" :tag #"v(\d+\.\d+\.\d+)" :pin [[:download-matrix :geckodriver]] :probe :geckodriver}
    {:tool :cljfmt :repo "weavejester/cljfmt" :tag #"(\d+\.\d+\.\d+)"
     :pin [[:download-matrix :cljfmt]] :probe :cljfmt :project :cljfmt}
-   {:tool :clojure-mcp-light :repo "bhauman/clojure-mcp-light" :tag #"v(\d+\.\d+\.\d+)" :pin [[:dockerfile "MCP_LIGHT_TAG"]] :probe :clj-nrepl-eval}
-   {:tool :bbin :repo "babashka/bbin" :tag #"v(\d+\.\d+\.\d+)" :pin [[:dockerfile "BBIN_VERSION"]] :probe :bbin}
+   {:tool :clojure-mcp-light :repo "bhauman/clojure-mcp-light" :tag #"v(\d+\.\d+\.\d+)" :pin [[:download-matrix :clojure-mcp-light]] :probe :clj-nrepl-eval}
+   {:tool :bbin :repo "babashka/bbin" :tag #"v(\d+\.\d+\.\d+)" :pin [[:download-matrix :bbin]] :probe :bbin}
    {:tool :xtdb :repo "xtdb/xtdb" :tag #"v(\d+\.\d+\.\d+)" :pin [[:xtdb-deps 'com.xtdb/xtdb-api]]}
    {:tool :tailwindcss :repo "tailwindlabs/tailwindcss" :tag #"v(\d+\.\d+\.\d+)" :pin [[:project-set :tailwindcss]]}
    {:tool :template :repo "ontopro/clojure-stack-lite" :tag #"(kit-v\d+(?:\.\d+)*)" :pin [[:template :git/tag]]}
    {:tool :deps-new :repo "seancorfield/deps-new" :tag #"v(\d+\.\d+\.\d+)" :pin [[:template :deps-new]]}])
 
 (def ^:private where
-  {:download-matrix "matrix" :dockerfile "Dockerfile" :project-set "project set"
+  {:download-matrix "matrix" :project-set "project set"
    :template "template-pins" :xtdb-deps "health/xtdb deps.edn"})
 
 ;; ---------------------------------------------------------------- pure
@@ -83,26 +83,20 @@
        (sort compare-versions)
        last))
 
-(defn dockerfile-args
-  "The Dockerfile's `ARG NAME=default` lines, as {NAME default}."
-  [text]
-  (into {} (for [[_ k v] (re-seq #"(?m)^ARG ([A-Z_]+)=(\S+)" (or text ""))] [k v])))
+(defn- commit? [v] (boolean (and v (re-matches #"[0-9a-f]{7,40}" (str v)))))
 
 (defn pins
   "Each source's pin from the files' contents, as {tool {:version :from}} - the first place of its
-  `:pin` that carries it; a pin no file carries is left out. The Dockerfile's `v` prefix is
-  dropped, so a pin and a release are compared as the same shape. A pin the Clojure CLI fetches as
+  `:pin` that carries it; a pin no file carries is left out. A pin the Clojure CLI fetches as
   a git dep - the template, deps-new - carries `:gitlib {:lib :sha}` too, for `fetched`."
-  [{:keys [matrix dockerfile template-pins xtdb-deps]} & [project-set]]
-  (let [args (dockerfile-args dockerfile)
-        template (get-in template-pins [:templates (:default template-pins)])
+  [{:keys [matrix template-pins xtdb-deps]} & [project-set]]
+  (let [template (get-in template-pins [:templates (:default template-pins)])
         gitlib {:git/tag (some->> (:git/sha template) (hash-map :lib (:template template) :sha))
                 :deps-new (some->> (get-in template [:deps-new :git/sha]) (hash-map :lib 'io.github.seancorfield/deps-new :sha))}
         read (fn [[place k]]
                (case place
                  :download-matrix (get-in matrix [k :version])
                  :xtdb-deps (get-in xtdb-deps [k :mvn/version])
-                 :dockerfile (some-> (get args k) (str/replace #"^v" ""))
                  :project-set (get-in project-set [:tools k])
                  :template (case k
                              :git/tag (:git/tag template)
@@ -132,7 +126,10 @@
                nw (get releases tool)
                inst (get installed tool)
                proj (when (and project pin (not= :project-set from)) (get-in project-set [:tools project]))
-               differs? (fn [v] (and (version? v) (version? pin) (not (zero? (compare-versions v pin)))))
+               ;; a commit pin (clojure-mcp-light) is equal or not: a commit has no order
+               differs? (fn [v] (if (commit? pin)
+                                  (and (commit? v) (not (str/starts-with? pin v)) (not (str/starts-with? v pin)))
+                                  (and (version? v) (version? pin) (not (zero? (compare-versions v pin))))))
                other-major? (and (= :java tool) (version? inst) (version? pin)
                                  (not= (first (version-key inst)) (first (version-key pin))))]]
      (if-not pin
@@ -140,7 +137,7 @@
        {:tool tool :installed inst :marks [:unpinned]}
        (cond-> {:tool tool :pin pin :from from :installed inst :project proj :newest nw
                 :marks (cond-> []
-                         (and nw (pos? (compare-versions nw pin))) (conj :newer)
+                         (and nw (not (commit? pin)) (pos? (compare-versions nw pin))) (conj :newer)
                          (nil? nw) (conj :unknown)
                          other-major? (conj :other-major)
                          (and (differs? inst) (not other-major?)) (conj :installed-differs)
@@ -195,7 +192,6 @@
 (defn- read-files [root]
   (let [read #(let [f (fs/path root %)] (when (fs/exists? f) (slurp (str f))))]
     {:matrix (some-> (read "tools/toolchain/download-matrix.edn") edn/read-string)
-     :dockerfile (read "Dockerfile")
      :template-pins (some-> (read "harness/resources/template-pins.edn") edn/read-string)
      :project-set (some-> (read "harness/resources/project-set.edn") edn/read-string)
      :xtdb-deps (some-> (read "harness/health/xtdb/deps.edn") edn/read-string :deps)}))

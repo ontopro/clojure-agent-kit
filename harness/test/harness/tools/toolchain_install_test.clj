@@ -6,6 +6,7 @@
   its tools by it."
   (:require
    [babashka.fs :as fs]
+   [babashka.process :as p]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [toolchain-download-matrix :as dm]
@@ -21,7 +22,7 @@
 (deftest the-plan-on-each-platform-and-cache
   (testing "a fresh cache on a Mac: bb kept as it runs, the JDK only when named, the rest installed"
     (let [s (steps :macos-aarch64 {:running {:bb "1.13.229"}})]
-      (is (= [:bb :java :clj-kondo :clojure :cljfmt] (keys s)) "no image-only tool")
+      (is (= [:bb :java :clj-kondo :clojure :cljfmt :bbin :clojure-mcp-light] (keys s)) "no image-only tool")
       (is (= :skip (:step (:bb s))))
       (is (str/includes? (:why (:bb s)) "the bb running this is 1.13.229, at or above 1.13.229"))
       (is (= "fetched only when named: --only java" (:why (:java s))))
@@ -118,10 +119,9 @@
 
 (def leaving
   "The Dockerfile's ARGs of tools the pack does not hold yet, each with the sub-task that removes it
-  - deleted from this list by the commit that deletes its ARG (plan 7.0, item 8.1c, Q3)."
-  {"BBIN_VERSION" "8.2d: bbin a row of the matrix"
-   "MCP_LIGHT_TAG" "8.2d: clojure-mcp-light installed by bbin at the matrix's commit"
-   "MCP_LIGHT_SHA" "8.2d: clojure-mcp-light installed by bbin at the matrix's commit"})
+  - deleted from this list by the commit that deletes its ARG (plan 7.0, item 8.1c, Q3). None since
+  8.2d: bbin and clojure-mcp-light are the matrix's."
+  {})
 
 (deftest the-images-build-arguments-are-the-matrixs
   ;; D-9: the image installs by running the pack; only what the shell fetches before bb exists is
@@ -135,9 +135,83 @@
     (is (= {"BB_VERSION" "1.13.229" "GIT_VERSION" "2.56.0"} (select-keys args ["BB_VERSION" "GIT_VERSION"])))
     (is (= "https://github.com/babashka/babashka/releases/download/v1.13.229/babashka-1.13.229-linux-amd64-static.tar.gz"
            (get (dm/image-args matrix :linux-amd64) "BB_URL")))
-    (is (str/includes? dockerfile "toolchain-install \\\n      --only java,clj-kondo,clojure,cljfmt,geckodriver --link /usr/local/bin")
+    (is (str/includes? dockerfile "toolchain-install \\\n      --only java,clj-kondo,clojure,cljfmt,geckodriver,bbin,clojure-mcp-light --link /usr/local/bin")
         "the rest by the pack")
     ;; From Fable 5.1's read of 720f2af: a platform with no image is refused, never a map of nils
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no KIT toolchain image for macos-aarch64 - it is built for linux-aarch64, linux-amd64"
                           (dm/image-args matrix :macos-aarch64)))
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no KIT toolchain image for no platform" (dm/image-args matrix nil)))))
+
+(def mcp-sha (get-in matrix [:clojure-mcp-light :git/sha]))
+
+(defn- wrapper [sha]
+  (str "#!/usr/bin/env bb\n\n; :bbin/start\n;\n; {:coords\n;  {:git/url \"u\",\n;   :git/sha \"" sha "\"}}\n;\n; :bbin/end\n"))
+
+(deftest clojure-mcp-light-is-installed-by-the-folders-bbin
+  ;; plan 7.0, item 8.2d
+  (testing "the plan: bbin an archive like any other, clojure-mcp-light a bbin step with its commit"
+    (let [s (steps :linux-amd64 {})]
+      (is (= "/c/downloads/bbin" (get-in s [:bbin :download])))
+      (is (= {:tool :clojure-mcp-light :version "d341c23" :bin "/c/bin/clj-nrepl-eval" :step :install :kind :bbin
+              :git/url "https://github.com/bhauman/clojure-mcp-light.git" :git/sha mcp-sha
+              :commands (get-in matrix [:clojure-mcp-light :commands])}
+             (:clojure-mcp-light s)))))
+  (testing "kept when each command in the folder's bin/ names the commit; one on another commit, installed"
+    (let [heads (fn [m] (fn [p] (get m p)))
+          all {"/c/bin/clj-nrepl-eval" mcp-sha "/c/bin/clj-paren-repair" mcp-sha "/c/bin/clj-paren-repair-claude-hook" mcp-sha}]
+      (is (= :kept (:step (:clojure-mcp-light (steps :macos-aarch64 {:commit-of (heads all)})))))
+      (is (= :install (:step (:clojure-mcp-light (steps :macos-aarch64 {:commit-of (heads (assoc all "/c/bin/clj-paren-repair" (apply str (repeat 40 "a"))))}))))
+          "another commit")
+      (is (= :install (:step (:clojure-mcp-light (steps :macos-aarch64 {:commit-of (heads (dissoc all "/c/bin/clj-paren-repair-claude-hook"))}))))
+          "one command missing")))
+  (testing "bbin's arguments: the commit by --git/sha - bbin 0.2.5 drops --tag and refuses --sha"
+    (is (= ["install" "https://github.com/bhauman/clojure-mcp-light.git" "--git/sha" mcp-sha
+            "--as" "clj-nrepl-eval" "--main-opts" "[\"-m\" \"clojure-mcp-light.nrepl-eval\"]"]
+           (install/bbin-args (:clojure-mcp-light (steps :linux-amd64 {})) {:name "clj-nrepl-eval" :main "clojure-mcp-light.nrepl-eval"})))
+    (is (= ["install" "u" "--git/sha" mcp-sha] (install/bbin-args {:git/url "u" :git/sha mcp-sha} {:name "clj-paren-repair-claude-hook"}))
+        "no :main: the repository's own command"))
+  (testing "a bbin step is never linked: bbin wrote its commands there"
+    (is (= [["bbin" "/c/bbin/0.2.5/bbin"]]
+           (install/link-targets [{:tool :bbin :step :installed :bin "/c/bbin/0.2.5/bbin"}
+                                  {:tool :clojure-mcp-light :kind :bbin :step :installed :bin "/c/bin/clj-nrepl-eval"}]
+                                 (fn [_] []))))))
+
+(deftest a-bbin-step-checks-each-wrappers-header
+  (let [dir (str (fs/create-temp-dir {:prefix "bbin-step-"}))
+        bbin (str (fs/path dir "bbin"))
+        bin-dir (str (fs/path dir "bin"))
+        step (assoc (:clojure-mcp-light (steps :linux-amd64 {})) :bin (str bin-dir "/clj-nrepl-eval"))
+        seen (atom [])
+        ;; a stand-in for bbin: writes each command's wrapper naming `sha`, records its environment
+        fake (fn [sha] (fn [opts & argv]
+                         (swap! seen conj [(get-in opts [:extra-env "BABASHKA_BBIN_BIN_DIR"]) (vec argv)])
+                         (let [n (or (second (drop-while #(not= "--as" %) argv)) "clj-paren-repair-claude-hook")]
+                           (fs/create-dirs bin-dir)
+                           (spit (str (fs/path bin-dir n)) (wrapper sha)))
+                         {:exit 0 :out "" :err ""}))]
+    (spit bbin "#!/bin/sh\n")
+    (fs/set-posix-file-permissions bbin "rwxr-xr-x")
+    (testing "each command installed by the folder's bbin, by its path, the variable on the call alone"
+      (with-redefs [p/shell (fake mcp-sha)]
+        (is (= (:bin step) (install/bbin-step! step bbin bin-dir))))
+      (is (= 3 (count @seen)))
+      (is (every? #(= bin-dir (first %)) @seen))
+      (is (every? #(= bbin (first (second %))) @seen)))
+    (testing "a wrapper naming another commit fails by name"
+      (with-redefs [p/shell (fake (apply str (repeat 40 "a")))]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"clj-nrepl-eval names commit aaaaaaa after bbin installed it, not d341c23"
+                              (install/bbin-step! step bbin bin-dir)))))
+    (testing "bbin failing is said with its last lines"
+      (with-redefs [p/shell (fn [& _] {:exit 1 :out "" :err "line 1\nInvalid combination\n"})]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"bbin could not install clj-nrepl-eval: line 1 / Invalid combination"
+                              (install/bbin-step! step bbin bin-dir)))))
+    (testing "no bbin in the folder: refused, naming the --only that brings it"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"clojure-mcp-light is installed by the folder's bbin, which is not installed - `--only bbin,clojure-mcp-light`"
+                            (install/bbin-step! step nil bin-dir))))))
+
+(deftest a-file-download-is-the-executable
+  (let [dir (fs/create-temp-dir {:prefix "unpack-file-"})
+        f (str (fs/path dir "dl"))]
+    (spit f "#!/usr/bin/env bb\n")
+    (install/unpack! f :file (str (fs/path dir "out")) "bbin")
+    (is (= "#!/usr/bin/env bb\n" (slurp (str (fs/path dir "out" "bbin")))))))

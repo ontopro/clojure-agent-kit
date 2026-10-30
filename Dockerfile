@@ -51,7 +51,7 @@ ARG TARGETARCH
 
 ENV DEBIAN_FRONTEND=noninteractive \
     KIT_TOOLCHAIN_DIR=/opt/kit-toolchain \
-    PATH=/opt/git/bin:/root/.local/bin:/root/.babashka/bbin/bin:${PATH}
+    PATH=/opt/git/bin:${PATH}
 
 # THE SET'S DATE, known-good's `:as-of`, used before the first layer that installs packages: a
 # new health record rebuilds the operating-system layer and every layer after it, where the
@@ -87,33 +87,17 @@ RUN curl -fsSL -o /tmp/bb.tar.gz "${BB_URL}" \
  && rm /tmp/bb.tar.gz \
  && bb --version | grep -q "v${BB_VERSION}\$"
 
-# The rest by the pack: the JDK, clj-kondo, the Clojure CLI, cljfmt and geckodriver into the toolchain
-# folder, each archive checked against the matrix's sha256, linked into /usr/local/bin. The
+# The rest by the pack: the JDK, clj-kondo, the Clojure CLI, cljfmt, geckodriver and bbin into the
+# toolchain folder, each archive checked against the matrix's sha256, linked into /usr/local/bin; then
+# clojure-mcp-light's three commands, installed by that bbin into /usr/local/bin at the matrix's commit,
+# each wrapper's header checked to name it (plan 7.0, item 8.2d). The
 # fetched archives stay in a BuildKit cache across builds (`--keep-downloads`: a project's folder
 # keeps none), so a change to the pack reruns the unpacking and the checks but not the JDK's 200 MB
 # download.
 COPY tools/toolchain /opt/kit/tools/toolchain
 RUN --mount=type=cache,target=/opt/kit-toolchain/downloads \
     bb --config /opt/kit/tools/toolchain/bb.edn toolchain-install \
-      --only java,clj-kondo,clojure,cljfmt,geckodriver --link /usr/local/bin --keep-downloads
-
-# bbin, then the three clojure-mcp-light tools by the doctor's own install command, held to the
-# commit known-good records - pinned here until 8.2d makes bbin a row of the matrix and installs
-# clojure-mcp-light by it at the matrix's commit.
-ARG BBIN_VERSION=0.2.5
-ARG MCP_LIGHT_TAG=v0.2.2
-ARG MCP_LIGHT_SHA=d341c23
-RUN set -eu; \
-    install -d /root/.local/bin; \
-    curl -fsSL -o /root/.local/bin/bbin "https://raw.githubusercontent.com/babashka/bbin/v${BBIN_VERSION}/bbin" \
-      && chmod +x /root/.local/bin/bbin; \
-    bbin install https://github.com/bhauman/clojure-mcp-light.git --tag "${MCP_LIGHT_TAG}" \
-      --as clj-nrepl-eval --main-opts '["-m" "clojure-mcp-light.nrepl-eval"]'; \
-    bbin install https://github.com/bhauman/clojure-mcp-light.git --tag "${MCP_LIGHT_TAG}" \
-      --as clj-paren-repair --main-opts '["-m" "clojure-mcp-light.paren-repair"]'; \
-    bbin install https://github.com/bhauman/clojure-mcp-light.git --tag "${MCP_LIGHT_TAG}"; \
-    bbin ls | grep -E "^clj-nrepl-eval +${MCP_LIGHT_SHA}" >/dev/null \
-      || { echo "clojure-mcp-light ${MCP_LIGHT_TAG} is not the recorded commit ${MCP_LIGHT_SHA}:" >&2; bbin ls >&2; exit 1; }
+      --only java,clj-kondo,clojure,cljfmt,geckodriver,bbin,clojure-mcp-light --link /usr/local/bin --keep-downloads
 
 # The clone is made by root from a mount owned by another user; git refuses that by default.
 RUN git config --global --add safe.directory '*' \

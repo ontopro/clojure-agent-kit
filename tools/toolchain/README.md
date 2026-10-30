@@ -31,14 +31,28 @@ among them.
 | `clojure` | the official CLI's tools tarball, one for every platform | none of its own; the sha256 is the one the official `posix-install.sh` embeds |
 | `git` | the source tarball, for the KIT's toolchain image only | `sha256sums.asc` at kernel.org |
 | `geckodriver` | Mozilla's GitHub release, Linux, for the KIT's toolchain image only | none: computed by `toolchain-sum` |
+| `bbin` | the one script at its release tag, `raw.githubusercontent.com` | none: computed by `toolchain-sum` |
+| `clojure-mcp-light` | its repository at a commit, installed by the `bbin` above: `clj-nrepl-eval`, `clj-paren-repair`, `clj-paren-repair-claude-hook` | none needed: git's own integrity, the commit named in full |
 
 `git` and `geckodriver` are `:image-only`: installed only where named, which the KIT's toolchain
 image does - never on a machine, where git and a browser are the person's own. git's source
 tarball is one archive for every platform, and its `:os :linux` keeps it to Linux's two.
 
 The floors a machine must meet stay in `harness/resources/toolchain.edn`, which `bb doctor` reads;
-a test holds the matrix's `bb` and `java` at or above them. bbin will be a row of the matrix, and
-clojure-mcp-light installed by it at the commit the matrix names (8.2d).
+a test holds the matrix's `bb` and `java` at or above them.
+
+clojure-mcp-light is a commit, not a release (plan 7.0, item 8.2d): `main` on 2026-06-19, the one
+known-good records, nine commits after the `v0.2.2` tag. `toolchain-install` runs the folder's `bbin`
+by its path, once per command, `bbin install <repository> --git/sha <commit>` with
+`BABASHKA_BBIN_BIN_DIR` set to the folder's `bin/` on those calls alone, then reads each wrapper's
+header (`; :bbin/start` .. `; :bbin/end`) and fails by name when it is absent or names another commit.
+
+> [!WARNING]
+> bbin 0.2.5 drops `--tag` without a word and refuses `--sha`: it adds `:latest-sha` unless its options
+> carry `:git/tag` or `:git/sha`, and those two flags give `:tag` and `:sha`. `--tag v0.2.2` installed
+> the default branch's tip. `--git/sha` is the spelling it honours. And an old bbin layout,
+> `~/.babashka/bbin/bin`, wins over `BABASHKA_BBIN_BIN_DIR` - the header check says so, with `bbin
+> migrate`.
 
 > [!NOTE]
 > cljfmt is the matrix's binary, not a library bb loads: the library cost 75 ms a call over the

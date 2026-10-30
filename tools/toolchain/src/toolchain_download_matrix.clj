@@ -14,7 +14,31 @@
 
 (def platforms [:macos-aarch64 :linux-aarch64 :linux-amd64])
 
-(defn read-matrix [f] (edn/read-string (slurp f)))
+(defn read-matrix
+  "The matrix in `f`, its tools in the file's order - the install's order: bbin before what it installs.
+  EDN reads more than eight keys as a hash map, so the order is taken from the text, each top-level key
+  at the start of its line (` :bbin {`) - and the keys found must be the map's, or the file is refused."
+  [f]
+  (let [text (slurp f)
+        m (edn/read-string text)
+        ks (map (comp keyword second) (re-seq #"(?m)^[ {]:([a-z][a-z0-9-]*) \{" text))]
+    (when-not (and (= (count ks) (count m)) (= (set ks) (set (keys m))))
+      (throw (ex-info (str f ": each tool's key must open its line, as ` :bb {` does - the order is read from them")
+                      {:found ks :keys (keys m)})))
+    (apply array-map (mapcat (fn [k] [k (get m k)]) ks))))
+
+(defn bbin? "Whether `tool` is installed by bbin from a repository at a commit (`:unpack :bbin`)."
+  [matrix tool]
+  (= :bbin (get-in matrix [tool :unpack])))
+
+(defn bbin-commit
+  "The commit a bbin wrapper's header names - its text between `; :bbin/start` and `; :bbin/end`, the
+  `:git/sha` there - or nil when the text has no such header."
+  [text]
+  (some->> (re-find #"(?s); :bbin/start(.*?); :bbin/end" (or text ""))
+           second
+           (re-find #":git/sha \"([0-9a-f]{40})\"")
+           second))
 
 (defn platform-key
   "This machine's platform from the JVM's `os.name` and `os.arch` (bb's own), as the matrix keys it."
@@ -49,9 +73,13 @@
   platform (no `:platforms`) gives that one - on every platform of its `:os` when it names one, a
   source tarball that builds on one OS. A platform the tool has no archive for is nil."
   [matrix tool platform]
-  (let [{:keys [version url checksum-url platforms sha256 os]} (get matrix tool)
+  (let [{:keys [version url checksum-url platforms sha256 os] :as row} (get matrix tool)
         p (if platforms (get platforms platform) {:sha256 sha256})]
-    (when (and version p (or (nil? os) (nil? platform) (= os (os-of platform))))
+    (cond
+      ;; no archive: the repository and its commit, on every platform
+      (bbin? matrix tool) {:tool tool :version version :platform platform
+                           :git/url (:git/url row) :git/sha (:git/sha row)}
+      (and version p (or (nil? os) (nil? platform) (= os (os-of platform))))
       (let [u (fill url version (:asset p))]
         {:tool tool :version version :platform platform
          :url u :file (subs u (inc (str/last-index-of u "/")))
@@ -82,13 +110,23 @@
 
 (defn bin-path
   "Where `tool`'s executable is in the cache `cache` on `platform`: `<cache>/<tool>/<version>/` and
-  the matrix's `:bin` under it - for the JDK, under its `:home` for the platform's OS."
+  the matrix's `:bin` under it - for the JDK, under its `:home` for the platform's OS; a bbin row's
+  first command, which bbin writes into `<cache>/bin/` itself."
   [matrix cache tool platform]
   (let [{:keys [version bin home]} (get matrix tool)
         dir (str cache "/" (name tool) "/" version)]
-    (if home
-      (str dir "/" (fill (get home (os-of platform)) version nil) "/" bin)
-      (str dir "/" bin))))
+    (cond (bbin? matrix tool) (str cache "/bin/" bin)
+          home (str dir "/" (fill (get home (os-of platform)) version nil) "/" bin)
+          :else (str dir "/" bin))))
+
+(defn in-cache?
+  "Whether `tool` is in the cache: its executable there (`executable?`) - for a bbin row, each of its
+  commands in `bin-dir` with a header naming the row's commit (`commit-of`, a path to its commit or nil)."
+  [matrix tool bin bin-dir executable? commit-of]
+  (if (bbin? matrix tool)
+    (every? #(= (get-in matrix [tool :git/sha]) (commit-of (str bin-dir "/" (:name %))))
+            (get-in matrix [tool :commands]))
+    (boolean (executable? bin))))
 
 (defn published-sha256
   "The sha256 a publisher's checksum file gives for `file`: the line whose words name the file
@@ -121,18 +159,25 @@
                person, 2026-10-29); the JDK when `only` does not name it - 200 MB, fetched only when
                asked;
     `:install` the archive, the folder it lands in, the executable, and where the archive is kept
-               (`<cache>/downloads/`, reused while its sha256 is the matrix's).
+               (`<cache>/downloads/`, reused while its sha256 is the matrix's) - for a bbin row (`:kind
+               :bbin`), its repository, commit and commands, no archive. A bbin row is `:kept` when each
+               command in `<cache>/bin/` names its commit (`in-cache?`).
   Each step `{:tool :version :step …}`."
-  [matrix cache platform {:keys [only running present?] :or {present? (constantly false)}}]
+  [matrix cache platform {:keys [only running present? commit-of]
+                          :or {present? (constantly false) commit-of (constantly nil)}}]
   (for [t (machine-tools matrix platform only)
         :let [v (:version (get matrix t))
               bin (bin-path matrix cache t platform)
               base {:tool t :version v :bin bin}]]
-    (cond (present? bin) (assoc base :step :kept)
+    (cond (in-cache? matrix t bin (str cache "/bin") present? commit-of) (assoc base :step :kept)
           (and (= :bb t) (get running :bb) (not (neg? (compare-versions (get running :bb) v))))
           (assoc base :step :skip :why (str "the bb running this is " (get running :bb) ", at or above " v))
           (and (= :java t) (not (some #{:java} only)))
           (assoc base :step :skip :why "fetched only when named: --only java")
+          (bbin? matrix t)
+          (assoc base :step :install :kind :bbin
+                 :git/url (get-in matrix [t :git/url]) :git/sha (get-in matrix [t :git/sha])
+                 :commands (get-in matrix [t :commands]))
           :else
           (let [a (asset matrix t platform)]
             (assoc base :step :install :asset a :dir (str cache "/" (name t) "/" v)

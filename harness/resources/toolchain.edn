@@ -9,7 +9,8 @@
 ;;   :tier     :gates - the KIT's own gates need it (Babashka, no JVM)
 ;;             :loop  - a loop against a project needs it as well
 ;;   :via      :flag  - run :cmd and parse stdout+stderr
-;;             :bbin  - look it up in `bbin ls` AND run it with --help
+;;             :bbin  - the commit its bbin header names, read from the command the PATH gives,
+;;                      AND run it with --help
 ;;             :which - presence on PATH only
 ;;   :min      a floor; :major an exact major (an entry with a reason for one; none holds one now)
 ;;   :prefer-major the major the KIT tests and prefers: another, above the floor, is said - a note
@@ -52,17 +53,17 @@
   :needed-for "Gate 2"
   :install "https://github.com/clj-kondo/clj-kondo/blob/master/doc/install.md (brew install borkdude/brew/clj-kondo)"}
 
- ;; The three clojure-mcp-light tools, from its README (read 2026-09-22): the hook is the
- ;; repository's default, the other two are the same install with --as and --main-opts.
+ ;; The three clojure-mcp-light tools, installed by bbin at the download matrix's commit
+ ;; (tools/toolchain/download-matrix.edn, plan 7.0, item 8.2d) - :install is the pack's, no version in it.
  {:tool :clj-nrepl-eval :via :bbin :req :required :tier :loop
   :does "CLI nREPL bridge — uniform REPL access across model families"
   :needed-for "Coder/Tester eval; --discover-ports finds a worktree's port"
-  :install "bbin install https://github.com/bhauman/clojure-mcp-light.git --tag v0.2.2 --as clj-nrepl-eval --main-opts '[\"-m\" \"clojure-mcp-light.nrepl-eval\"]'"}
+  :install "bb --config <kit>/tools/toolchain/bb.edn toolchain-install --only bbin,clojure-mcp-light"}
 
  {:tool :clj-paren-repair :via :bbin :req :required :tier :gates
   :does "On-demand delimiter repair"
   :needed-for "Gate 0, `bb repair`, for agents whose client has no write hook"
-  :install "bbin install https://github.com/bhauman/clojure-mcp-light.git --tag v0.2.2 --as clj-paren-repair --main-opts '[\"-m\" \"clojure-mcp-light.paren-repair\"]'"}
+  :install "bb --config <kit>/tools/toolchain/bb.edn toolchain-install --only bbin,clojure-mcp-light"}
 
  {:tool :clj-paren-repair-claude-hook :via :bbin :req :optional
   :does "Zero-token delimiter repair at write time, for Claude Code"
@@ -72,7 +73,7 @@
                clients have the same capability under other names —
                Antigravity's .agents/hooks.json, an OpenCode plugin, a Pi
                extension"
-  :install "bbin install https://github.com/bhauman/clojure-mcp-light.git --tag v0.2.2"}
+  :install "bb --config <kit>/tools/toolchain/bb.edn toolchain-install --only bbin,clojure-mcp-light"}
 
  ;; THE BROWSER THE STAGE-END CHECKS DRIVE. Optional and in no tier: the gates and the
  ;; loop never open a browser; the KIT's browser pack (`tools/browser/`) and `bb health`'s
@@ -87,8 +88,8 @@
 
  {:tool :bbin :via :flag :cmd ["bbin" "--version"] :req :recommended
   :does "Installs single-file Babashka tools"
-  :needed-for "Installing the three tools above"
-  :install "https://github.com/babashka/bbin#installation"}
+  :needed-for "Installing the three tools above, into the project's toolchain folder"
+  :install "bb --config <kit>/tools/toolchain/bb.edn toolchain-install --only bbin"}
 
  ;; The interactive seats. All five were verified to answer --version without dispatching
  ;; anything — do that yourself before adding a sixth, because the SAFETY RULE above applies

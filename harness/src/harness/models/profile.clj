@@ -247,7 +247,7 @@
   seat-unavailable path would otherwise be exercised only by not having your
   own seat installed."
   [spec]
-  (doctor/probe spec (doctor/bbin-index) (doctor/mise-pins)))
+  (doctor/probe spec (doctor/bbin-commits [spec]) (doctor/mise-pins)))
 
 (defn- seat-violations
   [seat probe]

@@ -20,7 +20,7 @@
           :requires ([toolchain-status :as status])
           :task (status/main pack-dir *command-line-args*)}
 
-  toolchain-install {:doc "Fetch each tool of the download matrix this machine takes into the project's toolchain folder (the folder above the clone's .kit/toolchain), its sha256 checked before it is unpacked (a mismatch is deleted and refused), the archive deleted after; each tool's executables linked into <folder>/bin/. --only <tool>,… (an image-only tool only when named; the JDK only when named), --link <dir> linked there instead, --keep-downloads the archives kept (the image's build), --dry-run the plan alone"
+  toolchain-install {:doc "Fetch each tool of the download matrix this machine takes into the project's toolchain folder (the folder above the clone's .kit/toolchain), its sha256 checked before it is unpacked (a mismatch is deleted and refused), the archive deleted after; each tool's executables linked into <folder>/bin/; clojure-mcp-light's three commands installed there by the folder's bbin at the matrix's commit, each wrapper's header checked. --only <tool>,… (an image-only tool only when named; the JDK only when named), --link <dir> linked there instead, --keep-downloads the archives kept (the image's build), --dry-run the plan alone"
                      :requires ([toolchain-install :as install])
                      :task (install/install-main pack-dir *command-line-args*)}
 

@@ -68,6 +68,60 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### bbin a row of the download matrix; clojure-mcp-light installed by it at the matrix's commit, each wrapper's header checked; the doctor reads that header, no `bbin ls` (plan 7.0, item 8.2d)
+
+**What was found first.** The KIT said it pinned clojure-mcp-light at its `v0.2.2` tag (the Dockerfile's
+`MCP_LIGHT_TAG`, `toolchain.edn`'s three `--tag v0.2.2` install lines) and that the tag was the commit
+known-good records, `d341c23`. It is not: `v0.2.2` is `cf48cc6` (2026-03-14); `d341c23` is the
+repository's `main` on 2026-06-19, nine commits later, which no release tag names. bbin 0.2.5 drops
+`--tag` without a word - it adds `:latest-sha` unless its options carry `:git/tag` or `:git/sha`, and its
+flags give `:tag` and `:sha` - so `--tag v0.2.2` installed the default branch's tip, and the image's
+`bbin ls | grep d341c23` held only while `main` had not moved. `--sha` is refused outright (an invalid
+combination, `:sha` beside the added `:latest-sha`); `--git/sha` is the spelling it honours (tried in a
+scratch folder: `cf48cc6` asked, `cf48cc6` written). The pin stays the commit every machine and known-good
+have run, now named as a commit: no version moved.
+
+- **The download matrix** gains two rows. `:bbin` 0.2.5, its one script at the tag, `:unpack :file` (the
+  download is the executable; the publisher publishes no checksum, so its sha256 is `toolchain-sum`'s).
+  `:clojure-mcp-light` with `:unpack :bbin`: `:git/url`, the full `:git/sha`, `:version` the commit as
+  known-good writes it, and its three `:commands` - `clj-nrepl-eval` and `clj-paren-repair` with their
+  `-m` namespaces, the hook the repository's own. `toolchain-sum` refuses it: no archive, git's own
+  integrity.
+- **Its order is the file's.** Nine tools are more than an array map holds, and EDN read them as a hash
+  map - the install's order lost, bbin after what it installs. `read-matrix` takes the order from the text,
+  each top-level key opening its line, and refuses a file where the keys found are not the map's.
+- **The install**: bbin installed and linked like any tool; then a bbin step runs the folder's `bbin` by
+  its path, once per command (`bbin install <repository> --git/sha <commit> [--as <name> --main-opts …]`),
+  with `BABASHKA_BBIN_BIN_DIR` set to the folder's `bin/` (or `--link`'s) on those calls alone, never
+  exported; then each wrapper's header (`; :bbin/start` .. `; :bbin/end`) is read and an absent wrapper or
+  another commit fails by name - naming `bbin migrate` when an old layout, `~/.babashka/bbin/bin`, exists,
+  which wins over the variable. No bbin in the folder: refused, naming `--only bbin,clojure-mcp-light`. A
+  bbin step is never linked (bbin wrote the files there). The step is `:kept` when every command in the
+  folder's `bin/` names the commit; one missing or on another commit, it runs again.
+- **The doctor** reads each bbin tool's commit from the header of the command the PATH gives
+  (`bbin-commits`), not from `bbin ls`, which lists bbin's own folder (`~/.local/bin`), not the toolchain
+  folder's. Its `--help` run stays. One header parser in the doctor and one in the pack, held to the same
+  wrapper by a test. `toolchain.edn`'s four `:install` lines are the pack's command, no version in them.
+- **The KIT's toolchain image** installs bbin and clojure-mcp-light by the pack, into `/usr/local/bin`;
+  its `BBIN_VERSION`, `MCP_LIGHT_TAG`, `MCP_LIGHT_SHA`, the curl of bbin, the three `bbin install`s and the
+  `bbin ls | grep` go, and `/root/.local/bin` and `/root/.babashka/bbin/bin` leave its PATH.
+- **`bb kit-pins`** reads both pins from the matrix; its `:dockerfile` source goes (`dockerfile-args`, the
+  `read` branch, "Dockerfile" in `where`), nothing else being pinned there. A commit pin is equal or not:
+  never `:newer` than a release tag (the newest, `v0.2.2`, is older than it), `installed differs` when
+  another commit is installed. **`bb tag-check`'s `versions` line** compares the matrix's commit with
+  known-good's `clj-nrepl-eval`, its `args` gone.
+- **The nit from Fable 5.1's read of `9e1ad5a`**: `bb self-check`, when the pack's `status --edn` gives no
+  answer, says "the toolchain pack's status did not answer" - it also fires on an unsupported platform or
+  a matrix that does not read, not only on no folder.
+
+Proved: the pack's, the doctor's, kit-pins' and tag-check's tests (the plan's kept and install states,
+`bbin-args`, the header check against a stand-in bbin - another commit, bbin failing, no bbin - the file's
+order and its refusal); by hand, `toolchain-install --only bbin,clojure-mcp-light` into a scratch
+`KIT_TOOLCHAIN_DIR`: bbin fetched and its sha256 checked, the three wrappers written into its `bin/` at
+`d341c23`, a second run kept both, `clj-paren-repair --help` and the hook's ran from there; `bb doctor`
+read the three commits from the PATH's headers. The image: `bb docker-gates` clones HEAD, so it runs on this
+commit once it lands; its result goes with the read.
+
 ### The project's toolchain first on the PATH of each task the front door hands on, and of `bb self-check`'s doctor and health (plan 7.0, item 8.2c)
 
 A shell that did not run `eval "$(bb toolchain-env)"` ran whatever tools its PATH gave. Now what the KIT

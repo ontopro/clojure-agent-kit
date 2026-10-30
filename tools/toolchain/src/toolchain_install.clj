@@ -13,7 +13,9 @@
   copy there is reused while its sha256 is the matrix's. The Clojure CLI laid out by `cli-layout`, as
   the official posix-install.sh does, its own `install.sh` being Homebrew's. Each tool's executables
   are linked into `<folder>/bin/` - the one folder callers put first on the PATH, a version moved by a
-  re-link - or into `--link <dir>`, the image's `/usr/local/bin`. The folder is the project's, the one
+  re-link - or into `--link <dir>`, the image's `/usr/local/bin`. clojure-mcp-light has no archive: the
+  folder's bbin installs each of its commands there at the matrix's commit, and each wrapper's header is
+  read after (`bbin-step!`, 8.2d). The folder is the project's, the one
   above the clone (`toolchain-status/place`); a home folder or `/` there is refused.
 
   `fetch!` and `sha256-of` are the seam a test redefines; `sum-row`, `cli-layout` and the plan are
@@ -87,6 +89,11 @@
               (println "toolchain-sum <tool> [<version>] - a tool of download-matrix.edn:"
                        (str/join ", " (map name (keys matrix)))))
             (System/exit 1))
+        _ (when (dm/bbin? matrix k)
+            (binding [*out* *err*]
+              (println (str "toolchain-sum: " tool " has no archive - bbin installs it from its repository at "
+                            "the commit the matrix names, git's own integrity")))
+            (System/exit 1))
         matrix (cond-> matrix version (assoc-in [k :version] version))
         dir (fs/create-temp-dir {:prefix "toolchain-sum-"})
         ;; the folder deleted before any exit: System/exit runs no finally
@@ -118,17 +125,19 @@
     file))
 
 (defn unpack!
-  "The archive `archive` (`:tar.gz` or `:zip`) unpacked into the folder `to`."
-  [archive kind to]
+  "The archive `archive` (`:tar.gz` or `:zip`) unpacked into the folder `to`; a `:file` - the download
+  is the executable (bbin) - copied there under `bin`'s name."
+  [archive kind to & [bin]]
   (fs/create-dirs to)
   (case kind
+    :file (fs/copy archive (fs/path to bin) {:replace-existing true})
     :tar.gz (let [{:keys [exit err]} (p/shell {:out :string :err :string :continue true}
                                               "tar" "-xzf" (str archive) "-C" (str to))]
               (when-not (zero? exit)
                 (throw (ex-info (str "tar could not unpack " (fs/file-name archive) ": " (str/trim err))
                                 {:archive (str archive) :exit exit}))))
     :zip (fs/unzip archive to {:replace-existing true})
-    (throw (ex-info (str "the install unpacks .tar.gz and .zip, not " kind) {:unpack kind})))
+    (throw (ex-info (str "the install unpacks .tar.gz, .zip and a :file, not " kind) {:unpack kind})))
   to)
 
 (defn cli-layout
@@ -202,7 +211,7 @@
   (let [tmp (fs/create-temp-dir {:dir (fs/parent dir) :prefix (str (name tool) "-unpacking-")})
         unpacked (str (fs/path tmp "unpacked"))]
     (try
-      (unpack! download (:unpack (get matrix tool)) unpacked)
+      (unpack! download (:unpack (get matrix tool)) unpacked (get-in matrix [tool :bin]))
       (let [staged (if (= :clojure tool)
                      (let [s (str (fs/path tmp "laid-out"))]
                        (lay-out! (for [f (cli-layout version dir)] (update f :to #(str s (subs % (count dir)))))
@@ -218,17 +227,53 @@
       (finally (fs/delete-tree tmp))))
   bin)
 
+(defn bbin-args
+  "The `bbin install` arguments for one command of a bbin step - pure: the repository at the commit
+  by `--git/sha` (bbin 0.2.5 drops `--tag` and refuses `--sha`: it adds `:latest-sha` unless it sees
+  `:git/sha` or `:git/tag`, and its flags give `:sha` and `:tag`), and `--as` with `--main-opts` for a
+  command with a `:main`; one with none takes the repository's own."
+  [{:git/keys [url sha]} {:keys [main] n :name}]
+  (cond-> ["install" url "--git/sha" sha]
+    main (into ["--as" n "--main-opts" (pr-str ["-m" main])])))
+
+(defn bbin-step!
+  "One bbin step: each command installed by the folder's `bbin` (run by its path) into `bin-dir` -
+  `BABASHKA_BBIN_BIN_DIR` on these calls alone, never exported - then the header of
+  `<bin-dir>/<name>` read: absent, or naming another commit, fails by name. bbin writes into an old
+  layout (`~/.babashka/bbin/bin`) whenever one exists, whatever the variable says."
+  [{:keys [tool commands] :as step} bbin bin-dir]
+  (when-not (and bbin (fs/executable? bbin))
+    (throw (ex-info (str (name tool) " is installed by the folder's bbin, which is not installed - "
+                         "`--only bbin," (name tool) "`")
+                    {:tool tool})))
+  (doseq [{n :name :as c} commands
+          :let [{:keys [exit err out]} (apply p/shell {:out :string :err :string :continue true
+                                                       :extra-env {"BABASHKA_BBIN_BIN_DIR" bin-dir}}
+                                              bbin (bbin-args step c))
+                got (status/commit-of (fs/path bin-dir n))]]
+    (when-not (zero? exit)
+      (throw (ex-info (str "bbin could not install " n ": "
+                           (str/join " / " (take-last 3 (remove str/blank? (str/split-lines (str out "\n" err))))))
+                      {:command n :exit exit})))
+    (when-not (= (:git/sha step) got)
+      (throw (ex-info (str bin-dir "/" n (if got (str " names commit " (subs got 0 7)) " is not there")
+                           " after bbin installed it, not " (subs (:git/sha step) 0 7)
+                           (when (fs/exists? (fs/path (System/getProperty "user.home") ".babashka" "bbin" "bin"))
+                             " - bbin wrote into its old layout, ~/.babashka/bbin/bin, which wins over BABASHKA_BBIN_BIN_DIR: `bbin migrate`, then again"))
+                      {:command n :commit got}))))
+  (:bin step))
+
 (defn link-targets
   "What `--link <dir>` links for each tool installed or kept, as `[name target]` - pure over the
   steps and `list-dir`: the JDK's every executable in its `bin/`, the Clojure CLI's `clojure` and
-  `clj`, every other tool its one executable."
+  `clj`, every other tool its one executable; a bbin step none - bbin wrote its commands there."
   [steps list-dir]
   (mapcat (fn [{:keys [tool bin]}]
             (case tool
               :java (for [f (list-dir (str (fs/parent bin)))] [(str (fs/file-name f)) (str f)])
               :clojure [["clojure" bin] ["clj" (str (fs/parent bin) "/clj")]]
               [[(str (fs/file-name bin)) bin]]))
-          (filter #(#{:installed :kept} (:step %)) steps)))
+          (filter #(and (#{:installed :kept} (:step %)) (not= :bbin (:kind %))) steps)))
 
 (defn parse-args
   "`[--only a,b] [--link <dir>] [--keep-downloads] [--dry-run]`."
@@ -256,25 +301,38 @@
           matrix (dm/read-matrix (str pack-dir "/download-matrix.edn"))
           platform (dm/platform-key (System/getProperty "os.name") (System/getProperty "os.arch"))
           steps (dm/plan matrix cache platform {:only only :running {:bb (System/getProperty "babashka.version")}
-                                                :present? fs/executable?})]
+                                                :present? fs/executable? :commit-of status/commit-of})
+          ;; bbin, installed or kept by an earlier step, run by its path for a bbin step
+          bbin-of (fn [done] (some #(when (and (= :bbin (:tool %)) (#{:installed :kept} (:step %))) (:bin %)) done))]
       (println (status/place-line at))
       (when note (println (str "  note: " note)))
       (println (str "toolchain-install into " cache " (" (name platform) ")" (when dry-run? " - a dry run, nothing fetched")))
-      (let [done (vec (for [{:keys [tool version step why bin] :as s} steps]
-                        (case step
-                          :kept (do (println (format "  %-11s %-16s kept, %s" (name tool) version bin)) s)
-                          :skip (do (println (format "  %-11s %-16s skipped - %s" (name tool) version why)) s)
-                          :install (if dry-run?
-                                     (do (println (format "  %-11s %-16s to install from %s" (name tool) version (:url (:asset s)))) s)
-                                     (do (println (format "  %-11s %-16s installing" (name tool) version))
-                                         (install-step! matrix s keep?)
-                                         (println (format "  %-11s %-16s installed, %s" (name tool) version bin))
-                                         (assoc s :step :installed))))))]
+      (let [done (reduce
+                  (fn [done {:keys [tool version step why bin kind] :as s}]
+                    (conj done
+                          (case step
+                            :kept (do (println (format "  %-17s %-16s kept, %s" (name tool) version bin)) s)
+                            :skip (do (println (format "  %-17s %-16s skipped - %s" (name tool) version why)) s)
+                            :install (if dry-run?
+                                       (do (println (format "  %-17s %-16s to install %s" (name tool) version
+                                                            (if (= :bbin kind)
+                                                              (str "by bbin into " link ", " (:git/url s) " at " (:git/sha s))
+                                                              (str "from " (:url (:asset s))))))
+                                           s)
+                                       (do (println (format "  %-17s %-16s installing" (name tool) version))
+                                           (if (= :bbin kind)
+                                             (bbin-step! s (bbin-of done) link)
+                                             (install-step! matrix s keep?))
+                                           (println (format "  %-17s %-16s installed, %s" (name tool) version
+                                                            (if (= :bbin kind) (str link "/" (fs/file-name bin)) bin)))
+                                           (assoc s :step :installed))))))
+                  [] steps)]
         ;; the status before the links, so a link that fails loses no line of it
         (run! println (status/lines platform
                                     (status/rows matrix cache platform fs/executable?
                                                  {:running {:bb (System/getProperty "babashka.version")}
-                                                  :config (str pack-dir "/bb.edn")})))
+                                                  :config (str pack-dir "/bb.edn")
+                                                  :commit-of status/commit-of})))
         (when-not dry-run?
           (fs/create-dirs link)
           (doseq [[n target] (link-targets done #(sort (fs/list-dir %)))

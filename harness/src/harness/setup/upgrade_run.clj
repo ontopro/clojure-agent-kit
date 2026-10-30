@@ -700,7 +700,7 @@
 
 (defn rows-to-probe
   "One row per tool across the newer releases' tables, the newest table's row winning: the
-  machine is probed ONCE (`doctor/report` shells `bbin ls`), and each release is checked
+  machine is probed ONCE (`doctor/report` reads each bbin header), and each release is checked
   against that result."
   [tables]
   (vec (vals (reduce (fn [m spec] (if (checkable? spec) (assoc m (:tool spec) spec) m)) {} (apply concat tables)))))

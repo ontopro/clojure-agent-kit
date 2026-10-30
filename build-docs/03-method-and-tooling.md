@@ -195,7 +195,8 @@ and quietly spends the Coder's retry budget on parens. So the toolchain is **pro
 reported**: `bb doctor` reports every tool — version, whether it is reachable on PATH, what it
 is for — and exits non-zero when a required one is not usable; `bb doctor --edn` is the pins map
 the readiness record (§18) pastes. One trap it was built for: a `bbin`-installed tool can be
-**installed but not on PATH**, so it checks reachability, not installation.
+**installed but not on PATH**, so it checks reachability, not installation - the commit it reports
+is read from the command the PATH gives, never from bbin's own list.
 
 ## 10. The rule source — where a convention lives
 

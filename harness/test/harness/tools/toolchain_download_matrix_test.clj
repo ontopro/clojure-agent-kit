@@ -26,7 +26,7 @@
                           (dm/platform-key os arch)))))
 
 (deftest every-archive-has-its-url-filled-and-a-sha256
-  (doseq [t (keys matrix)
+  (doseq [t (remove #(dm/bbin? matrix %) (keys matrix))
           a (dm/assets matrix t)]
     (testing (str t " " (:platform a))
       (is (not (str/includes? (:url a) "{")) "no placeholder left")
@@ -38,8 +38,9 @@
            (:url (dm/asset {:java (assoc (:java matrix) :version "25.0.5+8")} :java :macos-aarch64))))))
 
 (deftest a-machine-takes-every-tool-but-the-image-only-ones-unless-named
-  (is (= [:bb :java :clj-kondo :clojure :cljfmt] (dm/machine-tools matrix :macos-aarch64 nil)))
-  (is (= [:bb :java :clj-kondo :clojure :cljfmt] (dm/machine-tools matrix :linux-amd64 nil)))
+  (is (= [:bb :java :clj-kondo :clojure :cljfmt :bbin :clojure-mcp-light] (dm/machine-tools matrix :macos-aarch64 nil))
+      "the file's order: bbin before what it installs")
+  (is (= [:bb :java :clj-kondo :clojure :cljfmt :bbin :clojure-mcp-light] (dm/machine-tools matrix :linux-amd64 nil)))
   (is (= [:java :clj-kondo :clojure :geckodriver]
          (dm/machine-tools matrix :linux-aarch64 [:java :clj-kondo :clojure :geckodriver]))
       "the KIT's toolchain image names them")
@@ -118,8 +119,8 @@
             :fix "bb --config /k/bb.edn toolchain-install --only bb"}
            (bb-row "1.13.226")))
     (is (= ["the tools for linux-amd64:"
-            "  bb         1.13.229         the bb running this, 1.13.229"
-            "  java       25.0.5+8         not installed - bb --config /k/bb.edn toolchain-install --only java"]
+            "  bb                1.13.229         the bb running this, 1.13.229"
+            "  java              25.0.5+8         not installed - bb --config /k/bb.edn toolchain-install --only java"]
            (status/lines :linux-amd64 (status/rows (select-keys matrix [:bb :java]) "/c" :linux-amd64 #{}
                                                    {:running {:bb "1.13.229"} :config "/k/bb.edn"}))))))
 
@@ -133,3 +134,41 @@
            (install/sum-lines :bb "1.0" [(install/sum-row a "h" "p")])))
     (is (str/ends-with? (second (install/sum-lines :bb "1.0" [(install/sum-row (assoc a :sha256 "") "h" "h")]))
                         "the publisher's checksum matches, the matrix has none yet"))))
+
+(deftest the-matrix-keeps-the-files-order
+  ;; plan 7.0, item 8.2d: nine tools - more than an array map holds when EDN reads them
+  (is (< 8 (count matrix)))
+  (is (= [:bb :java :clj-kondo :clojure :git :cljfmt :geckodriver :bbin :clojure-mcp-light] (keys matrix)))
+  (let [f (str (fs/create-temp-file {:prefix "matrix-" :suffix ".edn"}))]
+    (spit f "{:a {:version \"1\"}\n :b {:version \"2\"}\n  :nested {:x {}}}")
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"each tool's key must open its line" (dm/read-matrix f))
+        "a key that does not open its line: refused, never an order guessed")))
+
+(deftest clojure-mcp-light-is-a-commit-installed-by-bbin
+  (testing "bbin: one script, its sha256 taken here - the publisher publishes none"
+    (is (= {:tool :bbin :version "0.2.5" :platform :linux-amd64
+            :url "https://raw.githubusercontent.com/babashka/bbin/v0.2.5/bbin" :file "bbin"
+            :sha256 "ef3436fff67850423dec28333d69a67f5be0da075e2ac93c39fcf278d69b625b" :checksum-url nil}
+           (dm/asset matrix :bbin :linux-amd64)))
+    (is (= "/c/bbin/0.2.5/bbin" (dm/bin-path matrix "/c" :bbin :macos-aarch64))))
+  (testing "clojure-mcp-light: no archive - the repository at the commit, on every platform"
+    (is (dm/bbin? matrix :clojure-mcp-light))
+    (is (= {:tool :clojure-mcp-light :version "d341c23" :platform :macos-aarch64
+            :git/url "https://github.com/bhauman/clojure-mcp-light.git"
+            :git/sha "d341c239d4b1faa58ccefaf8bc0b1e2a312e2af4"}
+           (dm/asset matrix :clojure-mcp-light :macos-aarch64)))
+    (is (str/starts-with? (get-in matrix [:clojure-mcp-light :git/sha]) (get-in matrix [:clojure-mcp-light :version]))
+        ":version is the commit as known-good writes it")
+    (is (= "/c/bin/clj-nrepl-eval" (dm/bin-path matrix "/c" :clojure-mcp-light :linux-aarch64))
+        "bbin writes its commands into the folder's bin/ itself")
+    (is (= ["clj-nrepl-eval" "clj-paren-repair" "clj-paren-repair-claude-hook"]
+           (map :name (get-in matrix [:clojure-mcp-light :commands]))))))
+
+(deftest a-bbin-wrappers-header-names-its-commit
+  (is (= "d341c239d4b1faa58ccefaf8bc0b1e2a312e2af4"
+         (dm/bbin-commit (str "#!/usr/bin/env bb\n\n; :bbin/start\n;\n; {:coords\n;  {:git/url \"u\",\n"
+                              ";   :git/sha \"d341c239d4b1faa58ccefaf8bc0b1e2a312e2af4\"}}\n;\n; :bbin/end\n"
+                              "(def c {:git/sha \"0000000000000000000000000000000000000000\"})\n"))))
+  (is (nil? (dm/bbin-commit "(def c {:git/sha \"0000000000000000000000000000000000000000\"})"))
+      "a sha outside the header is not the header's")
+  (is (nil? (dm/bbin-commit nil))))

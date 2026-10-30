@@ -23,8 +23,8 @@
 
 (def files
   {:matrix {:bb {:version "1.13.225"} :clj-kondo {:version "2026.08.04"} :java {:version "25.0.5+8"}
-            :geckodriver {:version "0.37.1"} :cljfmt {:version "0.16.5"}}
-   :dockerfile "ARG BB_VERSION=1.13.0\nARG MCP_LIGHT_TAG=v0.2.2\n  ARG INDENTED=1\n"
+            :geckodriver {:version "0.37.1"} :cljfmt {:version "0.16.5"}
+            :bbin {:version "0.2.5"} :clojure-mcp-light {:version "d341c23"}}
    :template-pins {:default :t :templates {:t {:template 'io.github.o/t :git/tag "kit-v1.3" :git/sha "f12268d"
                                                :deps-new {:git/tag "v0.8.0" :git/sha "2f96530"}}}}})
 
@@ -36,12 +36,13 @@
           :java {:version "25.0.5+8" :from :download-matrix}
           :geckodriver {:version "0.37.1" :from :download-matrix}
           :cljfmt {:version "0.16.5" :from :download-matrix}
-          :clojure-mcp-light {:version "0.2.2" :from :dockerfile}
+          :bbin {:version "0.2.5" :from :download-matrix}
+          :clojure-mcp-light {:version "d341c23" :from :download-matrix}
           :tailwindcss {:version "4.3.3" :from :project-set}
           :template {:version "kit-v1.3" :from :template :gitlib {:lib 'io.github.o/t :sha "f12268d"}}
           :deps-new {:version "0.8.0" :from :template :gitlib {:lib 'io.github.seancorfield/deps-new :sha "2f96530"}}}
          (tn/pins files project-set))
-      "the matrix before the Dockerfile; a pin no file carries is left out")
+      "bbin and clojure-mcp-light the matrix's (8.2d); a pin no file carries is left out")
   (is (= {:version "2.2.0" :from :xtdb-deps}
          (:xtdb (tn/pins (assoc files :xtdb-deps {'com.xtdb/xtdb-api {:mvn/version "2.2.0"}}) project-set)))
       "XTDB from the health check's deps.edn, the one place the KIT writes it"))
@@ -54,7 +55,7 @@
         by (into {} (map (juxt :tool :marks)) rows)]
     (is (= {:bb [:newer :installed-differs] :clj-kondo [:project-differs] :java [] :geckodriver [:unknown]
             :cljfmt [:unknown] :clojure-mcp-light [:unknown] :tailwindcss [:unknown] :template [:newer]
-            :deps-new [:unknown] :clojure [:unpinned] :git [:unpinned] :bbin [:unpinned] :xtdb [:unpinned]}
+            :deps-new [:unknown] :clojure [:unpinned] :git [:unpinned] :bbin [:unknown] :xtdb [:unpinned]}
            by)
         (str "the JDK's build is not a difference; a commit installed is not compared with a tag; a source "
              "no file carries is a row, unpinned (From Fable 5.1's read of 51ce107)"))
@@ -62,7 +63,8 @@
       (is (= ["bb 1.13.225 -> 1.13.229 released"
               "geckodriver 0.37.1 - newest unknown (its repository did not answer)"
               "cljfmt 0.16.5 - newest unknown (its repository did not answer)"
-              "clojure-mcp-light 0.2.2 - newest unknown (its repository did not answer)"
+              "clojure-mcp-light d341c23 - newest unknown (its repository did not answer)"
+              "bbin 0.2.5 - newest unknown (its repository did not answer)"
               "tailwindcss 4.3.3 - newest unknown (its repository did not answer)"
               "template kit-v1.3 -> kit-v1.4 released"
               "deps-new 0.8.0 - newest unknown (its repository did not answer)"]
@@ -78,7 +80,16 @@
         (is (some #(re-matches #"git +- +- +- +no file carries its pin" %) t) "a lost pin shows")))
     ;; From Fable 5.1's read of 2267ee7: what this machine runs is so whether or not a file pins it
     (is (some #(re-matches #"git +2\.56\.0 +- +- +no file carries its pin" %)
-              (tn/table (tn/rows (tn/pins files project-set) {:git "2.56.0"} {} project-set))))))
+              (tn/table (tn/rows (tn/pins files project-set) {:git "2.56.0"} {} project-set))))
+    ;; plan 7.0, item 8.2d: a commit pin is equal or not - never older or newer than a release tag
+    (let [mcp (fn [installed newest]
+                (:marks (first (filter #(= :clojure-mcp-light (:tool %))
+                                       (tn/rows (tn/pins files project-set) {:clojure-mcp-light installed}
+                                                {:clojure-mcp-light newest} project-set)))))]
+      (is (= [] (mcp "d341c23" "0.2.2")) "the pinned commit, a release tag older or newer: no mark")
+      (is (= [] (mcp "d341c23" "9.9.9")))
+      (is (= [:installed-differs] (mcp "cf48cc6" "0.2.2")) "another commit installed")
+      (is (= [] (mcp "missing" "0.2.2")) "no commit installed: the doctor says it, not this"))))
 
 (deftest a-jdk-of-another-major-is-allowed-and-said-apart
   ;; From Fable 5.1's read of 51ce107: 21 and newer, 25 preferred (the person, 2026-10-26) - a machine
@@ -112,7 +123,7 @@
   (let [home (str (fs/create-temp-dir))
         pins {:bb {:version "1.13.225" :from :download-matrix}
               :cljfmt {:version "0.16.6" :from :download-matrix}
-              :clojure-mcp-light {:version "0.2.2" :from :dockerfile}
+              :clojure-mcp-light {:version "d341c23" :from :download-matrix}
               :git {:version "2.56.0" :from :download-matrix}}
         doctor {:bb {:version "1.13.229" :status :ok} :cljfmt {:version "0.16.6" :status :ok}
                 :clj-nrepl-eval {:version "d341c23" :status :ok} :git {:version nil :status :missing}}]

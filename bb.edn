@@ -115,8 +115,8 @@
                                                                  "bb" "--config" "tools/toolchain/bb.edn" "status" "--edn")
                                                           :out str/trim not-empty edn/read-string)
                           _ (when (or refusal (not cache))
-                              (println (str "self-check: " (or refusal "the toolchain pack named no project folder - "
-                                                               "`bb --config tools/toolchain/bb.edn status` says why")))
+                              (println (str "self-check: " (or refusal "the toolchain pack's status did not answer - run "
+                                                               "`bb --config tools/toolchain/bb.edn status` to see why")))
                               (System/exit 1))
                           path {:extra-env {"PATH" (workspace/tools-path cache (System/getenv "PATH"))}}
                           {:keys [exit]} (shell (merge {:dir "harness" :continue true} path) "bb" "doctor")]

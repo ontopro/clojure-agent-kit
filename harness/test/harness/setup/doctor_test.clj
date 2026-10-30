@@ -3,7 +3,14 @@
    [babashka.fs :as fs]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
-   [harness.setup.doctor :as doctor]))
+   [harness.setup.doctor :as doctor]
+   [toolchain-download-matrix :as dm]))
+
+(def wrapper
+  ;; the head of a wrapper bbin 0.2.5 wrote (plan 7.0, item 8.2d)
+  (str "#!/usr/bin/env bb\n\n; :bbin/start\n;\n; {:coords\n;  {:git/url \"https://github.com/bhauman/clojure-mcp-light.git\",\n"
+       ";   :git/sha \"d341c239d4b1faa58ccefaf8bc0b1e2a312e2af4\"},\n;  :lib\n;  org.babashka.bbin/script-x}\n;\n; :bbin/end\n\n"
+       "(def script-coords {:git/sha \"0000000000000000000000000000000000000000\"})\n"))
 
 ;; NO TEST SEES THIS MACHINE'S JAVA_HOME. A probe of :java reads it (7.4.3), and a test that faked
 ;; PATH java at 21 went red the day this machine's JAVA_HOME moved to 25. A test that wants one
@@ -47,16 +54,24 @@
                      {:tool :bbin :req :recommended :status :missing}
                      {:tool :bb :req :required :status :ok}]))))
 
-(deftest bbin-index-parsing
-  (testing "three-column `bbin ls` output becomes {name sha}"
-    (with-redefs [doctor/sh (constantly
-                             (str "\nclj-nrepl-eval    abc1234  https://example/x.git\n"
-                                  "clj-paren-repair  def5678  https://example/x.git\n"))]
-      (is (= {"clj-nrepl-eval" "abc1234" "clj-paren-repair" "def5678"}
-             (#'doctor/bbin-index)))))
-  (testing "bbin absent entirely yields an empty index, not a crash"
-    (with-redefs [doctor/sh (constantly nil)]
-      (is (= {} (#'doctor/bbin-index))))))
+(deftest a-bbin-tools-commit-is-its-headers-on-the-path
+  ;; plan 7.0, item 8.2d: no `bbin ls` - it read bbin's own folder, not the toolchain folder's bin/
+  (testing "the header's commit, not a sha later in the file"
+    (is (= "d341c239d4b1faa58ccefaf8bc0b1e2a312e2af4" (doctor/bbin-commit wrapper))))
+  (testing "no header, no text: nil"
+    (is (nil? (doctor/bbin-commit "#!/usr/bin/env bb\n(println 1)")))
+    (is (nil? (doctor/bbin-commit nil))))
+  (testing "the pack reads the same header the same way"
+    (is (= (dm/bbin-commit wrapper) (doctor/bbin-commit wrapper))))
+  (testing "the command the PATH gives, read; one absent or with no header, left out"
+    (let [dir (fs/create-temp-dir {:prefix "bbin-commits-"})
+          f (str (fs/path dir "clj-paren-repair"))]
+      (spit f wrapper)
+      (spit (str (fs/path dir "clj-nrepl-eval")) "#!/bin/sh\n")
+      (with-redefs [fs/which (fn [n] (let [p (fs/path dir n)] (when (fs/exists? p) p)))]
+        (is (= {"clj-paren-repair" "d341c239d4b1faa58ccefaf8bc0b1e2a312e2af4"}
+               (doctor/bbin-commits (concat specs [{:tool :clj-nrepl-eval :via :bbin}
+                                                   {:tool :clj-paren-repair-claude-hook :via :bbin}]))))))))
 
 (deftest render
   (let [results (mapv #(doctor/probe % {} {}) specs)]
@@ -100,10 +115,9 @@
           (str (name t) " must not be probed with a flag")))))
 
 (deftest installed-but-unreachable
-  ;; bbin lives on PATH while its shim directory (~/.local/bin) may not.
-  ;; `bbin ls` still lists the tool, so the index alone would report ok for
-  ;; something the loop cannot actually run — the exact failure this whole
-  ;; namespace exists to prevent.
+  ;; A commit given for a tool the PATH does not give (an index passed in) is not ok:
+  ;; the loop cannot run what is not on its PATH - the failure this whole namespace
+  ;; exists to prevent.
   (let [idx {"clj-paren-repair" "d341c239d4b1faa58ccefaf8bc0b1e2a312e2af4"}
         spec (second specs)]
     (testing "in the bbin index but not on PATH is :not-on-path, not :ok"
@@ -270,7 +284,7 @@
         (is (nil? (:note (doctor/probe kondo {} {} {:clj-kondo "2026.08.04"}))))))))
 
 (deftest a-bbin-tool-is-probed-by-running-it
-  ;; In `bbin ls` and on PATH was reported ok for a tool that could not run; the probe now asks.
+  ;; Installed and on PATH was reported ok for a tool that could not run; the probe now asks.
   (let [spec (second specs)
         idx {"clj-paren-repair" "d341c239d4b1faa58ccefaf8bc0b1e2a312e2af4"}]
     (with-redefs [fs/which (constantly "/home/x/.local/bin/clj-paren-repair")]
@@ -397,6 +411,8 @@
     (testing "the one exact major and the one floor survive as data"
       (is (= {:min "21" :prefer-major 25} (select-keys (first (filter #(= :java (:tool %)) from-text)) [:min :prefer-major :major])))
       (is (= "1.12.212" (:min (first (filter #(= :bb (:tool %)) from-text))))))
-    (testing "the bbin tools' install lines carry the pinned tag"
-      (doseq [t [:clj-nrepl-eval :clj-paren-repair :clj-paren-repair-claude-hook]]
-        (is (str/includes? (:install (first (filter #(= t (:tool %)) from-text))) "--tag v0.2.2") (str t))))))
+    (testing "the bbin tools' install lines are the pack's true-up, no version in them (8.2d)"
+      (doseq [t [:clj-nrepl-eval :clj-paren-repair :clj-paren-repair-claude-hook]
+              :let [i (:install (first (filter #(= t (:tool %)) from-text)))]]
+        (is (str/includes? i "toolchain-install --only bbin,clojure-mcp-light") (str t))
+        (is (not (re-find #"\d+\.\d+|--tag|--sha" i)) (str t))))))

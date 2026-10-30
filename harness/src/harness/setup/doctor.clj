@@ -39,10 +39,13 @@
   `clj-paren-repair --version` does not error — it treats `--version` as a
   FILENAME and runs a repair pass, exiting 0. A health check that mutates
   is worse than no health check. Probe with --version only where it is
-  documented, else --help, `bbin ls`, or plain presence on PATH. The three
+  documented, else --help, a bbin header, or plain presence on PATH. The three
   bbin tools are RUN, `--help` with an empty stdin and a timeout - each was
-  checked to answer it in under a second and write nothing - because being in
-  `bbin ls` and on PATH proved, twice, not to mean a tool could run."
+  checked to answer it in under a second and write nothing - because being
+  installed and on PATH proved, twice, not to mean a tool could run. Their commit
+  is the one the bbin header of the command the PATH gives names (`bbin-commits`,
+  plan 7.0, item 8.2d): `bbin ls` read bbin's own folder, which is not where the
+  toolchain pack puts them."
   (:require
    [babashka.fs :as fs]
    [babashka.process :as p]
@@ -120,17 +123,28 @@
   (when s
     (some-> (re-find #"\d+(?:\.\d+)+" s) str/trim)))
 
-(defn bbin-index
-  "Parse `bbin ls` into {tool-name sha}. Its output is three columns —
-  name, commit sha, git url — with no machine-readable mode."
-  []
-  (->> (or (sh ["bbin" "ls"]) "")
-       str/split-lines
-       (keep (fn [line]
-               (let [[nm sha] (str/split (str/trim line) #"\s+")]
-                 (when (and nm sha (not (str/blank? nm)))
-                   [nm sha]))))
-       (into {})))
+(defn bbin-commit
+  "The commit a bbin wrapper's header names - its text between `; :bbin/start` and `; :bbin/end`, the
+  `:git/sha` there - or nil. The toolchain pack reads the same header after it installs
+  (`toolchain-download-matrix/bbin-commit`); a test holds the two to one wrapper."
+  [text]
+  (some->> (re-find #"(?s); :bbin/start(.*?); :bbin/end" (or text ""))
+           second
+           (re-find #":git/sha \"([0-9a-f]{40})\"")
+           second))
+
+(defn bbin-commits
+  "{tool-name commit} for each bbin tool of `specs` the PATH gives with a bbin header - the file
+  `fs/which` finds, its header read; a tool absent, or with no header, is left out."
+  ([] (bbin-commits toolchain))
+  ([specs]
+   (into {}
+         (keep (fn [{:keys [tool via]}]
+                 (when (= :bbin via)
+                   (let [nm (name tool)
+                         sha (some-> (fs/which nm) str slurp bbin-commit)]
+                     (when sha [nm sha])))))
+         specs)))
 
 (defn- major
   "Leading numeric segment of a version string: \"21.0.12\" -> 21,
@@ -238,11 +252,11 @@
   :ok | :missing | :not-on-path | :broken | :too-old | :wrong-version | :unknown-version.
 
   `bbin-idx`, `pins` and `good` (the known-good set's `:tools`) are passed in so
-  a full report shells `bbin ls` and reads each file once, and so tests can
+  a full report reads each bbin header and each file once, and so tests can
   inject all three.
 
   The rules, in order: on PATH at all; for a bbin tool, answers `--help`
-  (`:broken` otherwise - the loop cannot run it whatever `bbin ls` says); an
+  (`:broken` otherwise - the loop cannot run it whatever its header says); an
   exact `:major` where the entry has one; then every floor - the entry's `:min`
   and the mise pin - is a MINIMUM. Newer than the pin, or than the known-good
   set, is a note. For an entry with a `:prefer-major` (the JDK) the pin is no floor but the
@@ -313,13 +327,13 @@
        (and (= :ok status) other-major?) (assoc :not-preferred? true)))))
 
 (defn report
-  "Probe the whole toolchain. Shells `bbin ls` and reads the mise config and
+  "Probe the whole toolchain. Reads the bbin headers, the mise config and
   the known-good set once."
   ([] (report toolchain))
   ([specs] (report specs (mise-pins)))
   ([specs pins] (report specs pins (:tools (known-good))))
   ([specs pins good]
-   (let [idx (bbin-index)]
+   (let [idx (bbin-commits specs)]
      (mapv #(probe % idx pins good) specs))))
 
 (defn ok?
@@ -362,7 +376,7 @@
                              " but " (or version "?") " is running")
          :too-old (str "\n      " (or version "?") " is below the floor"
                        (when pin (str " " (:pin pin) " (" (:source pin) ")")))
-         :broken "\n      on PATH and in `bbin ls`, but `--help` did not exit 0 within 5s"
+         :broken "\n      on PATH with its bbin header, but `--help` did not exit 0 within 5s"
          "")
        (when note (str "\n      " note))
        (when (and (unusable? status) install)
@@ -428,7 +442,7 @@
   named cause instead of an IOException from three frames down."
   [tool]
   (let [spec (first (filter #(= tool (:tool %)) toolchain))
-        {:keys [status]} (probe spec (bbin-index) (mise-pins))]
+        {:keys [status]} (probe spec (bbin-commits [spec]) (mise-pins))]
     (when (unusable? status)
       (throw (ex-info (str (name tool)
                            (case status
