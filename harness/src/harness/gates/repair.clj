@@ -101,23 +101,17 @@
   "Run cljfmt over `files` - the toolchain pack's `fmt` (plan 7.0, item 8.2a), one call from `dir`;
   the process's `{:exit :out :err}`.
 
-  cljfmt searches ancestors for its config, so a file's config is the one found
-  from beside it: whatever that file's project declares — and finds it by whatever name
-  cljfmt itself accepts, which is more than one: `.cljfmt.edn` and
-  `cljfmt.edn` both work, and a hand-rolled search for the dotted name alone
-  silently misses the other.
-
-  DELEGATING IS THE POINT, not a shortcut. The invariant this gate owes is
-  agreement with the fmt gate — whatever that gate enforces, gate 0 should
-  already have applied — and the fmt gate runs cljfmt from the project
-  directory and lets it search. Any rule of our own for locating config is a
-  way for the two to disagree.
-
-  The pack holds each file to the first config found from its own folder up,
-  else the one found from `dir`'s - the fmt gate's - so the two agree on a file
-  in a folder with no config of its own. Gate 0 ran cljfmt from each file's
-  folder, once per directory, until the pack: one call now, the pack doing the
-  search per file.
+  ONE SEARCH FOR BOTH GATES. The invariant this gate owes is agreement with the
+  fmt gate — whatever that gate enforces, gate 0 should already have applied.
+  Gate 0 used to keep it by delegating: cljfmt run from beside each file, left
+  to search, while the fmt gate ran cljfmt from the project directory - and a
+  file in a folder with no config of its own got cljfmt's defaults from the
+  first and the project's rules from the second. Now both gates go through the
+  toolchain pack's `fmt`/`fmt-check`, one search for both: a file is held to
+  the first config found from its own folder up, else the one from `dir`'s, so
+  the two cannot disagree. The search is the pack's own, by cljfmt's names and
+  order (`.cljfmt.edn`, then `cljfmt.edn` - a search for the dotted name alone
+  once silently missed the other), held to them by `toolchain_fmt_test`.
 
   What this replaced: a single call from the repository root, which in a repo
   whose projects are subdirectories formatted everything by the root's rules —

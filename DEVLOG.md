@@ -68,6 +68,17 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### The README says where KIT is certified apart from where its toolchain is published; gate 0's docstring says the one search (From Fable 5.1's read of `4d5fd2c` and `e9c7114`)
+
+The person: "go, take them as one commit". A low-medium: the root README's callout said KIT "runs on"
+amd64 Linux, which no health record proves - the records are `macos-arm64` and `linux-arm64`. It now
+says KIT is certified on an Apple silicon Mac and arm64 Linux (the records), published for amd64 Linux
+too with no record there yet, and an Intel Mac not supported; the pack README's platform line says the
+same. A low: `repair/format!`'s docstring still said a rule of our own for finding the config was a way
+for the two gates to disagree, over code that runs the pack's own search; it now says the invariant is
+kept by one search for both gates, held to cljfmt's names by the test. And a line in that test: when a
+`bb kit-pins` go moves cljfmt, read the new release's config names against the pack's.
+
 ### cljfmt is the download matrix's binary, run by the pack's `fmt` and `fmt-check`; gate 0 reads the pack's exit (plan 7.0, item 8.2a, as the person chose; From Fable 5.1's read of `a2fcad2`)
 
 `a2fcad2` made cljfmt a library the pack loads. The person, shown the cost - one file through gate 0,

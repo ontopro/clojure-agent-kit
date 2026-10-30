@@ -37,8 +37,9 @@ listed under [Five parts](#five-parts), in the section for KIT developers below.
 ### Before anything: three installs
 
 > [!IMPORTANT]
-> KIT runs on an Apple silicon Mac (macOS, arm64) and on Linux (arm64 or amd64). An Intel Mac is
-> not supported: cljfmt, which KIT runs, publishes no build for it.
+> KIT is certified on an Apple silicon Mac (macOS, arm64) and on arm64 Linux - the health records
+> below. Its toolchain is published for amd64 Linux too, and no record proves it there yet. An Intel
+> Mac is not supported: cljfmt, which KIT runs, publishes no build for it.
 
 KIT guides and does not install. Put these on the machine yourself - each is one page and one
 or two commands - then let `bb doctor` say what is still missing and what fixes it.

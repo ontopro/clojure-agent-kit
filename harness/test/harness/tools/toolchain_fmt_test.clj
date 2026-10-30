@@ -18,6 +18,9 @@
 (def ^:private padded "(ns a)\n\n(def m {:a  1})\n")
 
 (deftest the-config-is-cljfmts-own-search-from-the-path-else-from-dir
+  ;; cljfmt 0.16.6's `valid-config-files`, the `.clj` forms read only under --read-clj-config-files.
+  ;; When a `bb kit-pins` go moves cljfmt's version, read the new release's list against
+  ;; `toolchain-fmt/config-names` (From Fable 5.1's read of e9c7114).
   (let [root (fs/create-temp-dir)
         proj (fs/path root "proj")]
     (fs/create-dirs (fs/path proj "src" "deep"))
