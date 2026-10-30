@@ -68,6 +68,27 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### A flagged `.env` loads once the person accepts it; every change seen is added to the `.env` record (plan 7.0, item 8.6d, step 2)
+
+The person (2026-10-30): a flag is "kicked out for human review and documented - a simple statement that
+.env was reviewed and accepted by <name of human> at <timestamp>"; and every change logged, not only a
+flagged one ("surely the file's hash would have changed"). `.env-record.edn` beside the `.env` - a
+record in the KIT's sense, added to and never rewritten, the name Fable 5.1's (its read of the design
+note) - one EDN map a line. Each load whose sha256 is not the last entry's adds `{:at :sha256 :names
+:added :removed :flags :loaded?}` and says on stderr what moved (`+DATABASE_URL, -OLD_KEY`, or "the same
+names, values or other lines changed", and how many lines are flagged). `bb env-accept [<dir>]` (pack,
+harness, front door, root) shows the flags by number, takes the person's name and the word `accept` at a
+terminal (`System/console`, so a command an agent runs is refused), reads the file again and refuses if
+it changed meanwhile, and adds `{:at :sha256 :accepted-by :flags}`. A flagged file loads only when an
+acceptance names its sha256, and every load then says who accepted it and when - the answer to a faked
+terminal, which is not prevented: the documents say it is a rail, not a lock. Never a value in the
+record or on stderr, a flagged line's text included; a record line that is not an EDN map is skipped and
+counted. The KIT ignores `.env-record.edn` as it does `.env`. The pack's README rows for both commands,
+the `toolchain-env` row brought up to `3ec4c9e` and step 1. Tried here: the first load adds every name;
+an unchanged load adds nothing; a bare word added is flagged, not loaded, the change said; `env-accept`
+with no terminal refused, nothing written; no secret and no flagged text in the record.
+`toolchain_env_test` holds each, `env-accept` with no terminal run as a process.
+
 ### The `.env` flagged, not fenced: any name taken, no repository holds it (plan 7.0, item 8.6d, step 1)
 
 Fable 5.1's read of `3ec4c9e` found the deny list still short - `BABASHKA_PRELOADS` runs its code in

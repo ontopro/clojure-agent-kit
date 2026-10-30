@@ -236,6 +236,12 @@
                                                        (str (fs/parent (fs/absolutize ".")))))]
                          (System/exit exit))}
 
+  env-accept {:doc "The person's acceptance of the workspace's .env as it is now, flagged lines and all, added to the .env record - at a terminal only, never through an agent - the toolchain pack's `env-accept`, for the workspace (KIT_WORKSPACE) or the clone"
+              :task (let [{:keys [exit]} (shell {:continue true} "bb" "--config" "../tools/toolchain/bb.edn" "env-accept"
+                                                (or (first *command-line-args*) (System/getenv "KIT_WORKSPACE")
+                                                    (str (fs/parent (fs/absolutize ".")))))]
+                      (System/exit exit))}
+
   roster-sync {:doc "Write roster.md's Model column from the shipped claude example, and portability.md's two tables of models from the shipped examples (resources/profiles/); a test holds both"
                :requires ([harness.models.profile :as profile])
                :task (profile/roster-sync-main)}

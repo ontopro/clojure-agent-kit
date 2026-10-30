@@ -115,3 +115,56 @@
   (is (= 2 (count (env/env-lines "/j" nil))) "no .env: no keys line")
   (is (= ["set -a; . '/w/.env'; set +a"] (env/env-lines nil "/w/.env")) "no JDK: the keys line still")
   (is (= "'it'\\''s'" (env/sq "it's")) "a quote in a path stays a path"))
+
+(deftest the-env-record-says-what-each-load-saw-names-never-a-value
+  (let [entries [{:at "t1" :sha256 "a" :names ["A" "B"]}]
+        e (env/seen-entry entries "t2" "b" {:names ["B" "C"] :flags []} true)]
+    (is (= {:at "t2" :sha256 "b" :names ["B" "C"] :added ["C"] :removed ["A"] :flags [] :loaded? true} e))
+    (is (= "the .env changed since t1: +C, -A" (env/change-line entries e)))
+    (is (= "the .env changed since t1: the same names, values or other lines changed"
+           (env/change-line entries (env/seen-entry entries "t2" "c" {:names ["A" "B"]} true))))
+    (is (nil? (env/change-line [] e)) "the first sight says nothing")
+    (is (= ["A" "B"] (:added (env/seen-entry [] "t" "x" {:names ["A" "B"]} true))) "the first sight: every name added"))
+  (testing "an acceptance names one sha256, the latest kept"
+    (let [es [{:sha256 "a" :accepted-by "P" :at "1"} {:sha256 "b" :names []} {:sha256 "a" :accepted-by "Q" :at "2"}]]
+      (is (= "Q" (:accepted-by (env/acceptance es "a"))))
+      (is (nil? (env/acceptance es "b")) "a sight is not an acceptance")))
+  (testing "a damaged line is skipped and counted"
+    (let [f (str (fs/path (fs/create-temp-dir) ".env-record.edn"))]
+      (spit f "{:sha256 \"a\"}\nnot edn {\n[1 2]\n{:sha256 \"b\"}\n")
+      (is (= {:entries [{:sha256 "a"} {:sha256 "b"}] :unread 2} (env/read-record f)))))
+  (testing "against files: a load adds an entry only on a change; a flagged file loads only once accepted"
+    (let [d (fs/create-temp-dir)
+          env (str (fs/path d ".env"))
+          rec (env/record-file env)
+          secrets ["sk-or-v1-0123secret" "postgres://u:hunter2@h/db" "rm -rf ~"]
+          load! #(let [w (java.io.StringWriter.)
+                       r (binding [*err* w] (env/load-env! "t" env))]
+                   (assoc r :err (str w)))]
+      (spit env (str "OPENROUTER_API_KEY=" (secrets 0) "\nDATABASE_URL='" (secrets 1) "'\n"))
+      (is (:load? (load!)))
+      (is (= 1 (count (:entries (env/read-record rec)))))
+      (load!)
+      (is (= 1 (count (:entries (env/read-record rec)))) "unchanged: no entry")
+      (spit env (str (slurp env) (secrets 2) "\n"))
+      (let [r (load!)]
+        (is (not (:load? r)) "flagged, not accepted: not loaded")
+        (is (str/includes? (:err r) "1 line(s) flagged") (:err r)))
+      (is (false? (:loaded? (last (:entries (env/read-record rec))))))
+      (env/append-entry! rec {:at "now" :sha256 (env/sha256 (slurp env)) :accepted-by "P"})
+      (let [r (load!)]
+        (is (:load? r) "accepted: loaded")
+        (is (= "P" (:accepted-by (:accepted r)))))
+      (spit env (str (slurp env) "X=1\n"))
+      (is (not (:load? (load!))) "changed after the acceptance: not loaded until accepted again")
+      (let [record (slurp rec)]
+        (doseq [s secrets] (is (not (str/includes? record s)) "no value or flagged text in the record"))))))
+
+(deftest env-accept-needs-a-terminal
+  (let [d (fs/create-temp-dir)]
+    (spit (str (fs/path d ".env")) "rm -rf ~\n")
+    (let [{:keys [exit err]} (p/shell {:out :string :err :string :continue true :in ""}
+                                      "bb" "--config" "../tools/toolchain/bb.edn" "env-accept" (str d))]
+      (is (= 1 exit))
+      (is (str/includes? err "needs a terminal"))
+      (is (not (fs/exists? (fs/path d ".env-record.edn"))) "nothing written"))))

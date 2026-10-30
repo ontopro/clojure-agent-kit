@@ -23,9 +23,13 @@
                      :requires ([toolchain-install :as install])
                      :task (install/install-main pack-dir *command-line-args*)}
 
-  toolchain-env {:doc "The shell lines for `eval \"$(bb toolchain-env)\"`: JAVA_HOME and PATH for the JDK the project pins (the download matrix's when none), and the line that has the shell load the workspace's .env - no value ever printed; any name taken, held by no repository, a line the shell would run or a program hook flagged, and a flagged file not loaded. [<dir>], default KIT_WORKSPACE or here. Exit 1: nothing on stdout when the .env is flagged or a repository holds it; the keys line alone when no JDK of that major is found. JDK-only until 8.3c: the cache's bb, clj-kondo and clojure are not on its PATH line"
+  toolchain-env {:doc "The shell lines for `eval \"$(bb toolchain-env)\"`: JAVA_HOME and PATH for the JDK the project pins (the download matrix's when none), and the line that has the shell load the workspace's .env - no value ever printed; any name taken, held by no repository, a line the shell would run or a program hook flagged, and a flagged file not loaded unless `env-accept` accepted it; a change to the file is added to the .env record (.env-record.edn beside it) - names, never a value. [<dir>], default KIT_WORKSPACE or here. Exit 1: nothing on stdout when the .env is flagged or a repository holds it; the keys line alone when no JDK of that major is found. JDK-only until 8.3c: the cache's bb, clj-kondo and clojure are not on its PATH line"
                  :requires ([toolchain-env :as env])
                  :task (env/main pack-dir *command-line-args*)}
+
+  env-accept {:doc "The person's acceptance of the .env as it is now, flagged lines and all: the flags shown by line number (never the text), their name and the word accept typed at a terminal, the file's sha256 added to the .env record (.env-record.edn beside it) - every load after says who accepted it and when. [<dir>] as toolchain-env's. Refused with no terminal (a command an agent runs has none), for a file a repository holds, or one that changed while the answers were given"
+              :requires ([toolchain-env :as env])
+              :task (env/accept-main pack-dir *command-line-args*)}
 
   image-args {:doc "The KIT's toolchain image's build arguments for a Linux platform (linux-aarch64, linux-amd64), as an EDN map: bb's and git's version, URL and sha256 from the download matrix - what the image fetches by shell before bb exists. Read by the root `docker-image!`"
               :requires ([toolchain-download-matrix :as dm])

@@ -15,6 +15,8 @@ target/
 # A WORKSPACE'S KEYS AND A MACHINE'S OWN PINS, never committed (plan 7.0, item 8.6c): the gates check
 # the whole tree and a commit is `git add -A` of it, so these are ignored anywhere in the clone, before
 # any is placed here - the KIT's own `--kit` review and bake-offs read a `.env` at the clone's root.
+# The .env record beside it (item 8.6d) - names and sha256s, never a value - the clone's own.
 .env
+.env-record.edn
 .env.local
 .mise.local.toml

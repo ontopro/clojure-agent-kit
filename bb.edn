@@ -150,6 +150,10 @@
                  :task (let [{:keys [exit]} (shell {:continue true} "bb" "--config" "tools/toolchain/bb.edn" "toolchain-env" ".")]
                          (System/exit exit))}
 
+  env-accept {:doc "The person's acceptance of this clone's .env as it is now, flagged lines and all, added to the .env record - at a terminal only - the toolchain pack's `env-accept`"
+              :task (let [{:keys [exit]} (shell {:continue true} "bb" "--config" "tools/toolchain/bb.edn" "env-accept" ".")]
+                      (System/exit exit))}
+
   kit-pins {:doc "The KIT's pins: each tool and library the KIT pins (the download matrix, the pack's deps, the Dockerfile's own, the project set, the template's) as installed here, as pinned, and its newest release by git ls-remote; information, exit 0. A go or no-go per row is the person's (kit-session skill)"
             :requires ([harness.gates.kit-pins :as kit-pins])
             :task (kit-pins/-main)}

@@ -204,6 +204,53 @@
   (let [path (str (fs/path (or (:dir (find-workspace dir)) kit) ".env"))]
     {:file (when (fs/exists? path) path) :looked [path]}))
 
+;; ---------------------------------------------------------------- the `.env` record
+
+(defn sha256 "The hex sha256 of `text`'s UTF-8 bytes." [text]
+  (->> (.digest (java.security.MessageDigest/getInstance "SHA-256") (.getBytes (str text) "UTF-8"))
+       (map #(format "%02x" (bit-and % 0xff)))
+       (apply str)))
+
+(defn record-file "The `.env` record beside the `.env` at `env`." [env]
+  (str (fs/path (fs/parent env) ".env-record.edn")))
+
+(defn read-record
+  "The `.env` record's entries, one EDN map per line, in order; `[]` when there is none. A line that is
+  not an EDN map is skipped and counted in `:unread`, never fatal: the record is evidence, and a
+  damaged line costs only what it said."
+  [path]
+  (let [lines (if (fs/exists? path) (remove str/blank? (str/split-lines (slurp path))) [])
+        read (map #(try (let [m (edn/read-string %)] (when (map? m) m)) (catch Exception _ nil)) lines)]
+    {:entries (vec (keep identity read)) :unread (count (remove identity read))}))
+
+(defn seen-entry
+  "The entry a load adds when the file's sha256 is not the last entry's - pure: the time, the sha256,
+  every name set and those added and removed since the last entry that named them, the flags, and
+  whether it was loaded. Names, never a value."
+  [entries at sha {:keys [names flags]} loaded?]
+  (let [before (set (some :names (rseq (vec entries))))
+        now (set names)]
+    {:at at :sha256 sha :names (vec names)
+     :added (vec (sort (remove before now))) :removed (vec (sort (remove now before)))
+     :flags flags :loaded? (boolean loaded?)}))
+
+(defn acceptance
+  "The person's acceptance of the file whose sha256 is `sha`, the latest, or nil."
+  [entries sha]
+  (last (filter #(and (:accepted-by %) (= sha (:sha256 %))) entries)))
+
+(defn change-line
+  "What a load says of a change - pure: the names added and removed, or that the names are the same
+  and other text changed; the flagged lines' count; nil for the first sight."
+  [entries entry]
+  (when-let [prev (last entries)]
+    (let [moved (concat (map #(str "+" %) (:added entry)) (map #(str "-" %) (:removed entry)))]
+      (str "the .env changed since " (:at prev) ": "
+           (if (seq moved) (str/join ", " moved) "the same names, values or other lines changed")
+           (when-let [n (not-empty (:flags entry))] (str "; " (count n) " line(s) flagged"))))))
+
+(defn append-entry! [path entry] (spit path (str (pr-str entry) "\n") :append true))
+
 ;; ---------------------------------------------------------------- the lines
 
 (defn sq "`s` single-quoted for a shell." [s] (str "'" (str/replace s "'" "'\\''") "'"))
@@ -217,15 +264,54 @@
                (str "export PATH=" (sq (str home "/bin")) ":\"$PATH\""))
     env (conj (str "set -a; . " (sq env) "; set +a"))))
 
+(defn- say [cmd msg] (binding [*out* *err*] (println (str cmd ": " msg))))
+
+(defn- held-line [file held]
+  (str file (if (= :tracked held)
+              " is tracked by the repository its folder is in - `git rm --cached` it, and ignore it there"
+              " is not ignored by the repository its folder is in - one `git add -A` from committed; add it to the .gitignore")
+       " - nothing loaded"))
+
+(defn- flag-lines [{:keys [flags]}]
+  (for [{:keys [line why]} flags] (str "  line " line ": " why)))
+
+(defn- now [] (str (java.time.Instant/now)))
+
+(defn- where-env
+  "The `.env` the command is about: `<dir>` from `args`, else `KIT_WORKSPACE`, else the folder it is
+  run in; the clone's own outside a workspace."
+  [pack-dir args]
+  (env-file (or (first args) (not-empty (System/getenv "KIT_WORKSPACE")) ".")
+            (str (fs/parent (fs/parent (fs/absolutize pack-dir))))))
+
+(defn load-env!
+  "The `.env` at `file` read for a load - the record's entry added when the file is not what the last
+  entry saw, said on stderr. `{:load? :accepted}`; `:load?` false for a flagged file no acceptance
+  names. Never a value on stdout, stderr or in the record."
+  [cmd file]
+  (let [text (slurp file)
+        sha (sha256 text)
+        checked (check-env text)
+        rec (record-file file)
+        {:keys [entries unread]} (read-record rec)
+        accepted (when-not (:ok? checked) (acceptance entries sha))
+        load? (boolean (or (:ok? checked) accepted))]
+    (when (pos? unread) (say cmd (str rec ": " unread " line(s) not an EDN map, skipped")))
+    (when (not= sha (:sha256 (last entries)))
+      (let [entry (seen-entry entries (now) sha checked load?)]
+        (some->> (change-line entries entry) (say cmd))
+        (append-entry! rec entry)))
+    {:load? load? :accepted accepted :checked checked}))
+
 (defn main
   "The `toolchain-env [<dir>]` task. `<dir>` defaults to `KIT_WORKSPACE`, else the folder it is run
-  in. A `.env` a repository holds, or one with a flagged line: exit 1, nothing on stdout - a fault,
-  nothing from the run is taken until a person has read why. No JDK of the pinned major: exit 1, and the keys
-  line still printed - what holds is loaded, the missing JDK said with the install that brings it."
+  in. A `.env` a repository holds, or one with a flagged line no acceptance in the `.env` record names:
+  exit 1, nothing on stdout - a fault, nothing from the run is taken until a person has read why. No
+  JDK of the pinned major: exit 1, and the keys line still printed - what holds is loaded, the missing
+  JDK said with the install that brings it."
   [pack-dir args]
-  (let [say #(binding [*out* *err*] (println (str "toolchain-env: " %)))
+  (let [say (partial say "toolchain-env")
         dir (or (first args) (not-empty (System/getenv "KIT_WORKSPACE")) ".")
-        kit (str (fs/parent (fs/parent (fs/absolutize pack-dir))))
         pinned (java-pin (pin-dir dir))
         matrix (dm/read-matrix (str pack-dir "/download-matrix.edn"))
         major (or pinned (major-of (get-in matrix [:java :version])))
@@ -234,28 +320,56 @@
              :platform (dm/platform-key (System/getProperty "os.name") (System/getProperty "os.arch"))
              :home (System/getProperty "user.home")}
         jdk (find-jdk major (lookups env) jdk-home?)
-        {:keys [file looked]} (env-file dir kit)
-        held (some-> file repo-check)
-        checked (some-> file slurp check-env)]
+        {:keys [file looked]} (where-env pack-dir args)
+        held (some-> file repo-check)]
+    (when held (say (held-line file held)) (System/exit 1))
+    (let [{:keys [load? accepted checked]} (when file (load-env! "toolchain-env" file))]
+      (when (and file (not load?))
+        (say (str file " is not loaded - each line flagged, by number (the text never shown):"))
+        (run! say (flag-lines checked))
+        (say "open the file and read those lines; change them, or accept the file as it is with `bb env-accept` in a terminal")
+        (System/exit 1))
+      (say (if jdk
+             (str "the JDK " major " (" (if pinned "the project's pin" "the KIT's preferred") ") from " (:from jdk) ": " (:home jdk))
+             (str "no JDK " major " found (" (if pinned "the project's pin" "the KIT's preferred, no pin") ") - looked in "
+                  (str/join ", " (map first (lookups env))) "; `bb --config " pack-dir "/bb.edn toolchain-install --only java`")))
+      (when accepted
+        (say (str "the .env's flagged lines were accepted by " (:accepted-by accepted) " at " (:at accepted))))
+      (say (if file
+             (str "the keys: " file " - " (count (:names checked)) " names, loaded by the shell, no value printed")
+             (str "no .env (looked at " (str/join ", " looked) ") - the keys stay what the shell has")))
+      (run! println (env-lines (:home jdk) (when load? file)))
+      (when-not jdk (System/exit 1)))))
+
+(defn accept-main
+  "The `env-accept [<dir>]` task: the person's acceptance of the `.env` as it is now, flagged lines and
+  all, added to the `.env` record - their name, the time, the file's sha256. At a terminal only
+  (`System/console`): a command an agent runs has none. Said plainly: a program can fake a terminal,
+  so this is not a lock - every load says who accepted the file and when, in front of the person each
+  time. The file is read again after the answers and refused if it changed while they were given."
+  [pack-dir args]
+  (let [say (partial say "env-accept")
+        console (System/console)
+        {:keys [file looked]} (where-env pack-dir args)
+        held (some-> file repo-check)]
     (cond
-      held
-      (do (say (str file (if (= :tracked held)
-                           " is tracked by the repository its folder is in - `git rm --cached` it, and ignore it there"
-                           " is not ignored by the repository its folder is in - one `git add -A` from committed; add it to the .gitignore")
-                    " - nothing loaded"))
-          (System/exit 1))
-      (and checked (not (:ok? checked)))
-      (do (say (str file " is not loaded - each line flagged, by number (the text never shown):"))
-          (doseq [{:keys [line why]} (:flags checked)] (say (str "  line " line ": " why)))
-          (say "open the file, read those lines, and change them")
-          (System/exit 1))
+      (nil? console) (do (say "needs a terminal - run it yourself, in the shell that starts the session, not through an agent") (System/exit 1))
+      (nil? file) (do (say (str "no .env (looked at " (str/join ", " looked) ")")) (System/exit 1))
+      held (do (say (held-line file held)) (System/exit 1))
       :else
-      (do (say (if jdk
-                 (str "the JDK " major " (" (if pinned "the project's pin" "the KIT's preferred") ") from " (:from jdk) ": " (:home jdk))
-                 (str "no JDK " major " found (" (if pinned "the project's pin" "the KIT's preferred, no pin") ") - looked in "
-                      (str/join ", " (map first (lookups env))) "; `bb --config " pack-dir "/bb.edn toolchain-install --only java`")))
-          (say (if file
-                 (str "the keys: " file " - " (count (:names checked)) " names, loaded by the shell, no value printed")
-                 (str "no .env (looked at " (str/join ", " looked) ") - the keys stay what the shell has")))
-          (run! println (env-lines (:home jdk) file))
-          (when-not jdk (System/exit 1))))))
+      (let [text (slurp file)
+            sha (sha256 text)
+            checked (check-env text)]
+        (if (:ok? checked)
+          (say (str file " has no flagged line - it loads as it is, nothing to accept"))
+          (do (say (str file " - sha256 " sha " - each line flagged, by number (the text never shown):"))
+              (run! say (flag-lines checked))
+              (say "open the file and read those lines before you accept it")
+              (let [nm (some-> (.readLine console "Your name: " (object-array 0)) str/trim not-empty)
+                    word (some-> (.readLine console "Type accept to accept this .env as it is now: " (object-array 0)) str/trim)]
+                (cond
+                  (nil? nm) (do (say "no name - nothing accepted") (System/exit 1))
+                  (not= "accept" word) (do (say "not accepted") (System/exit 1))
+                  (not= sha (sha256 (slurp file))) (do (say (str file " changed while you answered - nothing accepted; run it again")) (System/exit 1))
+                  :else (do (append-entry! (record-file file) {:at (now) :sha256 sha :accepted-by nm :flags (:flags checked)})
+                            (say (str "accepted by " nm " - added to " (record-file file))))))))))))
