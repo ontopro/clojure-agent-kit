@@ -56,7 +56,8 @@
     (is (every? :doc rows) (str "a namespace with no docstring: " (mapv :ns (remove :doc rows))))
     (is (every? :layer rows) (str "a namespace layers.edn does not declare: " (mapv :ns (remove :layer rows))))
     (is (= [] (boundary/violations "src" (edn/read-string (slurp "layers.edn")))) "the harness within its own layers")
-    (is (= 0 (inv/layer-of layers 'harness.setup.doctor)) "the doctor is a leaf, whatever its folder")
+    (is (= 0 (inv/layer-of layers 'harness.setup.download-matrix)) "the matrix's reader is a leaf, whatever its folder")
+    (is (= 1 (inv/layer-of layers 'harness.setup.doctor)) "the doctor stands on it alone (plan 7.0, item 8.3a)")
     (is (= (reduce max 0 (keep :layer rows)) (inv/layer-of layers 'harness.setup.health)) "the health check is the top")
     (let [{:keys [changed? unnamed]} (inv/sync! "src/harness" "layers.edn" "README.md" :check? true)]
       (is (false? changed?) "run `bb inventory-sync`")

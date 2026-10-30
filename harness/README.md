@@ -35,7 +35,7 @@ bb example    # the whole loop shape in one run: no model calls, no network
 ## Prerequisites
 
 `bb`, `git`, `cljfmt`, `clj-kondo` and `clj-paren-repair` (installed by `bbin`) to run the gates - no
-JVM; a JDK (21 or newer, 25 preferred), the Clojure CLI and `clj-nrepl-eval` as well for a loop. `bb doctor` probes each one
+JVM; the JDK, the Clojure CLI and `clj-nrepl-eval` as well for a loop - each at the download matrix's version, which the true-up installs. `bb doctor` probes each one
 (the bbin tools by running them, their commit read from the header of the one the PATH gives), prints the command or page that fixes a miss, and gives one
 verdict per tier - run it first, and `bb doctor --tier gates` is what `bb gates` runs.
 The first `bb test` fetches malli into `~/.m2`; everything after that is offline.
@@ -56,54 +56,54 @@ the source by name: a namespace the source has that the table never mentions fai
 
 <!-- harness-inventory:begin -->
 
-75 namespaces, rendered from `src/harness/` by `bb inventory-sync` (`--check` in `bb gates`): `harness.setup` (28: the machine and the workspace), `harness.loop` (9: the steps and the loop), `harness.contract` (7: the packet, the shapes, the checks on a spec), `harness.gates` (9: the runner, gate 0, the boundary gate), `harness.models` (16: runners, adapters, profiles, provenance), `harness.money` (4: balance, the reports, repricing), and `harness.contained-path`, `harness.rules` on its own. The group is the folder, what a namespace is about; the layer is its place in the dependency order `layers.edn` declares and `bb boundary` holds - 0 requires nothing of the harness, 8 is the top - computed as one more than the deepest layer of what it may require.
+75 namespaces, rendered from `src/harness/` by `bb inventory-sync` (`--check` in `bb gates`): `harness.setup` (28: the machine and the workspace), `harness.loop` (9: the steps and the loop), `harness.contract` (7: the packet, the shapes, the checks on a spec), `harness.gates` (9: the runner, gate 0, the boundary gate), `harness.models` (16: runners, adapters, profiles, provenance), `harness.money` (4: balance, the reports, repricing), and `harness.contained-path`, `harness.rules` on its own. The group is the folder, what a namespace is about; the layer is its place in the dependency order `layers.edn` declares and `bb boundary` holds - 0 requires nothing of the harness, 9 is the top - computed as one more than the deepest layer of what it may require.
 
 | Namespace | Group | Layer | The first line of its docstring |
 |---|---|---|---|
 | `harness.contained-path` | — | 0 | Whether a path someone else named stays inside a folder - the one check every tool and reader |
 | `harness.rules` | — | 1 | The agent-rule source and its two renderings. |
 | `harness.setup.app` | setup | 2 | The second part of `bb init`: generate the application from the pinned |
-| `harness.setup.blueprint-review` | setup | 5 | A stage's Blueprint, read cold before sign-off: `bb blueprint-review <blueprint.md>`. |
-| `harness.setup.doctor` | setup | 0 | Toolchain doctor: what this stack needs, whether it is here, and what it does. |
+| `harness.setup.blueprint-review` | setup | 6 | A stage's Blueprint, read cold before sign-off: `bb blueprint-review <blueprint.md>`. |
+| `harness.setup.doctor` | setup | 1 | Toolchain doctor: what this stack needs, whether it is here, and what it does. |
 | `harness.setup.download-matrix` | setup | 0 | THE DOWNLOAD MATRIX, AS THE HARNESS READS IT (plan 7.0, item 8.3a). The toolchain pack owns the file, |
 | `harness.setup.front-door` | setup | 1 | The workspace's front door: the `bb.edn` `bb init` writes at the workspace's |
-| `harness.setup.health` | setup | 8 | `bb health` - the KIT's health check: does this KIT, on this machine, with the |
+| `harness.setup.health` | setup | 9 | `bb health` - the KIT's health check: does this KIT, on this machine, with the |
 | `harness.setup.init` | setup | 3 | `bb init [<name> [dir]]` - create the workspace a project is built in. |
 | `harness.setup.init-args` | setup | 0 | `bb init`'s arguments, parsed - here and not in `harness.setup.init`, because |
 | `harness.setup.inventory` | setup | 2 | The harness's namespaces, rendered into its README from the source: |
-| `harness.setup.next` | setup | 4 | What comes next in the workflow, read off the build's files: `bb next`. |
-| `harness.setup.packet-tests` | setup | 3 | The tests that read what a packet changes, listed before the packet is cut: |
-| `harness.setup.plan` | setup | 3 | What the harness knows about a plan's documents: the template the KIT ships |
-| `harness.setup.plan-review` | setup | 4 | The plan-review pass of `method.md` §03, run: `bb plan-review [<plan-dir> | <stage-plan.md>]`. |
+| `harness.setup.next` | setup | 5 | What comes next in the workflow, read off the build's files: `bb next`. |
+| `harness.setup.packet-tests` | setup | 4 | The tests that read what a packet changes, listed before the packet is cut: |
+| `harness.setup.plan` | setup | 4 | What the harness knows about a plan's documents: the template the KIT ships |
+| `harness.setup.plan-review` | setup | 5 | The plan-review pass of `method.md` §03, run: `bb plan-review [<plan-dir> | <stage-plan.md>]`. |
 | `harness.setup.project-set` | setup | 0 | The project's toolchain, which the KIT owns (`resources/project-set.edn`): every line under the |
-| `harness.setup.roadmap-page` | setup | 6 | The roadmap page: `bb roadmap-page`. |
+| `harness.setup.roadmap-page` | setup | 7 | The roadmap page: `bb roadmap-page`. |
 | `harness.setup.security-fixture` | setup | 1 | `bb security-fixture <dir>`: the application a security reading is measured on - generated |
 | `harness.setup.skills` | setup | 1 | The KIT's fifth part, `skills/`, and where it is rendered to - a workspace: |
-| `harness.setup.stage-amend` | setup | 5 | `bb stage-amend Q-n`: open an amendment of the stage in progress - an entry `{:q :opened}` in its |
+| `harness.setup.stage-amend` | setup | 6 | `bb stage-amend Q-n`: open an amendment of the stage in progress - an entry `{:q :opened}` in its |
 | `harness.setup.stage-move` | setup | 1 | A workspace made before the folder per stage (`harness.setup.stages`) brought into it: the |
-| `harness.setup.stage-progress` | setup | 5 | A stage plan's last section, its progress: `bb stage-progress <stage-plan.md>`. |
+| `harness.setup.stage-progress` | setup | 6 | A stage plan's last section, its progress: `bb stage-progress <stage-plan.md>`. |
 | `harness.setup.stages` | setup | 0 | Where a stage's documents live in a build: a folder per stage, |
 | `harness.setup.template` | setup | 0 | The template the KIT brings with it: read the pin, and build the command that |
-| `harness.setup.template-upgrade` | setup | 6 | `bb template-upgrade`: the application brought to the template the KIT now pins, by a |
-| `harness.setup.upgrade` | setup | 2 | What a pulled KIT expects that this workspace lacks - a report, never a |
-| `harness.setup.upgrade-run` | setup | 7 | `bb upgrade --after-pull`: phase 2 of a KIT upgrade - the workspace brought up to the KIT |
-| `harness.setup.where` | setup | 5 | Where the project stands, as one map: `bb next --where --edn`. |
+| `harness.setup.template-upgrade` | setup | 7 | `bb template-upgrade`: the application brought to the template the KIT now pins, by a |
+| `harness.setup.upgrade` | setup | 3 | What a pulled KIT expects that this workspace lacks - a report, never a |
+| `harness.setup.upgrade-run` | setup | 8 | `bb upgrade --after-pull`: phase 2 of a KIT upgrade - the workspace brought up to the KIT |
+| `harness.setup.where` | setup | 6 | Where the project stands, as one map: `bb next --where --edn`. |
 | `harness.setup.workspace` | setup | 0 | Where things are: the workspace a path is in, and what its `workspace.edn` says. |
-| `harness.setup.ws-gates` | setup | 5 | A workspace's own gates: `bb gates` at its front door, `bb workspace-gates` here. |
-| `harness.loop.driver` | loop | 5 | `bb run-loop <command> <run-dir> [args]` — the loop's steps as commands, with a |
+| `harness.setup.ws-gates` | setup | 6 | A workspace's own gates: `bb gates` at its front door, `bb workspace-gates` here. |
+| `harness.loop.driver` | loop | 6 | `bb run-loop <command> <run-dir> [args]` — the loop's steps as commands, with a |
 | `harness.loop.library-claims` | loop | 0 | A finding that rests on a claim about what a library does is answered after |
 | `harness.loop.log` | loop | 0 | The run's append-only event log. One EDN map per line; never rewritten. |
-| `harness.loop.orchestrate` | loop | 7 | The loop: `bb run-loop run <run-dir>` drives one task to its next stop. |
-| `harness.loop.provision` | loop | 2 | Workspaces: a git worktree and its own nREPL, one per (task, role). |
-| `harness.loop.review-repl` | loop | 4 | The code reviewer's REPL: a container per review round, the security review's sandbox as it |
+| `harness.loop.orchestrate` | loop | 8 | The loop: `bb run-loop run <run-dir>` drives one task to its next stop. |
+| `harness.loop.provision` | loop | 3 | Workspaces: a git worktree and its own nREPL, one per (task, role). |
+| `harness.loop.review-repl` | loop | 5 | The code reviewer's REPL: a container per review round, the security review's sandbox as it |
 | `harness.loop.run-lock` | loop | 0 | One `bb run-loop` command at a time on a run directory. |
-| `harness.loop.security-routing` | loop | 7 | Who acts on what a security review reproduced: `bb security-route <review.edn> <clone>`, at a |
-| `harness.loop.triage` | loop | 6 | Who owns a failure: one model call — on a red gate, a note, or a review |
-| `harness.contract.blueprint` | contract | 2 | A task's `spec.edn`, pulled out of a Blueprint written to the template. |
+| `harness.loop.security-routing` | loop | 8 | Who acts on what a security review reproduced: `bb security-route <review.edn> <clone>`, at a |
+| `harness.loop.triage` | loop | 7 | Who owns a failure: one model call — on a red gate, a note, or a review |
+| `harness.contract.blueprint` | contract | 3 | A task's `spec.edn`, pulled out of a Blueprint written to the template. |
 | `harness.contract.packet` | contract | 1 | Task-packet assembly. |
 | `harness.contract.shapes` | contract | 0 | Malli schemas for the loop: the task packet, what a runner returns, |
-| `harness.contract.sigs` | contract | 1 | The Blueprint's `:deps-sigs`, checked against the source it describes. |
-| `harness.contract.spec-review` | contract | 4 | A review of the CONTRACT before anyone works from it: `bb run-loop spec-review <run-dir>`. |
+| `harness.contract.sigs` | contract | 2 | The Blueprint's `:deps-sigs`, checked against the source it describes. |
+| `harness.contract.spec-review` | contract | 5 | A review of the CONTRACT before anyone works from it: `bb run-loop spec-review <run-dir>`. |
 | `harness.contract.stub` | contract | 1 | The contract, as code the Tester can load. |
 | `harness.contract.targets` | contract | 1 | The spec's `:property-targets`, checked against the tests the Tester wrote. |
 | `harness.gates.boundary` | gates | 1 | Gate 4: the architecture-boundary check (method §09), against a project's |
@@ -111,30 +111,30 @@ the source by name: a namespace the source has that the table never mentions fai
 | `harness.gates.kit-pins` | gates | 1 | `bb kit-pins`: the KIT's pins, each as installed here, as pinned, and newest. |
 | `harness.gates.kit-status` | gates | 3 | `bb kit-status`: what an item's end should look at, printed and never |
 | `harness.gates.record` | gates | 0 | The KIT's gates record and the commit check that reads it. |
-| `harness.gates.repair` | gates | 1 | Gate 0: mechanical repair, before the gates run. |
+| `harness.gates.repair` | gates | 2 | Gate 0: mechanical repair, before the gates run. |
 | `harness.gates.run` | gates | 0 | The gate runner. |
 | `harness.gates.tag-check` | gates | 2 | `bb tag-check <tag>`: whether the KIT's pre-tag checklist (the head of |
 | `harness.gates.toolchain-image` | gates | 0 | The name of the KIT's toolchain image - a fresh Linux machine in Docker with only the KIT's |
 | `harness.models.adapter` | models | 0 | One request shape per model family, and one parsed shape out. |
-| `harness.models.agent` | models | 3 | One model, one conversation, the tools it may call. |
-| `harness.models.bake-off` | models | 6 | Candidates for a role, read against the same artifact, compared: `bb bake-off`. |
+| `harness.models.agent` | models | 4 | One model, one conversation, the tools it may call. |
+| `harness.models.bake-off` | models | 7 | Candidates for a role, read against the same artifact, compared: `bb bake-off`. |
 | `harness.models.catalogue` | models | 0 | The models a route can reach, from OpenRouter's public listing: `bb models <query>`. |
-| `harness.models.code-review-tools` | models | 3 | The code reviewer's tools when the loop could give it a REPL: `read_file` and `note`, as |
-| `harness.models.profile` | models | 1 | Which model answers for which role, and the one client the human works in. |
+| `harness.models.code-review-tools` | models | 4 | The code reviewer's tools when the loop could give it a REPL: `read_file` and `note`, as |
+| `harness.models.profile` | models | 2 | Which model answers for which role, and the one client the human works in. |
 | `harness.models.provenance` | models | 0 | Who actually answered, what it actually cost. |
-| `harness.models.runner` | models | 4 | The AgentRunner seam. |
-| `harness.models.runner-check` | models | 5 | A conformance check for AgentRunner implementations. |
-| `harness.models.security-bake-off` | models | 5 | Models compared as security reviewers: `bb security-bake-off <fixture-dir> --model "<model> [effort]" ...`. |
-| `harness.models.security-panel` | models | 8 | A run of the security reviewer panel: `bb security-panel <clone>`, at a stage's end. |
-| `harness.models.security-review` | models | 4 | A security review of an application: a model in the security reviewer's seat, a clone of the |
+| `harness.models.runner` | models | 5 | The AgentRunner seam. |
+| `harness.models.runner-check` | models | 6 | A conformance check for AgentRunner implementations. |
+| `harness.models.security-bake-off` | models | 6 | Models compared as security reviewers: `bb security-bake-off <fixture-dir> --model "<model> [effort]" ...`. |
+| `harness.models.security-panel` | models | 9 | A run of the security reviewer panel: `bb security-panel <clone>`, at a stage's end. |
+| `harness.models.security-review` | models | 5 | A security review of an application: a model in the security reviewer's seat, a clone of the |
 | `harness.models.security-review-sandbox` | models | 1 | The container a security review runs in: a clone of the application under review, the |
-| `harness.models.security-review-tools` | models | 3 | The tools a security reviewer works with, over a clone of the application under review. |
-| `harness.models.security-score` | models | 4 | Scoring a security review against the fixture's answer key: `bb security-score <review.edn> |
-| `harness.models.tools` | models | 2 | The four things a dispatched agent may do in its workspace. |
-| `harness.money.balance` | money | 2 | What the money looks like before and after a run: `bb balance`, and the two |
+| `harness.models.security-review-tools` | models | 4 | The tools a security reviewer works with, over a clone of the application under review. |
+| `harness.models.security-score` | models | 5 | Scoring a security review against the fixture's answer key: `bb security-score <review.edn> |
+| `harness.models.tools` | models | 3 | The four things a dispatched agent may do in its workspace. |
+| `harness.money.balance` | money | 3 | What the money looks like before and after a run: `bb balance`, and the two |
 | `harness.money.report` | money | 1 | The per-run report: what each step cost in time and money, and which model |
-| `harness.money.reprice` | money | 2 | `bb reprice <run.edn>`: fill the cost of every dispatch step a record left |
-| `harness.money.stage-report` | money | 3 | A stage's figures from its records: `bb stage-report <stage-plan.md>`. |
+| `harness.money.reprice` | money | 3 | `bb reprice <run.edn>`: fill the cost of every dispatch step a record left |
+| `harness.money.stage-report` | money | 4 | A stage's figures from its records: `bb stage-report <stage-plan.md>`. |
 
 <!-- harness-inventory:end -->
 
@@ -147,9 +147,9 @@ The code has two axes, and a tree can show only one.
 
 - **The folders are the topic axis.** `setup`, `loop`, `contract`, `gates`, `models`, `money`
   group the namespaces by what they are about, which is what a reader looking for a thing wants.
-  It says nothing about who depends on whom: `setup.doctor` and `setup.workspace` are leaves
-  everything stands on, `setup.health` is the root that requires nearly everything, and all three
-  share a folder.
+  It says nothing about who depends on whom: `setup.download-matrix` and `setup.workspace` are
+  leaves everything stands on, `setup.doctor` one layer above the first, `setup.health` is the root that requires nearly
+  everything, and all four share a folder.
 - **`layers.edn` is the dependency axis.** The harness's own ruleset for the boundary gate it
   ships to every project: each namespace maps to the set it may require - exactly what it requires
   today - ordered bottom-up: leaves, foundations, models and money, the plan and the readings, the
@@ -343,7 +343,7 @@ It inherits the same rules, with one deliberate inversion — they tell dispatch
 agents *not* to run the gates, because authoring and running are separate jobs inside the
 loop. Nobody is gating this role, so it runs them itself.
 
-## Versions: floors, one pin, and a known-good set
+## Versions: the download matrix, one pin file, and a known-good set
 
 The harness ships no `.mise.toml` of its own — its gates run entirely under `bb` and need no
 JVM, so a pin it does not have would fail `bb gates` on your machine for no reason. The generated
@@ -364,11 +364,15 @@ cljfmt = "0.16.6"
 tailwindcss = "4.3.3"
 ```
 
-`bb doctor` reads the `[tools]` table of the nearest one (walking up) as FLOORS: older is *too
-old*, newer is *newer than the pin - fine*, and a calendar version is a date. The JDK is 21 and
-newer, 25 preferred: the doctor says when the one in use is not 25, a note and never a fault (XTDB
-2.2.0 runs on 25 with `-Dio.netty.noUnsafe=false`; its early v2 releases had failed on newer JDKs,
-when the KIT held 21 exactly). Beside
+That file is for the adopter's own shell; nothing of the KIT reads it (plan 7.0, item 8.3a). `bb
+doctor` holds each tool the PATH gives to the download matrix (`tools/toolchain/download-matrix.edn`):
+older is *too old*, newer is *newer than the KIT's download matrix* - said, never a fault - and a
+calendar version is a date; the JDK too, a build after `+` no version, and only on a machine the matrix
+publishes no build for is an own JDK taken, 21 or newer, 25 preferred (XTDB 2.2.0 runs on 25 with
+`-Dio.netty.noUnsafe=false`; its early v2 releases had failed on newer JDKs, when the KIT held 21
+exactly). Each row that is not usable names its fix - `eval "$(bb toolchain-env)"` when the project's
+folder has the tool, the true-up when it lacks it, its own route for bb and git - and run by hand at a
+terminal the doctor offers the true-up, listing each tool with its size and the disk's free space. Beside
 the machine's versions the doctor shows the KIT's known-good set, `resources/known-good.edn`,
 written by `bb health --record` from a run that passed - *newer than tested* is information.
 The KIT's toolchain image is built from the download matrix (`tools/toolchain/download-matrix.edn`):
@@ -377,8 +381,9 @@ exists, comes in as the `Dockerfile`'s build arguments, read from the matrix - s
 second list to keep; git is Ubuntu's package (plan 7.0, item 8.2e); a health run in it records
 what the matrix's versions ran.
 
-It also warns when `JAVA_HOME` is on a different major than the `java` on PATH. A pin that
-only checks PATH is defeated by any launcher that honours `JAVA_HOME`, and the two
+It also warns when `JAVA_HOME` is on a different major than the `java` on PATH, and says a
+`JAVA_CMD` set in the shell, which the `clojure` script runs before the PATH's java. A check that
+only reads PATH is defeated by any launcher that honours `JAVA_HOME`, and the two
 routinely disagree once more than one version manager is installed — mise, jenv and
 macOS's own `java_home` will happily give you three different answers.
 

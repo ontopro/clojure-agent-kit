@@ -242,12 +242,12 @@
 
 (defn probe-tool
   "Probe one toolchain spec. Pulled out and injectable for the same reason
-  `doctor/probe` takes its index and pins as arguments: the alternative is a
+  `doctor/probe` takes its index and reference as arguments: the alternative is a
   test that asserts something about the machine it happens to run on, and the
   seat-unavailable path would otherwise be exercised only by not having your
   own seat installed."
   [spec]
-  (doctor/probe spec (doctor/bbin-commits [spec]) (doctor/mise-pins)))
+  (doctor/probe spec (doctor/bbin-commits [spec]) (doctor/reference)))
 
 (defn- seat-violations
   [seat probe]

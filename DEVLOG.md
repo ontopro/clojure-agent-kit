@@ -68,6 +68,59 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### `bb doctor` holds every tool to the download matrix, names each row's fix, and offers the true-up at a terminal (plan 7.0, item 8.3a, the third of three)
+
+The design note, read twice (GO), and the person's decisions: 8.3c first, the known-good column kept "for now
+- we can revisit it later", the JDK like every tool, "(a) fold java in", and the offer's shape - "the items
+being installed are listed individually", then "Total installs: N (about N MB on disk)" and "Available disk
+space: N free of N disk", then "Install? [y/N]".
+- **The reference.** `probe` and `report` take the reference - `doctor/reference`, the clone's download matrix
+  through `harness.setup.download-matrix`, the JDK left out where the matrix publishes no build - as an
+  argument; nil for none, the floors alone (`:min`), which `bb upgrade`'s pre-check now passes until 8.3b
+  reads each release's matrix. Equal ok; above ok and said ("newer than the KIT's download matrix (x)"); below
+  `:too-old`; clojure-mcp-light's commit equal or `:wrong-version` (it was a note); a build after `+` no
+  version. Where the matrix publishes no build, an own JDK passes at 21, 25 said as preferred.
+- **The fix per row** (`fix-for`, from the pack's `status --edn` run once by `main`): the eval when the
+  project's folder has the tool and this shell's PATH does not; the true-up, with the clone's path, when the
+  folder lacks it; the row's own `:install` - `<kit>` filled with the clone (`3dbdcda`'s nit) - for bb and
+  git, for a tool no matrix row stands behind, and on a machine the matrix publishes no build for. Above the
+  matrix with the matrix's own in the folder, the eval is named too (the second read's Q4). The header says
+  the project folder, the tools folder and the `.env`, and the pack's note, refusal or unpublished sentence,
+  once; the footer the true-up when a row's fix is it.
+- **The offer** (`offer?`, `offer-lines`): run by hand - no `--tier`, no `--edn` - at a terminal, on a
+  published platform, when a row's fix is the true-up: each tool the folder lacks on its own line with its
+  size on disk (`:disk-mb`), the total, the disk's free space against its size, then `Install? [y/N]`; a total
+  past the free space is said and nothing asked. On `y` the true-up runs and the table is printed again, never
+  a second offer. `bb gates` passes `--tier gates` and `kit-pins` `--edn`, so neither asks; `bb self-check`
+  runs a plain `bb doctor`, so it does - what 8.3d builds on.
+- **What went**: `mise-pins`, `mise-files`, `mise-file`, the table's pin note and its "pins:" footer, the
+  "`mise activate` / `jenv local`" advice, `--dir` (it read "another project's mise pins", and nothing called
+  it), `profile.clj`'s pass-through. This reverses 7.4.3's `.mise.local.toml` override for the KIT: a project's
+  `.mise.toml` is still written by `project-set`, for the adopter's own shell, and nothing of the KIT reads it
+  - the note written into it is unchanged, as it is about that shell. JAVA_HOME and JAVA_CMD are inputs of
+  `probe` (`probe-env`), so no test reads this machine's - `af54380`'s fixture goes; a `JAVA_CMD` is said, as
+  the `clojure` script runs it before the PATH's java.
+- **Before and after.** A machine on a clj-kondo, cljfmt, bb or JDK below the matrix passed `bb gates`, `bb
+  sigs` (`require-tool! :clj-kondo`) and `bb repair` (cljfmt, clj-paren-repair); now each fails, naming the
+  fix. `bb health` and `bb init` refuse such a machine too, through the loop verdict. `bb health --record`'s
+  drift guard already refused it; now the doctor agrees.
+- **The documents**: the root README's JDK row (the JDK is the KIT's, installed; an own one only off the
+  published platforms), method.md's two sentences, the architecture template's stack row, the harness
+  README's prerequisites and its versions section, `toolchain.edn`'s `:min`/`:prefer-major` meaning and the
+  JDK's `:needed-for`, `project-set.edn`'s java comment, known-good's generated header (health.clj; the file
+  follows at the next `bb health --record` - From Fable 5.1's read of `9a8f9f1`), the pack's
+  `toolchain-install` row and doc, which still said "the JDK, 200 MB, only when named" (From Fable 5.1's read
+  of `370d868`), `toolchain-env`'s words, and NOTES row 233's status.
+
+Proved: `doctor_test` (the JDK against the matrix and off it; the reference's three verdicts, calendar
+versions, known-good speaking only with no reference; a commit WRONG VERSION; the reference from the clone,
+the JDK out on an Intel Mac; every fix branch; the header and the true-up footer; the offer's lines, its unit
+choice and a total past the free space; when it is asked). By hand here: every row equal to the matrix, green,
+no fix line; a fake cljfmt 0.16.0 first on the PATH - TOO OLD with the eval (the folder holding 0.16.6) or the
+true-up (an empty folder, and the footer); a fake 0.17.0 - ok, said, the eval named for the matrix's exactly.
+The offer's question itself needs a terminal, which this session's commands have not; its condition and its
+text are the tests'.
+
 ### The pack installs the JDK like every tool; each tool's size on disk, measured, in the matrix (plan 7.0, item 8.3a, the second of three)
 
 - **The JDK by default** (the person, 2026-10-30, asked why `toolchain-install` could not install the 25 the

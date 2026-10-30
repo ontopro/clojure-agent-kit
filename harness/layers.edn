@@ -7,8 +7,8 @@
 ;;
 ;; FOLDERS SAY TOPIC; LAYERS SAY DEPENDENCY ORDER. The tree groups namespaces by what they are
 ;; about - setup, loop, contract, gates, models, money - and that is the right axis for a
-;; reader looking for a thing. It is not the dependency axis: `setup.doctor` and
-;; `setup.workspace` are leaves everything stands on, `setup.health` is the root that requires
+;; reader looking for a thing. It is not the dependency axis: `setup.download-matrix` and
+;; `setup.workspace` are leaves everything stands on, `setup.doctor` one above the first, `setup.health` is the root that requires
 ;; nearly everything, and both live in the same folder. This file is the other axis, held by
 ;; the gate; the README's inventory shows each namespace's layer, computed from these entries
 ;; as one more than the deepest layer of what it may require. Nothing here moves a file.
@@ -31,8 +31,8 @@
  harness.models.adapter #{}
  harness.models.catalogue #{}
  harness.models.provenance #{}
- harness.setup.doctor #{}
  harness.setup.download-matrix #{}
+ harness.setup.doctor #{harness.setup.download-matrix}
  harness.setup.template #{}
  harness.setup.workspace #{}
  harness.setup.init-args #{}

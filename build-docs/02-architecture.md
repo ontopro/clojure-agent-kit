@@ -252,7 +252,7 @@ flowchart TB
 
 | Concern | Selection | Status |
 |---|---|---|
-| Language / runtime | Clojure on a JDK, 21 or newer, 25 preferred | given |
+| Language / runtime | Clojure on the KIT's JDK, the download matrix's (Temurin 25) | given |
 | Scaffold | the KIT's pinned template, `<tag>` at `<commit>` (`bb init` printed both) | given |
 | Web / routing / templating | Reitit + Ring/Jetty + Hiccup; HTMX 2 / Alpine 3 / Tailwind 4 | given |
 | Sessions, CSRF, security headers | as §4 says | given |

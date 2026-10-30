@@ -9,8 +9,9 @@
 ;;   :tools         every line under `.mise.toml`'s [tools], by mise's name for the tool. The
 ;;                  values are the ones the KIT's own gates run (`known-good.edn`). java: mise
 ;;                  runs exactly the version a file names (it takes no range for java), so this is
-;;                  the project's default, not a floor - 21 and newer works, and an adopter on 21
-;;                  says so in a gitignored `.mise.local.toml`, which mise reads over the file
+;;                  the project's default for the adopter's own shell - 21 and newer works there,
+;;                  and an adopter on 21 says so in a gitignored `.mise.local.toml`. The KIT's own
+;;                  runs use the toolchain folder's JDK, which the doctor holds to the matrix (8.3a)
 ;;   :build-image   the Dockerfile's build stage: Temurin 25 with the Clojure CLI of :tools
 ;;   :runtime-image the Dockerfile's runtime stage: Docker Hub's newest Temurin 25 JRE on Alpine
 ;;

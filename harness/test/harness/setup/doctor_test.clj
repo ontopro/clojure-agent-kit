@@ -2,7 +2,7 @@
   (:require
    [babashka.fs :as fs]
    [clojure.string :as str]
-   [clojure.test :refer [deftest is testing use-fixtures]]
+   [clojure.test :refer [deftest is testing]]
    [harness.setup.doctor :as doctor]
    [toolchain-download-matrix :as dm]))
 
@@ -12,11 +12,8 @@
        ";   :git/sha \"d341c239d4b1faa58ccefaf8bc0b1e2a312e2af4\"},\n;  :lib\n;  org.babashka.bbin/script-x}\n;\n; :bbin/end\n\n"
        "(def script-coords {:git/sha \"0000000000000000000000000000000000000000\"})\n"))
 
-;; NO TEST SEES THIS MACHINE'S JAVA_HOME. A probe of :java reads it (7.4.3), and a test that faked
-;; PATH java at 21 went red the day this machine's JAVA_HOME moved to 25. A test that wants one
-;; redefines `doctor/java-home` itself. Until 8.3a makes JAVA_HOME an input of `probe`, as `pins` is.
-(use-fixtures :each
-  (fn [t] (with-redefs [doctor/java-home (constantly nil)] (t))))
+;; NO TEST SEES THIS MACHINE'S JAVA_HOME: a test that faked PATH java at 21 went red the day this
+;; machine's JAVA_HOME moved to 25. Since 8.3a it is an input of `probe` (its `env`), `{}` unless given.
 
 (def ^:private specs
   [{:tool :bb :via :flag :cmd ["bb" "--version"] :req :required :min "1.12.212"
@@ -147,141 +144,134 @@
     (is (true? (doctor/require-tool! :bb)))))
 
 ;; ---------------------------------------------------------------------------
-;; Version pinning
+;; The reference: the download matrix (plan 7.0, item 8.3a)
 ;; ---------------------------------------------------------------------------
 
-(def ^:private mise-body
-  ;; the shape mise actually writes, [alias] table and all
-  (str "[tools]\n"
-       "java = \"temurin-21.0.2+13.0.LTS\"\n"
-       "clojure = \"1.12.1.1550\"\n"
-       "babashka = \"1.12.206\"\n"
-       "cljfmt = \"0.13.1\"\n"
-       "\n"
-       "[alias]\n"
-       "cljfmt = \"asdf:https://github.com/b-social/asdf-cljfmt\"\n"))
-
-(defn- with-mise [body f]
-  (let [dir (str (fs/create-temp-dir))]
-    (spit (str (fs/path dir ".mise.toml")) body)
-    (f dir)))
-
-(deftest reads-the-tools-table
-  (with-mise mise-body
-    (fn [dir]
-      (let [pins (doctor/mise-pins dir)]
-        (testing "each pinned tool yields its major, the pin, and where it came from"
-          (is (= 21 (get-in pins [:java :major])))
-          (is (= "temurin-21.0.2+13.0.LTS" (get-in pins [:java :pin])))
-          (is (= ".mise.toml" (get-in pins [:java :source]))))
-        (testing "mise's tool names are mapped to ours"
-          (is (= 1 (get-in pins [:bb :major])) "babashka -> :bb")
-          (is (not (contains? pins :babashka))))
-        (testing "the [alias] table does not bleed into [tools]"
-          ;; cljfmt appears in both; only the [tools] value is a version
-          (is (= "0.13.1" (get-in pins [:cljfmt :pin])))))))
-  (testing "a config with no [tools] table yields no pins"
-    (with-mise "[alias]\nfoo = \"bar\"\n"
-      (fn [dir] (is (= {} (doctor/mise-pins dir))))))
-  (testing "no config at all is not an error — it means no constraints"
-    (is (= {} (doctor/mise-pins (str (fs/create-temp-dir)))))))
-
-(deftest the-jdk-is-21-and-newer-and-25-is-preferred
-  ;; plan 7.0, item 7.2 (the person, 2026-10-26: "Java 21-and-newer | Java 25 preferred")
+(deftest the-jdk-is-held-to-the-matrix-and-only-off-it-to-21-and-newer
+  ;; the person, 2026-10-30: the JDK is installed like every tool; an own JDK only where the matrix
+  ;; publishes no build
   (let [spec (first (filter #(= :java (:tool %)) doctor/toolchain))
-        probe (fn [v & [pins]] (with-redefs [fs/which (constantly "/usr/bin/java")
-                                             doctor/java-home (constantly nil)
-                                             doctor/sh (constantly (str "openjdk version \"" v "\""))]
-                                 (doctor/probe spec {} (or pins {}))))]
-    (is (= {:min "21" :prefer-major 25} (select-keys spec [:min :prefer-major :major])) "the shipped entry: a floor and a preference, no exact major")
-    (is (= :ok (:status (probe "25.0.5"))))
-    (is (not (:not-preferred? (probe "25.0.5"))) "25: nothing to say")
-    (let [r (probe "21.0.13")]
-      (is (= :ok (:status r)) "21 works")
-      (is (:not-preferred? r) "and is said on a ready machine")
-      (is (str/includes? (:note r) "major 25 is preferred, the one the KIT tests on; 21 works - 21 and newer")))
-    (is (= :ok (:status (probe "27.0.1"))) "newer works")
-    (is (= :too-old (:status (probe "17.0.9"))) "below the floor")
-    (testing "a project's pin is its preferred major, never a floor (plan 7.0, item 7.4.3)"
-      (let [pin (fn [m src] {:java {:major m :pin (str "temurin-" m) :version (str m) :source src}})]
-        (let [r (probe "21.0.13" (pin 25 ".mise.toml"))]
-          (is (= :ok (:status r)) "the KIT's 25 in the project, 21 running: works")
-          (is (:not-preferred? r))
-          (is (str/includes? (:note r) (str ".mise.toml names temurin-25; 21 is what runs here, and works - 21 and newer; "
-                                            "to run 25 here, mise activated in the shell (`mise activate`) or jenv's `jenv local 25`; "
-                                            "for 21 as this machine's default, `java = \"temurin-21\"` in .mise.local.toml"))))
-        (let [r (probe "21.0.13" (pin 21 ".mise.local.toml"))]
-          (is (= :ok (:status r)))
-          (is (not (:not-preferred? r)) "the adopter chose 21 locally: nothing to say")
-          (is (nil? (:note r))))
-        (let [r (probe "25.0.5" (pin 21 ".mise.local.toml"))]
-          (is (:not-preferred? r))
-          (is (= (str ".mise.local.toml names temurin-21; 25 is what runs here, and works - 21 and newer; "
-                      "to run 21 here, mise activated in the shell (`mise activate`) or jenv's `jenv local 21`")
-                 (:note r))
-              "no advice to write the file that already says it"))
-        (is (nil? (:note (probe "25.0.5" (pin 25 ".mise.toml")))))
-        (is (= :too-old (:status (probe "17.0.9" (pin 17 ".mise.local.toml")))) "the floor is the KIT's, whatever a pin says")))))
+        probe (fn [v ref & [env]] (with-redefs [fs/which (constantly "/usr/bin/java")
+                                                doctor/sh (constantly (str "openjdk version \"" v "\""))]
+                                    (doctor/probe spec {} ref {} (or env {}))))
+        ref {:java "25.0.5+8"}]
+    (is (= {:min "21" :prefer-major 25} (select-keys spec [:min :prefer-major :major])) "the floor and the preference, for no reference")
+    (testing "held to the matrix: its build after + is no version"
+      (let [r (probe "25.0.5" ref)] (is (= :ok (:status r))) (is (nil? (:note r))) (is (= "25.0.5+8" (:reference r))))
+      (is (= :too-old (:status (probe "25.0.4" ref))))
+      (is (= :too-old (:status (probe "21.0.13" ref))) "21 against 25: the true-up installs 25")
+      (let [r (probe "25.0.6" ref)]
+        (is (= :ok (:status r)))
+        (is (= "newer than the KIT's download matrix (25.0.5+8)" (:note r)))))
+    (testing "no reference - a machine the matrix publishes no build for: 21 and newer, 25 preferred"
+      (is (= :ok (:status (probe "25.0.5" nil))))
+      (let [r (probe "21.0.13" nil)]
+        (is (= :ok (:status r)) "21 works")
+        (is (:not-preferred? r) "and is said on a ready machine")
+        (is (str/includes? (:note r) "major 25 is preferred, the one the KIT tests on; 21 works - 21 and newer")))
+      (is (= :too-old (:status (probe "17.0.9" nil))) "below the floor"))
+    (testing "JAVA_HOME and JAVA_CMD are inputs, never this machine's"
+      (is (str/includes? (:note (probe "25.0.5" ref {"JAVA_CMD" "/opt/jdk21/bin/java"}))
+                         "JAVA_CMD is set (/opt/jdk21/bin/java) - the clojure script runs it, not the PATH's java")))))
 
-(deftest the-local-mise-file-is-read-over-the-projects
-  ;; plan 7.0, item 7.4.3: as mise reads it - an adopter on 21 says so in .mise.local.toml
-  (let [dir (str (fs/create-temp-dir))]
-    (try
-      (spit (str (fs/path dir ".mise.toml")) "[tools]\njava = \"temurin-25\"\nclj-kondo = \"2026.08.04\"\n")
-      (is (= {:major 25 :pin "temurin-25" :version "25" :source ".mise.toml"} (:java (doctor/mise-pins dir))))
-      (spit (str (fs/path dir ".mise.local.toml")) "[tools]\njava = \"temurin-21\"\n")
-      (let [pins (doctor/mise-pins dir)]
-        (is (= {:major 21 :pin "temurin-21" :version "21" :source ".mise.local.toml"} (:java pins)) "the local line wins")
-        (is (= ".mise.toml" (get-in pins [:clj-kondo :source])) "the project's other lines kept"))
-      (let [nested (str (fs/create-dirs (fs/path dir "src" "app")))]
-        (is (= 21 (get-in (doctor/mise-pins nested) [:java :major])) "found walking up, the pair together"))
-      (fs/delete (fs/path dir ".mise.toml"))
-      (is (= ".mise.local.toml" (get-in (doctor/mise-pins dir) [:java :source])) "a local file alone is read")
-      (is (= ".mise.local.toml" (str (fs/file-name (doctor/mise-file dir)))))
-      (finally (fs/delete-tree dir)))))
-
-(deftest the-jdk-is-the-one-exact-major-and-a-pin-that-disagrees-is-the-pins-fault
-  (let [spec {:tool :java :via :flag :cmd ["java" "-version"] :req :required :major 21
-              :does "JVM" :needed-for "XTDB v2 needs 21"}
-        pin (fn [m v] {:java {:major m :pin v :version (str m) :source ".mise.toml"}})]
-    (with-redefs [fs/which (constantly "/usr/bin/java")]
-      (testing "running 21 is ok, with or without a pin, and a patch level is not a difference"
-        (with-redefs [doctor/sh (constantly "openjdk version \"21.0.12.1\"")]
-          (is (= :ok (:status (doctor/probe spec {} {}))))
-          (let [r (doctor/probe spec {} (pin 21 "temurin-21"))]
-            (is (= :ok (:status r)))
-            (is (nil? (:note r)) "21.0.12.1 is not 'newer than' a pin that names the major 21"))))
-      (testing "another major is :wrong-version, pin or no pin - the KIT's own constraint"
-        (with-redefs [doctor/sh (constantly "openjdk version \"25.0.4.1\"")]
-          (is (= :wrong-version (:status (doctor/probe spec {} {}))))
-          (is (= :wrong-version (:status (doctor/probe spec {} (pin 21 "temurin-21")))))))
-      (testing "a pin on another major with the right JDK installed: ok, and the pin is what to change"
-        (with-redefs [doctor/sh (constantly "openjdk version \"21.0.12.1\"")]
-          (let [r (doctor/probe spec {} (pin 25 "temurin-25"))]
-            (is (= :ok (:status r)))
-            (is (str/includes? (:note r) "change the pin, not the JDK"))))))))
-
-(deftest every-other-pin-is-a-floor-and-calendar-versions-compare-as-dates
+(deftest the-matrix-is-the-reference-and-calendar-versions-compare-as-dates
   ;; Row 20's third cause: a 2025.06.05 pin against an installed 2026.08.04 was read as a
   ;; MAJOR mismatch and the doctor said NOT USABLE on a machine that was fine.
   (let [kondo {:tool :clj-kondo :via :flag :cmd ["clj-kondo" "--version"] :req :required
-               :does "Linter" :needed-for "gate 2"}
-        pin (fn [v] {:clj-kondo {:major (parse-long (re-find #"\d+" v)) :pin v :version v :source ".mise.toml"}})]
+               :does "Linter" :needed-for "gate 2"}]
     (with-redefs [fs/which (constantly "/usr/bin/clj-kondo")
                   doctor/sh (constantly "clj-kondo v2026.08.04")]
-      (testing "newer than the pin is ok, and said"
-        (let [r (doctor/probe kondo {} (pin "2025.06.05"))]
+      (testing "newer than the matrix is ok, and said"
+        (let [r (doctor/probe kondo {} {:clj-kondo "2025.06.05"})]
           (is (= :ok (:status r)))
-          (is (str/includes? (:note r) "a pin is a floor"))))
-      (testing "equal to the pin is ok and silent"
-        (is (nil? (:note (doctor/probe kondo {} (pin "2026.08.04"))))))
-      (testing "below the pin is :too-old"
-        (is (= :too-old (:status (doctor/probe kondo {} (pin "2027.01.01"))))))
-      (testing "newer than the known-good set is information, never a fault"
+          (is (= "newer than the KIT's download matrix (2025.06.05)" (:note r)))))
+      (testing "equal to the matrix is ok and silent"
+        (is (nil? (:note (doctor/probe kondo {} {:clj-kondo "2026.08.04"})))))
+      (testing "below the matrix is :too-old - a machine that passed `bb gates` before 8.3a"
+        (is (= :too-old (:status (doctor/probe kondo {} {:clj-kondo "2026.10.26"})))))
+      (testing "with no reference, known-good's newer is information, never a fault"
         (let [r (doctor/probe kondo {} {} {:clj-kondo "2026.01.01"})]
           (is (= :ok (:status r)))
           (is (str/includes? (:note r) "newer than tested (2026.01.01)")))
-        (is (nil? (:note (doctor/probe kondo {} {} {:clj-kondo "2026.08.04"}))))))))
+        (is (nil? (:note (doctor/probe kondo {} {} {:clj-kondo "2026.08.04"}))))
+        (is (nil? (:note (doctor/probe kondo {} {:clj-kondo "2026.08.04"} {:clj-kondo "2026.01.01"})))
+            "with one, the matrix speaks and known-good is the column")))))
+
+(deftest the-reference-is-the-clones-matrix-the-jdk-off-it-where-no-build-is-published
+  (let [clone (str (fs/parent (fs/real-path ".")))]
+    (is (= "25.0.5+8" (:java (doctor/reference clone "Mac OS X" "aarch64"))))
+    (is (= "d341c23" (:clj-nrepl-eval (doctor/reference clone "Linux" "amd64"))))
+    (is (not (contains? (doctor/reference clone "Mac OS X" "x86_64") :java)) "an Intel Mac: an own JDK, at its floor")
+    (is (= "0.16.6" (:cljfmt (doctor/reference clone "Mac OS X" "x86_64"))) "every other tool still the matrix's")
+    (is (nil? (doctor/reference (str (fs/create-temp-dir)) "Linux" "amd64")) "no matrix, no reference")))
+
+;; ---------------------------------------------------------------------------
+;; What fixes a row, and the offer (plan 7.0, item 8.3a)
+;; ---------------------------------------------------------------------------
+
+(def ^:private clone (str (fs/parent (fs/real-path "."))))
+(def ^:private matrix (dm/read-matrix "../tools/toolchain/download-matrix.edn"))
+(def ^:private status
+  {:folder "/p" :cache "/p/.kit/toolchain" :env "/p/.env"
+   :rows [{:tool :bb :present? true} {:tool :java :present? false} {:tool :cljfmt :present? true}
+          {:tool :clojure-mcp-light :present? false}]})
+
+(deftest every-row-names-what-fixes-it
+  (let [ctx (doctor/fix-context clone status matrix)
+        true-up (str "bb --config " clone "/tools/toolchain/bb.edn toolchain-install")]
+    (is (= true-up (:true-up ctx)))
+    (testing "the folder has it, this shell's PATH does not: the eval"
+      (is (= "eval \"$(bb toolchain-env)\" in this shell - the project's folder has it"
+             (doctor/fix-for {:tool :cljfmt :install "x"} ctx))))
+    (testing "the folder lacks it: the true-up - the JDK and clojure-mcp-light's commands among them"
+      (is (= true-up (doctor/fix-for {:tool :java :install "x"} ctx)))
+      (is (= true-up (doctor/fix-for {:tool :clj-paren-repair :install "x"} ctx))))
+    (testing "bb and git: their own route, the clone's path filled - the true-up cannot replace the running bb"
+      (is (= "https://babashka.org" (doctor/fix-for {:tool :bb :install "https://babashka.org"} ctx)))
+      (is (= (str "bb --config " clone "/tools/toolchain/bb.edn toolchain-install --only bbin")
+             (doctor/fix-for {:tool :bbin :install "bb --config <kit>/tools/toolchain/bb.edn toolchain-install --only bbin"}
+                             (assoc ctx :present #{:bbin} :unpublished "x")))
+          "a machine the matrix publishes no build for: its own route"))
+    (testing "a tool no matrix row stands behind, and no context at all: its own route"
+      (is (= "docker.com" (doctor/fix-for {:tool :docker :install "docker.com"} ctx)))
+      (is (= "page" (doctor/fix-for {:tool :cljfmt :install "page"} nil))))
+    (testing "the table says where the toolchain is, and the true-up once"
+      (let [out (doctor/render-table [{:tool :java :req :required :tier :loop :status :missing :does "JVM" :install "x"}]
+                                     nil ctx)]
+        (is (str/includes? out "the project folder /p - the tools in /p/.kit/toolchain, the keys in /p/.env"))
+        (is (str/includes? out (str "fix: " true-up)))
+        (is (str/includes? out (str "the true-up, every tool the project's folder lacks: " true-up)))))
+    (testing "a machine the matrix publishes no build for: its one sentence in the header"
+      (is (str/includes? (doctor/render-table [] nil (doctor/fix-context clone (assoc status :unpublished "the download matrix publishes no build") matrix))
+                         "  the download matrix publishes no build")))))
+
+(deftest the-offer-lists-each-install-its-size-the-total-and-the-disk
+  ;; the person, 2026-10-30: one item a line, then the total, then the disk's free space
+  (let [items [{:tool :java :version "25.0.5+8" :disk-mb 294} {:tool :cljfmt :version "0.16.6" :disk-mb 36}]
+        {:keys [lines fits?]} (doctor/offer-lines items {:free-mb (* 212 1024) :total-mb (* 994 1024)})]
+    (is fits?)
+    (is (= ["The true-up installs, into the project's toolchain folder:"
+            "  - java 25.0.5+8 (about 294 MB on disk)"
+            "  - cljfmt 0.16.6 (about 36 MB on disk)"
+            ""
+            "Total installs: 2 (about 330 MB on disk)"
+            "Available disk space: 212.0 GB free of 994.0 GB disk."]
+           (vec lines)))
+    (let [{:keys [lines fits?]} (doctor/offer-lines items {:free-mb 100 :total-mb (* 3 1024 1024)})]
+      (is (not fits?) "no question asked")
+      (is (= "Available disk space: 100 MB free of 3.0 TB disk." (nth lines 5)))
+      (is (str/starts-with? (last lines) "Not enough space for it"))))
+  (testing "asked only by hand at a terminal, on a published platform, when a row's fix is the true-up"
+    (let [ctx (doctor/fix-context clone status matrix)
+          bad [{:tool :java :req :required :status :missing}]
+          good [{:tool :java :req :required :status :ok}]]
+      (is (doctor/offer? true [] bad ctx))
+      (is (not (doctor/offer? false [] bad ctx)) "no terminal: the command is printed")
+      (is (not (doctor/offer? true ["--tier" "gates"] bad ctx)) "bb gates is never asked")
+      (is (not (doctor/offer? true ["--edn"] bad ctx)) "kit-pins is never asked")
+      (is (not (doctor/offer? true [] good ctx)) "nothing to true up")
+      (is (not (doctor/offer? true [] bad (assoc ctx :unpublished "x"))) "the true-up installs nothing there")
+      (is (not (doctor/offer? true [] [{:tool :bb :req :required :status :too-old}] ctx)) "bb's fix is not the true-up"))))
 
 (deftest a-bbin-tool-is-probed-by-running-it
   ;; Installed and on PATH was reported ok for a tool that could not run; the probe now asks.
@@ -304,11 +294,17 @@
             (doctor/probe spec idx {})
             (is (= ["clj-paren-repair" "--help"] @seen))
             (is (contains? doctor/flag-allowlist (last @seen))))))
-      (testing "a different commit from the tested one is a note, not a fault"
+      (testing "with no reference, a different commit from the tested one is a note, not a fault"
         (with-redefs [doctor/run (constantly {:exit 0})]
           (let [r (doctor/probe spec idx {} {:clj-paren-repair "0000000"})]
             (is (= :ok (:status r)))
-            (is (str/includes? (:note r) "not the tested commit"))))))))
+            (is (str/includes? (:note r) "not the tested commit")))))
+      (testing "against the matrix, a commit is equal or WRONG VERSION - a commit has no above (8.3a)"
+        (with-redefs [doctor/run (constantly {:exit 0})]
+          (is (= :ok (:status (doctor/probe spec idx {:clj-paren-repair "d341c23"}))))
+          (let [r (doctor/probe spec idx {:clj-paren-repair "cf48cc6"})]
+            (is (= :wrong-version (:status r)))
+            (is (str/includes? (doctor/render-table [r]) "the KIT's download matrix pins cf48cc6 but d341c23 is installed"))))))))
 
 (deftest two-verdicts-and-what-fixes-a-miss
   (let [results [{:tool :bb :req :required :tier :gates :status :ok :does "bb"}
@@ -339,59 +335,19 @@
     (doseq [{:keys [tool req]} doctor/toolchain :when (= :required req)]
       (is (string? (get-in good [:tools tool])) (name tool)))))
 
-(deftest the-templates-own-mise-file-is-read-comments-and-prefix-pin-included
-  ;; the shape the pinned template ships, verbatim in kind: comment lines, a prefix pin, [alias]
-  (with-mise (str "# A KNOWN-GOOD SET, not a set of requirements: these versions were run together.\n"
-                  "# mise is optional. With it: `mise trust && mise install` - which DOWNLOADS a JDK.\n"
-                  "[tools]\n"
-                  "java = \"temurin-21\"\n"
-                  "clojure = \"1.12.6.1673\"\n"
-                  "babashka = \"1.13.223\"\n"
-                  "clj-kondo = \"2026.08.04\"\n"
-                  "tailwindcss = \"4.3.3\"\n\n"
-                  "[alias]\n"
-                  "tailwindcss = \"asdf:https://github.com/virtualstaticvoid/asdf-tailwindcss\"\n")
-    (fn [dir]
-      (let [pins (doctor/mise-pins dir)]
-        (is (= {:major 21 :pin "temurin-21" :version "21" :source ".mise.toml"} (:java pins))
-            "a prefix pin names a major and nothing finer")
-        (is (= "2026.08.04" (get-in pins [:clj-kondo :version])))
-        (is (= 1 (get-in pins [:bb :major])))
-        (is (contains? pins :tailwindcss) "a tool the doctor does not know is read and ignored")))))
-
 (deftest java-home-divergence
-  ;; A pin that only checks PATH is defeated by any launcher honouring
+  ;; A check that only reads the PATH is defeated by any launcher honouring
   ;; JAVA_HOME, and the two routinely disagree once several version
-  ;; managers are installed.
+  ;; managers are installed. JAVA_HOME is an input (plan 7.0, item 8.3a).
   (let [home (str (fs/create-temp-dir))]
     (spit (str (fs/path home "release")) "JAVA_VERSION=\"25.0.4.1\"\n")
     (testing "a JAVA_HOME on another major is reported"
-      (with-redefs [doctor/java-home (constantly home)]
-        (is (str/includes? (doctor/java-home-mismatch "21.0.12") "25"))
-        (is (str/includes? (doctor/java-home-mismatch "21.0.12") "21"))))
+      (is (str/includes? (doctor/java-home-mismatch "21.0.12" home) "25"))
+      (is (str/includes? (doctor/java-home-mismatch "21.0.12" home) "21")))
     (testing "agreement is silent"
-      (with-redefs [doctor/java-home (constantly home)]
-        (is (nil? (doctor/java-home-mismatch "25.0.4.1")))))
+      (is (nil? (doctor/java-home-mismatch "25.0.4.1" home))))
     (testing "no JAVA_HOME set is silent"
-      (with-redefs [doctor/java-home (constantly nil)]
-        (is (nil? (doctor/java-home-mismatch "21.0.12")))))))
-
-(deftest pins-are-read-per-directory
-  ;; `report` could not be reached with a directory before --dir existed, so a
-  ;; harness had no way to verify a worktree it had just provisioned.
-  (let [dir (str (fs/create-temp-dir))
-        nested (str (fs/create-dirs (fs/path dir "src" "deep")))]
-    (spit (str (fs/path dir ".mise.toml"))
-          "[tools]\njava = \"temurin-21\"\nbabashka = \"1.13.220\"\n")
-    (testing "pins come from the named directory"
-      (let [pins (doctor/mise-pins dir)]
-        (is (= 21 (get-in pins [:java :major])))
-        (is (= 1 (get-in pins [:bb :major])) "mise's `babashka` maps to :bb")))
-    (testing "and are found by walking up from a subdirectory"
-      (is (= 21 (get-in (doctor/mise-pins nested) [:java :major]))))
-    (testing "a directory with no config anywhere above it yields no pins"
-      ;; fs/create-temp-dir sits outside any repo, so nothing is inherited
-      (is (= {} (doctor/mise-pins (str (fs/create-temp-dir))))))))
+      (is (nil? (doctor/java-home-mismatch "21.0.12" nil))))))
 
 (deftest the-toolchain-is-data-a-release-can-be-read-from-its-tag
   ;; `bb upgrade` reads a release's requirements as `git show <tag>:harness/resources/toolchain.edn`,

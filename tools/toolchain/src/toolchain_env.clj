@@ -23,7 +23,7 @@
   JDK's executables among them - first on the PATH, and its JDK as JAVA_HOME. No JDK is looked for on
   the machine and no pin is read (`.mise.toml` is written into a project for the adopter's own shell;
   the KIT reads the download matrix): what the folder lacks is said with the true-up, and the shell's
-  own is left as it is - an own JDK of 21 or newer is used (the person's candidate (b)). Said on
+  own is left as it is - the doctor holds it to the matrix's (plan 7.0, item 8.3a). Said on
   stderr; stdout carries only the lines to eval."
   (:require [babashka.fs :as fs]
             [babashka.process :as p]
@@ -243,8 +243,8 @@
   "The `toolchain-env` task, for the project folder above the clone. A `.env` a repository holds, or one with a flagged line no acceptance in the `.env` record names:
   exit 1, nothing on stdout - a fault, nothing from the run is taken until a person has read why. The
   folder's `bin` first on the PATH and its JDK as JAVA_HOME (plan 7.0, item 8.3c); what the folder lacks
-  is said with the true-up that brings it, and the shell's own is left as it is - exit 0: an own JDK of
-  21 or newer is used (the person's candidate (b)), and the doctor holds every tool to the matrix."
+  is said with the true-up that brings it, and the shell's own is left as it is - exit 0: the doctor
+  holds every tool to the matrix, and says the fix."
   [pack-dir args]
   (let [say (partial say "toolchain-env")
         at (placed "toolchain-env" pack-dir args)
@@ -269,7 +269,7 @@
                  :else (str "no tools in the folder (" (:cache at) "/bin) - `" true-up "` installs them; the shell's own PATH is left as it is")))
       (say (if home
              (str "the JDK " (get-in matrix [:java :version]) " from the folder: " home)
-             (str "no JDK in the folder - the shell's own is left as it is (21 or newer is used)"
+             (str "no JDK in the folder - the shell's own is left as it is; `bb doctor` holds it to the matrix's"
                   (when platform (str "; `" true-up "` brings the matrix's")))))
       (when accepted
         (say (str "the .env's flagged lines were accepted by " (:accepted-by accepted) " at " (:at accepted))))

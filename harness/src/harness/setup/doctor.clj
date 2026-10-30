@@ -10,30 +10,29 @@
 
   `bb doctor` renders the table and TWO VERDICTS: *the KIT's gates can run
   here* (the Babashka tier - what `bb gates` needs, no JVM) and *a loop can run
-  here* (that plus a JDK of 21 or newer, 25 preferred, the Clojure CLI and the nREPL bridge). `bb init`
+  here* (that plus the JDK, the Clojure CLI and the nREPL bridge). `bb init`
   refuses without the second; `bb gates` runs the doctor for the first only, so
-  the KIT's own gates stay JVM-free. `--edn` emits a pins-shaped map worth
-  pasting into the decision log.
+  the KIT's own gates stay JVM-free. `--edn` emits a map of each tool's version
+  and status, which `bb kit-pins` and a health record read.
 
-  GUIDE, DO NOT INSTALL. For every tool that is not usable the report prints
-  the command or page that fixes it, and nothing here runs one: run `bb doctor`,
-  follow it, run it again.
+  THE DOWNLOAD MATRIX IS THE REFERENCE (plan 7.0, item 8.3a). Each tool the PATH gives is held to the
+  version the matrix names (`harness.setup.download-matrix/reference`) - equal ok, above ok and said,
+  below `:too-old`; clojure-mcp-light's commit is equal or `:wrong-version`, a commit having no order. The
+  JDK too (the person, 2026-10-30): the true-up installs it like every tool; only on a machine the matrix
+  publishes no build for is an own JDK taken, at its `:min`, 21, with 25 said as preferred. A build after
+  `+` is no version (`java -version` prints 25.0.5 for the matrix's 25.0.5+8). With no reference -
+  `bb upgrade`'s pre-check passes none - the floors alone hold, each entry's `:min`. A project's
+  `.mise.toml` is written for the adopter's own shell and read here no longer: it was the floor, its
+  `.mise.local.toml` over it (7.4.3), until the matrix became the one reference. Beside the reference the
+  report shows the KIT's dated KNOWN-GOOD SET (`resources/known-good.edn`), the versions run together.
+  Three projects once failed this check on a version rule that was wrong, not on a tool that was missing:
+  a calendar version read as a major, a patch level read as a break.
 
-  VERSIONS ARE MINIMUMS. A pin in the nearest `.mise.toml` (walking up; its
-  `.mise.local.toml` read over it, as mise reads it), or a `:min` here, is a floor:
-  older is `:too-old`, newer is fine and said so - except the JDK's pin, which is the
-  project's preferred major and not a floor: mise takes no range for java, so the KIT
-  writes 25 there as the default and an adopter on 21 says so locally (plan 7.0, item
-  7.4.3). The JDK is 21 and newer, 25 preferred (`:prefer-major` on its entry): 21 is XTDB's
-  documented minimum, and XTDB 2.2.0 runs on 25 with `-Dio.netty.noUnsafe=false`
-  (plan 7.0, item 7, proved before the pin moved) - another major above the floor
-  is said, never a fault. An entry may still hold an exact `:major`; none does
-  now - the JDK held one while XTDB's early v2 releases failed on newer JDKs. Beside the floors
-  the report shows the KIT's dated KNOWN-GOOD SET (`resources/known-good.edn`) -
-  the versions that were actually run together - and marks a newer one as
-  *newer than tested*, which is information and never a fault. Three projects
-  failed this check on a version rule that was wrong, not on a tool that was
-  missing: a calendar version read as a major, a patch level read as a break.
+  A FIX FOR EVERY ROW, AND ONE OFFER. A tool not usable gets the line that fixes it: the eval when the
+  project's folder has it and this shell's PATH does not; the true-up when the folder lacks it; its own
+  install route for bb and git, which the true-up does not replace, and on a machine the matrix publishes
+  no build for. Run by hand at a terminal - no `--tier`, no `--edn` - the doctor offers to run the
+  true-up, once, listing each tool with its size and the disk's free space; anything else is printed.
 
   SAFETY RULE: never probe a tool by handing it an unrecognized flag.
   `clj-paren-repair --version` does not error — it treats `--version` as a
@@ -51,7 +50,8 @@
    [babashka.process :as p]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [harness.setup.download-matrix :as download-matrix]))
 
 ;; ---------------------------------------------------------------------------
 ;; The toolchain
@@ -152,68 +152,30 @@
   [s]
   (some-> s (->> (re-find #"\d+")) parse-long))
 
-(def ^:private mise-aliases
-  "mise's tool names where they differ from ours."
-  {"babashka" :bb})
+(defn reference
+  "The doctor's reference on this machine: `{row version}` from the clone's download matrix
+  (`download-matrix/reference`) - the JDK left out where the matrix publishes no build, so an own JDK is
+  held to its `:min` there. Nil when the clone has no matrix."
+  ([] (reference (download-matrix/clone-dir) (System/getProperty "os.name") (System/getProperty "os.arch")))
+  ([clone os-name os-arch]
+   (when-let [m (download-matrix/read-matrix clone)]
+     (cond-> (download-matrix/reference m)
+       (nil? (download-matrix/platform m os-name os-arch)) (dissoc :java)))))
 
-(def ^:private mise-names
-  "mise's config files in one folder, the project's before the local one mise reads over it."
-  [[".mise.toml" "mise.toml"] [".mise.local.toml" "mise.local.toml"]])
-
-(defn mise-files
-  "The mise config files of the nearest folder that has one, walking up from `dir` to the
-  filesystem root: the project's file, then its local one (`.mise.local.toml`, gitignored, which
-  mise reads over it) - each when it exists. Empty when there is none, the normal case for the
-  KIT's own clone, which means no version constraints apply."
-  [dir]
-  (loop [d (fs/absolutize (or dir "."))]
-    (let [found (keep (fn [names] (first (filter fs/exists? (map #(fs/path d %) names)))) mise-names)]
-      (cond (seq found) (vec found)
-            (fs/parent d) (recur (fs/parent d))
-            :else []))))
-
-(defn mise-file
-  "The nearest mise config: the project's file, or a local one alone. Nil when there is none."
-  [dir]
-  (first (mise-files dir)))
-
-(defn mise-pins
-  "Read the [tools] table of the nearest mise config into
-  {tool-key {:major _ :pin _ :version _ :source _}} - the local file's lines over the
-  project's, as mise reads them, `:source` naming the file a pin came from.
-
-  This reads a known table shape with a regex; it is NOT a TOML parser, and
-  Babashka has none. It handles `name = \"value\"` lines under [tools], skips
-  comment lines, and stops at the next [section] header, so the [alias] table
-  that usually follows cannot bleed in. `:version` is the dotted-numeric part
-  of the pin (`temurin-21` -> \"21\"), `:major` its leading segment."
-  ([] (mise-pins "."))
-  ([dir]
-   (into {}
-         (mapcat (fn [f]
-                   (let [body (slurp (str f))
-                         tools (second (re-find #"(?ms)^\[tools\]\s*$(.*?)(?=^\[|\z)" body))]
-                     (keep (fn [[_ nm v]]
-                             (let [k (get mise-aliases nm (keyword nm))]
-                               (when-let [m (major v)]
-                                 [k {:major m :pin v :version (or (parse-version v) (str m))
-                                     :source (str (fs/file-name f))}])))
-                           (re-seq #"(?m)^\s*([A-Za-z0-9_.-]+)\s*=\s*\"([^\"]+)\"" (or tools "")))))
-                 (mise-files dir)))))
-
-(defn java-home
-  "JAVA_HOME, as a seam tests can redefine."
+(defn probe-env
+  "What of the environment a probe reads: JAVA_HOME, against the PATH's java, and JAVA_CMD, which the
+  `clojure` script runs before the PATH's (plan 7.0, item 8.3a: inputs, so no test reads this machine's)."
   []
-  (System/getenv "JAVA_HOME"))
+  (select-keys (System/getenv) ["JAVA_HOME" "JAVA_CMD"]))
 
 (defn java-home-mismatch
   "JAVA_HOME's major versus the major of the java on PATH, when they differ.
 
-  A pin that only checks PATH is defeated by any launcher that honours
+  A check that only reads the PATH is defeated by any launcher that honours
   JAVA_HOME, and the two routinely disagree once more than one version
-  manager is installed. Returns a warning string, or nil."
-  [path-version]
-  (when-let [jh (java-home)]
+  manager is installed. Returns a warning string, or nil. `jh` the JAVA_HOME."
+  [path-version jh]
+  (when jh
     (let [release (fs/path jh "release")
           jh-major (or (when (fs/exists? release)
                          (major (second (re-find #"JAVA_VERSION=\"([^\"]+)\""
@@ -222,6 +184,11 @@
           path-major (major path-version)]
       (when (and jh-major path-major (not= jh-major path-major))
         (str "JAVA_HOME is on " jh-major " but PATH java is " path-major " (" jh ")")))))
+
+(defn without-build
+  "A version without its build after `+`: Temurin's `25.0.5+8` is `25.0.5`, what `java -version` prints."
+  [v]
+  (some-> v (str/split #"\+") first))
 
 (defn version-cmp
   "Compare dotted-numeric version strings segment by segment. Calendar
@@ -247,22 +214,23 @@
 
 (defn probe
   "Check one tool. Returns
-  {:tool :req :tier :does :needed-for :install :status :version :path :pin :known-good :note},
+  {:tool :req :tier :does :needed-for :install :status :version :path :reference :known-good :note},
   where :status is
   :ok | :missing | :not-on-path | :broken | :too-old | :wrong-version | :unknown-version.
 
-  `bbin-idx`, `pins` and `good` (the known-good set's `:tools`) are passed in so
-  a full report reads each bbin header and each file once, and so tests can
-  inject all three.
+  `bbin-idx`, `ref` (`reference`'s map, or nil for none), `good` (the known-good set's `:tools`) and
+  `env` (`probe-env`'s) are passed in, so a full report reads each bbin header and each file once, and so
+  tests inject all four and no test reads this machine.
 
   The rules, in order: on PATH at all; for a bbin tool, answers `--help`
   (`:broken` otherwise - the loop cannot run it whatever its header says); an
-  exact `:major` where the entry has one; then every floor - the entry's `:min`
-  and the mise pin - is a MINIMUM. Newer than the pin, or than the known-good
-  set, is a note. For an entry with a `:prefer-major` (the JDK) the pin is no floor but the
-  preferred major: the project's default, which a JDK of another major is told, never failed by."
-  ([spec bbin-idx pins] (probe spec bbin-idx pins {}))
-  ([{:keys [tool via cmd min] exact :major prefer :prefer-major :as spec} bbin-idx pins good]
+  exact `:major` where the entry has one; the reference - a commit equal or `:wrong-version`, a version
+  below it `:too-old`, above it ok and said (a build after `+` no version); then the entry's `:min`, a
+  floor. With no reference for a tool, known-good's newer is said, and the JDK's other major (on a
+  machine the matrix publishes no build for) is said as not the preferred, never failed by."
+  ([spec bbin-idx ref] (probe spec bbin-idx ref {} {}))
+  ([spec bbin-idx ref good] (probe spec bbin-idx ref good {}))
+  ([{:keys [tool via cmd min] exact :major prefer :prefer-major :as spec} bbin-idx ref good env]
    (let [nm (name tool)
          base (select-keys spec [:tool :req :tier :does :needed-for :install :major])
          path (some-> (fs/which nm) str)
@@ -276,65 +244,54 @@
          ;; In the index and on PATH is not the same as runs: the shim can be
          ;; there while what it launches is not.
          runs (when (and (= :bbin via) path) (run [nm "--help"]))
-         pin (get pins tool)
-         floor (:version pin)
+         r (get ref tool)
          good-version (get good tool)
          numeric? (and version (re-find #"^\d" version))
          below? (fn [v] (and v numeric? (neg? (cmp-to version v))))
-         above? (fn [v] (and v numeric? (pos? (cmp-to version v))))
-         ;; An exact-major tool's pin is not a floor: a pin on another major disagrees
-         ;; with the KIT, and the pin is what to change, not the JDK.
-         pin-disagrees? (and exact pin (not= exact (:major pin)))
-         ;; THE JDK'S PIN IS THE PROJECT'S DEFAULT, NOT A FLOOR (plan 7.0, item 7.4.3): the KIT writes
-         ;; 25 there, and an adopter on 21 overrides it in .mise.local.toml - read above, over it
-         floor (when-not (or exact prefer) floor)
-         prefer (when prefer (or (:major pin) prefer))
-         other-major? (and prefer (major version) (not= prefer (major version)))
+         ;; against the reference, the build after `+` dropped on both sides
+         vs-ref (when (and r numeric? (not= :bbin via))
+                  (version-cmp (without-build version) (without-build r)))
+         commit-off? (and r version (= :bbin via) (not (str/starts-with? r version)) (not (str/starts-with? version r)))
+         other-major? (and prefer (nil? r) (major version) (not= prefer (major version)))
          status (cond
                   (not installed?) :missing
                   (nil? path) :not-on-path
                   (and (= :bbin via) (not= 0 (:exit runs))) :broken
                   (and exact (major version) (not= exact (major version))) :wrong-version
+                  commit-off? :wrong-version
+                  (and vs-ref (neg? vs-ref)) :too-old
                   (below? min) :too-old
-                  (below? floor) :too-old
                   (and (= via :flag) (nil? version)) :unknown-version
                   :else :ok)
          notes (cond-> []
-                 (= :java tool) (conj (java-home-mismatch version))
-                 ;; 21 AND NEWER, 25 PREFERRED (the person, 2026-10-26): another major is said, never a fault
-                 (and (= :ok status) other-major? (nil? pin))
+                 (= :java tool) (conj (java-home-mismatch version (get env "JAVA_HOME")))
+                 (and (= :java tool) (get env "JAVA_CMD"))
+                 (conj (str "JAVA_CMD is set (" (get env "JAVA_CMD") ") - the clojure script runs it, not the PATH's java"))
+                 (and (= :ok status) vs-ref (pos? vs-ref))
+                 (conj (str "newer than the KIT's download matrix (" r ")"))
+                 ;; no build for this machine: an own JDK, 21 and newer, 25 preferred - said, never a fault
+                 (and (= :ok status) other-major?)
                  (conj (str "major " prefer " is preferred, the one the KIT tests on; " (major version) " works - " min " and newer"))
-                 (and (= :ok status) other-major? pin)
-                 ;; THE SHELL'S TOOL MANAGER PICKS THE JDK, NEVER THE HARNESS (the person, 2026-10-28: a
-                 ;; tooling concern) - the note names the two that read a pin
-                 (conj (str (:source pin) " names " (:pin pin) "; " (major version) " is what runs here, and works - " min " and newer"
-                            "; to run " prefer " here, mise activated in the shell (`mise activate`) or jenv's `jenv local " prefer "`"
-                            (when-not (str/includes? (:source pin) "local")
-                              (str "; for " (major version) " as this machine's default, `java = \"temurin-" (major version)
-                                   "\"` in .mise.local.toml"))))
-                 pin-disagrees?
-                 (conj (str (:source pin) " pins " (:pin pin) " but the KIT requires major " exact
-                            " - change the pin, not the JDK"))
-                 (and (= :ok status) (above? floor))
-                 (conj (str "newer than " (:source pin) "'s " (:pin pin) " - fine, a pin is a floor"))
-                 (and (= :ok status) numeric? (above? good-version))
+                 (and (= :ok status) (nil? r) numeric? good-version (pos? (cmp-to version good-version)))
                  (conj (str "newer than tested (" good-version ")"))
-                 (and (= :ok status) (= :bbin via) good-version (not= version good-version))
+                 (and (= :ok status) (nil? r) (= :bbin via) good-version (not= version good-version))
                  (conj (str "not the tested commit (" good-version ")")))]
-     (cond-> (assoc base :path path :version version :pin pin :known-good good-version :status status)
+     (cond-> (assoc base :path path :version version :reference r :known-good good-version :status status)
        (seq (remove nil? notes)) (assoc :note (str/join "; " (remove nil? notes)))
        ;; said on a ready machine too: the one note a short report keeps
        (and (= :ok status) other-major?) (assoc :not-preferred? true)))))
 
 (defn report
-  "Probe the whole toolchain. Reads the bbin headers, the mise config and
-  the known-good set once."
+  "Probe the whole toolchain against `ref` - the clone's `reference` unless given; nil for none, the
+  floors alone, which `bb upgrade`'s pre-check passes. Reads the bbin headers, the known-good set and the
+  environment once."
   ([] (report toolchain))
-  ([specs] (report specs (mise-pins)))
-  ([specs pins] (report specs pins (:tools (known-good))))
-  ([specs pins good]
-   (let [idx (bbin-commits specs)]
-     (mapv #(probe % idx pins good) specs))))
+  ([specs] (report specs (reference)))
+  ([specs ref] (report specs ref (:tools (known-good))))
+  ([specs ref good]
+   (let [idx (bbin-commits specs)
+         env (probe-env)]
+     (mapv #(probe % idx ref good env) specs))))
 
 (defn ok?
   "True when no :required tool is unusable - in `tier` (`:gates` or `:loop`,
@@ -348,6 +305,89 @@
                     (or (nil? tier) (= tier :loop) (= tier t))
                     (unusable? status)))
              results)))
+
+;; ---------------------------------------------------------------------------
+;; The project's folder, and what fixes a row
+;; ---------------------------------------------------------------------------
+
+(defn folder-status
+  "The toolchain pack's `status --edn` for the clone `clone` - the project's folder, the tools folder, the
+  `.env`, which tools the folder has, and `:note`, `:refusal` or `:unpublished` - or nil when the pack
+  does not answer. A subprocess: the harness never loads the pack."
+  [clone]
+  (try
+    (let [{:keys [out]} (p/shell {:out :string :err :string :continue true}
+                                 "bb" "--config" (str (fs/path clone "tools" "toolchain" "bb.edn")) "status" "--edn")
+          m (edn/read-string (str/trim (or out "")))]
+      (when (map? m) m))
+    (catch Exception _ nil)))
+
+(defn fix-context
+  "What the fix lines and the offer are written from - pure: the clone, the true-up command, the matrix's
+  tools the folder has and those it lacks, the place and its notes, from `status` (`folder-status`, or
+  nil) and the clone's `matrix`."
+  [clone status matrix]
+  {:clone clone
+   :true-up (str "bb --config " (fs/path clone "tools" "toolchain" "bb.edn") " toolchain-install")
+   :true-up-argv ["bb" "--config" (str (fs/path clone "tools" "toolchain" "bb.edn")) "toolchain-install"]
+   :present (set (keep #(when (:present? %) (:tool %)) (:rows status)))
+   :absent (vec (keep #(when-not (:present? %) (:tool %)) (:rows status)))
+   :status status
+   :unpublished (:unpublished status)
+   :matrix matrix})
+
+(defn fix-for
+  "The line that fixes the row `r` - pure, from `ctx` (`fix-context`'s, or nil): its own `:install` route,
+  the clone's path filled for `<kit>`, where the matrix publishes no build here, for bb and git (the
+  true-up cannot replace the running bb; git is no row), and for a tool no matrix row stands behind;
+  `eval \"$(bb toolchain-env)\"` when the project's folder has it and this shell's PATH does not; else the
+  true-up."
+  [{:keys [tool install]} {:keys [clone true-up present unpublished matrix] :as ctx}]
+  (let [install (cond-> install (and install clone) (str/replace "<kit>" (str clone)))
+        mt (when matrix (download-matrix/matrix-tool matrix tool))]
+    (cond (or (nil? ctx) unpublished (#{:bb :git} tool) (nil? mt)) install
+          (contains? present mt) "eval \"$(bb toolchain-env)\" in this shell - the project's folder has it"
+          :else true-up)))
+
+(defn- human-size
+  "`mb` as a person reads it: MB, GB or TB."
+  [mb]
+  (cond (< mb 1024) (str (Math/round (double mb)) " MB")
+        (< mb (* 1024 1024)) (format "%.1f GB" (/ mb 1024.0))
+        :else (format "%.1f TB" (/ mb 1024.0 1024.0))))
+
+(defn disk-space
+  "`{:free-mb :total-mb}` of the disk holding `dir` - its nearest folder that exists."
+  [dir]
+  (let [d (loop [d (fs/absolutize dir)] (if (or (fs/exists? d) (nil? (fs/parent d))) d (recur (fs/parent d))))
+        f (fs/file d)]
+    {:free-mb (quot (.getUsableSpace f) (* 1024 1024)) :total-mb (quot (.getTotalSpace f) (* 1024 1024))}))
+
+(defn offer-lines
+  "The offer's text - pure (the person, 2026-10-30: each install on a line of its own with its size, then
+  the total and the disk's free space): `items` `[{:tool :version :disk-mb}]`, `space` `disk-space`'s.
+  `{:lines [...] :fits? bool}`; when it does not fit, the last line says so and no question is asked."
+  [items {:keys [free-mb total-mb]}]
+  (let [total (reduce + 0 (keep :disk-mb items))
+        fits? (< total free-mb)]
+    {:fits? fits?
+     :lines (concat ["The true-up installs, into the project's toolchain folder:"]
+                    (for [{:keys [tool version disk-mb]} items]
+                      (str "  - " (name tool) " " version (when disk-mb (str " (about " (human-size disk-mb) " on disk)"))))
+                    [""
+                     (str "Total installs: " (count items) " (about " (human-size total) " on disk)")
+                     (str "Available disk space: " (human-size free-mb) " free of " (human-size total-mb) " disk.")]
+                    (when-not fits?
+                      ["Not enough space for it: free some, or set KIT_TOOLCHAIN_DIR to a folder on another disk."]))}))
+
+(defn offer?
+  "Whether the doctor asks to run the true-up - pure: run by hand (no `--tier`, no `--edn`) at a terminal,
+  on a published platform, when a row's fix is the true-up."
+  [console? args results ctx]
+  (boolean (and console? ctx (not (:unpublished ctx))
+                (not-any? #{"--tier" "--edn"} args)
+                (seq (:absent ctx))
+                (some #(and (unusable? (:status %)) (= (:true-up ctx) (fix-for % ctx))) results))))
 
 ;; ---------------------------------------------------------------------------
 ;; Rendering
@@ -365,22 +405,25 @@
 
 (defn- detail
   "What follows the status: what the tool is for, plus anything the reader
-  has to act on — a violated pin, a floor not met, a JAVA_HOME that disagrees
-  with PATH — and, for anything unusable, what fixes it."
-  [{:keys [does status version pin note install] :as r}]
+  has to act on — the matrix's version not met, a JAVA_HOME that disagrees
+  with PATH — and, for anything unusable, what fixes it (`fix-for`)."
+  [{:keys [tool does status version reference note] :as r} ctx]
   (str does
-       (when (and pin (= :ok status))
-         (str "  [pin " (:pin pin) " via " (:source pin) "]"))
        (case status
-         :wrong-version (str "\n      must be major " (:major r) (or (some->> pin :pin (str ", and " (:source pin) " pins ")) "")
-                             " but " (or version "?") " is running")
-         :too-old (str "\n      " (or version "?") " is below the floor"
-                       (when pin (str " " (:pin pin) " (" (:source pin) ")")))
+         :wrong-version (if reference
+                          (str "\n      the KIT's download matrix pins " reference " but " (or version "?") " is installed")
+                          (str "\n      must be major " (:major r) " but " (or version "?") " is running"))
+         :too-old (str "\n      " (or version "?") " is below "
+                       (if reference (str "the KIT's download matrix, " reference) "the floor"))
          :broken "\n      on PATH with its bbin header, but `--help` did not exit 0 within 5s"
          "")
        (when note (str "\n      " note))
-       (when (and (unusable? status) install)
-         (str "\n      fix: " install))))
+       ;; above the matrix, with the matrix's own in the folder: the line that runs it (Fable 5.1's answer to Q4)
+       (when (and (= :ok status) reference note (str/includes? note "newer than the KIT's download matrix")
+                  (:matrix ctx) (contains? (:present ctx) (download-matrix/matrix-tool (:matrix ctx) tool)))
+         "\n      for the matrix's exactly: eval \"$(bb toolchain-env)\" in this shell - the project's folder has it")
+       (when-let [fix (when (unusable? status) (fix-for r ctx))]
+         (str "\n      fix: " fix))))
 
 (defn- verdict-line [results tier label]
   (let [bad (filter (fn [{:keys [req status] t :tier}]
@@ -391,25 +434,38 @@
            (str "NO - " (str/join ", " (map #(str (name (:tool %)) " (" (name (:status %)) ")") bad)))
            "yes"))))
 
+(defn- header
+  "Where the project's toolchain is, from `status`, and its one note - `:note`, `:refusal` or
+  `:unpublished` - each once."
+  [{:keys [status]}]
+  (when status
+    (let [{:keys [folder cache env note refusal unpublished]} status]
+      (str "\nthe project folder " folder " - the tools in " cache ", the keys in " env "\n"
+           (when note (str "  note: " note "\n"))
+           (when refusal (str "  refused: " refusal "\n"))
+           (when unpublished (str "  " unpublished "\n"))))))
+
 (defn render-table
   "The human report, in two parts - what KIT's gates and a loop need, and what
-  only a seat or a pack needs - then the two verdicts and where the pins and
-  the known-good set came from. A tool's line is its name, versions and status;
-  what it is for, and what fixes it, follow only when it is not ok (or a pin
-  speaks for it), so a ready machine's report is short and no line runs wide.
-  An optional tool that is absent is `not installed`, not a miss."
+  only a seat or a pack needs - under where the project's toolchain is, then the two verdicts, the
+  known-good set, and the true-up when a row's fix is it. A tool's line is its name, versions and
+  status; what it is for, and what fixes it, follow only when it is not ok (or a note speaks for it),
+  so a ready machine's report is short and no line runs wide. An optional tool that is absent is `not
+  installed`, not a miss. `ctx` is `fix-context`'s, or nil."
   ([results] (render-table results nil nil))
-  ([results good pin-file]
+  ([results good ctx]
    (let [w (apply max 4 (map #(count (name (:tool %))) results))
          label (fn [{:keys [status req] :as r}]
                  (if (and (= :missing status) (not= :required req)) "not installed" (status-label r)))
-         row (fn [{:keys [tool version known-good status pin] :as r}]
+         row (fn [{:keys [tool version known-good status] :as r}]
                (str (format (str "  %-" w "s  %-12s  %-12s  %s")
                             (name tool) (or version "—") (or known-good "—") (label r))
-                    (when (or (not= :ok status) pin (:not-preferred? r))
-                      (str "\n      " (detail r)))))
-         {required true optional false} (group-by #(= :required (:req %)) results)]
-     (str "\nClojure toolchain - required (KIT's gates and a loop need these)\n\n"
+                    (when (or (not= :ok status) (:note r) (:not-preferred? r))
+                      (str "\n      " (detail r ctx)))))
+         {required true optional false} (group-by #(= :required (:req %)) results)
+         true-up? (and ctx (some #(and (unusable? (:status %)) (= (:true-up ctx) (fix-for % ctx))) results))]
+     (str (header ctx)
+          "\nClojure toolchain - required (KIT's gates and a loop need these)\n\n"
           (format (str "  %-" w "s  %-12s  %-12s  %s\n") "tool" "here" "known-good" "status")
           (str/join "\n" (map row required))
           (when (seq optional)
@@ -419,17 +475,15 @@
           (verdict-line results :gates "The KIT's gates can run here") "\n"
           (verdict-line results :loop "A loop can run here") "\n"
           (when good
-            (str "  known-good: KIT's own set, run together on " (:as-of good) " (" (:platform good)
-                 "); newer is fine\n"))
-          (when pin-file
-            (str "  pins: " pin-file " - floors, except the JDK's major\n"))))))
+            (str "  known-good: KIT's own set, run together on " (:as-of good) " (" (:platform good) ")\n"))
+          (when true-up?
+            (str "  the true-up, every tool the project's folder lacks: " (:true-up ctx) "\n"))))))
 
 (defn render-edn
-  "A pins-shaped map for the decision log: {tool {:version _ :status _}}."
+  "A map of each tool's version and status: {tool {:version _ :status _ :req _ :tier _}}."
   [results]
   (into (sorted-map)
-        (map (juxt :tool #(-> (select-keys % [:version :status :req :tier])
-                              (cond-> (:pin %) (assoc :pinned (get-in % [:pin :pin]))))))
+        (map (juxt :tool #(select-keys % [:version :status :req :tier])))
         results))
 
 ;; ---------------------------------------------------------------------------
@@ -439,17 +493,18 @@
 (defn require-tool!
   "Assert `tool` is usable, or throw with something actionable. Call this
   wherever code shells out to a toolchain binary, so a bare machine gets a
-  named cause instead of an IOException from three frames down."
+  named cause instead of an IOException from three frames down. Held to the clone's download matrix,
+  as `bb doctor` holds it."
   [tool]
   (let [spec (first (filter #(= tool (:tool %)) toolchain))
-        {:keys [status]} (probe spec (bbin-commits [spec]) (mise-pins))]
+        {:keys [status]} (probe spec (bbin-commits [spec]) (reference) {} (probe-env))]
     (when (unusable? status)
       (throw (ex-info (str (name tool)
                            (case status
                              :not-on-path " is installed but its shim is not on PATH"
                              :broken " is installed but does not run"
-                             :wrong-version " is on the wrong major version"
-                             :too-old " is below the version floor"
+                             :wrong-version " is not the version the KIT's download matrix pins"
+                             :too-old " is older than the KIT's download matrix"
                              " is not installed")
                            " — run `bb doctor`")
                       {:tool tool
@@ -464,42 +519,51 @@
   [args flag]
   (second (drop-while #(not= flag %) args)))
 
+(defn- ask-true-up!
+  "The offer, at the terminal `console`: the lines, then `Install? [y/N]`; on `y` the true-up runs. Whether
+  it ran."
+  [console ctx]
+  (let [matrix (:matrix ctx)
+        items (for [t (:absent ctx)] {:tool t :version (get-in matrix [t :version]) :disk-mb (get-in matrix [t :disk-mb])})
+        {:keys [lines fits?]} (offer-lines items (disk-space (get-in ctx [:status :cache])))]
+    (println)
+    (run! println lines)
+    (when fits?
+      (let [answer (some-> (.readLine console "\nInstall? [y/N] " (object-array 0)) str/trim str/lower-case)]
+        (when (#{"y" "yes"} answer)
+          (apply p/shell {:continue true} (:true-up-argv ctx))
+          true)))))
+
 (defn main
   "`-main`'s body, returning the exit code instead of exiting, so that a task
   can print something after the table and exit with the doctor's verdict:
   `harness.setup.upgrade/doctor-main` does, and this namespace cannot require
   that one (it requires the profile, which requires this).
 
-  bb doctor [--edn] [--dir PATH] [--tier gates|loop]
+  bb doctor [--edn] [--tier gates|loop]
 
-  `--dir` reads another project's mise pins instead of the current directory's.
-  The toolchain itself is machine-wide, so only the pin comparison is
-  directory-sensitive — but that is the part a harness needs when it verifies a
-  worktree it has just provisioned. `--tier` chooses which verdict decides the
-  exit code: `gates` (what `bb gates` needs, no JVM - the KIT's own gates pass
-  it) or `loop` (the default: everything a run needs)."
+  `--tier` chooses which verdict decides the exit code: `gates` (what `bb gates` needs, no JVM - the KIT's
+  own gates pass it) or `loop` (the default: everything a run needs). Run by hand at a terminal, with
+  neither flag, it offers the true-up once (`offer?`), and on a yes runs it and reports again."
   [& args]
-  (let [dir (or (arg-value args "--dir") ".")
-        tier (keyword (or (arg-value args "--tier") "loop"))]
-    ;; A missing directory must fail rather than fall through: mise-file walks
-    ;; UP from where it starts, so a typo'd path would silently find some
-    ;; ancestor's pins and report them as this project's.
-    (cond
-      (not (fs/directory? dir))
-      (do (println (str "doctor: --dir " dir " is not a directory")) 1)
-
-      (not (#{:gates :loop} tier))
+  (let [tier (keyword (or (arg-value args "--tier") "loop"))]
+    (if-not (#{:gates :loop} tier)
       (do (println (str "doctor: --tier must be gates or loop, got " (name tier))) 1)
-
-      :else
       (let [good (known-good)
-            results (report toolchain (mise-pins dir) (:tools good))]
+            clone (download-matrix/clone-dir)
+            results (report toolchain (reference) (:tools good))]
         (if (some #{"--edn"} args)
-          (prn (render-edn results))
-          (println (render-table results good (some-> (mise-file dir) fs/canonicalize str))))
-        (if (ok? results tier) 0 1)))))
+          (do (prn (render-edn results)) (if (ok? results tier) 0 1))
+          (let [ctx (fix-context clone (folder-status clone) (download-matrix/read-matrix clone))
+                console (System/console)]
+            (println (render-table results good ctx))
+            (if (and (offer? (some? console) args results ctx) (ask-true-up! console ctx))
+              (let [again (report toolchain (reference) (:tools good))]
+                (println (render-table again good (fix-context clone (folder-status clone) (:matrix ctx))))
+                (if (ok? again tier) 0 1))
+              (if (ok? results tier) 0 1))))))))
 
 (defn -main
-  "bb doctor [--edn] [--dir PATH] [--tier gates|loop] - `main`, then exit with its code."
+  "bb doctor [--edn] [--tier gates|loop] - `main`, then exit with its code."
   [& args]
   (System/exit (apply main args)))

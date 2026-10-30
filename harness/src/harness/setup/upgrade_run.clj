@@ -762,7 +762,7 @@
   "The check and the move. Opts, for tests: `:reachable?` (host -> bool), `:probe` (specs ->
   results), `:hand-over!` (argv dir -> exit), `:to`. Returns `{:outcome kw ...}`; a refusal
   throws `ex-info` with `:upgrade/error` and the words."
-  [ws kit {:keys [reachable? probe hand-over! to] :or {reachable? reachable?* probe doctor/report}}]
+  [ws kit {:keys [reachable? probe hand-over! to] :or {reachable? reachable?* probe #(doctor/report % nil)}}]
   (let [ws-dir (:workspace/dir ws)
         kit-rel (str (fs/relativize ws-dir kit))
         raw (raw-workspace ws)
