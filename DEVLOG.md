@@ -68,6 +68,34 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### `toolchain-env` puts the folder's `bin` first and its JDK as JAVA_HOME; the machine's JDKs and the project's pin are no longer looked for (plan 7.0, item 8.3c)
+
+Built before 8.3a (the person: "go 8.3c now"; the reader: 8.3a's fix line "`eval "$(bb toolchain-env)"`" is
+true only once this lands). "The second fold", point 3: the JDK is the folder's, or the adopter's own
+already in the shell.
+- **The lines**: `export PATH='<folder>/bin':"$PATH"` when the folder has a `bin` - every tool the true-up
+  installs, the JDK's executables linked among them - then `export JAVA_HOME=<the folder's JDK>` when the
+  folder holds the matrix's JDK, then the keys line. The keys come last, so a `.env` naming PATH or
+  JAVA_HOME is flagged rather than quietly undoing them.
+- **What the folder lacks** is said on stderr with the true-up (`toolchain-install`, `--only java` for the
+  JDK), and the shell's own is left as it is: an own JDK of 21 or newer is used (candidate (b)). Exit 0 -
+  it was 1 when no JDK of the pinned major was found. A platform the matrix publishes no build for is said,
+  the tools its own.
+- **What went**: the five JDK lookups (the toolchain cache by major, macOS's `java_home -F`, jenv's, mise's
+  installs, Linux's `/usr/lib/jvm`) with `jdk-home?` and `release-major`; the project's pin -
+  `.mise.local.toml` over `.mise.toml`, the application's in a workspace (`java-pin`, `toml-java`,
+  `pin-dir`, the pack's `find-workspace`) - and the test holding that reader to the doctor's `mise-pins`.
+  `3ec4c9e`'s low (the no-JDK hint for a pin off the matrix) goes with them. The doctor's own mise reading
+  goes in 8.3a, which reverses 7.4.3's `.mise.local.toml` override for the KIT: a project's `.mise.toml`
+  is still written by `project-set`, for the adopter's own shell, and nothing of the KIT reads it.
+- **The documents**: the pack's README and `bb.edn`, the harness's and the root's task docs, `AGENTS.md`'s
+  task row (outside the generated block), the root README's step 6.
+
+Proved: `toolchain_env_test` (`folder-jdk` - installed, none, an unpublished platform; `env-lines`' four
+shapes); by hand, `bb toolchain-env` here - `KIT/.kit/toolchain/bin` first, no JDK in the folder said with
+`--only java`, exit 0 - and with `KIT_TOOLCHAIN_DIR` at a scratch folder holding a stand-in `java` at the
+matrix's path, its `JAVA_HOME` line.
+
 ### 8.2e's leftovers: the image's no-op PATH line goes; what `46eb281` dropped from the apt line, said (From Fable 5.1's read of `46eb281`)
 
 - **Said here, missing from 8.2e's entry**: the image's apt line also lost `libcurl4 libexpat1 zlib1g`, the

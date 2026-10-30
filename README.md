@@ -109,7 +109,7 @@ There are basically 2 steps to use KIT:
    not a lock: [`NOTES.md`](NOTES.md) row 236). It may hold what else the application needs too - a
    `DATABASE_URL`, a `PORT`.
 
-6. Load the JDK and the keys into this terminal, then check the profile sees them:
+6. Put the project's toolchain first on this terminal's PATH and load the keys, then check the profile sees them:
 
     ```shell
     eval "$(bb toolchain-env)"

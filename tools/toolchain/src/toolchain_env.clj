@@ -1,5 +1,5 @@
 (ns toolchain-env
-  "`toolchain-env`: the shell lines for `eval \"$(bb toolchain-env)\"` - the JDK the project pins, and
+  "`toolchain-env`: the shell lines for `eval \"$(bb toolchain-env)\"` - the project's toolchain, and
   the line that has the shell load the project's keys, the `.env` in the folder above the KIT's clone
   (plan 7.0, items 8.3c, 8.6a and 8.2b; `toolchain-status/place`).
 
@@ -19,14 +19,12 @@
   the names a program the KIT runs reads its hooks from (`program-hooks`) - the file is sourced, so
   `$(...)` in it would run. A flagged file is not loaded.
 
-  The JDK: the major the project pins - the `java` line of `.mise.local.toml` over `.mise.toml`, read
-  as `harness.setup.doctor/mise-pins` reads it (a test holds the two readers to one answer) - else the
-  download matrix's `java`, the KIT's preferred; then the first JDK of that major in the toolchain cache, macOS's `java_home`,
-  jenv's, mise's, Linux's `/usr/lib/jvm`, each a home whose own `release` file says that major. Said on
-  stderr; stdout carries only the lines to eval.
-
-  JDK-ONLY UNTIL 8.3c: the PATH line puts the JDK's `bin` first and nothing else; the toolchain
-  cache's bb, clj-kondo and clojure join it with 8.3c's cache lines."
+  THE TOOLS ARE THE FOLDER'S (plan 7.0, item 8.3c): its `bin` - every tool the true-up installs, the
+  JDK's executables among them - first on the PATH, and its JDK as JAVA_HOME. No JDK is looked for on
+  the machine and no pin is read (`.mise.toml` is written into a project for the adopter's own shell;
+  the KIT reads the download matrix): what the folder lacks is said with the true-up, and the shell's
+  own is left as it is - an own JDK of 21 or newer is used (the person's candidate (b)). Said on
+  stderr; stdout carries only the lines to eval."
   (:require [babashka.fs :as fs]
             [babashka.process :as p]
             [clojure.edn :as edn]
@@ -34,98 +32,16 @@
             [toolchain-download-matrix :as dm]
             [toolchain-status :as status]))
 
-;; ---------------------------------------------------------------- the pin
-
-(def ^:private mise-names
-  "mise's config files in one folder, the project's before the local one mise reads over it."
-  [[".mise.toml" "mise.toml"] [".mise.local.toml" "mise.local.toml"]])
-
-(defn toml-java
-  "The `java` line's value under `[tools]` in a mise file's text, or nil - pure."
-  [text]
-  (some->> (re-find #"(?ms)^\[tools\][ \t]*\n(.*?)(?=^\[|\z)" (or text ""))
-           second
-           (re-find #"(?m)^[ \t]*java[ \t]*=[ \t]*\"([^\"]*)\"")
-           second))
-
-(defn major-of
-  "The major a pin or a version names: `temurin-25` → 25, `21.0.13` → 21, `25` → 25; nil for none."
-  [v]
-  (some->> v (re-find #"\d+") parse-long))
-
-(defn java-pin
-  "The JDK major pinned at `dir`: the nearest folder up holding a mise file, its `.mise.local.toml`'s
-  `java` line over its `.mise.toml`'s, as mise reads them. Nil when no file up names one."
-  [dir]
-  (loop [d (fs/absolutize dir)]
-    (when d
-      (let [found (keep (fn [names] (first (filter fs/exists? (map #(fs/path d %) names)))) mise-names)]
-        (if (seq found)
-          (some->> (reverse found) (keep #(toml-java (slurp (str %)))) first major-of)
-          (recur (fs/parent d)))))))
-
-(defn find-workspace
-  "The nearest folder up from `dir` holding `workspace.edn`, as `harness.setup.workspace` finds it,
-  with the workspace's map; nil outside a workspace."
-  [dir]
-  (loop [d (fs/absolutize dir)]
-    (when d
-      (let [f (fs/path d "workspace.edn")]
-        (if (fs/exists? f)
-          {:dir (str d) :workspace (edn/read-string (slurp (str f)))}
-          (recur (fs/parent d)))))))
-
-(defn pin-dir
-  "Where the project's pin is read from: in a workspace, its application's folder (the pin is the
-  application's `.mise.toml`); outside one, `dir` itself."
-  [dir]
-  (if-let [{ws :dir {app :workspace/app} :workspace} (find-workspace dir)]
-    (str (fs/path ws (or app ".")))
-    (str (fs/absolutize dir))))
-
 ;; ---------------------------------------------------------------- the JDK
 
-(defn release-major
-  "The major a JDK home's own `release` file says (`JAVA_VERSION=\"25.0.5\"`), or nil."
-  [home]
-  (let [f (fs/path home "release")]
-    (when (fs/exists? f)
-      (some->> (re-find #"(?m)^JAVA_VERSION=\"([^\"]+)\"" (slurp (str f))) second major-of))))
-
-(defn jdk-home?
-  "Whether `home` is a JDK of `major`: its `bin/java` runs and its `release` says that major."
-  [home major]
-  (boolean (and home (fs/executable? (fs/path home "bin" "java")) (= major (release-major home)))))
-
-(defn- sh-out [& args]
-  (try (let [{:keys [exit out]} (apply p/shell {:out :string :err :string :continue true} args)]
-         (when (zero? exit) (not-empty (str/trim out))))
-       (catch Exception _ nil)))
-
-(defn lookups
-  "Where a JDK of a major is looked for, in order: `[label (fn [major] home-or-nil)]`. `env` is
-  `{:cache :matrix :platform :home}`."
-  [{:keys [cache matrix platform home]}]
-  [["the toolchain cache"
-    (fn [major]
-      (when (= major (major-of (get-in matrix [:java :version])))
-        (some-> (dm/bin-path matrix cache :java platform) fs/parent fs/parent str)))]
-   ["macOS's java_home"
-    ;; -F: no JDK of that major is a failure, never the default JDK printed with exit 0
-    (fn [major] (when (fs/exists? "/usr/libexec/java_home") (sh-out "/usr/libexec/java_home" "-v" (str major) "-F")))]
-   ["jenv"
-    (fn [major] (let [d (fs/path home ".jenv" "versions" (str major))] (when (fs/exists? d) (str (fs/real-path d)))))]
-   ["mise"
-    (fn [major] (some->> (fs/glob (fs/path home ".local" "share" "mise" "installs" "java") (str "temurin-" major "*"))
-                         (map str) sort last))]
-   ["Linux's /usr/lib/jvm"
-    (fn [major] (some->> (when (fs/exists? "/usr/lib/jvm") (fs/glob "/usr/lib/jvm" (str "*-" major "*")))
-                         (map str) sort last))]])
-
-(defn find-jdk
-  "The first JDK of `major` the `lookups` find: `{:home :from}`, or nil. `home?` the test of a home."
-  [major lookups home?]
-  (some (fn [[label f]] (let [h (f major)] (when (home? h major) {:home h :from label}))) lookups))
+(defn folder-jdk
+  "The JDK home in the project's toolchain folder `cache` - the download matrix's, its `java` there
+  (`executable?`) - or nil: none installed, or a platform the matrix publishes none for (`platform`
+  nil). One JDK, the folder's (plan 7.0, item 8.3c): no lookup of the machine's, no pin read."
+  [matrix cache platform executable?]
+  (when platform
+    (let [java (dm/bin-path matrix cache :java platform)]
+      (when (executable? java) (str (fs/parent (fs/parent java)))))))
 
 ;; ---------------------------------------------------------------- the keys
 
@@ -268,12 +184,13 @@
 (defn sq "`s` single-quoted for a shell." [s] (str "'" (str/replace s "'" "'\\''") "'"))
 
 (defn env-lines
-  "The lines to eval - pure: the JDK's home and its `bin` first on the PATH when there is a JDK, then
-  the keys line when there is a `.env`."
-  [home env]
+  "The lines to eval - pure: the toolchain folder's `bin` first on the PATH when there is one, the JDK's
+  home as JAVA_HOME when the folder has the JDK (its `java` is in that `bin`), then the keys line when
+  there is a `.env` - last, so a `.env` read after them is flagged if it names PATH or JAVA_HOME."
+  [bin home env]
   (cond-> []
-    home (conj (str "export JAVA_HOME=" (sq home))
-               (str "export PATH=" (sq (str home "/bin")) ":\"$PATH\""))
+    bin (conj (str "export PATH=" (sq bin) ":\"$PATH\""))
+    home (conj (str "export JAVA_HOME=" (sq home)))
     env (conj (str "set -a; . " (sq env) "; set +a"))))
 
 (defn- say [cmd msg] (binding [*out* *err*] (println (str cmd ": " msg))))
@@ -324,20 +241,19 @@
 
 (defn main
   "The `toolchain-env` task, for the project folder above the clone. A `.env` a repository holds, or one with a flagged line no acceptance in the `.env` record names:
-  exit 1, nothing on stdout - a fault, nothing from the run is taken until a person has read why. No
-  JDK of the pinned major: exit 1, and the keys line still printed - what holds is loaded, the missing
-  JDK said with the install that brings it."
+  exit 1, nothing on stdout - a fault, nothing from the run is taken until a person has read why. The
+  folder's `bin` first on the PATH and its JDK as JAVA_HOME (plan 7.0, item 8.3c); what the folder lacks
+  is said with the true-up that brings it, and the shell's own is left as it is - exit 0: an own JDK of
+  21 or newer is used (the person's candidate (b)), and the doctor holds every tool to the matrix."
   [pack-dir args]
   (let [say (partial say "toolchain-env")
         at (placed "toolchain-env" pack-dir args)
-        pinned (java-pin (pin-dir (:folder at)))
         matrix (dm/read-matrix (str pack-dir "/download-matrix.edn"))
-        major (or pinned (major-of (get-in matrix [:java :version])))
-        env {:cache (:cache at)
-             :matrix matrix
-             :platform (dm/platform-key (System/getProperty "os.name") (System/getProperty "os.arch"))
-             :home (System/getProperty "user.home")}
-        jdk (find-jdk major (lookups env) jdk-home?)
+        platform (try (dm/platform-key (System/getProperty "os.name") (System/getProperty "os.arch"))
+                      (catch clojure.lang.ExceptionInfo _ nil))
+        true-up (str "bb --config " pack-dir "/bb.edn toolchain-install")
+        bin (let [b (str (:cache at) "/bin")] (when (fs/directory? b) b))
+        home (folder-jdk matrix (:cache at) platform fs/executable?)
         {:keys [file looked]} (env-file (:env at))
         held (some-> file repo-check)]
     (when held (say (held-line file held)) (System/exit 1))
@@ -349,17 +265,19 @@
         (run! say (flag-lines checked))
         (say "open the file and read those lines; change them, or accept the file as it is with `bb env-accept` in a terminal")
         (System/exit 1))
-      (say (if jdk
-             (str "the JDK " major " (" (if pinned "the project's pin" "the KIT's preferred") ") from " (:from jdk) ": " (:home jdk))
-             (str "no JDK " major " found (" (if pinned "the project's pin" "the KIT's preferred, no pin") ") - looked in "
-                  (str/join ", " (map first (lookups env))) "; `bb --config " pack-dir "/bb.edn toolchain-install --only java`")))
+      (say (cond bin (str "the tools: " bin " first on the PATH")
+                 platform (str "no tools in the folder (" (:cache at) "/bin) - `" true-up "` installs them; the shell's own PATH is left as it is")
+                 :else "the download matrix publishes no build for this machine - the tools are its own, on its PATH"))
+      (say (if home
+             (str "the JDK " (get-in matrix [:java :version]) " from the folder: " home)
+             (str "no JDK in the folder - the shell's own is left as it is (21 or newer is used)"
+                  (when platform (str "; `" true-up " --only java` brings the matrix's")))))
       (when accepted
         (say (str "the .env's flagged lines were accepted by " (:accepted-by accepted) " at " (:at accepted))))
       (say (if file
              (str "the keys: " file " - " (count (:names checked)) " names, loaded by the shell, no value printed")
              (str "no .env (looked at " (str/join ", " looked) ") - the keys stay what the shell has")))
-      (run! println (env-lines (:home jdk) (when load? file)))
-      (when-not jdk (System/exit 1)))))
+      (run! println (env-lines bin home (when load? file))))))
 
 (defn accept-main
   "The `env-accept` task: the person's acceptance of the `.env` as it is now, flagged lines and

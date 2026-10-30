@@ -230,7 +230,7 @@
            :requires ([harness.models.profile :as profile])
            :task (apply profile/-main *command-line-args*)}
 
-  toolchain-env {:doc "The shell lines for `eval \"$(bb toolchain-env)\"`, run in the shell that starts the session: the JDK the project pins and the project's .env loaded by the shell, both in the folder above the KIT's clone, no value printed - the toolchain pack's `toolchain-env`"
+  toolchain-env {:doc "The shell lines for `eval \"$(bb toolchain-env)\"`, run in the shell that starts the session: the toolchain folder's bin first on the PATH, its JDK as JAVA_HOME, and the project's .env loaded by the shell, both in the folder above the KIT's clone, no value printed - the toolchain pack's `toolchain-env`"
                  :task (let [{:keys [exit]} (apply shell {:continue true} "bb" "--config" "../tools/toolchain/bb.edn" "toolchain-env"
                                                    *command-line-args*)]
                          (System/exit exit))}

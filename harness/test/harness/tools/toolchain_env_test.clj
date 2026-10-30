@@ -1,16 +1,15 @@
 (ns harness.tools.toolchain-env-test
   "The toolchain pack's `toolchain-env` (`tools/toolchain/src/toolchain_env.clj`, plan 7.0, items
   8.3c, 8.6a and 8.6d): the `.env` checked before the shell sources it - flagged, never fenced,
-  and held by no repository - the pin read as the doctor reads it,
-  the JDK looked for in order, the lines to eval - never a value. Tried by hand in a scratch workspace:
-  a local pin of 21 over the project's 25, the keys loaded by the shell, a `$(...)` line flagged with
+  and held by no repository - the folder's tools and JDK (8.3c), the lines to eval - never a value.
+  Tried by hand in a scratch workspace: the keys loaded by the shell, a `$(...)` line flagged with
   nothing on stdout."
   (:require
    [babashka.fs :as fs]
    [babashka.process :as p]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
-   [harness.setup.doctor :as doctor]
+   [toolchain-download-matrix :as dm]
    [toolchain-env :as env]))
 
 (deftest the-env-file-is-checked-before-the-shell-sources-it
@@ -61,29 +60,6 @@
       (is (= :tracked (env/repo-check env)))
       (is (nil? (env/repo-check (str (fs/path (fs/create-temp-dir) ".env")))) "no repository"))))
 
-(deftest the-pin-is-read-as-the-doctor-reads-it
-  ;; the pack cannot require the doctor, so a test holds the two readers to one answer
-  (let [check (fn [files nested?]
-                (let [d (fs/create-temp-dir)]
-                  (doseq [[f text] files] (spit (str (fs/path d f)) text))
-                  (let [at (if nested? (doto (fs/path d "a" "b") fs/create-dirs) d)]
-                    [(env/java-pin at) (get-in (doctor/mise-pins (str at)) [:java :major])])))]
-    (doseq [[label files nested?] [["the project's file" {".mise.toml" "[tools]\njava = \"temurin-25\"\n"} false]
-                                   ["the local one over it" {".mise.toml" "[tools]\njava = \"temurin-25\"\n"
-                                                             ".mise.local.toml" "[tools]\njava = \"temurin-21\"\n"} false]
-                                   ["found walking up" {".mise.toml" "[tools]\njava = \"21\"\nclojure = \"1.12\"\n"} true]]]
-      (let [[ours doctors] (check files nested?)]
-        (is (= doctors ours) label)
-        (is (some? ours) label)))
-    (is (nil? (env/java-pin (fs/create-temp-dir))) "no file up: no pin")))
-
-(deftest in-a-workspace-the-pin-is-the-applications
-  (let [ws (fs/create-temp-dir)]
-    (spit (str (fs/path ws "workspace.edn")) "{:workspace/app \"xyx-app\"}")
-    (fs/create-dirs (fs/path ws "xyx-app"))
-    (spit (str (fs/path ws "xyx-app" ".mise.toml")) "[tools]\njava = \"temurin-21\"\n")
-    (is (= 21 (env/java-pin (env/pin-dir (str ws)))))))
-
 (deftest the-env-file-is-the-one-it-is-given-when-it-is-there
   ;; plan 7.0, item 8.2b: the path is `toolchain-status/place`'s - the folder above the clone - one rule
   ;; where the workspace's and the clone's were two
@@ -92,27 +68,22 @@
     (spit f "K=\n")
     (is (= {:file f :looked [f]} (env/env-file f)))))
 
-(deftest the-jdk-is-the-first-lookup-that-finds-the-major
-  (let [lookups [["the toolchain cache" (constantly nil)]
-                 ["macOS's java_home" (fn [m] (str "/jdk/" m))]
-                 ["jenv" (fn [m] (str "/jenv/" m))]]
-        home? (fn [h m] (and h (str/ends-with? h (str m))))]
-    (is (= {:home "/jdk/25" :from "macOS's java_home"} (env/find-jdk 25 lookups home?)))
-    (is (nil? (env/find-jdk 25 lookups (constantly false))) "none of that major: nil, the install named")
-    (testing "a home is a JDK of the major only when its own release file says so"
-      (let [h (fs/create-temp-dir)]
-        (fs/create-dirs (fs/path h "bin"))
-        (spit (str (fs/path h "bin" "java")) "#!/bin/sh\n")
-        (fs/set-posix-file-permissions (fs/path h "bin" "java") "rwxr-xr-x")
-        (spit (str (fs/path h "release")) "JAVA_VERSION=\"25.0.5\"\n")
-        (is (env/jdk-home? (str h) 25))
-        (is (not (env/jdk-home? (str h) 21)))))))
+(deftest the-jdk-is-the-folders-or-none
+  ;; plan 7.0, item 8.3c: no lookup of the machine's JDKs, no pin read
+  (let [matrix (dm/read-matrix "../tools/toolchain/download-matrix.edn")
+        java "/c/java/25.0.5+8/jdk-25.0.5+8/Contents/Home/bin/java"]
+    (is (= "/c/java/25.0.5+8/jdk-25.0.5+8/Contents/Home" (env/folder-jdk matrix "/c" :macos-aarch64 #{java})))
+    (is (nil? (env/folder-jdk matrix "/c" :macos-aarch64 #{})) "none installed: the shell's own is left")
+    (is (nil? (env/folder-jdk matrix "/c" nil (constantly true))) "a platform the matrix publishes none for")))
 
 (deftest the-lines-carry-paths-never-a-value
-  (is (= ["export JAVA_HOME='/j d'" "export PATH='/j d/bin':\"$PATH\"" "set -a; . '/w/.env'; set +a"]
-         (env/env-lines "/j d" "/w/.env")))
-  (is (= 2 (count (env/env-lines "/j" nil))) "no .env: no keys line")
-  (is (= ["set -a; . '/w/.env'; set +a"] (env/env-lines nil "/w/.env")) "no JDK: the keys line still")
+  (is (= ["export PATH='/c/bin':\"$PATH\"" "export JAVA_HOME='/j d'" "set -a; . '/w/.env'; set +a"]
+         (env/env-lines "/c/bin" "/j d" "/w/.env"))
+      "the folder's bin first - the JDK's java is linked there - its home, then the keys")
+  (is (= 2 (count (env/env-lines "/c/bin" "/j" nil))) "no .env: no keys line")
+  (is (= ["export PATH='/c/bin':\"$PATH\"" "set -a; . '/w/.env'; set +a"] (env/env-lines "/c/bin" nil "/w/.env"))
+      "no JDK in the folder: no JAVA_HOME, the shell's own left")
+  (is (= ["set -a; . '/w/.env'; set +a"] (env/env-lines nil nil "/w/.env")) "no folder: the keys line still")
   (is (= "'it'\\''s'" (env/sq "it's")) "a quote in a path stays a path"))
 
 (deftest the-env-record-says-what-each-load-saw-names-never-a-value

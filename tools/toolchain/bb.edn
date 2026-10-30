@@ -24,7 +24,7 @@
                      :requires ([toolchain-install :as install])
                      :task (install/install-main pack-dir *command-line-args*)}
 
-  toolchain-env {:doc "The shell lines for `eval \"$(bb toolchain-env)\"`: JAVA_HOME and PATH for the JDK the project pins (the download matrix's when none), and the line that has the shell load the project's .env (in the folder above the clone) - no value ever printed; any name taken, held by no repository, a line the shell would run or a program hook flagged, and a flagged file not loaded unless `env-accept` accepted it; a change to the file is added to the .env record (.env-record.edn beside it) - names, never a value. Exit 1: nothing on stdout when the .env is flagged or a repository holds it; the keys line alone when no JDK of that major is found. JDK-only until 8.3c: the folder's bb, clj-kondo and clojure are not on its PATH line"
+  toolchain-env {:doc "The shell lines for `eval \"$(bb toolchain-env)\"`: the toolchain folder's bin first on the PATH and its JDK as JAVA_HOME, what it lacks named with the true-up and the shell's own left as it is, and the line that has the shell load the project's .env (in the folder above the clone) - no value ever printed; any name taken, held by no repository, a line the shell would run or a program hook flagged, and a flagged file not loaded unless `env-accept` accepted it; a change to the file is added to the .env record (.env-record.edn beside it) - names, never a value. Exit 1, nothing on stdout, when the .env is flagged or a repository holds it"
                  :requires ([toolchain-env :as env])
                  :task (env/main pack-dir *command-line-args*)}
 
