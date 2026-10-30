@@ -236,6 +236,16 @@
   (cond-> ["install" url "--git/sha" sha]
     main (into ["--as" n "--main-opts" (pr-str ["-m" main])])))
 
+(defn bbin-error
+  "What bbin's failure says, from its output - pure: its `Message:` line, and its `Location:` line when
+  there is one; else its last three lines. The stack's tail named the cause only by where it fell."
+  [text]
+  (let [lines (remove str/blank? (str/split-lines (or text "")))
+        field (fn [k] (some #(some->> % (re-matches (re-pattern (str k ":\\s+(.*)"))) second str/trim) lines))]
+    (if-let [m (field "Message")]
+      (str m (some->> (field "Location") (str " (at ") (#(str % ")"))))
+      (str/join " / " (take-last 3 lines)))))
+
 (defn bbin-step!
   "One bbin step: each command installed by the folder's `bbin` (run by its path) into `bin-dir` -
   `BABASHKA_BBIN_BIN_DIR` on these calls alone, never exported - then the header of
@@ -252,8 +262,7 @@
                                               bbin (bbin-args step c))
                 got (status/commit-of (fs/path bin-dir n))]]
     (when-not (zero? exit)
-      (throw (ex-info (str "bbin could not install " n ": "
-                           (str/join " / " (take-last 3 (remove str/blank? (str/split-lines (str out "\n" err))))))
+      (throw (ex-info (str "bbin could not install " n ": " (bbin-error (str out "\n" err)))
                       {:command n :exit exit})))
     (when-not (= (:git/sha step) got)
       (throw (ex-info (str bin-dir "/" n (if got (str " names commit " (subs got 0 7)) " is not there")
@@ -270,6 +279,12 @@
   [done matrix cache platform executable?]
   (or (some #(when (and (= :bbin (:tool %)) (#{:installed :kept} (:step %))) (:bin %)) done)
       (let [p (dm/bin-path matrix cache :bbin platform)] (when (executable? p) p))))
+
+(defn self-link?
+  "Whether a link at `l` would point at itself - never made: the delete before it removes the file
+  `target` names (From Fable 5.1's read of `db92690`)."
+  [l target]
+  (= (fs/normalize (fs/absolutize l)) (fs/normalize (fs/absolutize target))))
 
 (defn link-targets
   "What `--link <dir>` links for each tool installed or kept, as `[name target]` - pure over the
@@ -343,7 +358,8 @@
         (when-not dry-run?
           (fs/create-dirs link)
           (doseq [[n target] (link-targets done #(sort (fs/list-dir %)))
-                  :let [l (fs/path link n)]]
+                  :let [l (fs/path link n)]
+                  :when (not (self-link? l target))]
             (fs/delete-if-exists l)
             (fs/create-sym-link l target))
           (println "  linked into" link))))

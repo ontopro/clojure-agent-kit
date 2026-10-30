@@ -230,3 +230,22 @@
       (is (= "/c/bbin/0.2.5/bbin" (get-in s [:bbin :bin])) "an archive's tool stays in the cache")
       (is (= :install (:step (:clojure-mcp-light (steps :linux-amd64 {:commit-of heads}))))
           "the same wrappers are not in <cache>/bin"))))
+
+(deftest a-second-install-never-links-a-wrapper-to-itself
+  ;; From Fable 5.1's read of db92690: a :kept bbin step carried no :kind, was linked, and the link
+  ;; replaced clj-nrepl-eval with a link to itself
+  (let [heads (into {} (for [c (get-in matrix [:clojure-mcp-light :commands])] [(str "/c/bin/" (:name c)) mcp-sha]))
+        kept (:clojure-mcp-light (steps :linux-amd64 {:commit-of heads}))]
+    (is (= {:step :kept :kind :bbin} (select-keys kept [:step :kind])) "kept, and of its kind")
+    (is (empty? (install/link-targets [kept] (fn [_] []))) "so never linked"))
+  (is (install/self-link? "/c/bin/x" "/c/bin/x"))
+  (is (install/self-link? "/c/bin/x" "/c/bin/../bin/x"))
+  (is (not (install/self-link? "/c/bin/bbin" "/c/bbin/0.2.5/bbin"))))
+
+(deftest bbins-failure-is-said-by-its-message
+  (is (= "/t/bin/clj-nrepl-eval (Too many levels of symbolic links) (at /t/bbin:1946:3)"
+         (install/bbin-error (str "----- Error ------\nType:     java.io.FileNotFoundException\n"
+                                  "Message:  /t/bin/clj-nrepl-eval (Too many levels of symbolic links)\n"
+                                  "Location: /t/bbin:1946:3\n----- Stack trace -----\nbabashka.bbin.cli - /t/bbin:1944:1\n"))))
+  (is (= "Invalid combination" (install/bbin-error "Message:  Invalid combination\n")) "no Location line")
+  (is (= "a / b / c" (install/bbin-error "x\na\n\nb\nc\n")) "no Message line: the last three"))

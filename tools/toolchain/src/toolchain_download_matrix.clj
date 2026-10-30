@@ -178,14 +178,16 @@
         :let [v (:version (get matrix t))
               bin-dir (or bin-dir (str cache "/bin"))
               bin (if (bbin? matrix t) (str bin-dir "/" (get-in matrix [t :bin])) (bin-path matrix cache t platform))
-              base {:tool t :version v :bin bin}]]
+              ;; every step of a bbin row carries its kind, :kept too - the links pass it by (a :kept
+              ;; step without it was linked to itself, deleting the wrapper: Fable 5.1's read of db92690)
+              base (cond-> {:tool t :version v :bin bin} (bbin? matrix t) (assoc :kind :bbin))]]
     (cond (in-cache? matrix t bin bin-dir present? commit-of) (assoc base :step :kept)
           (and (= :bb t) (get running :bb) (not (neg? (compare-versions (get running :bb) v))))
           (assoc base :step :skip :why (str "the bb running this is " (get running :bb) ", at or above " v))
           (and (= :java t) (not (some #{:java} only)))
           (assoc base :step :skip :why "fetched only when named: --only java")
           (bbin? matrix t)
-          (assoc base :step :install :kind :bbin
+          (assoc base :step :install
                  :git/url (get-in matrix [t :git/url]) :git/sha (get-in matrix [t :git/sha])
                  :commands (get-in matrix [t :commands]))
           :else

@@ -68,6 +68,26 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### A second install no longer replaces `clj-nrepl-eval` with a link to itself; bbin's failure said by its message (From Fable 5.1's read of `db92690`)
+
+The defect `db92690`'s entry named open, in `3dbdcda`: the plan's `:kept` step for clojure-mcp-light
+carried no `:kind :bbin`, so `link-targets` let it through, and the links loop deleted
+`<folder>/bin/clj-nrepl-eval` and made it a link to itself - on every second `toolchain-install`, the true-up
+8.3b makes routine (the reader: medium; the image installs once and never met it). The person: "go, the
+self-link fix with all three".
+1. **The cause**: every step of a bbin row carries `:kind :bbin` - `:kept` and `:install` alike - so the links
+   pass it by.
+2. **The loop cannot repeat it**: a link whose path is its target's (`self-link?`) is never made - the second
+   time a step shape reached that loop unforeseen.
+3. **bbin's failure is said by its `Message:` line**, with its `Location:` when there is one (`bbin-error`),
+   else its last three lines - the stack's tail had named the cause only by where it fell.
+
+Proved: tests (a `:kept` bbin step of its kind, never linked; `self-link?`; `bbin-error`'s three shapes); by
+hand, `toolchain-install --only bbin,clojure-mcp-light` twice over a scratch folder that had them - both
+kept, the three wrappers still files, each answering `--help`. A folder the defect already reached is not
+repaired by this - bbin now says why it cannot write there ("Too many levels of symbolic links"); only a
+scratch folder of this session was, as `3dbdcda` was never released.
+
 ### `--only clojure-mcp-light` finds the folder's bbin; kept-ness and the closing status follow `--link`; the commit one field; kit-pins' latest for a commit pin the default branch's tip (From Fable 5.1's read of `3dbdcda`)
 
 The person: "go, 1-3 plus the \"latest\" display".
