@@ -70,10 +70,16 @@
         (is (= "FROM ubuntu:24.04 AS build\nFROM eclipse-temurin:25.0.4.1_1-jre-alpine\n" (:text r)))
         (is (= ["the build stage's FROM clojure:temurin-..." "ARG BB_VERSION" "ARG TAILWIND_VERSION"] (:missed r)))))))
 
-(deftest the-gitignore-gains-the-local-mise-file-once
-  (is (= "/target\n.mise.local.toml\n" (:text (ps/with-ignore "/target\n"))))
-  (is (= "/target\n.mise.local.toml\n" (:text (ps/with-ignore "/target"))) "a last line with no newline")
-  (is (= "/target\n.mise.local.toml\n" (:text (ps/with-ignore "/target\n.mise.local.toml\n")))))
+(deftest the-gitignore-gains-the-kits-lines-once
+  (let [all "/target\n.mise.local.toml\n.env\n.env-record.edn\n.kit/\n"]
+    (is (= all (:text (ps/with-ignore "/target\n"))))
+    (is (= all (:text (ps/with-ignore "/target"))) "a last line with no newline")
+    (is (= all (:text (ps/with-ignore all))) "written twice is written once"))
+  (testing "a line is there bare or rooted, trimmed; nothing is ever removed"
+    (is (= {:text "/.env\n .kit/\nx\n.mise.local.toml\n.env-record.edn\n" :added [".mise.local.toml" ".env-record.edn"]}
+           (ps/lines-added "/.env\n .kit/\nx\n" ps/app-ignored)))
+    (is (= {:text "a\n" :added []} (ps/lines-added "a\n" [])))
+    (is (= {:text ".env\n" :added [".env"]} (ps/lines-added "" [".env"])) "an empty file")))
 
 (deftest write-says-what-changed-and-what-it-could-not-find
   (let [app (str (fs/create-temp-dir {:prefix "project-set"}))]

@@ -294,9 +294,11 @@
        "the loop, is the role in `.claude/agents/interactive-programmer.md`.\n"))
 
 (def build-ignored
-  "What the build repository never tracks: macOS's folder files, and working material (`.local/`,
-  by the convention). `bb upgrade` adds a line here to a build that lacks it."
-  [".DS_Store" ".local/"])
+  "What the build repository never tracks: macOS's folder files, working material (`.local/`, by the
+  convention), and the project's keys, their record and its toolchain folder - `.env`,
+  `.env-record.edn`, `.kit/` in every `.gitignore` of the workspace (plan 7.0, item 8.2f). `bb
+  upgrade` adds a line here to a build that lacks it."
+  [".DS_Store" ".local/" ".env" ".env-record.edn" ".kit/"])
 
 (defn build-gitignore
   "The build's `.gitignore` as `bb init` writes it."

@@ -68,6 +68,24 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### `.env`, `.env-record.edn` and `.kit/` in every `.gitignore` of the workspace, by one add-only writer (plan 7.0, item 8.2f)
+
+The person (2026-10-30): "I think both .env and .kit should be added to all the .gitignore files in the
+workspace. This would prevent any accidental leak." The keys and the toolchain folder live in the folder
+above the clone, outside every repository (8.2b); these lines are the belt, for a file placed in a
+repository by mistake.
+- **The build's** `.gitignore`: `init/build-ignored` gains the three lines, so `bb init` writes them and
+  `bb upgrade`'s `build-ignore` step adds each one a build lacks, committed in the build.
+- **The application's**: `project-set`'s `app-ignored` - `.mise.local.toml` and the three - written by
+  `with-ignore`, which both of the application's routes already go through (`bb init`'s commit of the
+  KIT's tested set, and `bb upgrade`'s `upgrade-<version>` branch, by `template_upgrade/project-set-hook`;
+  Fable 5.1's read of the design). A line counts as there bare or `/`-rooted, as the template may write
+  `/.env`.
+- **One writer**: `project-set/lines-added` is the add-only writer for both lists; `upgrade_run/ignore-text`
+  keeps only its no-file case (the build's whole `.gitignore`, as `bb init` writes it). Never a line
+  removed.
+- **The KIT's own**: `.kit/` beside its `.env` lines.
+
 ### A failed install keeps its verified archive; the note names the repository; the folder said once (From Fable 5.1's read of `e7a08d3`)
 
 The read held, with two lows, a nit and a wording, taken as one commit (the person: "go, take them as

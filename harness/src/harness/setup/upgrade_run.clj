@@ -64,6 +64,7 @@
    [harness.setup.front-door :as front-door]
    [harness.setup.init :as init]
    [harness.setup.plan :as plan]
+   [harness.setup.project-set :as project-set]
    [harness.setup.skills :as skills]
    [harness.setup.stage-move :as stage-move]
    [harness.setup.stages :as stages]
@@ -129,14 +130,13 @@
 
 (defn ignore-text
   "`have`, the build's `.gitignore` (nil when there is none), with each of `lines` it lacks
-  appended, as `[text added]`: the file `bb init` writes when there is none. A line is there when
-  a line of the file is it, trimmed."
+  appended, as `[text added]`: the file `bb init` writes when there is none. `project-set/lines-added`
+  decides what is there and writes it - one writer for the build's lines and the application's."
   [have lines]
-  (let [present (set (map str/trim (str/split-lines (str have))))
-        added (vec (remove present lines))]
+  (let [{:keys [text added]} (project-set/lines-added have lines)]
     [(cond (empty? added) have
            (nil? have) (init/build-gitignore)
-           :else (str have (when-not (or (str/blank? have) (str/ends-with? have "\n")) "\n") (str/join "\n" added) "\n"))
+           :else text)
      added]))
 
 (defn ignore-refusal

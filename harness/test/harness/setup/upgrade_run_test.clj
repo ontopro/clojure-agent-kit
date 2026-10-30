@@ -161,7 +161,7 @@
     (is (= ["x\n.DS_Store\n.local/\n" [".DS_Store" ".local/"]] (ur/ignore-text "x" [".DS_Store" ".local/"])) "a last line with no newline kept whole")
     (is (= ["x\n .DS_Store\n.local/\n" [".local/"]] (ur/ignore-text "x\n .DS_Store\n" [".DS_Store" ".local/"])) "a line there, spaced, counts")
     (is (= ["a\n" []] (ur/ignore-text "a\n" [])))
-    (is (= [(init/build-gitignore) [".DS_Store" ".local/"]] (ur/ignore-text nil init/build-ignored)) "no file: the one bb init writes")
+    (is (= [(init/build-gitignore) [".DS_Store" ".local/" ".env" ".env-record.edn" ".kit/"]] (ur/ignore-text nil init/build-ignored)) "no file: the one bb init writes")
     (is (nil? (ur/ignore-refusal "" "b")) "committed: no refusal")
     (is (str/starts-with? (ur/ignore-refusal "?? .gitignore" "b") ".gitignore is not committed in b: commit it")
         "a file never committed is not one with edits")

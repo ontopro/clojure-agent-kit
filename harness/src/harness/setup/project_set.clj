@@ -1,7 +1,7 @@
 (ns harness.setup.project-set
   "The project's toolchain, which the KIT owns (`resources/project-set.edn`): every line under the
   application's `.mise.toml` [tools], the Dockerfile's two images and its bb and tailwindcss
-  versions, and `.gitignore`'s `.mise.local.toml` - written over what the pinned template generated,
+  versions, and `.gitignore`'s lines (`app-ignored`) - written over what the pinned template generated,
   never into the template itself.
 
   PURE BUT FOR `write!`. Each `with-*` takes a file's text and returns `{:text :missed}`: the text
@@ -100,13 +100,30 @@
             #"(?m)^ARG[ \t]+TAILWIND_VERSION=\S*"
             (str "ARG TAILWIND_VERSION=v" (:tailwindcss tools))]]))
 
+(def app-ignored
+  "What the application never tracks that the KIT puts beside it: the machine's own JDK pin, and the
+  project's keys, their record and its toolchain folder - `.env`, `.env-record.edn`, `.kit/` in every
+  `.gitignore` of the workspace (the person, 2026-10-30: \"This would prevent any accidental leak\";
+  plan 7.0, item 8.2f)."
+  [".mise.local.toml" ".env" ".env-record.edn" ".kit/"])
+
+(defn lines-added
+  "`text`, a `.gitignore`, with each of `lines` it lacks appended - add-only, never a line removed -
+  as `{:text :added}`. A line is there when a line of the file is it or its `/`-rooted form, trimmed:
+  the application template may write `/.env`. The one writer of the KIT's ignore lines, the build's
+  and the application's (Fable 5.1's read of 8.2f's design)."
+  [text lines]
+  (let [present (set (map str/trim (str/split-lines (str text))))
+        added (vec (remove #(or (present %) (present (str "/" %))) lines))]
+    {:text (if (empty? added)
+             text
+             (str text (when-not (or (str/blank? text) (str/ends-with? text "\n")) "\n") (str/join "\n" added) "\n"))
+     :added added}))
+
 (defn with-ignore
-  "`.gitignore` with `.mise.local.toml` in it."
+  "`.gitignore` with each of `app-ignored` in it."
   [text]
-  {:text (if (some #{".mise.local.toml" "/.mise.local.toml"} (map str/trim (str/split-lines text)))
-           text
-           (str text (when-not (or (str/blank? text) (str/ends-with? text "\n")) "\n") ".mise.local.toml\n"))
-   :missed []})
+  {:text (:text (lines-added text app-ignored)) :missed []})
 
 (def files
   "Each file the KIT writes, and how."

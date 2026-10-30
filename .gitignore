@@ -20,4 +20,6 @@ target/
 .env
 .env-record.edn
 .env.local
+# the project's toolchain folder (plan 7.0, item 8.2f): above the clone, so never here - the belt
+.kit/
 .mise.local.toml
