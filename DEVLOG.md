@@ -68,6 +68,27 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### Item 8 reshaped: the pack installs the tools and no longer runs them - its `fmt`/`fmt-check` undone; the KIT's format rules at the clone's root (plan 7.0, item 8.2a')
+
+The person (2026-10-30), at 8.2b: "I feel like this is getting way too complicated. The goal of item 8 -
+KIT self-contained was to simplify the setup, not make it an elaborate ritual. Again the KISS principle:
+a file that specifies the tools/library versions for the toolchain; a known-good report; a step to
+compare the (adopter's) machine ... and (a) the adopter can install it themselves or (b) offer to
+install them." The tools in a folder per project, named once and called by their path; the check and
+the true-up at any time. Written as `.local/plans/v7/kit-plan-v7.0-item8-reshaped-design.md`, read by
+Fable 5.1 (go, seven trims folded in); the person: "go, fold them in and start with the undo". This
+commit is the undo of what the reshape drops of 8.2a: the pack's `fmt` and `fmt-check` and
+`toolchain_fmt.clj` with their test; the harness's `fmt`/`fmt-check`, the selfcheck's tasks and `bb
+health`'s copy back to calling `cljfmt` by name, as before `a2fcad2` (by the folder's path once its
+`bin/` exists, 8.2c); `repair`'s `format!` back to cljfmt run from each file's folder, cljfmt's own
+search, and `require-tool! :cljfmt` back - kept from the reads: the exit is read, the highest of the
+runs, so a file cljfmt cannot read is gate 0's failure in cljfmt's words. The disagreement 8.2a's search
+fixed - a file under `tools/*/src`, no config of its own, got cljfmt's defaults in gate 0 and
+`harness/`'s rules in the fmt gate - is fixed the reader's way: `harness/.cljfmt.edn` MOVES to the
+clone's root, one file cljfmt finds from either place, no copy and no code of ours (tried: cljfmt run
+from `tools/toolchain/src` flags a padded map the defaults pass). Kept from 8.2a: cljfmt a row of the
+matrix, Intel Mac off the platforms, `kit-pins` reading the doctor's probe first.
+
 ### The README says where KIT is certified apart from where its toolchain is published; gate 0's docstring says the one search (From Fable 5.1's read of `4d5fd2c` and `e9c7114`)
 
 The person: "go, take them as one commit". A low-medium: the root README's callout said KIT "runs on"

@@ -1,3 +1,7 @@
+;; THE KIT'S FORMAT RULES, at the clone's root (moved from harness/, plan 7.0, item 8.2a): cljfmt's
+;; own search finds them from harness/ - the fmt gate - and from a file's folder under tools/*/src -
+;; gate 0 - so the two gates read one file. The selfcheck project keeps its own.
+;;
 ;; :remove-multiple-non-indenting-spaces? makes rule :align-forms true rather
 ;; than aspirational. Without it cljfmt accepts `:else     x` silently, and the
 ;; rule told agents it would fail the gate — a rule that misdescribes its gate

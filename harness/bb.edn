@@ -39,10 +39,8 @@
         :requires ([harness.gates.record :as record])
         :task (record/run-tests! (test-nses))}
 
-  ;; cljfmt is the toolchain pack's dependency (plan 7.0, item 8.2a): its version the pack's bb.edn's,
-  ;; each file's config as cljfmt finds it, the output cljfmt's own
-  fmt {:doc "Format with cljfmt - the toolchain pack's `fmt`"
-       :task (shell "bb --config ../tools/toolchain/bb.edn fmt --dir . src test dev ../tools/security/src ../tools/browser/src ../tools/svg/src ../tools/toolchain/src")}
+  fmt {:doc "Format with cljfmt"
+       :task (shell "cljfmt fix src test dev ../tools/security/src ../tools/browser/src ../tools/svg/src ../tools/toolchain/src")}
 
   ;; Gate 0 for work done beside the loop. NOT part of `gates` — gate 0 runs
   ;; before the gate sequence, not inside it.
@@ -91,8 +89,8 @@
                :requires ([harness.setup.health :as health])
                :task (apply health/sync-main *command-line-args*)}
 
-  fmt-check {:doc "Check formatting (no changes) - the toolchain pack's `fmt-check`"
-             :task (shell "bb --config ../tools/toolchain/bb.edn fmt-check --dir . src test dev ../tools/security/src ../tools/browser/src ../tools/svg/src ../tools/toolchain/src")}
+  fmt-check {:doc "Check formatting (no changes)"
+             :task (shell "cljfmt check src test dev ../tools/security/src ../tools/browser/src ../tools/svg/src ../tools/toolchain/src")}
 
   lint {:doc "Lint with clj-kondo"
         :task (shell "clj-kondo --lint src test dev ../tools/security/src ../tools/browser/src ../tools/svg/src ../tools/toolchain/src")}

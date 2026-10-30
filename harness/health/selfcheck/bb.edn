@@ -2,13 +2,11 @@
  :tasks
  {:requires ([babashka.fs :as fs])
 
-  ;; cljfmt by the KIT's toolchain pack (plan 7.0, item 8.2a), as the boundary gate below is the
-  ;; harness's: `bb health` runs a copy and names the pack by the KIT's path
-  fmt {:doc "Format with cljfmt - the KIT's toolchain pack's `fmt`"
-       :task (shell "bb --config ../../../tools/toolchain/bb.edn fmt --dir . src test dev")}
+  fmt {:doc "Format with cljfmt"
+       :task (shell "cljfmt fix src test dev")}
 
   fmt-check {:doc "Check formatting (no changes)"
-             :task (shell "bb --config ../../../tools/toolchain/bb.edn fmt-check --dir . src test dev")}
+             :task (shell "cljfmt check src test dev")}
 
   lint {:doc "Lint with clj-kondo"
         :task (shell "clj-kondo --lint src test dev")}

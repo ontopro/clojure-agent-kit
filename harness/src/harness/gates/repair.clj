@@ -22,7 +22,6 @@
   (:require
    [babashka.fs :as fs]
    [babashka.process :as p]
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [harness.setup.doctor :as doctor]))
 
@@ -90,36 +89,41 @@
   [root]
   (filterv #(re-find clojure-file %) (changed-files root)))
 
-(defn toolchain-pack
-  "The KIT's toolchain pack's `bb.edn`, found from the harness's own resources - wherever the
-  process runs."
-  []
-  (str (fs/path (-> (io/resource "toolchain.edn") io/file fs/parent fs/parent fs/parent)
-                "tools" "toolchain" "bb.edn")))
-
 (defn- format!
-  "Run cljfmt over `files` - the toolchain pack's `fmt` (plan 7.0, item 8.2a), one call from `dir`;
-  the process's `{:exit :out :err}`.
+  "Run cljfmt over `files`, once per directory, FROM that directory; `{:exit
+  :out :err}` - the highest exit of the runs, their output joined - which
+  `repair!` reads.
 
-  ONE SEARCH FOR BOTH GATES. The invariant this gate owes is agreement with the
-  fmt gate — whatever that gate enforces, gate 0 should already have applied.
-  Gate 0 used to keep it by delegating: cljfmt run from beside each file, left
-  to search, while the fmt gate ran cljfmt from the project directory - and a
-  file in a folder with no config of its own got cljfmt's defaults from the
-  first and the project's rules from the second. Now both gates go through the
-  toolchain pack's `fmt`/`fmt-check`, one search for both: a file is held to
-  the first config found from its own folder up, else the one from `dir`'s, so
-  the two cannot disagree. The search is the pack's own, by cljfmt's names and
-  order (`.cljfmt.edn`, then `cljfmt.edn` - a search for the dotted name alone
-  once silently missed the other), held to them by `toolchain_fmt_test`.
+  cljfmt searches ancestors for its config, so running it from beside a file
+  finds whatever that file's project declares — and finds it by whatever name
+  cljfmt itself accepts, which is more than one: `.cljfmt.edn` and
+  `cljfmt.edn` both work, and a hand-rolled search for the dotted name alone
+  silently misses the other.
+
+  DELEGATING IS THE POINT, not a shortcut. The invariant this gate owes is
+  agreement with the fmt gate — whatever that gate enforces, gate 0 should
+  already have applied — and the fmt gate runs cljfmt from the project
+  directory and lets it search. Any rule of our own for locating config is a
+  way for the two to disagree. So the KIT's own rules live where cljfmt's
+  search finds them from either place: `.cljfmt.edn` at the clone's root, found
+  from `harness/` by the fmt gate and from a file under `tools/*/src` by this -
+  which, while the rules were `harness/`'s alone, got cljfmt's defaults (plan
+  7.0, item 8.2a, Fable 5.1's read of the reshaped item 8).
+
+  One call per directory rather than per file: a process start is the
+  expensive part, and files in one directory share an answer.
 
   What this replaced: a single call from the repository root, which in a repo
   whose projects are subdirectories formatted everything by the root's rules —
   here, none. `bb repair` reported success and `bb gates` then failed on the
   file it had just repaired."
   [dir files]
-  (apply p/shell {:dir (str dir) :out :string :err :string :continue true}
-         "bb" "--config" (toolchain-pack) "fmt" "--dir" "." files))
+  (let [rs (vec (for [[parent group] (group-by #(fs/parent (fs/absolutize (fs/path dir %))) files)]
+                  (apply p/shell {:dir (str parent) :out :string :err :string :continue true}
+                         "cljfmt" "fix" (map #(str (fs/file-name %)) group))))]
+    {:exit (reduce max 0 (map :exit rs))
+     :out (apply str (map :out rs))
+     :err (apply str (map :err rs))}))
 
 (defn repair!
   "Run gate 0 over `files` (paths relative to `dir`). Files the agent never
@@ -134,6 +138,7 @@
     (if (seq existing)
       (do
         (doctor/require-tool! :clj-paren-repair)
+        (doctor/require-tool! :cljfmt)
         (let [res (apply p/shell {:dir dir :out :string :err :string :continue true}
                          "clj-paren-repair" existing)
               ;; THEN cljfmt, in that order: balance the brackets before asking
@@ -146,10 +151,10 @@
               ;; "a well-placed gate 0 makes gate 1 nearly a no-op" is this
               ;; namespace's own claim, and it was not true of the one
               ;; mechanical difference that kept arising.
-              ;; Each file's config as cljfmt finds it — see `format!`. ITS EXIT IS READ
-              ;; (Fable 5.1's read of `a2fcad2`): a pack that cannot run - no cljfmt,
-              ;; a file it cannot read - is gate 0's failure, said with the pack's words,
-              ;; never files reported repaired that the fmt gate then fails.
+              ;; Once per directory, from that directory — see `format!`. ITS EXIT
+              ;; IS READ (Fable 5.1's read of `a2fcad2`): a file cljfmt cannot read is
+              ;; gate 0's failure, said in cljfmt's words, never a file reported
+              ;; repaired that the fmt gate then fails.
               fmt (format! dir existing)
               ;; after both, so neither can strip what we just added
               newlines (vec (keep #(ensure-trailing-newline! dir %) existing))]
