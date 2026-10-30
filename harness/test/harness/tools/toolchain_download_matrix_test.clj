@@ -16,14 +16,18 @@
 
 (def matrix (dm/read-matrix "../tools/toolchain/download-matrix.edn"))
 
-(deftest the-platform-is-one-of-three-and-any-other-is-refused-by-name
+(deftest the-platform-is-one-of-three-and-any-other-is-told-which
   (is (= :macos-aarch64 (dm/platform-key "Mac OS X" "aarch64")))
   (is (= :linux-aarch64 (dm/platform-key "Linux" "aarch64")))
   (is (= :linux-amd64 (dm/platform-key "Linux" "amd64")))
   (doseq [[os arch] [["Mac OS X" "x86_64"] ["Windows 11" "amd64"] ["Linux" "riscv64"] ["FreeBSD" "amd64"]]]
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                          (re-pattern (str "no toolchain for " os " " arch " - the download matrix has macos-aarch64"))
-                          (dm/platform-key os arch)))))
+    (is (nil? (dm/platform-key os arch)) (str os " " arch ": nil, never a throw")))
+  ;; the person, 2026-10-30: "add a sentence listing the supported machines" - from `platforms` itself
+  (is (= (str "the download matrix publishes no build for this machine (Mac OS X x86_64) - it publishes for "
+              "macOS on Apple silicon (macos-aarch64) and Linux on ARM64 or x86-64 (linux-aarch64, linux-amd64). "
+              "Install the tools yourself at the versions `bb doctor` lists; the KIT runs on them.")
+         (dm/unpublished-line "Mac OS X" "x86_64")))
+  (is (every? #(clojure.string/includes? (dm/published) (name %)) dm/platforms) "every published platform named"))
 
 (deftest every-archive-has-its-url-filled-and-a-sha256
   (doseq [t (remove #(dm/bbin? matrix %) (keys matrix))

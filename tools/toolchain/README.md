@@ -19,8 +19,10 @@ bb --config <kit>/tools/toolchain/bb.edn <task> [args]
 A map keyed by tool. For each, the exact version, the archive's URL with `{version}` and
 `{asset}` to fill, and per platform - `macos-aarch64`, `linux-aarch64`, `linux-amd64` - the
 asset's spelling and its sha256 - the three the matrix publishes for, of which the health records
-certify `macos-aarch64` and `linux-aarch64`. Any other platform is refused by name; an Intel Mac
-among them.
+certify `macos-aarch64` and `linux-aarch64`. Any other machine - an Intel Mac among them - is never
+guessed at: `status`, `toolchain-install` and `toolchain-env` tell it one sentence, the published
+platforms in words and that it installs the tools itself at the versions `bb doctor` lists; `status`
+answers it with no rows and exit 0, `toolchain-install` refuses.
 
 | Tool | Where from | The publisher's checksum |
 |---|---|---|

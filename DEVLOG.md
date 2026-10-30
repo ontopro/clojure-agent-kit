@@ -68,6 +68,29 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### A machine the download matrix publishes no build for is told so in one sentence, naming the machines it does - never a stack trace (From Fable 5.1's read of `1aa6603`; the person's sentence)
+
+`platform-key` threw off the three platforms, and `status/main` did not catch it: an Intel Mac's `status
+--edn` was a stack trace, and `bb self-check` read it as "the toolchain pack's status did not answer";
+`toolchain-env` (8.3c) and `toolchain-install` each caught it their own way. The reader: the pack answers it
+once. The person, on the sentence first proposed: "is this the only thing the Adopter sees? It would good
+to add a sentence listing the supported machines/OS"; and "go, with this wording".
+- `platform-key` gives nil off the published platforms; `published` says them in words from `platforms`
+  itself, and `unpublished-line` is what the machine is told: "the download matrix publishes no build for
+  this machine (Mac OS X x86_64) - it publishes for macOS on Apple silicon (macos-aarch64) and Linux on
+  ARM64 or x86-64 (linux-aarch64, linux-amd64). Install the tools yourself at the versions `bb doctor`
+  lists; the KIT runs on them."
+- `status` answers it: no rows, `:unpublished` the line in `--edn`, exit 0 - so `bb self-check` goes on and
+  8.3a's doctor reads one answer. `toolchain-install` refuses with it (exit 1, nothing to install).
+  `toolchain-env` says it before anything about the tools, its own catch gone.
+- What this says is where the matrix PUBLISHES builds; where the KIT is CERTIFIED - the health records,
+  macOS and Linux on ARM64 - stays the README's own sentence (`2d3f6be`).
+
+Proved: the matrix test (nil off the platforms, the sentence, every published platform named); by hand, the
+pack run with `-Dos.arch=x86_64` on this Mac - `status` and `status --edn` (`:platform nil :rows []`, the
+line), `toolchain-install --dry-run` (the line, exit 1), `toolchain-env` (the line first) - and run as itself,
+unchanged.
+
 ### `toolchain-env` puts the folder's `bin` first and its JDK as JAVA_HOME; the machine's JDKs and the project's pin are no longer looked for (plan 7.0, item 8.3c)
 
 Built before 8.3a (the person: "go 8.3c now"; the reader: 8.3a's fix line "`eval "$(bb toolchain-env)"`" is

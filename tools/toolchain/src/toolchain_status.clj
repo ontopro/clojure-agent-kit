@@ -109,18 +109,23 @@
 
 (defn main
   "The `status` task: the rows for this machine, `--edn` as the map the doctor will read - the place
-  in it. A folder that is no project folder: said, exit 1."
+  in it. A folder that is no project folder: said, exit 1. A machine the matrix publishes no build for:
+  no rows, `:unpublished` the line it is told (`dm/unpublished-line`), exit 0 - the one answer the
+  doctor, `bb self-check` and `toolchain-env` read."
   [pack-dir args]
   (let [{:keys [cache refusal note] :as at} (current-place pack-dir)
         matrix (dm/read-matrix (str pack-dir "/download-matrix.edn"))
         platform (dm/platform-key (System/getProperty "os.name") (System/getProperty "os.arch"))
-        rs (rows matrix cache platform fs/executable?
-                 {:running {:bb (System/getProperty "babashka.version")} :config (str pack-dir "/bb.edn")
-                  :commit-of commit-of})]
+        unpublished (when-not platform (dm/unpublished-line (System/getProperty "os.name") (System/getProperty "os.arch")))
+        rs (when platform
+             (rows matrix cache platform fs/executable?
+                   {:running {:bb (System/getProperty "babashka.version")} :config (str pack-dir "/bb.edn")
+                    :commit-of commit-of}))]
     (if (some #{"--edn"} args)
-      (prn (assoc (select-keys at [:folder :env :refusal :note]) :cache cache :platform platform :rows (vec rs)))
+      (prn (cond-> (assoc (select-keys at [:folder :env :refusal :note]) :cache cache :platform platform :rows (vec rs))
+             unpublished (assoc :unpublished unpublished)))
       (do (println (place-line at))
           (when note (println (str "  note: " note)))
           (when refusal (println (str "  refused: " refusal)))
-          (run! println (lines platform rs))))
+          (if unpublished (println (str "  " unpublished)) (run! println (lines platform rs)))))
     (when refusal (System/exit 1))))

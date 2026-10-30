@@ -249,8 +249,7 @@
   (let [say (partial say "toolchain-env")
         at (placed "toolchain-env" pack-dir args)
         matrix (dm/read-matrix (str pack-dir "/download-matrix.edn"))
-        platform (try (dm/platform-key (System/getProperty "os.name") (System/getProperty "os.arch"))
-                      (catch clojure.lang.ExceptionInfo _ nil))
+        platform (dm/platform-key (System/getProperty "os.name") (System/getProperty "os.arch"))
         true-up (str "bb --config " pack-dir "/bb.edn toolchain-install")
         bin (let [b (str (:cache at) "/bin")] (when (fs/directory? b) b))
         home (folder-jdk matrix (:cache at) platform fs/executable?)
@@ -265,9 +264,9 @@
         (run! say (flag-lines checked))
         (say "open the file and read those lines; change them, or accept the file as it is with `bb env-accept` in a terminal")
         (System/exit 1))
-      (say (cond bin (str "the tools: " bin " first on the PATH")
-                 platform (str "no tools in the folder (" (:cache at) "/bin) - `" true-up "` installs them; the shell's own PATH is left as it is")
-                 :else "the download matrix publishes no build for this machine - the tools are its own, on its PATH"))
+      (say (cond (nil? platform) (dm/unpublished-line (System/getProperty "os.name") (System/getProperty "os.arch"))
+                 bin (str "the tools: " bin " first on the PATH")
+                 :else (str "no tools in the folder (" (:cache at) "/bin) - `" true-up "` installs them; the shell's own PATH is left as it is")))
       (say (if home
              (str "the JDK " (get-in matrix [:java :version]) " from the folder: " home)
              (str "no JDK in the folder - the shell's own is left as it is (21 or newer is used)"

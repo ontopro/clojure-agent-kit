@@ -6,7 +6,8 @@
   and a publisher's checksum read out of the file it publishes. `toolchain_status.clj` and the
   `toolchain-sum` task do the looking and the fetching.
 
-  A platform is one of `platforms`; any other is refused by name, never guessed. An Intel Mac is not
+  A platform is one of `platforms`; any other is never guessed - `platform-key` gives nil and every
+  command says `unpublished-line`, the published platforms in words. An Intel Mac is not
   one (the person, 2026-10-30): cljfmt publishes no build for it, and the KIT runs on Apple silicon
   and on Linux."
   (:require [clojure.edn :as edn]
@@ -49,7 +50,9 @@
            second))
 
 (defn platform-key
-  "This machine's platform from the JVM's `os.name` and `os.arch` (bb's own), as the matrix keys it."
+  "This machine's platform from the JVM's `os.name` and `os.arch` (bb's own), as the matrix keys it - nil
+  for one the matrix publishes no build for, which every caller says with `unpublished-line` (plan 7.0,
+  before 8.3a: it threw, and `status --edn` answered an Intel Mac with a stack trace)."
   [os-name os-arch]
   (let [os (cond (str/starts-with? os-name "Mac") "macos"
                  (str/starts-with? os-name "Linux") "linux")
@@ -57,11 +60,31 @@
                ("aarch64" "arm64") "aarch64"
                ("amd64" "x86_64") "amd64"
                nil)]
-    (if (and os arch (some #{(keyword (str os "-" arch))} platforms))
-      (keyword (str os "-" arch))
-      (throw (ex-info (str "no toolchain for " os-name " " os-arch
-                           " - the download matrix has " (str/join ", " (map name platforms)))
-                      {:os-name os-name :os-arch os-arch})))))
+    (when (and os arch (some #{(keyword (str os "-" arch))} platforms))
+      (keyword (str os "-" arch)))))
+
+(def ^:private os-words {"macos" "macOS" "linux" "Linux"})
+
+(def ^:private arch-words
+  {["macos" "aarch64"] "Apple silicon" ["linux" "aarch64"] "ARM64" ["linux" "amd64"] "x86-64"})
+
+(defn published
+  "The platforms the matrix publishes for, in words - pure, from `platforms`: per OS its architectures,
+  then the keys: `macOS on Apple silicon (macos-aarch64) and Linux on ARM64 or x86-64 (linux-aarch64,
+  linux-amd64)`."
+  []
+  (str/join " and "
+            (for [[os ps] (group-by #(first (str/split (name %) #"-")) platforms)]
+              (str (get os-words os os) " on "
+                   (str/join " or " (for [p ps] (get arch-words (str/split (name p) #"-") (name p))))
+                   " (" (str/join ", " (map name ps)) ")"))))
+
+(defn unpublished-line
+  "What a machine the matrix publishes no build for is told, once, by every command that reads the
+  matrix (the person, 2026-10-30: \"add a sentence listing the supported machines\")."
+  [os-name os-arch]
+  (str "the download matrix publishes no build for this machine (" os-name " " os-arch ") - it publishes for "
+       (published) ". Install the tools yourself at the versions `bb doctor` lists; the KIT runs on them."))
 
 (defn os-of [platform] (keyword (first (str/split (name platform) #"-"))))
 

@@ -322,7 +322,8 @@
           _ (when refusal (throw (ex-info refusal {})))
           link (or link (str cache "/bin"))
           matrix (dm/read-matrix (str pack-dir "/download-matrix.edn"))
-          platform (dm/platform-key (System/getProperty "os.name") (System/getProperty "os.arch"))
+          platform (or (dm/platform-key (System/getProperty "os.name") (System/getProperty "os.arch"))
+                       (throw (ex-info (dm/unpublished-line (System/getProperty "os.name") (System/getProperty "os.arch")) {})))
           steps (dm/plan matrix cache platform {:only only :running {:bb (System/getProperty "babashka.version")}
                                                 :present? fs/executable? :commit-of status/commit-of
                                                 :bin-dir link})
