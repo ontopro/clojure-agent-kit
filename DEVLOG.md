@@ -68,6 +68,35 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### The project's toolchain first on the PATH of each task the front door hands on, and of `bb self-check`'s doctor and health (plan 7.0, item 8.2c)
+
+A shell that did not run `eval "$(bb toolchain-env)"` ran whatever tools its PATH gave. Now what the KIT
+starts without that shell's eval runs the toolchain folder's versions, every tool still called by name:
+- **The front door** (`harness.setup.front-door`'s init-form, the workspace's `bb.edn`): each task is
+  handed on with `PATH` = the toolchain folder's `bin/`, then the shell's PATH, beside `KIT_WORKSPACE`.
+  The folder is the toolchain pack's rule - `KIT_TOOLCHAIN_DIR`, else `.kit/toolchain` in the folder above
+  the KIT's clone - written in the init-form as text, since the front door is EDN that loads no pack; a
+  test evaluates the init-form and holds it equal to `toolchain-status/cache-dir`, set, unset and blank.
+- **`bb self-check`** (the root `bb.edn`): the doctor and health run with the same `bin/` first, the
+  folder asked of the pack once (`status --edn`, its `:cache`); a folder the pack refuses - the home
+  folder or `/` above the clone - stops it with the pack's words. `workspace/tools-path` joins the two.
+- **No empty PATH entry**: with no PATH in the environment the folder's `bin/` stands alone - an empty
+  entry is the current folder to a shell.
+- **The documents**: the front door's header and namespace docstring, the harness README's front-door
+  paragraph, self-check's doc; and `tools/README.md`'s toolchain row, which still said `~/.kit/toolchain/`
+  after 8.2b (the person: "go, with the README fix").
+
+A workspace's front door made before this lacks the PATH line, so the workspace gates'
+`front-door-sync --check` fails there until `bb front-door-sync` or `bb upgrade` writes it again - the
+first project's included.
+
+Proved: `front_door_test` (the init-form's `tools-path` against the pack's `cache-dir`, the line beside
+`KIT_WORKSPACE`), `workspace_test`; by hand, a scratch workspace with a fake `cljfmt` in its
+`.kit/toolchain/bin` - `bb doctor` at its front door read the fake, and with `KIT_TOOLCHAIN_DIR` set
+elsewhere the PATH's own; and `bb self-check` with `KIT_TOOLCHAIN_DIR` at a folder holding a fake `java`
+of 1.8 - the doctor said TOO OLD and health did not run. The refusal was not tried by hand (it needs a
+clone directly under the home folder).
+
 ### `.env`, `.env-record.edn` and `.kit/` in every `.gitignore` of the workspace, by one add-only writer (plan 7.0, item 8.2f)
 
 The person (2026-10-30): "I think both .env and .kit should be added to all the .gitignore files in the

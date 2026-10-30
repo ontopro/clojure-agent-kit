@@ -450,9 +450,10 @@ of a project is written into it - which is why the list below is short.
 - **Every command a project runs is run from its workspace folder.** `bb init` writes a front door
   there, `<xyx>/bb.edn`, offering every harness task a project uses (`harness.setup.front-door`'s
   `tasks`; the KIT's own gates and syncs are not on it). Each hands on to the same task here, with
-  `KIT_WORKSPACE` set to the workspace and every argument that is a path - one that exists, or one a
-  command will write in a folder that exists - made absolute from there; a model slug or a git rev
-  goes on as typed. A workspace keeps the front door it was made with: after an upgrade, `bb
+  `KIT_WORKSPACE` set to the workspace, the project's toolchain (`.kit/toolchain/bin/` in the folder
+  above the KIT's clone, or `KIT_TOOLCHAIN_DIR`'s) first on its PATH, and every argument that is a
+  path - one that exists, or one a command will write in a folder that exists - made absolute from
+  there; a model slug or a git rev goes on as typed. A workspace keeps the front door it was made with: after an upgrade, `bb
   front-door-sync` writes it again, and `bb doctor` in the workspace says when it lacks a task.
 - **A KIT kept outside its workspace is pointed at it.** Run here rather than through the front
   door, a command finds the workspace by walking up from `harness/`, which from a clone kept elsewhere (`bb init <name> <dir>`, or one

@@ -5,7 +5,8 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
-   [harness.setup.front-door :as front-door]))
+   [harness.setup.front-door :as front-door]
+   [toolchain-status :as status]))
 
 (def harness (front-door/harness-tasks (slurp "bb.edn")))
 
@@ -31,35 +32,66 @@
       (is (= (get harness "next") (:doc (get-in m [:tasks 'next])))))
     (is (str/includes? (pr-str (get-in m [:tasks :init])) "KIT_WORKSPACE"))))
 
-(deftest a-path-is-what-exists-or-would-be-written-here-never-a-slug
-  ;; The front door's own `path-like?`, evaluated as the workspace's bb.edn runs
-  ;; it: `here` is the folder of the bb.edn babashka was given.
-  (let [ws (str (fs/real-path (fs/create-temp-dir {:prefix "front-door-"})))
-        prop "babashka.config"
+(defn- door-fn
+  "The front door's own function `sym`, its init-form evaluated as the workspace's bb.edn at `ws`
+  runs it: `here` is the folder of the bb.edn babashka was given. `f` is called with it."
+  [ws sym f]
+  (let [prop "babashka.config"
         before (System/getProperty prop)]
-    (fs/create-dirs (fs/path ws "work" "runs"))
-    (spit (str (fs/path ws "work" "brief.md")) "a brief")
     (try
       (System/setProperty prop (str (fs/path ws "bb.edn")))
-      (let [path-like? (do (binding [*ns* (create-ns 'front-door-eval)]
-                             (refer-clojure)
-                             (require '[babashka.fs :as fs] '[clojure.edn :as edn] '[clojure.string :as str])
-                             (load-string (str/replace @#'front-door/init-form "(apply shell" "(apply list")))
-                           (ns-resolve 'front-door-eval 'path-like?))]
-        (testing "a path: it exists, its folder exists, or it is a bare .md or .edn name"
-          (is (path-like? "work/brief.md"))
-          (is (path-like? "work/runs/r1") "a run directory to be made, in a folder that exists")
-          (is (path-like? "decision.edn")))
-        (testing "not a path: a model slug, a git rev, a flag, a word, an absolute path"
-          (is (not (path-like? "openai/gpt-6.1-sol")))
-          (is (not (path-like? "anthropic/claude-opus-5.5 high")))
-          (is (not (path-like? "origin/main")))
-          (is (not (path-like? "--model")))
-          (is (not (path-like? "opus")))
-          (is (not (path-like? (str (fs/path ws "work" "brief.md")))) "absolute already: handed on as typed")))
+      (binding [*ns* (create-ns 'front-door-eval)]
+        (refer-clojure)
+        (require '[babashka.fs :as fs] '[clojure.edn :as edn] '[clojure.string :as str])
+        (load-string (str/replace @#'front-door/init-form "(apply shell" "(apply list")))
+      (f (ns-resolve 'front-door-eval sym))
       (finally
         (if before (System/setProperty prop before) (System/clearProperty prop))
         (remove-ns 'front-door-eval)))))
+
+(deftest each-task-runs-with-the-projects-toolchain-first-on-its-path
+  ;; plan 7.0, item 8.2c: the folder is the toolchain pack's rule, written in the init-form as text;
+  ;; this holds the two equal - unset, set and blank - and the shell's PATH kept after it.
+  (let [ws (str (fs/real-path (fs/create-temp-dir {:prefix "front-door-path-"})))
+        kit (str (fs/path ws "KIT"))
+        pack (fn [env] (str (status/cache-dir env (status/project-folder kit)) "/bin"))]
+    (fs/create-dirs kit)
+    (spit (str (fs/path ws "workspace.edn")) (pr-str {:workspace/kit "KIT"}))
+    (door-fn ws 'tools-path
+             (fn [tools-path]
+               (testing "unset: .kit/toolchain/bin in the folder above the clone - the workspace"
+                 (is (= (str ws "/.kit/toolchain/bin:/usr/bin") (tools-path {"PATH" "/usr/bin"})))
+                 (is (= (str (pack {}) ":/usr/bin") (tools-path {"PATH" "/usr/bin"}))))
+               (testing "KIT_TOOLCHAIN_DIR overrides, as the pack's; blank is unset"
+                 (is (= "/opt/tc/bin:/usr/bin" (tools-path {"KIT_TOOLCHAIN_DIR" "/opt/tc" "PATH" "/usr/bin"})))
+                 (is (= (str (pack {"KIT_TOOLCHAIN_DIR" "/opt/tc"}) ":/usr/bin")
+                        (tools-path {"KIT_TOOLCHAIN_DIR" "/opt/tc" "PATH" "/usr/bin"})))
+                 (is (= (str (pack {"KIT_TOOLCHAIN_DIR" " "}) ":/usr/bin")
+                        (tools-path {"KIT_TOOLCHAIN_DIR" " " "PATH" "/usr/bin"}))))
+               (testing "no PATH: the folder alone, never an empty entry (the current folder)"
+                 (is (= (str ws "/.kit/toolchain/bin") (tools-path {}))))))
+    (is (str/includes? @#'front-door/init-form "\"PATH\" (tools-path (System/getenv))")
+        "the PATH is handed on beside KIT_WORKSPACE")))
+
+(deftest a-path-is-what-exists-or-would-be-written-here-never-a-slug
+  ;; The front door's own `path-like?`, evaluated as the workspace's bb.edn runs it.
+  (let [ws (str (fs/real-path (fs/create-temp-dir {:prefix "front-door-"})))]
+    (fs/create-dirs (fs/path ws "work" "runs"))
+    (spit (str (fs/path ws "work" "brief.md")) "a brief")
+    (door-fn
+     ws 'path-like?
+     (fn [path-like?]
+       (testing "a path: it exists, its folder exists, or it is a bare .md or .edn name"
+         (is (path-like? "work/brief.md"))
+         (is (path-like? "work/runs/r1") "a run directory to be made, in a folder that exists")
+         (is (path-like? "decision.edn")))
+       (testing "not a path: a model slug, a git rev, a flag, a word, an absolute path"
+         (is (not (path-like? "openai/gpt-6.1-sol")))
+         (is (not (path-like? "anthropic/claude-opus-5.5 high")))
+         (is (not (path-like? "origin/main")))
+         (is (not (path-like? "--model")))
+         (is (not (path-like? "opus")))
+         (is (not (path-like? (str (fs/path ws "work" "brief.md")))) "absolute already: handed on as typed"))))))
 
 (deftest front-door-sync-writes-the-kits-front-door-and-never-a-projects-own-bb-edn
   (let [kit-dir (str (fs/parent (fs/real-path ".")))

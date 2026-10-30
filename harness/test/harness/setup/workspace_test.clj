@@ -73,3 +73,9 @@
              (workspace/self-check-next kit))))
     (testing "a fresh clone: bb init"
       (is (re-find #"next       bb init - the workspace" (workspace/self-check-next elsewhere))))))
+
+(deftest self-check-runs-with-the-toolchain-folders-bin-first
+  ;; plan 7.0, item 8.2c: the folder's bin/ before the shell's PATH, never an empty entry
+  (is (= "/p/.kit/toolchain/bin:/usr/bin:/bin" (workspace/tools-path "/p/.kit/toolchain" "/usr/bin:/bin")))
+  (is (= "/p/.kit/toolchain/bin" (workspace/tools-path "/p/.kit/toolchain" nil)))
+  (is (= "/p/.kit/toolchain/bin" (workspace/tools-path "/p/.kit/toolchain" ""))))

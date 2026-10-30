@@ -61,6 +61,14 @@
                 (update :workspace/rule-mirrors #(mapv abs %))))
           (recur (fs/parent dir)))))))
 
+(defn tools-path
+  "The PATH `bb self-check` runs the doctor and health with: the toolchain folder `cache`'s `bin/`
+  first, then `path`, the shell's - never an empty entry, which a shell reads as the current folder
+  (plan 7.0, item 8.2c)."
+  [cache path]
+  (let [bin (str cache "/bin")]
+    (if (str/blank? path) bin (str bin ":" path))))
+
 (defn self-check-next
   "The line `bb self-check` ends with, in the clone at `clone-dir`: `bb init` for a fresh
   clone; for a clone that is already a workspace's KIT, the workspace's own next step - its
