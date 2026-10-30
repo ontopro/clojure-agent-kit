@@ -193,8 +193,9 @@
 (defn install-step!
   "One `:install` step: the archive downloaded and verified, unpacked into a folder beside its
   place - the Clojure CLI laid out there by `cli-layout`, its paths the place's - the executable
-  made one, and the folder swapped into place (`swap-in!`). The archive deleted after, unless
-  `keep?`."
+  made one, and the folder swapped into place (`swap-in!`). The archive deleted after a success, unless
+  `keep?`: a failure keeps the verified archive, which `download!` reuses on the retry, whose success
+  deletes it - a retry never fetches the JDK's 330 MB again (Fable 5.1's read of `e7a08d3`)."
   [matrix {:keys [tool version dir bin download] :as step} keep?]
   (download! step)
   (fs/create-dirs (fs/parent dir))
@@ -209,12 +210,12 @@
                        s)
                      unpacked)]
         (fs/set-posix-file-permissions (str staged (subs bin (count dir))) "rwxr-xr-x")
-        (swap-in! staged dir))
-      (finally (fs/delete-tree tmp)
-               (when-not keep?
-                 (fs/delete-if-exists download)
-                 (let [d (fs/parent download)]
-                   (when (and (fs/directory? d) (empty? (fs/list-dir d))) (fs/delete d)))))))
+        (swap-in! staged dir)
+        (when-not keep?
+          (fs/delete-if-exists download)
+          (let [d (fs/parent download)]
+            (when (and (fs/directory? d) (empty? (fs/list-dir d))) (fs/delete d)))))
+      (finally (fs/delete-tree tmp))))
   bin)
 
 (defn link-targets
@@ -270,7 +271,7 @@
                                          (println (format "  %-11s %-16s installed, %s" (name tool) version bin))
                                          (assoc s :step :installed))))))]
         ;; the status before the links, so a link that fails loses no line of it
-        (run! println (status/lines cache platform
+        (run! println (status/lines platform
                                     (status/rows matrix cache platform fs/executable?
                                                  {:running {:bb (System/getProperty "babashka.version")}
                                                   :config (str pack-dir "/bb.edn")})))

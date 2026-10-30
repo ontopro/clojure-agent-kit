@@ -68,6 +68,21 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### A failed install keeps its verified archive; the note names the repository; the folder said once (From Fable 5.1's read of `e7a08d3`)
+
+The read held, with two lows, a nit and a wording, taken as one commit (the person: "go, take them as
+one commit"):
+- `install-step!` deleted the archive in `finally`, so a failed unpack or swap deleted a verified
+  download too, and the retry fetched it again - 330 MB for the JDK. The deletion moves to the success
+  path; `download!` reuses an archive whose sha256 is the matrix's, so the retry fetches nothing, and its
+  success deletes the file. "Downloads are not kept" is the steady state, not a failure's cost.
+- `harness/AGENTS.md`'s `toolchain-env` row said "the workspace's `.env`": the project's, in the folder
+  above the KIT's clone.
+- `status` named the toolchain folder twice, on the place line and on its rows' header; the header now
+  says the platform alone.
+- The note for a folder inside a git repository names the repository's root: a home folder kept as a git
+  repository (dotfiles) puts every project under it there, and the person then sees which one it is.
+
 ### The project's folder is the one above the KIT's clone: the tools in its `.kit/toolchain`, linked into `bin/`, the keys in its `.env`; downloads not kept (plan 7.0, item 8.2b)
 
 The person (2026-10-30): "the folder above the clone, KIT/.kit/toolchain is fine - for KIT development too,

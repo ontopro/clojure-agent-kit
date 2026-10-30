@@ -94,7 +94,8 @@
              (status/place pack {} "/home/u")))
       (is (= "/t" (:cache (status/place pack {"KIT_TOOLCHAIN_DIR" "/t"} "/home/u"))))
       (p/shell {:dir (str root) :out :string :err :string} "git" "init" "-q")
-      (is (str/includes? (:note (status/place pack {} "/home/u")) "inside a git repository")))))
+      (is (str/includes? (:note (status/place pack {} "/home/u")) (str "inside the git repository at " (fs/real-path root)))
+          "the repository named, so a home folder kept in git is seen as that"))))
 
 (deftest the-status-rows-are-the-contract-the-doctor-will-read
   (is (= "/k" (status/cache-dir {"KIT_TOOLCHAIN_DIR" "/k"} "/w/p")))
@@ -116,11 +117,11 @@
     (is (= {:tool :bb :version "1.13.229" :path "/c/bb/1.13.229/bb" :present? false
             :fix "bb --config /k/bb.edn toolchain-install --only bb"}
            (bb-row "1.13.226")))
-    (is (= ["toolchain folder /c (linux-amd64)"
+    (is (= ["the tools for linux-amd64:"
             "  bb         1.13.229         the bb running this, 1.13.229"
             "  java       25.0.5+8         not installed - bb --config /k/bb.edn toolchain-install --only java"]
-           (status/lines "/c" :linux-amd64 (status/rows (select-keys matrix [:bb :java]) "/c" :linux-amd64 #{}
-                                                        {:running {:bb "1.13.229"} :config "/k/bb.edn"}))))))
+           (status/lines :linux-amd64 (status/rows (select-keys matrix [:bb :java]) "/c" :linux-amd64 #{}
+                                                   {:running {:bb "1.13.229"} :config "/k/bb.edn"}))))))
 
 (deftest toolchain-sum-says-what-the-checksums-say-together
   (let [a {:platform :linux-amd64 :file "x.tar.gz" :sha256 "m"}]

@@ -41,21 +41,27 @@
          (if (= "/" folder) "the file system's root" "your home folder")
          "): clone the KIT into a project folder - `mkdir <name> && cd <name> && git clone <the KIT> KIT`")))
 
-(defn- in-repo? [folder]
-  (try (zero? (:exit (p/shell {:dir folder :out :string :err :string :continue true}
-                              "git" "rev-parse" "--show-toplevel")))
-       (catch Exception _ false)))
+(defn- repo-root
+  "The root of the git repository `folder` is inside, or nil."
+  [folder]
+  (try (let [{:keys [exit out]} (p/shell {:dir folder :out :string :err :string :continue true}
+                                         "git" "rev-parse" "--show-toplevel")]
+         (when (zero? exit) (str/trim out)))
+       (catch Exception _ nil)))
 
 (defn place
   "Where the project's tools and keys are, for the pack at `pack-dir`: `{:folder :cache :env
   :refusal :note}` - `:refusal` when the folder above the clone is no project folder, `:note` when it is
   inside a git repository."
   [pack-dir env home]
-  (let [folder (project-folder (clone-of pack-dir))]
+  (let [folder (project-folder (clone-of pack-dir))
+        root (repo-root folder)]
     (cond-> {:folder folder :cache (cache-dir env folder) :env (str folder "/.env")}
       (folder-refusal folder home) (assoc :refusal (folder-refusal folder home))
-      (in-repo? folder) (assoc :note (str folder " is inside a git repository: its .kit/ (about 500 MB) and .env "
-                                          "are untracked files there - ignore them in that repository, or move the project")))))
+      ;; the repository named: a home folder kept as a git repository (dotfiles) puts every project
+      ;; under it here, and the person sees it is that one (Fable 5.1's read of e7a08d3)
+      root (assoc :note (str folder " is inside the git repository at " root ": its .kit/ (about 500 MB) and "
+                             ".env are untracked files there - ignore them in that repository, or move the project")))))
 
 (defn place-line "The one line each command says of `place`." [{:keys [folder cache env]}]
   (str "the project folder " folder " - the tools in " cache ", the keys in " env))
@@ -83,9 +89,10 @@
       (not here?) (assoc :fix (str "bb --config " config " toolchain-install --only " (name t))))))
 
 (defn lines
-  "The rows as a person reads them, a row not present with the command that installs it."
-  [cache platform rows]
-  (into [(str "toolchain folder " cache " (" (name platform) ")")]
+  "The rows as a person reads them, a row not present with the command that installs it - under the
+  place line, which names the folder (Fable 5.1's read of `e7a08d3`: once)."
+  [platform rows]
+  (into [(str "the tools for " (name platform) ":")]
         (for [{:keys [tool version path present? running fix]} rows]
           (format "  %-10s %-16s %s" (name tool) version
                   (cond running (str "the bb running this, " running)
@@ -106,5 +113,5 @@
       (do (println (place-line at))
           (when note (println (str "  note: " note)))
           (when refusal (println (str "  refused: " refusal)))
-          (run! println (lines cache platform rs))))
+          (run! println (lines platform rs))))
     (when refusal (System/exit 1))))
