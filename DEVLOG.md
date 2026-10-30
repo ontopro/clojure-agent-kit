@@ -68,6 +68,29 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### The `.env` flagged, not fenced: any name taken, no repository holds it (plan 7.0, item 8.6d, step 1)
+
+Fable 5.1's read of `3ec4c9e` found the deny list still short - `BABASHKA_PRELOADS` runs its code in
+every bb command, `GIT_CONFIG_*` sets `core.fsmonitor`, the `clojure` launcher reads `JAVA_CMD` and
+`CLJ_CONFIG` - and said a deny list is never finished. A key-shaped allow list was set aside by the
+person: a `.env` holds database URLs, ports and flags as well as keys (the application template reads
+`PORT` and `DATABASE_URL`). The person's shape instead (2026-10-30: "start with the KISS principle and
+go with only those that are needed. The only absolute check may need to be that it is not checked into
+GIT. Warnings / flags for things that look like executable code"), designed in
+`.local/plans/v7/kit-plan-v7.0-item8.6-env-review-design.md` and read by Fable 5.1 (go). This step:
+`check-env` takes any name and `export NAME=value`, and FLAGS by line number, never the line's text -
+a bare word (`rm -rf ~`) IS its text - a line that is not `NAME=value`, a value the shell would expand
+or run, a carriage return, and a name in `program-hooks`, now with the reader's `BABASHKA_`, `GIT_`,
+`CLJ_` prefixes and `JAVA_CMD`, `JAVA_OPTS`: a hint, never finished, said so. A flagged file is not
+loaded, nothing on stdout. The absolute check, `repo-check`: refused when the repository the `.env`'s
+folder is in tracks it (`git ls-files --error-unmatch`, asked first) or does not ignore it (`git
+check-ignore -q` - one `git add -A` from committed); no repository, or no git, passes - a workspace's
+root is none. Next in 8.6d: the person's acceptance of a flagged file and the `.env` record (step 2),
+then init's mode 600 and the session's deny rules (step 3). Tried here: a `.env` with
+`DATABASE_URL`, `PORT` and a key loads; `rm -rf ~` and `BABASHKA_PRELOADS` flagged by number, text not
+shown, exit 1; the same workspace made a repository without ignoring it refused. `toolchain_env_test`
+holds each, `repo-check` against git in a scratch repository.
+
 ### `toolchain-env`'s `.env` refuses the names the shell and the JVM read; the workspace's `.env` alone; what holds is printed (From Fable 5.1's read of `82b99ed`)
 
 The medium: the keys line is sourced after the JDK's lines, and a Coder can write the workspace's

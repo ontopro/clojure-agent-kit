@@ -11,10 +11,12 @@
   NO VALUE IS EVER PRINTED (the writer's finding, the person's \"2. Yes\", 2026-10-28): the keys line is
   `set -a; . '<.env>'; set +a`, so the shell reads the file itself and no key passes through this
   command's output - a bare run, or an agent's, puts nothing secret on a screen or in a transcript.
-  And the file is checked first (`check-env`): a `.env` is sourced, so `$(...)` in it would run - a
-  line the shell would expand or run is refused by its line number, its value never echoed, and so
-  is a name the shell owns (`PATH`, `IFS`, `BASH_ENV`, `LD_PRELOAD`...): the file is sourced after the
-  JDK's lines, and a key file never sets how the shell finds or runs a command.
+  THE `.env` REVIEWED, NOT FENCED (the person, 2026-10-30: \"start with the KISS principle and go with
+  only those that are needed\"; item 8.6d): any name is taken - a `.env` holds database URLs, ports and
+  flags as well as keys. The one absolute check is that no repository holds it (`repo-check`). Then
+  `check-env` FLAGS, by line number and never the line's text, what the shell would run or expand and
+  the names a program the KIT runs reads its hooks from (`program-hooks`) - the file is sourced, so
+  `$(...)` in it would run. A flagged file is not loaded.
 
   The JDK: the major the project pins - the `java` line of `.mise.local.toml` over `.mise.toml`, read
   as `harness.setup.doctor/mise-pins` reads it (a test holds the two readers to one answer) - else the
@@ -128,16 +130,20 @@
 
 (def ^:private name-re #"[A-Za-z_][A-Za-z0-9_]*")
 
-(def shell-owned
-  "Names a `.env` never sets, in any case (zsh ties `path` to `PATH`): how the shell finds and runs a
-  command, reads its own startup and splits words, and what the JVM loads - the JDK's lines come
-  first and a key file must not undo them. With every `LD_` and `DYLD_` name."
-  #{"PATH" "JAVA_HOME" "HOME" "IFS" "ENV" "BASH_ENV" "ZDOTDIR" "SHELL" "CDPATH" "FPATH"
-    "PROMPT_COMMAND" "PS4" "JAVA_TOOL_OPTIONS" "JDK_JAVA_OPTIONS" "_JAVA_OPTIONS" "CLASSPATH"})
+(def program-hooks
+  "Names flagged, in any case (zsh ties `path` to `PATH`): how the shell finds and runs a command,
+  reads its own startup and splits words; what the JVM, the `clojure` launcher, bb and git load or
+  run from the environment - the JDK's lines come first and a `.env` must not undo them unseen. A
+  hint, never finished: a name it misses loads as any value does, and the `.env` record shows it
+  arrived. `:names` exact, `:prefixes` every name they begin."
+  {:names #{"PATH" "JAVA_HOME" "HOME" "IFS" "ENV" "BASH_ENV" "ZDOTDIR" "SHELL" "CDPATH" "FPATH"
+            "PROMPT_COMMAND" "PS4" "JAVA_TOOL_OPTIONS" "JDK_JAVA_OPTIONS" "_JAVA_OPTIONS" "CLASSPATH"
+            "JAVA_CMD" "JAVA_OPTS"}
+   :prefixes ["LD_" "DYLD_" "BABASHKA_" "GIT_" "CLJ_"]})
 
-(defn- shell-owned? [nm]
+(defn- program-hook? [nm]
   (let [n (str/upper-case nm)]
-    (or (contains? shell-owned n) (str/starts-with? n "LD_") (str/starts-with? n "DYLD_"))))
+    (or (contains? (:names program-hooks) n) (some #(str/starts-with? n %) (:prefixes program-hooks)))))
 
 (defn- value-ok?
   "Whether a `.env` value is one the shell takes as it is: bare with nothing it would expand or run,
@@ -148,26 +154,47 @@
       (re-matches #"\"[^$`\\\"]*\"" v)))
 
 (defn check-env
-  "A `.env`'s text checked before the shell sources it - pure: `{:ok? :names :refused [{:line :why}]}`.
-  Taken: blank lines, `#` comments, `NAME=value` with a value `value-ok?`. Refused by line number, the
-  value never in the reason: a carriage return (a Windows line end - the shell keeps it in the value),
-  an `export` keyword, a line with no `=`, a name that is not one, a name the shell or the JVM reads
-  (`shell-owned`), a value the shell would expand or run - a `.env` is sourced, so `$(...)` in it
-  would execute. A second `=` is taken: the shell reads it as part of the value."
+  "A `.env`'s text checked before the shell sources it - pure: `{:ok? :names :flags [{:line :why}]}`.
+  Taken: blank lines, `#` comments, `NAME=value` or `export NAME=value` with a value `value-ok?`, any
+  name. A second `=` is the value's. FLAGGED, by line number - never the line's text, since a flagged
+  bare word IS its text: a carriage return (the shell keeps it in the value), a line that is not
+  `NAME=value` (the shell runs it as a command), a name in `program-hooks`, a value the shell would
+  expand or run. `:names` every name set, flagged or not - names, never values."
   [text]
   (let [rows (for [[i line] (map-indexed vector (str/split (or text "") #"\n"))
                    :let [l (str/trim line)]
                    :when (or (str/includes? line "\r") (not (or (str/blank? l) (str/starts-with? l "#"))))]
-               (let [[_ nm v] (re-matches #"([^=]*)=(.*)" l)]
-                 (cond (str/includes? line "\r") {:line (inc i) :why "a carriage return - save the file with Unix line ends"}
-                       (str/starts-with? l "export ") {:line (inc i) :why "an `export` keyword - write NAME=value alone"}
-                       (nil? nm) {:line (inc i) :why "no `=` - a line is NAME=value"}
-                       (not (re-matches name-re nm)) {:line (inc i) :why "not a variable's name before the `=`"}
-                       (shell-owned? nm) {:line (inc i) :why "a name the shell or the JVM reads - a .env holds keys alone"}
-                       (not (value-ok? v)) {:line (inc i) :why "a value the shell would expand or run - quote it in '...'"}
+               (let [[_ nm v] (re-matches #"(?:export\s+)?([^=]*)=(.*)" l)
+                     nm (when (and nm (re-matches name-re nm)) nm)
+                     flag #(hash-map :line (inc i) :why % :name nm)]
+                 (cond (str/includes? line "\r") (flag "a carriage return - save the file with Unix line ends")
+                       (nil? nm) (flag "not NAME=value - the shell would run the line as a command")
+                       (program-hook? nm) (flag "a name the shell or a program the KIT runs reads (bb, git, clojure, the JVM)")
+                       (not (value-ok? v)) (flag "a value the shell would expand or run - quote it in '...'")
                        :else {:name nm})))
-        refused (vec (filter :line rows))]
-    {:ok? (empty? refused) :names (vec (keep :name rows)) :refused refused}))
+        flags (vec (for [r rows :when (:line r)] (select-keys r [:line :why])))]
+    {:ok? (empty? flags) :names (vec (distinct (keep :name rows))) :flags flags}))
+
+(defn repo-verdict
+  "Whether a repository holds the `.env` - pure, from the exit of `git ls-files --error-unmatch` (0
+  tracked, 1 untracked, 128 no repository) and then of `git check-ignore -q` (0 ignored, 1 not
+  ignored, 128 no repository; 1 for a tracked file too, so ls-files is asked first). Nil when no
+  repository holds it, else `:tracked` or `:not-ignored`."
+  [ls-exit ignore-exit]
+  (cond (= 0 ls-exit) :tracked
+        (= 128 ls-exit) nil
+        (= 1 ignore-exit) :not-ignored))
+
+(defn repo-check
+  "`repo-verdict` for the `.env` at `file`, git asked in its folder. Nil when git is not installed:
+  then no repository on this machine can hold it."
+  [file]
+  (let [git #(try (:exit (apply p/shell {:dir (str (fs/parent file)) :out :string :err :string :continue true}
+                                "git" %&))
+                  (catch Exception _ nil))
+        nm (str (fs/file-name file))
+        ls (git "ls-files" "--error-unmatch" "--" nm)]
+    (when ls (repo-verdict ls (when (= 1 ls) (git "check-ignore" "-q" "--" nm))))))
 
 (defn env-file
   "The `.env` the keys line loads: in a workspace (the nearest folder up from `dir` holding
@@ -192,7 +219,8 @@
 
 (defn main
   "The `toolchain-env [<dir>]` task. `<dir>` defaults to `KIT_WORKSPACE`, else the folder it is run
-  in. A refused `.env`: exit 1, nothing on stdout. No JDK of the pinned major: exit 1, and the keys
+  in. A `.env` a repository holds, or one with a flagged line: exit 1, nothing on stdout - a fault,
+  nothing from the run is taken until a person has read why. No JDK of the pinned major: exit 1, and the keys
   line still printed - what holds is loaded, the missing JDK said with the install that brings it."
   [pack-dir args]
   (let [say #(binding [*out* *err*] (println (str "toolchain-env: " %)))
@@ -207,11 +235,21 @@
              :home (System/getProperty "user.home")}
         jdk (find-jdk major (lookups env) jdk-home?)
         {:keys [file looked]} (env-file dir kit)
+        held (some-> file repo-check)
         checked (some-> file slurp check-env)]
-    (if (and checked (not (:ok? checked)))
-      (do (say (str file " is not sourced - each line the shell would not take as it is:"))
-          (doseq [{:keys [line why]} (:refused checked)] (say (str "  line " line ": " why)))
+    (cond
+      held
+      (do (say (str file (if (= :tracked held)
+                           " is tracked by the repository its folder is in - `git rm --cached` it, and ignore it there"
+                           " is not ignored by the repository its folder is in - one `git add -A` from committed; add it to the .gitignore")
+                    " - nothing loaded"))
           (System/exit 1))
+      (and checked (not (:ok? checked)))
+      (do (say (str file " is not loaded - each line flagged, by number (the text never shown):"))
+          (doseq [{:keys [line why]} (:flags checked)] (say (str "  line " line ": " why)))
+          (say "open the file, read those lines, and change them")
+          (System/exit 1))
+      :else
       (do (say (if jdk
                  (str "the JDK " major " (" (if pinned "the project's pin" "the KIT's preferred") ") from " (:from jdk) ": " (:home jdk))
                  (str "no JDK " major " found (" (if pinned "the project's pin" "the KIT's preferred, no pin") ") - looked in "

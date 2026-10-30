@@ -23,7 +23,7 @@
                      :requires ([toolchain-install :as install])
                      :task (install/install-main pack-dir *command-line-args*)}
 
-  toolchain-env {:doc "The shell lines for `eval \"$(bb toolchain-env)\"`: JAVA_HOME and PATH for the JDK the project pins (the download matrix's when none), and the line that has the shell load the workspace's .env - checked first, no value ever printed. [<dir>], default KIT_WORKSPACE or here. Exit 1: nothing on stdout when the .env is refused; the keys line alone when no JDK of that major is found. JDK-only until 8.3c: the cache's bb, clj-kondo and clojure are not on its PATH line"
+  toolchain-env {:doc "The shell lines for `eval \"$(bb toolchain-env)\"`: JAVA_HOME and PATH for the JDK the project pins (the download matrix's when none), and the line that has the shell load the workspace's .env - no value ever printed; any name taken, held by no repository, a line the shell would run or a program hook flagged, and a flagged file not loaded. [<dir>], default KIT_WORKSPACE or here. Exit 1: nothing on stdout when the .env is flagged or a repository holds it; the keys line alone when no JDK of that major is found. JDK-only until 8.3c: the cache's bb, clj-kondo and clojure are not on its PATH line"
                  :requires ([toolchain-env :as env])
                  :task (env/main pack-dir *command-line-args*)}
 

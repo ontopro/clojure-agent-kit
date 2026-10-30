@@ -1,11 +1,13 @@
 (ns harness.tools.toolchain-env-test
   "The toolchain pack's `toolchain-env` (`tools/toolchain/src/toolchain_env.clj`, plan 7.0, items
-  8.3c and 8.6a): the `.env` checked before the shell sources it, the pin read as the doctor reads it,
+  8.3c, 8.6a and 8.6d): the `.env` checked before the shell sources it - flagged, never fenced,
+  and held by no repository - the pin read as the doctor reads it,
   the JDK looked for in order, the lines to eval - never a value. Tried by hand in a scratch workspace:
-  a local pin of 21 over the project's 25, the keys loaded by the shell, a `$(...)` line refused with
+  a local pin of 21 over the project's 25, the keys loaded by the shell, a `$(...)` line flagged with
   nothing on stdout."
   (:require
    [babashka.fs :as fs]
+   [babashka.process :as p]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [harness.setup.doctor :as doctor]
@@ -13,28 +15,51 @@
 
 (deftest the-env-file-is-checked-before-the-shell-sources-it
   (let [ok (env/check-env (str "# a comment\n\nA_KEY=bare-value\nB='single quoted, spaces'\n"
-                               "C=\"double quoted\"\nEMPTY=\nD=a=b\n"))]
+                               "C=\"double quoted\"\nEMPTY=\nD=a=b\nexport DATABASE_URL=postgres://u:p@h:5432/db\n"
+                               "PORT=3000\nDEBUG=true\n"))]
     (is (:ok? ok))
-    (is (= ["A_KEY" "B" "C" "EMPTY" "D"] (:names ok)) "an empty value is taken - the template's state; a second `=` is the value's"))
-  (testing "refused by line number, the value never in the reason"
-    (let [{:keys [ok? refused]} (env/check-env (str "export A=1\nB\n1X=2\nD=$(touch /tmp/x)\nE=`id`\n"
-                                                    "F=a b\nG='it's'\nH=\"$HOME\"\nI=x;rm\n"))]
+    (is (= ["A_KEY" "B" "C" "EMPTY" "D" "DATABASE_URL" "PORT" "DEBUG"] (:names ok))
+        "any name taken; an empty value - the template's state; a second `=` is the value's; `export` taken"))
+  (testing "flagged by line number, the line's text never in the reason"
+    (let [{:keys [ok? flags names]} (env/check-env (str "rm -rf ~\nB\n1X=2\nD=$(touch /tmp/x)\nE=`id`\n"
+                                                        "F=a b\nG='it's'\nH=\"$HOME\"\nI=x;rm\n"))]
       (is (not ok?))
-      (is (= [1 2 3 4 5 6 7 8 9] (map :line refused)))
-      (is (= "an `export` keyword - write NAME=value alone" (:why (first refused))))
-      (is (= "no `=` - a line is NAME=value" (:why (second refused))))
-      (is (not-any? #(re-find #"touch|id|rm|HOME" (:why %)) refused) "no value echoed")))
-  (testing "a name the shell or the JVM reads, in any case, is refused - the file is sourced after the JDK's lines"
+      (is (= [1 2 3 4 5 6 7 8 9] (map :line flags)))
+      (is (= "not NAME=value - the shell would run the line as a command" (:why (first flags))))
+      (is (= #{:line :why} (set (mapcat keys flags))) "a flag carries no name and no text")
+      (is (not-any? #(re-find #"rm|touch|id|HOME|~" (:why %)) flags) "no text echoed - a bare word IS its text")
+      (is (= ["D" "E" "F" "G" "H" "I"] names) "the names of a flagged file, never a value")))
+  (testing "a name a program the KIT runs reads its hooks from, in any case, is flagged"
     (let [names ["PATH" "path" "JAVA_HOME" "IFS" "BASH_ENV" "ZDOTDIR" "PROMPT_COMMAND" "LD_PRELOAD"
-                 "DYLD_INSERT_LIBRARIES" "JAVA_TOOL_OPTIONS"]
-          {:keys [ok? refused]} (env/check-env (str/join (map #(str % "=/w\n") names)))]
+                 "DYLD_INSERT_LIBRARIES" "JAVA_TOOL_OPTIONS" "java_tool_options" "BABASHKA_PRELOADS"
+                 "GIT_CONFIG_COUNT" "JAVA_CMD" "JAVA_OPTS" "CLJ_CONFIG"]
+          {:keys [ok? flags]} (env/check-env (str/join (map #(str % "=/w\n") names)))]
       (is (not ok?))
-      (is (= (count names) (count refused)))
-      (is (every? #(= "a name the shell or the JVM reads - a .env holds keys alone" (:why %)) refused))))
-  (testing "a carriage return is refused on any line - the shell keeps it in the value"
-    (let [{:keys [ok? refused]} (env/check-env "A=1\r\n# c\r\n\r\nB=2\n")]
+      (is (= (count names) (count flags)))
+      (is (every? #(= "a name the shell or a program the KIT runs reads (bb, git, clojure, the JVM)" (:why %)) flags))))
+  (testing "a carriage return is flagged on any line - the shell keeps it in the value"
+    (let [{:keys [ok? flags]} (env/check-env "A=1\r\n# c\r\n\r\nB=2\n")]
       (is (not ok?))
-      (is (= [1 2 3] (map :line refused))))))
+      (is (= [1 2 3] (map :line flags))))))
+
+(deftest no-repository-holds-the-env-file
+  (is (= :tracked (env/repo-verdict 0 nil)))
+  (is (= :tracked (env/repo-verdict 0 1)) "tracked is said as tracked - check-ignore says 1 for it too")
+  (is (= :not-ignored (env/repo-verdict 1 1)))
+  (is (nil? (env/repo-verdict 1 0)) "ignored: held by none")
+  (is (nil? (env/repo-verdict 128 nil)) "no repository: passes, not a fault")
+  (testing "against git, in a scratch repository"
+    (let [r (fs/create-temp-dir)
+          git #(apply p/shell {:dir (str r) :out :string :err :string} "git" %&)
+          env (str (fs/path r ".env"))]
+      (git "init" "-q")
+      (spit env "K=\n")
+      (is (= :not-ignored (env/repo-check env)))
+      (spit (str (fs/path r ".gitignore")) ".env\n")
+      (is (nil? (env/repo-check env)))
+      (git "add" "-f" ".env")
+      (is (= :tracked (env/repo-check env)))
+      (is (nil? (env/repo-check (str (fs/path (fs/create-temp-dir) ".env")))) "no repository"))))
 
 (deftest the-pin-is-read-as-the-doctor-reads-it
   ;; the pack cannot require the doctor, so a test holds the two readers to one answer
