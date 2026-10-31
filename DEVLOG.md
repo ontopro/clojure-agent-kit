@@ -68,6 +68,35 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### The security review's clone read-only in both run containers (plan 7.0, item 9.3)
+
+The person: "go on the read-only sandbox commit first" (item 9 cut to 9.3 and the audit: "a lot has changed
+in v0.7.0 - why not do a full security audit of all of KIT?"). Both run containers - a project's
+(`run-argv`) and the KIT's (`kit-run-argv`) - mount the clone `:ro`; the `.git:ro` mount over it goes, the
+whole tree read-only. A test run as root can no longer change what the host reads after the review - the
+class register row 180 fenced at `.git` alone. The security reviewer's tests still arrive: `write_test`
+writes on the host, into the clone, and the container sees them through the mount. A project's `bb serve`
+runs from a pristine copy of its own (`/tmp/serve`; `copy-script` takes the folder, `/tmp/run` stays the
+tests'), since the application writes `target/`, `.cpcache/` and its database. The warming containers keep
+the clone writable: they run before any model, and `clojure -P` writes `.cpcache`.
+
+The KIT's tests run where they are, with no copy - the plan said "from a copy, a trial of `bb test` on a
+read-only tree first", and the trials made the copy unneeded: (1) a scratch clone, caches warmed, `chmod -R
+a-w`, `bb test` as this user: 1113 tests, 0 failures, 11 errors, every one a write into a test's OWN
+temporary copy, which `fs/copy` had made with the trial's read-only modes (`upgrade_run_test`'s fake KIT,
+`health_test`'s selfcheck) - in the container the files keep the host's owner-writable modes, so root,
+which makes and owns the copy, writes it (not by bypassing modes: `--cap-drop ALL` drops
+`CAP_DAC_OVERRIDE` - From Fable 5.1's read of the design); (2) Fable 5.1's own, from a cold cache: 0 failures,
+0 errors, and `git status --ignored` empty after - bb keeps its caches in the home folder, the two volumes.
+In the container, by hand on a fresh clone of `bcbbd31`: one namespace through `:run-tests` passes; `touch`
+in the tree and an append to `.git/config` are refused, "Read-only file system"; the whole suite gives the
+SAME result on the read-only mount as on the old writable one - 14 failures, 46 errors, the same 48 tests,
+the same counts - so none is the mount's. They are register row 237's, found by this proof: `clj-paren-repair`
+does not run in the KIT's review sandbox. A project's sandbox, by hand on a clone of the application `bb health
+--keep` generated: `start!` warmed, served from `/tmp/serve`, `/health` answering 12 s after the start, `GET /`
+200; `touch` in the mount refused; the application's tests green from `/tmp/run`; the clone after, by `git
+status --porcelain --ignored`, holding only the warm's `.cpcache/`.
+
 ### The health records at the end of item 8: both platforms on `7df68b9`, the first with no known-good copy (plan 7.0, item 8)
 
 The person: "go, renew the health records". `bb kit-pins` first: 0 newer released, 0 installed differ.

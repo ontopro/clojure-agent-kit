@@ -159,8 +159,25 @@
     ((:stop! s))
     (is (= ["docker" "rm" "-f" (:name s)] (last @seen)))))
 
-(deftest the-clone-s-git-is-read-only-in-both-containers
-  ;; its configuration is what the host's git reads; `core.fsmonitor` written inside had run on the host
-  (let [has (fn [argv & xs] (some #(= xs (take (count xs) %)) (partition (count xs) 1 argv)))]
-    (is (has (sb/run-argv {:image "img" :clone "/c" :name "n" :review "/r"}) "-v" "/c/.git:/work/app/.git:ro"))
-    (is (has (sb/kit-run-argv {:image "img" :clone "/c" :name "n" :review "/r"}) "-v" "/c/.git:/work/kit/.git:ro"))))
+(deftest the-clone-is-read-only-in-both-run-containers
+  ;; plan 7.0, item 9.3: a test run as root cannot change what the host reads after - row 180 fenced
+  ;; `.git` alone, whose configuration the host's git reads (`core.fsmonitor` written inside had run on it)
+  (let [has (fn [argv & xs] (some #(= xs (take (count xs) %)) (partition (count xs) 1 argv)))
+        app (sb/run-argv {:image "img" :clone "/c" :name "n" :review "/r"})
+        kit (sb/kit-run-argv {:image "img" :clone "/c" :name "n" :review "/r"})]
+    (is (has app "-v" "/c:/work/app:ro"))
+    (is (has kit "-v" "/c:/work/kit:ro"))
+    (doseq [argv [app kit]]
+      (is (not-any? #(str/includes? % "/c:/work/app") (remove #{"/c:/work/app:ro"} argv)) "no writable mount of it")
+      (is (not-any? #(str/includes? % "/c:/work/kit") (remove #{"/c:/work/kit:ro"} argv)))
+      (is (not-any? #(str/includes? % ".git:") argv) "the .git mount over it gone: the whole tree is read-only")))
+  (testing "the warming containers keep it writable: they run before any model, and `clojure -P` writes .cpcache"
+    (is (some #{"/c:/work/app"} (sb/warm-argv {:image "img" :clone "/c"})))
+    (is (some #{"/c:/work/kit"} (sb/kit-warm-argv {:image "img" :clone "/c"})))))
+
+(deftest the-application-is-served-from-a-pristine-copy-of-its-own
+  (let [script (last (sb/serve-argv "n"))]
+    (is (str/includes? script "rm -rf /tmp/serve && mkdir -p /tmp/serve"))
+    (is (str/includes? script "ls-files -co --exclude-standard"))
+    (is (str/includes? script "cd /tmp/serve\nbb serve > /tmp/serve.log 2>&1"))
+    (is (not (str/includes? script "/tmp/run")) "a test run's copy, which each run clears, is not the server's")))

@@ -5,13 +5,16 @@
   TWO PHASES, BECAUSE A DEPENDENCY NEEDS THE NETWORK ONCE. The first container has the network
   and warms the dependency cache (a named volume) for every alias the review will use: `bb`'s
   own dependencies, then `clojure -P` for each of `:dev:test`, `:test` and the `-X:test` run.
-  The second has `--network none`, the cache read-only, the clone mounted, and limits on memory,
-  processes and processors; the application is started in it with `bb serve` and everything
+  The second has `--network none`, the cache read-only, the clone mounted READ-ONLY, and limits on
+  memory, processes and processors; the application is started in it with `bb serve` and everything
   the security reviewer's tools do - a request, a test run - is a `docker exec` into it. Nothing in the
   second phase can reach anything but its own loopback.
 
   The clone is scratch, made by the caller; the security reviewer's tests are the new files below its
-  `test/`, found there when the review is over. The model's own API calls are the harness's,
+  `test/`, written by the host's tools and found there when the review is over. NOTHING IN THE SECOND
+  CONTAINER CAN WRITE THE CLONE (plan 7.0, item 9.3): the application is served, and its tests run, from
+  pristine copies inside the container, so a test run as root cannot change what the host reads after -
+  the class row 180 fenced at `.git` alone, retired. The model's own API calls are the harness's,
   made outside; only the tools' commands run in here.
 
   PURE UP TO THE EDGE: the `*-argv` functions build the commands and `parse-answer` reads a
@@ -49,17 +52,16 @@
    image "bash" "-c" warm-script])
 
 (defn run-argv
-  "The second container, left running: no network, the cache read-only, limits, the clone and
-  the request script mounted - the clone's `.git` read-only - nothing to do until it is told."
+  "The second container, left running: no network, the cache read-only, limits, the clone read-only
+  and the request script mounted - nothing to do until it is told."
   [{:keys [image clone name review]}]
   ["docker" "run" "-d" "--name" name
    "--network" "none"
    "--memory" "4g" "--cpus" "2" "--pids-limit" "512"
    "--cap-drop" "ALL" "--security-opt" "no-new-privileges"
-   "-v" (str clone ":" app-dir)
-   ;; the clone's git read-only: its configuration is the host's git's, which collects the results
-   ;; - `core.fsmonitor` written in here had run a command on the host
-   "-v" (str clone "/.git:" app-dir "/.git:ro")
+   ;; the whole clone read-only, its `.git` with it: git's configuration there is what the host's git
+   ;; reads, and `core.fsmonitor` written in here had run a command on the host (row 180)
+   "-v" (str clone ":" app-dir ":ro")
    "-v" (str m2-volume ":/root/.m2:ro")
    "-v" (str review ":" review-dir ":ro")
    "-w" app-dir
@@ -70,21 +72,29 @@
   [name & cmd]
   (into ["docker" "exec" "-w" app-dir name] cmd))
 
-(defn serve-argv
-  "The application, started detached; its output kept in the container."
-  [name]
-  ["docker" "exec" "-d" "-w" app-dir name "bash" "-c" "bb serve > /tmp/serve.log 2>&1"])
+(defn copy-script
+  "Copy the application into the empty folder `dir` and run there: the files git tracks, and the files
+  it does not but would not ignore - so the security reviewer's new tests come along, and `target/`, `db/`
+  and `.cpcache/` (all ignored) do not. A run in the clone itself saw what earlier runs had left: a
+  test that wrote into `target/` passed in the review only because a whole-suite run had made the
+  folder, and failed in a fresh clone. Every run now starts from the same tree a fresh clone has - and,
+  the clone read-only, nothing else could run there."
+  [dir]
+  (str "set -e\n"
+       "rm -rf " dir " && mkdir -p " dir "\n"
+       "git -c safe.directory='*' ls-files -co --exclude-standard -z | tar --null -cf - -T - | tar -xf - -C " dir "\n"
+       "cd " dir "\n"))
 
 (def pristine-copy
-  "Copy the application into an empty folder and run there: the files git tracks, and the files it
-  does not but would not ignore - so the security reviewer's new tests come along, and `target/`, `db/` and
-  `.cpcache/` (all ignored) do not. A run in the clone itself saw what earlier runs had left: a
-  test that wrote into `target/` passed in the review only because a whole-suite run had made the
-  folder, and failed in a fresh clone. Every run now starts from the same tree a fresh clone has."
-  (str "set -e\n"
-       "rm -rf /tmp/run && mkdir -p /tmp/run\n"
-       "git -c safe.directory='*' ls-files -co --exclude-standard -z | tar --null -cf - -T - | tar -xf - -C /tmp/run\n"
-       "cd /tmp/run\n"))
+  "Where a test run copies the application to (`copy-script`)."
+  (copy-script "/tmp/run"))
+
+(defn serve-argv
+  "The application, started detached from a pristine copy of its own - `/tmp/serve`, which a test run's
+  `/tmp/run` never clears - since the clone is read-only and the application writes (`target/`, `.cpcache/`,
+  its database); its output kept in the container."
+  [name]
+  ["docker" "exec" "-d" "-w" app-dir name "bash" "-c" (str (copy-script "/tmp/serve") "bb serve > /tmp/serve.log 2>&1")])
 
 (defn tests-argv
   "The application's tests in the container, in a pristine copy of it: all of them as its own `test`
@@ -221,15 +231,18 @@
    image "bash" "-c" kit-warm-script])
 
 (defn kit-run-argv
-  "The second container for the KIT: `run-argv`'s flags, both caches read-only, the clone and the
-  review folder (its test runner) mounted, nothing to do until it is told."
+  "The second container for the KIT: `run-argv`'s flags, both caches read-only, the clone read-only
+  and the review folder (its test runner) mounted, nothing to do until it is told. The KIT's tests run
+  where they are, no copy: its suite writes nothing into its own tree - every test that writes, writes
+  under the system's temporary folder, and bb keeps its caches in the home folder, here the two volumes
+  (two trials, 2026-10-31: the whole suite on an unwritable clone, and a cold-cache run leaving
+  `git status --ignored` empty)."
   [{:keys [image clone name review]}]
   ["docker" "run" "-d" "--name" name
    "--network" "none"
    "--memory" "4g" "--cpus" "2" "--pids-limit" "512"
    "--cap-drop" "ALL" "--security-opt" "no-new-privileges"
-   "-v" (str clone ":" kit-dir)
-   "-v" (str clone "/.git:" kit-dir "/.git:ro")
+   "-v" (str clone ":" kit-dir ":ro")
    "-v" (str m2-volume ":/root/.m2:ro")
    "-v" (str deps-clj-volume ":/root/.deps.clj:ro")
    "-v" (str review ":" review-dir ":ro")
