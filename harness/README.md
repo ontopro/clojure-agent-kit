@@ -42,8 +42,9 @@ The first `bb test` fetches malli into `~/.m2`; everything after that is offline
 
 The same list, installed and nothing else, is the `Dockerfile` at the root of the clone, which
 builds the KIT's toolchain image - a fresh Linux machine in Docker with only the KIT's
-toolchain - every version a build argument read from the
-known-good set, in which `bb docker-gates` and `bb docker-health` (root tasks) clone HEAD from
+toolchain - every version the download matrix's (the toolchain pack installs them, and `bb`, fetched
+before there is a `bb`, is a build argument read from it), the known-good set's date another build
+argument (`KIT_AS_OF`), in which `bb docker-gates` and `bb docker-health` (root tasks) clone HEAD from
 a read-only mount and run the gates and the health check there. Firefox ESR
 and geckodriver are in it too, for the health check's browser check.
 

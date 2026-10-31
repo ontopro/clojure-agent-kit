@@ -68,6 +68,15 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### The toolchain image's versions are the download matrix's (plan 7.0, item 8.3f, a fix)
+
+From Fable 5.1's read of `836255d` (a low; the person: "go"): the harness README said every version in the
+KIT's toolchain image was a build argument read from the known-good set. Since item 8.2 the image installs
+its tools by running the toolchain pack, from the download matrix, and only `bb`, fetched before there is a
+`bb`, is a build argument - read from the matrix too (the root `bb.edn`'s `docker-image!`, `image-args`);
+the known-good set gives the date alone, `KIT_AS_OF`. The sentence says so. The 8.3f design listed the line
+and its commit did not touch it.
+
 ### A set about to be rewritten stales nothing (plan 7.0, item 8.3f, a fix)
 
 From Fable 5.1's read of `836255d` (a low; the person: "go"): the comparison disagreed with the old history
