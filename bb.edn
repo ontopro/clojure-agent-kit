@@ -100,11 +100,11 @@
                      "git status --porcelain -- " spec "\n"
                      "[ -z \"$(git status --porcelain -- " spec ")\" ]\n"))))
 
-  ;; The one setup command (plan 7.0, item 8.3d): the project folder named, the clone's hooks, the
+  ;; The one setup command (plan 7.0, item 8.3d): the project folder found, the clone's hooks, the
   ;; project's .env template, the doctor with its offer, the health check - the steps that need no
   ;; tool first - in `harness.setup.self-check`, run in harness/: the template is read from a
   ;; profile, which takes the harness's classpath. Exit: the first stop.
-  self-check {:doc "The one setup command, before `bb init`: the project folder named (the folder above this clone), this clone's git hooks read from .githooks/, the project's .env template when there is none (the default seat's names, empty, 600 - fill them), `bb doctor` with its offer to install what the folder lacks, then - when it says yes - `bb health` (flags passed on: --keep, --selfcheck-only) - minutes, starts JVMs - both with the project's toolchain first on the PATH; ends with the next steps. Never --record: the health records are the KIT's own (`bb health --record` in harness/, by whoever certifies a machine for the KIT)"
+  self-check {:doc "The one setup command, before `bb init`: the project folder found (the folder above this clone; said only on a stop), this clone's git hooks read from .githooks/, the project's .env template when there is none (the default seat's names, empty, 600 - fill them), `bb doctor` with its offer to install what the folder lacks, then - when it says yes - `bb health` (flags passed on: --keep, --selfcheck-only) - minutes, starts JVMs - both with the project's toolchain first on the PATH; ends with the next steps. Never --record: the health records are the KIT's own (`bb health --record` in harness/, by whoever certifies a machine for the KIT)"
               :task (let [{:keys [exit]} (apply shell {:dir "harness" :continue true} "bb" "self-check" *command-line-args*)]
                       (System/exit exit))}
 

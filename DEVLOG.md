@@ -68,6 +68,16 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### `bb self-check` names the project folder only when it stops there (plan 7.0, item 8.3d, a fix)
+
+From Fable 5.1's read of `28e231b` (a nit; the person: "take the nit"): self-check's first line - "the
+project folder: <folder> - its toolchain <folder>, its keys <file>" - said the fact the doctor's header
+says a moment later, in other words. Now `place-stop` (was `place-line`) gives only why it stops - a
+refusal, a pack that did not answer, no toolchain folder - and a run that goes on starts with the hooks
+line or the `.env` line. The doctor's header is the one place the folder is named (8.2b's).
+
+Proved: `self_check_test` (nil when the place is known; the three stops). 1110 tests.
+
 ### `bb commit-check` refuses a commit while the wording list is missing (plan 7.0, item 8.3d, the third of three)
 
 **Before**, a clone with no `.local/wording/names.txt` said "no wording list, names not checked" and the

@@ -1,6 +1,6 @@
 (ns harness.setup.self-check
   "`bb self-check` - the one setup command, run once in a fresh clone, an adopter's or the KIT's own
-  (plan 7.0, item 8.3d): the project folder named, the clone's git hooks, the project's `.env`
+  (plan 7.0, item 8.3d): the project folder found, the clone's git hooks, the project's `.env`
   template, the doctor with its offer, the health check, the next steps.
 
   THE STEPS THAT NEED NO TOOL COME FIRST (From Opus 5.5's read of the 8.3d design): the hooks and the
@@ -26,16 +26,17 @@
 
 (def hooks-path ".githooks")
 
-(defn place-line
-  "The project folder named, from the toolchain pack's `status` (`doctor/folder-status`) - pure:
-  `{:line}`, or `{:stop}` for a refusal or a pack that did not answer."
+(defn place-stop
+  "Why self-check stops at the project folder, from the toolchain pack's `status`
+  (`doctor/folder-status`) - pure: a refusal, a pack that did not answer, no toolchain folder; nil
+  when the place is known. Said only on a stop: the doctor's header names the folder, its tools and
+  its keys a moment later (From Fable 5.1's read of `28e231b`)."
   [status clone]
   (cond
-    (nil? status) {:stop (str "the toolchain pack's status did not answer - `bb --config " (fs/path clone "tools" "toolchain" "bb.edn")
-                              " status` says why")}
-    (:refusal status) {:stop (:refusal status)}
-    (not (:cache status)) {:stop "the toolchain pack named no toolchain folder"}
-    :else {:line (str "the project folder: " (:folder status) " - its toolchain " (:cache status) ", its keys " (:env status))}))
+    (nil? status) (str "the toolchain pack's status did not answer - `bb --config " (fs/path clone "tools" "toolchain" "bb.edn")
+                       " status` says why")
+    (:refusal status) (:refusal status)
+    (not (:cache status)) "the toolchain pack named no toolchain folder"))
 
 (defn hooks!
   "The clone's git hooks read from `.githooks/` (`core.hooksPath`), as `bb hooks-install` sets them -
@@ -81,12 +82,11 @@
     (System/exit 1))
   (let [clone (str (fs/parent (fs/normalize (fs/absolutize "."))))
         status (doctor/folder-status clone)
-        {:keys [stop line]} (place-line status clone)
+        stop (place-stop status clone)
         say #(println (str "self-check: " %))]
     (when stop
       (say stop)
       (System/exit 1))
-    (say line)
     (some-> (hooks! clone) say)
     (say (env! (fs/path (:env status)) clone))
     (let [path-env (workspace/tools-path (:cache status) (System/getenv "PATH"))]

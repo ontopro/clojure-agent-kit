@@ -56,7 +56,7 @@
 
   ;; NEVER part of `gates`: it starts JVMs and takes minutes. What an adopter runs after
   ;; `bb doctor`, and what the KIT runs before it publishes a known-good set.
-  self-check {:doc "bb self-check [--keep] [--selfcheck-only]: the one setup command, run from the clone's root (which hands on to this), before `bb init` - the project folder named, the clone's git hooks read from .githooks/, the project's .env template when there is none (the default seat's names, empty, 600), the doctor with its offer, then `bb health`; ends with the next steps. Never --record"
+  self-check {:doc "bb self-check [--keep] [--selfcheck-only]: the one setup command, run from the clone's root (which hands on to this), before `bb init` - the project folder found (said only on a stop), the clone's git hooks read from .githooks/, the project's .env template when there is none (the default seat's names, empty, 600), the doctor with its offer, then `bb health`; ends with the next steps. Never --record"
               :requires ([harness.setup.self-check :as self-check])
               :task (apply self-check/-main *command-line-args*)}
 

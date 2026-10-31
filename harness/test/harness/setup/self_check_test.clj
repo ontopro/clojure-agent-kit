@@ -13,12 +13,13 @@
   ;; check still leaves the hooks and the template
   (is (= [:place :hooks :env :doctor :health :next] self-check/steps)))
 
-(deftest the-place-is-named-or-the-step-stops
-  (is (= {:line "the project folder: /p - its toolchain /p/.kit/toolchain, its keys /p/.env"}
-         (self-check/place-line {:folder "/p" :cache "/p/.kit/toolchain" :env "/p/.env"} "/p/KIT")))
-  (is (= {:stop "refused"} (self-check/place-line {:refusal "refused"} "/p/KIT")))
-  (is (= {:stop "the toolchain pack's status did not answer - `bb --config /p/KIT/tools/toolchain/bb.edn status` says why"}
-         (self-check/place-line nil "/p/KIT"))))
+(deftest the-place-is-said-only-when-the-step-stops
+  ;; From Fable 5.1's read of 28e231b: the doctor's header names the folder a moment later
+  (is (nil? (self-check/place-stop {:folder "/p" :cache "/p/.kit/toolchain" :env "/p/.env"} "/p/KIT")))
+  (is (= "refused" (self-check/place-stop {:refusal "refused"} "/p/KIT")))
+  (is (= "the toolchain pack named no toolchain folder" (self-check/place-stop {:folder "/p"} "/p/KIT")))
+  (is (= "the toolchain pack's status did not answer - `bb --config /p/KIT/tools/toolchain/bb.edn status` says why"
+         (self-check/place-stop nil "/p/KIT"))))
 
 (deftest the-hooks-are-set-once-and-said-only-when-they-change
   (let [dir (str (fs/create-temp-dir))
