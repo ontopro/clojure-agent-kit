@@ -351,7 +351,7 @@
         (is (empty? (filter #(re-find #"seat" %) (init/refusals (request {:dir "/projects/xyx"}) default facts)))
             "the default seat is shipped")))))
 
-(deftest init-s-arguments-are-parsed-as-name-dir-seat-and-dry-run
+(deftest init-s-arguments-are-parsed-as-name-seat-and-dry-run
   (is (= {:positional ["xyx" "/w"] :seat "agy-ide" :dry-run? true}
          (init-args/parse-args ["xyx" "--seat" "agy-ide" "/w" "--dry-run"]))
       "--seat takes the next argument, wherever it sits")
@@ -360,13 +360,12 @@
          (init-args/parse-args ["xyx" "--app" "xyx-site" "--build" "xyx-build-docs"]))
       "--app and --build take the next argument too"))
 
-(deftest the-root-hands-init-its-arguments-with-the-folder-absolute
-  (let [abs #(str "/root/" %)]
-    (is (= ["xyx" "--dry-run"] (init-args/root-args ["xyx" "--dry-run"] abs)))
-    (is (= ["xyx" "/root/ws" "--seat" "agy-ide" "--app" "a" "--build" "b"]
-           (init-args/root-args ["xyx" "--app" "a" "ws" "--build" "b" "--seat" "agy-ide"] abs))
-        "a valued flag travels with its value, wherever it sits")
-    (is (= [] (init-args/root-args [] abs)))))
+(deftest init-takes-no-folder-and-refuses-one-by-name
+  ;; plan 7.0, item 8.3d (the person: "go with A", "this option can be removed")
+  (is (nil? (init/folder-refusal [] "/w")))
+  (is (nil? (init/folder-refusal ["xyx"] "/w")))
+  (is (= "bb init takes no folder - the workspace is the folder the KIT's clone is in (/w); clone the KIT into the project's folder, then `bb init` there"
+         (init/folder-refusal ["xyx" "/elsewhere"] "/w"))))
 
 (deftest the-repositories-folders-can-be-named-and-the-name-stays-the-namespace
   ;; A real project calls its repositories what it calls them; the experiments never

@@ -12,8 +12,7 @@
 ;;
 ;; Every task delegates to `harness/`, which is where the harness and its own `bb.edn`
 ;; live; nothing is implemented twice. A relative path typed at the root would be read from
-;; inside `harness/` and mean a different file, so a task offered here either takes no path
-;; or - `init` - makes it absolute before delegating. A project runs the rest of the harness's
+;; inside `harness/` and mean a different file, so a task offered here takes no path. A project runs the rest of the harness's
 ;; tasks (`bb run-loop`, `bb balance`, `bb report` …) from its workspace folder, through the front
 ;; door `bb init` writes there; the KIT's own development runs them from `harness/`.
 ;;
@@ -112,11 +111,8 @@
   doctor {:doc "Is this machine ready? The toolchain: tool, version, status, what it is for (--edn for a pins map); in a workspace, what a pulled KIT expects that the workspace lacks"
           :task (apply harness "doctor" *command-line-args*)}
 
-  init {:doc "bb init [<name> [dir]] [--seat <name>] [--app <folder>] [--build <folder>] [--dry-run]: create the workspace a project is built in. No name: the project is named after the folder this clone is in. Default dir: the folder this clone is in; default seat claude; default folders <name>-app and <name>-build; at the workspace root, bb.edn (the front door), CLAUDE.md and .claude/ (the off-loop agent, the skills). Never overwrites"
-        :requires ([babashka.fs :as fs]
-                   [harness.setup.init-args :as init-args])
-        ;; init's own parse, so a flag with a value travels with it; both paths absolute.
-        :task (apply harness "init" (init-args/root-args *command-line-args* (fn [p] (str (fs/absolutize p)))))}
+  init {:doc "bb init [<name>] [--seat <name>] [--app <folder>] [--build <folder>] [--dry-run]: create the workspace a project is built in. No name: the project is named after the folder this clone is in. The workspace is always the folder this clone is in - a second argument is refused; default seat claude; default folders <name>-app and <name>-build; at the workspace root, bb.edn (the front door), CLAUDE.md and .claude/ (the off-loop agent, the skills). Never overwrites"
+        :task (apply harness "init" *command-line-args*)}
 
   health {:doc "The health check: the selfcheck project and an application generated from the pinned template - gates, breakers, one loop run, serve, the browser and security packs. Minutes; starts JVMs. [--selfcheck-only] [--keep] [--record: write this platform's record]"
           :task (apply harness "health" *command-line-args*)}

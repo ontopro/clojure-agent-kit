@@ -11,7 +11,8 @@
      :workspace/rules-overlay \"<xyx>-build/rules.edn\"
      :workspace/records \"<xyx>-build/runs\"  :workspace/run-tables \"<xyx>-build/RUNS.md\"}
 
-  every path relative to the file (or absolute: a KIT kept elsewhere). The
+  every path relative to the file (or absolute: the health check's scratch workspace names the KIT's
+  clone so, as it is in none). The
   overlay is the project's rules over the KIT's source (`harness.rules/overlay`);
   the records folder is where `record` copies every `run.edn`, and the tables
   file the document that publishes them, held to the folder by `bb report-check`.
@@ -25,9 +26,10 @@
 
   A run directory finds its workspace by walking up (`find-workspace`), and
   the loop binds it for every command it runs. A COMMAND run from the KIT's
-  `harness/` walks up too when the clone is inside the workspace, and is
-  otherwise POINTED at it - `--workspace <dir>`, or the `KIT_WORKSPACE`
-  variable (`current`): a KIT kept elsewhere, or one KIT serving several."
+  `harness/` walks up too - the clone is in the workspace, the folder above it - and
+  is POINTED at it when it is run from elsewhere: `--workspace <dir>`, or the
+  `KIT_WORKSPACE` variable (`current`), which the front door sets for every task it
+  hands on and a workspace gate passes to each check."
   (:require
    [babashka.fs :as fs]
    [clojure.edn :as edn]
@@ -90,8 +92,9 @@
 ;; ---------------------------------------------------------------------------
 
 (def env-var
-  "Names the workspace for a KIT kept outside it: a folder at or under which
-  `workspace.edn` is found. Set once in a shell; every command reads it."
+  "Names the workspace for a command not run in it - the front door sets it for every
+  task it hands on: a folder at or under which `workspace.edn` is found. Every command
+  reads it."
   "KIT_WORKSPACE")
 
 (def flag
@@ -140,9 +143,8 @@
   `--workspace` in `args` points at, the one `KIT_WORKSPACE` points at, else
   the one `dir` (`.`: the harness, in a workspace's clone) is in by walking
   up - or nil outside one. `:workspace/from` says which answered. A pointed-at
-  folder with no `workspace.edn` at or above it throws (`named`); a KIT kept
-  outside its workspace, or one KIT serving several, is otherwise indistinguishable
-  from a KIT in none, and the rule source's placeholders would reach every
+  folder with no `workspace.edn` at or above it throws (`named`); a mistyped one
+  is otherwise indistinguishable from a KIT in none, and the rule source's placeholders would reach every
   role as literal text with nothing saying why."
   ([] (current nil))
   ([args] (current args "."))

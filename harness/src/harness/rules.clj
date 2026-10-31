@@ -426,8 +426,8 @@
 
   The first two are relative to `seed-dir`; the workspace's come back absolute.
   With no workspace given, it is the one `seed-dir` is in by walking up; the
-  tasks pass `workspace/current`'s, so a KIT kept outside its workspace, pointed
-  at it, lists the application's mirror too."
+  tasks pass `workspace/current`'s, so a command pointed at the workspace - the
+  front door's - lists the application's mirror too."
   ([] (mirror-paths "." (workspace/current)))
   ([seed-dir] (mirror-paths seed-dir (workspace/find-workspace seed-dir)))
   ([seed-dir ws]

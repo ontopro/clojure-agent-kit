@@ -2265,7 +2265,7 @@
     (do (println usage) (System/exit 2))
     ;; THE RUN'S WORKSPACE IS THE COMMAND'S, whatever folder the KIT is in: the rules
     ;; every role is rendered from are found through it (`rules/load-rules`), not by
-    ;; walking up from harness/ - which from a KIT kept outside its workspace finds
+    ;; walking up from harness/ - which from a KIT in no workspace (the health check's scratch one) finds
     ;; nothing and reads the source alone, placeholders and all.
     (binding [workspace/*of-run* (workspace/find-workspace run-dir)]
       (run-command! cmd run-dir args))))

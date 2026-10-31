@@ -245,8 +245,8 @@ runs the gates until one fails, and checks the runner against the contract.
 ### Where things live
 
 - **The clone.** A workspace's clone of KIT is `KIT/` by the README's steps, but the name is not
-  fixed: `workspace.edn` records the folder, so it may be renamed, or kept outside the workspace
-  and pointed at it with `KIT_WORKSPACE` or `--workspace <dir>`.
+  fixed: `workspace.edn` records the folder, so it may be renamed. It stays in the workspace: `bb
+  init` takes no folder, the workspace is always the one above the clone.
 - **The template.** `ontopro/clojure-stack-lite` is KIT's fork of the upstream template: its `kit`
   branch is KIT's line of it, tagged `kit-v1`, `kit-v1.1`, `kit-v1.2`, …, and its `master` is an
   untouched mirror of the upstream.

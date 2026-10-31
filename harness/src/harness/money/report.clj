@@ -804,8 +804,8 @@
 
   With no arguments, the targets are the workspace's (`check-targets`): what
   `bb gates` runs in a workspace's clone - the workspace this runs in, or the
-  one `--workspace <dir>` / `KIT_WORKSPACE` points at, for a KIT kept outside
-  it. Outside one there is nothing to hold to anything, and it says so and
+  one `--workspace <dir>` / `KIT_WORKSPACE` points at - the front door's and a
+  workspace gate's way. Outside one there is nothing to hold to anything, and it says so and
   passes - the KIT's own gates run there."
   [& args]
   (let [ws (workspace/current-or-exit args)

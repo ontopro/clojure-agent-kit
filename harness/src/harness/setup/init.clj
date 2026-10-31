@@ -1,5 +1,5 @@
 (ns harness.setup.init
-  "`bb init [<name> [dir]]` - create the workspace a project is built in.
+  "`bb init [<name>]` - create the workspace a project is built in, the folder the KIT's clone is in.
 
   A workspace is a plain folder, NOT a repository, holding sibling repositories:
   the KIT's clone, the application, the build - and `work/`, scratch that belongs
@@ -69,8 +69,9 @@
 
 (defn- kit-ref
   "How the workspace names the KIT: relative when the clone is inside the
-  workspace - the folder can then be moved whole - and absolute when the KIT
-  is kept elsewhere, which an explicit `dir` allows."
+  workspace - the folder can then be moved whole - and absolute when it is
+  not: the health check's scratch workspace and the tests, which give `layout` a
+  `:dir`. `bb init` takes no folder, so no adopter's workspace is named so."
   [ws-dir kit-dir]
   (if (inside? ws-dir kit-dir)
     (str (fs/relativize (fs/normalize ws-dir) (fs/normalize kit-dir)))
@@ -408,10 +409,10 @@
 (defn layout
   "Everything `bb init` would create, as data - nothing is touched.
 
-  `:dir` nil means the DEFAULT target, the folder the KIT's clone is in: the
-  adopter cloned the KIT into the folder they mean to work in. An explicit
-  `:dir` is consent to use exactly that folder, and the KIT may then be
-  anywhere. `:build-docs` are the plan documents to copy, relative to
+  `:dir` nil means the folder the KIT's clone is in - every adopter's workspace:
+  the adopter cloned the KIT into the folder they mean to work in, and `bb init`
+  takes no folder (plan 7.0, item 8.3d). An explicit `:dir` is the health check's
+  scratch workspace and the tests', the KIT then anywhere. `:build-docs` are the plan documents to copy, relative to
   `<kit>/build-docs`. `:seat` names which shipped profile the build gets
   (`env-file/default-seat` when nil). `:rule-mirrors` and `:loop/defaults` come from
   whatever generates the application.
@@ -697,14 +698,21 @@
          "\n  " (count (filter #(str/includes? (:path %) "/docs/") entries))
          " plan documents under " (some #(when (:dir? %) (:path %)) entries) "/docs/\n")))
 
-(defn -main
-  "bb init [<name> [dir]] [--seat <name>] [--app <folder>] [--build <folder>] [--dry-run]
+(defn folder-refusal
+  "The refusal of a second positional argument - the folder `bb init` once took - pure: nil for none,
+  else the sentence naming the workspace `ws-dir` it always makes (plan 7.0, item 8.3d; the person:
+  \"this option can be removed\"). Refused, not ignored: it catches whoever read an older README."
+  [positional ws-dir]
+  (when (next positional)
+    (str "bb init takes no folder - the workspace is the folder the KIT's clone is in (" ws-dir "); "
+         "clone the KIT into the project's folder, then `bb init` there")))
 
-  With no name the project is named after the folder the KIT's clone is in, and
-  that folder is the workspace: `bb init` alone. With no `dir` the workspace is
-  the folder the KIT's clone is in. Run from
-  `harness/`, a relative `dir` is relative to `harness/`; the KIT's
-  root `bb.edn` makes it absolute first, so there it means what was typed.
+(defn -main
+  "bb init [<name>] [--seat <name>] [--app <folder>] [--build <folder>] [--dry-run]
+
+  The workspace is the folder the KIT's clone is in; with no name the project is
+  named after it: `bb init` alone. A second argument - the folder it once took - is
+  refused by name (`folder-refusal`).
   `--seat` picks which shipped profile the build gets (default `claude`).
   `--app` and `--build` name the two repositories' folders (default `<name>-app`
   and `<name>-build`); the name stays the application's namespace. The brief is
@@ -717,8 +725,11 @@
   pinned commit for someone developing it."
   [& args]
   (let [{:keys [positional seat dry-run?] app-folder :app build-folder :build} (init-args/parse-args args)
-        [named dir] positional
+        [named] positional
         kit-dir (str (fs/parent (fs/normalize (fs/absolutize "."))))
+        _ (when-let [no (folder-refusal positional (str (fs/parent kit-dir)))]
+            (println (str "bb init: " no "; nothing was written"))
+            (System/exit 2))
         project (project-name named kit-dir)
         pin (template/pin (template/load-pins))
         local-root (some-> (System/getenv "KIT_TEMPLATE_LOCAL") not-empty fs/absolutize fs/normalize str)
@@ -726,7 +737,6 @@
         req {:name project
              :name/from-folder? (nil? named)
              :kit-dir kit-dir
-             :dir (some-> dir fs/absolutize fs/normalize str)
              :seat seat
              :app app-folder
              :build build-folder

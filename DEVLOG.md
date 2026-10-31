@@ -68,6 +68,29 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### `bb init` takes no folder: the workspace is always the one the KIT's clone is in (plan 7.0, item 8.3d, the second of three)
+
+The person: "go with A", "this option can be removed" - a KIT kept outside its workspace. **Before**, `bb init
+<name> <dir>` made the workspace anywhere and recorded the KIT by absolute path, the root `bb.edn` making
+`dir` absolute first (`init-args/root-args`). **After**, `bb init [<name>]`: a second positional is refused by
+name before anything runs - "bb init takes no folder - the workspace is the folder the KIT's clone is in
+(<folder>); clone the KIT into the project's folder, then `bb init` there", exit 2 (`folder-refusal`, pure);
+`-main` passes no `:dir`; `root-args` goes, and the root's `init` task hands the arguments on as typed.
+- **The route goes, the mechanism stays** (the design note; From Opus 5.5's read of it): `layout`'s `:dir`
+  and `kit-ref`'s absolute branch are `bb health`'s - `generate-app!` builds its scratch workspace in a
+  temp folder with the real clone - and the tests', so they stay, documented as theirs. `--workspace` and
+  `KIT_WORKSPACE` stay as what the front door and a workspace gate use to point a command at the
+  workspace; every sentence that said "for a KIT kept outside its workspace" now says that
+  (workspace.clj's namespace, `env-var` and `current`; rules.clj, report.clj, driver.clj; harness/bb.edn's
+  `init`, `rules-sync`, `rules-check`, `report-check`; harness/AGENTS.md's `bb init` and `bb rules-sync`
+  rows; harness/README.md's "pointed at it" point; README.md's "The clone"; the root `bb.edn`'s `init` and
+  its header).
+
+Proved: `init_test` (`folder-refusal` - none, a name, a name and a folder; `parse-args` as before), every
+fixture that gives `layout` a `:dir` unchanged and green; 1109 tests. By hand, in a scratch clone of this
+tree: `bb init x /tmp/y` refused with the folder named, exit 2, `/tmp/y` not made; `bb init --dry-run` the
+folder above the clone; `bb health` in full - its scratch workspace through `layout`'s `:dir` - green.
+
 ### `bb self-check` is the one setup command, and the `.env`'s one writer (plan 7.0, item 8.3d, the first of three)
 
 The design note by Fable 5.1, read by Opus 5.5 (GO with two changes and a low, all taken; a second read:

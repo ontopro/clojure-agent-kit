@@ -69,8 +69,8 @@ the source by name: a namespace the source has that the table never mentions fai
 | `harness.setup.env-file` | setup | 3 | The project's `.env`'s names - one owner (plan 7.0, item 8.3d): the template `bb self-check` writes |
 | `harness.setup.front-door` | setup | 1 | The workspace's front door: the `bb.edn` `bb init` writes at the workspace's |
 | `harness.setup.health` | setup | 9 | `bb health` - the KIT's health check: does this KIT, on this machine, with the |
-| `harness.setup.init` | setup | 4 | `bb init [<name> [dir]]` - create the workspace a project is built in. |
-| `harness.setup.init-args` | setup | 0 | `bb init`'s arguments, parsed - here and not in `harness.setup.init`, because |
+| `harness.setup.init` | setup | 4 | `bb init [<name>]` - create the workspace a project is built in, the folder the KIT's clone is in. |
+| `harness.setup.init-args` | setup | 0 | `bb init`'s arguments, parsed. Requires nothing: the KIT's root `bb.edn` once parsed |
 | `harness.setup.inventory` | setup | 2 | The harness's namespaces, rendered into its README from the source: |
 | `harness.setup.next` | setup | 5 | What comes next in the workflow, read off the build's files: `bb next`. |
 | `harness.setup.packet-tests` | setup | 4 | The tests that read what a packet changes, listed before the packet is cut: |
@@ -467,10 +467,11 @@ of a project is written into it - which is why the list below is short.
   path - one that exists, or one a command will write in a folder that exists - made absolute from
   there; a model slug or a git rev goes on as typed. A workspace keeps the front door it was made with: after an upgrade, `bb
   front-door-sync` writes it again, and `bb doctor` in the workspace says when it lacks a task.
-- **A KIT kept outside its workspace is pointed at it.** Run here rather than through the front
-  door, a command finds the workspace by walking up from `harness/`, which from a clone kept elsewhere (`bb init <name> <dir>`, or one
-  clone serving several projects) finds nothing: the rule tasks would miss the application's
-  mirror and every rendering would read the source alone. So `bb rules-sync`, `bb rules-check`,
+- **A command run outside the workspace is pointed at it.** Run here rather than through the front
+  door, a command finds the workspace by walking up from `harness/`, which from a clone in no
+  workspace (the health check's scratch one) finds nothing: the rule tasks would miss the application's
+  mirror and every rendering would read the source alone. `bb init` takes no folder: the
+  workspace is always the one above the clone. So `bb rules-sync`, `bb rules-check`,
   `bb profile` and `bb report-check` take `--workspace <dir>` (the workspace, or any folder under
   it), and every command reads the `KIT_WORKSPACE` variable - set it once in the shell. A folder
   named that has no `workspace.edn` at or above it is refused by name. A loop command needs

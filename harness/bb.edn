@@ -20,7 +20,7 @@
           :requires ([harness.setup.upgrade :as upgrade])
           :task (apply upgrade/doctor-main *command-line-args*)}
 
-  init {:doc "bb init [<name> [dir]] [--seat <name>] [--app <folder>] [--build <folder>] [--dry-run]: create the workspace a project is built in - the application from the pinned template, the build repository (the plan, its rules, profile and loop defaults), work/, workspace.edn; at the workspace root, bb.edn (the front door), CLAUDE.md and .claude/ (the off-loop agent, the skills). No name: the project is named after the folder this clone is in. Default dir: the folder this clone is in; default seat claude; default folders <name>-app and <name>-build. Never overwrites"
+  init {:doc "bb init [<name>] [--seat <name>] [--app <folder>] [--build <folder>] [--dry-run]: create the workspace a project is built in - the application from the pinned template, the build repository (the plan, its rules, profile and loop defaults), work/, workspace.edn; at the workspace root, bb.edn (the front door), CLAUDE.md and .claude/ (the off-loop agent, the skills). No name: the project is named after the folder this clone is in. The workspace is always the folder this clone is in - a second argument, the old folder, is refused; default seat claude; default folders <name>-app and <name>-build. Never overwrites"
         :requires ([harness.setup.init :as init])
         :task (apply init/-main *command-line-args*)}
 
@@ -99,13 +99,13 @@
   lint {:doc "Lint with clj-kondo"
         :task (shell "clj-kondo --lint src test dev ../tools/security/src ../tools/browser/src ../tools/svg/src ../tools/toolchain/src")}
 
-  rules-sync {:doc "Regenerate every rule mirror - resources/rule-mirrors.edn, ../rule-mirrors.edn and the workspace's, where they exist - or the paths given, from resources/agent-rules.edn. [--workspace <dir>] for a KIT kept outside its workspace (or KIT_WORKSPACE)"
+  rules-sync {:doc "Regenerate every rule mirror - resources/rule-mirrors.edn, ../rule-mirrors.edn and the workspace's, where they exist - or the paths given, from resources/agent-rules.edn. [--workspace <dir>] (or KIT_WORKSPACE) for a command run outside the workspace"
               :requires ([harness.rules :as rules])
               :task (apply rules/-main *command-line-args*)}
 
   ;; The mirrors are DATA, not arguments typed here (`rules/mirror-paths` says from where). An unchecked
   ;; generated mirror is correct only by luck.
-  rules-check {:doc "Fail when a generated rule mirror (resources/rule-mirrors.edn, ../rule-mirrors.edn, the workspace) has drifted from the source. [--workspace <dir>] for a KIT kept outside its workspace (or KIT_WORKSPACE)"
+  rules-check {:doc "Fail when a generated rule mirror (resources/rule-mirrors.edn, ../rule-mirrors.edn, the workspace) has drifted from the source. [--workspace <dir>] (or KIT_WORKSPACE) for a command run outside the workspace"
                :requires ([harness.rules :as rules])
                :task (apply rules/-main "--check" *command-line-args*)}
 
@@ -188,7 +188,7 @@
   ;; records: with no arguments, the workspace's `:workspace/run-tables` and
   ;; `:workspace/records` (so `gates` in a workspace's clone runs it, and outside one it
   ;; has nothing to check and says so); or the two as arguments.
-  report-check {:doc "Fail when a published report has drifted from its run record: bb report-check [<markdown> <records-dir>] - the workspace's two by default ([--workspace <dir>] or KIT_WORKSPACE for a KIT kept outside it)"
+  report-check {:doc "Fail when a published report has drifted from its run record: bb report-check [<markdown> <records-dir>] - the workspace's two by default ([--workspace <dir>] or KIT_WORKSPACE for a command run outside it)"
                 :requires ([harness.money.report :as report])
                 :task (apply report/check-main *command-line-args*)}
 
