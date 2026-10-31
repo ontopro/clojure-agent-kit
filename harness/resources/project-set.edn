@@ -3,11 +3,11 @@
 ;; application, over what the pinned template generated, as a commit of their own
 ;; (`harness.setup.project-set`); the template's own numbers are placeholders the KIT overwrites.
 ;; Hand-written, and the one place each value is written: `bb health` builds the generated
-;; application's image from it, and `bb health --record` copies the set it proved into
-;; `known-good.edn` as `:project` (plan 7.0, item 7.4).
+;; application's image from it, and `bb health --record` writes the set it proved into the
+;; health record as `:project` (plan 7.0, item 7.4) - the Mac's record the known-good set (8.3f).
 ;;
 ;;   :tools         every line under `.mise.toml`'s [tools], by mise's name for the tool. The
-;;                  values are the ones the KIT's own gates run (`known-good.edn`). java: mise
+;;                  values are the ones the KIT's own gates run (the known-good set). java: mise
 ;;                  runs exactly the version a file names (it takes no range for java), so this is
 ;;                  the project's default for the adopter's own shell - 21 and newer works there,
 ;;                  and an adopter on 21 says so in a gitignored `.mise.local.toml`. The KIT's own

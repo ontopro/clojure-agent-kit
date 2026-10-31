@@ -753,7 +753,9 @@
 
 (def record-paths
   "The KIT's own record files: a local change there is the KIT's evidence written where it should
-  not be (`bb health --record` in a clone, before 0.6.5), discarded rather than kept."
+  not be (`bb health --record` in a clone, before 0.6.5), discarded rather than kept. The file is gone
+  since 0.7.0, the Mac's health record the known-good set (plan 7.0, item 8.3f); kept here so a clone
+  that still holds it, edited, has it named as a record file and not as a project's change."
   #{"harness/resources/known-good.edn"})
 
 (defn local-changes

@@ -1,6 +1,6 @@
 ;; `bb health`'s XTDB check (plan 7.0, item 7.3): the ONE place the KIT's tested XTDB version is
-;; written. `bb health --record` copies it, and the server image's tag beside it, into
-;; `resources/known-good.edn`. A JVM project of its own, never on the KIT's gates' path.
+;; written. `bb health --record` copies it, and the server image's tag beside it, into the
+;; health record as `:xtdb` - the Mac's record the known-good set (plan 7.0, item 8.3f). A JVM project of its own, never on the KIT's gates' path.
 {:paths ["src"]
  :deps {org.clojure/clojure {:mvn/version "1.12.1"}
         com.xtdb/xtdb-api {:mvn/version "2.2.0"}

@@ -30,15 +30,22 @@
 (def sentences
   "The template's sentences the KIT's set makes false, each with what the KIT writes in its place
   - as comment lines of the paragraph's width - and what is said when neither is found, so a
-  template release that rewords one is seen: `[what template-re kit-text]`."
+  template release that rewords one is seen: `[what template-re kit-text earlier-kit-texts]`. An
+  earlier KIT's text, which an application `bb init` wrote before is carrying, is moved to the current
+  one as the template's is - else every `bb upgrade` would say the sentence missed (plan 7.0, item
+  8.3f: `known-good.edn` gone, the Mac's health record the set)."
   [["the template's sentence on the known-good set"
     #"(?s)A KNOWN-GOOD SET, not a set of requirements: these versions were run together on.*?booted and served\."
     (str "A KNOWN-GOOD SET, not a set of requirements: the versions under [tools] are the KIT's,\n"
-         "# run together through its gates and `bb health` (its `known-good.edn`), and written here\n"
-         "# by `bb init` and `bb upgrade`.")]
+         "# run together through its gates and `bb health` (its health records), and written here\n"
+         "# by `bb init` and `bb upgrade`.")
+    [(str "A KNOWN-GOOD SET, not a set of requirements: the versions under [tools] are the KIT's,\n"
+          "# run together through its gates and `bb health` (its `known-good.edn`), and written here\n"
+          "# by `bb init` and `bb upgrade`.")]]
    ["the template's sentence on the JDK"
     #"(?s)The one real constraint is the JDK: stay on 21 \(.*?\)\."
-    "The JDK is 21 and newer, 25 the default\n# (the java line below)."]])
+    "The JDK is 21 and newer, 25 the default\n# (the java line below)."
+    []]])
 
 (defn- tool-line-re [tool]
   (re-pattern (str "(?m)^[ \\t]*" (java.util.regex.Pattern/quote (name tool)) "[ \\t]*=[ \\t]*\"[^\"]*\"[ \\t]*$")))
@@ -54,7 +61,7 @@
 (defn with-tools
   "`.mise.toml` with every line under [tools] that `tools` names set to its value, the KIT's note
   above the table, and the template's `sentences` the set makes false replaced. A tool with no line
-  is said, never added; so is a sentence when neither it nor the KIT's is there."
+  is said, never added; so is a sentence when neither it nor the KIT's, now or earlier, is there."
   [text tools]
   (if-let [[from to] (tools-table text)]
     (let [[body missed] (reduce (fn [[body missed] [tool v]]
@@ -68,10 +75,12 @@
           t (if (str/includes? t (first (str/split-lines tools-note)))
               t
               (str/replace-first t #"(?m)^\[tools\][ \t]*$" (str/re-quote-replacement (str "#\n" tools-note "[tools]"))))
-          [t missed] (reduce (fn [[t missed] [what re kit-text]]
-                               (cond (re-find re t) [(str/replace t re (str/re-quote-replacement kit-text)) missed]
-                                     (str/includes? t kit-text) [t missed]
-                                     :else [t (conj missed what)]))
+          [t missed] (reduce (fn [[t missed] [what re kit-text earlier]]
+                               (let [old (some #(when (str/includes? t %) %) earlier)]
+                                 (cond (re-find re t) [(str/replace t re (str/re-quote-replacement kit-text)) missed]
+                                       (str/includes? t kit-text) [t missed]
+                                       old [(str/replace t old kit-text) missed]
+                                       :else [t (conj missed what)])))
                              [t missed]
                              sentences)]
       {:text t :missed missed})

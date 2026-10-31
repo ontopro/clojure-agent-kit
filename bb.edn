@@ -42,11 +42,12 @@
  {:requires ([babashka.fs :as fs]
              [clojure.edn :as edn]
              [clojure.string :as str])
-  :init (do (require '[harness.gates.toolchain-image :as toolchain-image])
+  :init (do (require '[harness.gates.toolchain-image :as toolchain-image]
+                     '[harness.setup.known-good :as known-good])
             (defn harness [& args]
               (apply shell {:dir "harness"} "bb" args))
 
-            ;; The KIT's toolchain image. `docker-image!` builds it, tagged by known-good's date,
+            ;; The KIT's toolchain image. `docker-image!` builds it, tagged by known-good's date - the Mac's health record's,
             ;; with the base pulled and that date a build argument (KIT_AS_OF) - so a new health
             ;; record rebuilds the operating-system layer, which the cache had kept as old as the
             ;; first build (register row 131). The image installs its tools by running the toolchain
@@ -55,7 +56,6 @@
             ;; git is Ubuntu's package (8.2e). `in-container!` clones HEAD from the read-only mount and runs one script,
             ;; everything to a log under .local/gates/ and to the terminal, and the script's exit
             ;; is the task's.
-            (def known-good-file "harness/resources/known-good.edn")
             (defn docker-platform []
               (let [arch (str/trim (:out (shell {:out :string} "docker" "info" "--format" "{{.Architecture}}")))]
                 (case arch
@@ -63,7 +63,7 @@
                   ("x86_64" "amd64") "linux-amd64"
                   (throw (ex-info (str "no KIT toolchain image for Docker's " arch) {:arch arch})))))
             (defn docker-image! []
-              (let [{:keys [as-of]} (edn/read-string (slurp known-good-file))
+              (let [{:keys [as-of]} (known-good/read-set "harness")
                     platform (docker-platform)
                     image-args (edn/read-string (:out (shell {:out :string} "bb" "--config" "tools/toolchain/bb.edn"
                                                              "image-args" platform)))
@@ -159,7 +159,7 @@
                                              "bb gates\n"
                                              (tree-clean)))))}
 
-  docker-health {:doc "bb health --record in the same container; the container platform's record is copied out to harness/health/records/ for `bb health-sync` (the known-good set stays the host run's). Log: .local/gates/docker-health.log. Minutes; needs Docker running"
+  docker-health {:doc "bb health --record in the same container; the container platform's record is copied out to harness/health/records/ for `bb health-sync` (the known-good set is the host's, the Mac's record). Log: .local/gates/docker-health.log. Minutes; needs Docker running"
                  :task (let [out (str (fs/absolutize ".local/docker/out"))]
                          (fs/create-dirs out)
                          (in-container! "docker-health"
@@ -167,7 +167,7 @@
                                              "cd /work/kit/harness\n"
                                              "bb doctor --tier loop\n"
                                              "bb health --record\n"
-                                             (tree-clean "harness/health/records" "harness/resources/known-good.edn")
+                                             (tree-clean "harness/health/records")
                                              ;; the paths kept: the run's own record is under records/<platform>/
                                              "git ls-files --others --modified -- harness/health/records | tar -cf - -T - | tar -xf - -C /out\n")
                                         (str "-v " out ":/out"))

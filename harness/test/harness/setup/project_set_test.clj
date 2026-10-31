@@ -30,7 +30,7 @@
     (is (not (str/includes? text "stay on 21")))
     (is (not (str/includes? text "2026-09-21")) "the template's known-good sentence replaced")
     (is (str/starts-with? text (str "# A KNOWN-GOOD SET, not a set of requirements: the versions under [tools] are the KIT's,\n"
-                                    "# run together through its gates and `bb health` (its `known-good.edn`), and written here\n"
+                                    "# run together through its gates and `bb health` (its health records), and written here\n"
                                     "# by `bb init` and `bb upgrade`. Newer versions are expected\n")))
     (is (str/includes? text "fault. The JDK is 21 and newer, 25 the default\n# (the java line below). Babashka must"))
     (is (every? #(str/starts-with? % "#") (take-while #(not= "[tools]" %) (str/split-lines text)))
@@ -38,6 +38,12 @@
     (is (every? #(<= (count %) 100) (str/split-lines text)) "the paragraph keeps its width")
     (testing "written twice is written once"
       (is (= {:text text :missed []} (ps/with-tools text (:tools the-set)))))
+    (testing "an application written by an earlier KIT: its sentence moved to the current one, nothing missed"
+      ;; From Fable 5.1's read of the 8.3f design: the sentence named `known-good.edn`, and an
+      ;; application `bb init` wrote then would otherwise say it missed on every `bb upgrade`
+      (let [earlier (str/replace text "(its health records)" "(its `known-good.edn`)")]
+        (is (not= text earlier))
+        (is (= {:text text :missed []} (ps/with-tools earlier (:tools the-set))))))
     (testing "a later set moves the lines, the note kept once"
       (let [t (:text (ps/with-tools text (assoc (:tools the-set) :java "temurin-27")))]
         (is (str/includes? t "java = \"temurin-27\""))

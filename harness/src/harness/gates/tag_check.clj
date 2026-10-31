@@ -30,7 +30,8 @@
    [clojure.string :as str]
    [harness.gates.kit-pins :as kit-pins]
    [harness.gates.record :as record]
-   [harness.gates.toolchain-image :as toolchain-image]))
+   [harness.gates.toolchain-image :as toolchain-image]
+   [harness.setup.known-good :as known-good]))
 
 ;; ---------------------------------------------------------------- git and files
 
@@ -198,48 +199,37 @@
 
 ;; ---------------------------------------------------------------- facts
 
-(def known-good-path "harness/resources/known-good.edn")
-
-(defn known-good-moved?
-  "Did the known-good set change in what it SAYS between `then` and `now` (its EDN text at two
-  commits) - a version, a tool, the platform - and not only in its `:as-of` date? `bb health
-  --record` re-dates the set beside every record, and counting the date made the records it had
-  just written stale against the commit that held them (register row 127)."
-  [then now]
-  (let [read #(try (dissoc (edn/read-string (str %)) :as-of) (catch Exception _ ::unreadable))]
-    (not= (read then) (read now))))
-
 (defn set-stales?
-  "Whether known-good's move between a record's commit and HEAD makes the record stale: when the set
-  says something new (`known-good-moved?`, `then` and `now` its EDN text) AND the record did not run
-  what HEAD's set now says, over the tools the pins hold (`kit-pins/recorded-tools`, the JDK among them
-  since 8.3a; git and the rest apart). A health run that moves the set - every pin move - is evidence for the set it
-  wrote, not stale against the commit that holds it (From Fable 5.1's read of `4eab9df`; register
-  row 127 was the first half, the date). `record-tools` the record's `:tools`."
-  [record-tools then now]
-  (and (known-good-moved? then now)
-       (let [held #(select-keys % kit-pins/recorded-tools)
-             now-tools (:tools (try (edn/read-string (str now)) (catch Exception _ nil)))]
-         (not= (held record-tools) (held now-tools)))))
+  "Whether the known-good set makes a record stale: its tools differ from the set's - the Mac's health
+  record's (`known-good/read-set`) - over the tools the pins hold (`kit-pins/recorded-tools`, the JDK
+  among them since 8.3a; git and the rest apart). A comparison of two records, no history (plan 7.0,
+  item 8.3f): the Mac's record never, being the set; another platform's when the Mac's moved past it.
+  Row 127's two halves hold: a re-date alone is no move (`:health/as-of` is not compared), and a run
+  that moves the set is evidence for it (From Fable 5.1's read of `4eab9df`). A pin move stales both
+  records anyway, by the code rule - `tools/` is among `health-paths` - and the Mac record's lag behind
+  the pins is `versions-check`'s. `record-tools` the record's `:tools`, `good-tools` the set's; no
+  set, no comparison."
+  [record-tools good-tools]
+  (let [held #(select-keys % kit-pins/recorded-tools)]
+    (boolean (and good-tools (not= (held record-tools) (held good-tools))))))
 
 (defn read-records [root]
-  (for [f (sort (map str (fs/glob (fs/path root records-dir) "*.edn")))
-        :let [r (edn/read-string (slurp f))
-              sha (get-in r [:kit :sha])
-              changed (some-> (apply git root "diff" "--name-only" sha "HEAD" "--"
-                                     (concat health-paths [(str ":(exclude)" records-dir) (str ":(exclude)" known-good-path)]))
-                              str/split-lines
-                              (->> (remove str/blank?)))
-              ;; THE KNOWN-GOOD SET COUNTS WHEN IT SAYS SOMETHING NEW the record did not run
-              set-moved? (set-stales? (:tools r)
-                                      (git root "show" (str sha ":" known-good-path))
-                                      (git root "show" (str "HEAD:" known-good-path)))]]
-    {:platform (get-in r [:platform :key])
-     :sha sha
-     :dirty? (get-in r [:kit :dirty?])
-     ;; a run with KIT_TEMPLATE_LOCAL set: the record names the pin it stood for, not what ran
-     :local-root (:template/local-root r)
-     :changed (cond-> (vec changed) set-moved? (conj known-good-path))}))
+  (let [good (known-good/read-set (fs/path root "harness"))]
+    (for [f (sort (map str (fs/glob (fs/path root records-dir) "*.edn")))
+          :let [r (edn/read-string (slurp f))
+                sha (get-in r [:kit :sha])
+                changed (some-> (apply git root "diff" "--name-only" sha "HEAD" "--"
+                                       (concat health-paths [(str ":(exclude)" records-dir)]))
+                                str/split-lines
+                                (->> (remove str/blank?)))
+                ;; THE KNOWN-GOOD SET COUNTS WHEN IT SAYS SOMETHING the record did not run
+                set-moved? (set-stales? (:tools r) (:tools good))]]
+      {:platform (get-in r [:platform :key])
+       :sha sha
+       :dirty? (get-in r [:kit :dirty?])
+       ;; a run with KIT_TEMPLATE_LOCAL set: the record names the pin it stood for, not what ran
+       :local-root (:template/local-root r)
+       :changed (cond-> (vec changed) set-moved? (conj (str records-dir "/" known-good/platform ".edn")))})))
 
 (defn- read-edn [f] (when (fs/exists? f) (edn/read-string (slurp (str f)))))
 
@@ -268,7 +258,7 @@
     [(tree-check (git root "branch" "--show-current") (git root "status" "--porcelain"))
      (health-check (read-records root))
      (versions-check (kit-pins/read-pins root)
-                     (:tools (read-edn (fs/path root known-good-path))))
+                     (:tools (known-good/read-set (fs/path root "harness"))))
      (devlog-check (slurp (str (fs/path root "DEVLOG.md"))) tag)
      (readme-check (slurp (str (fs/path root "README.md"))) tag)
      (tag-absent-check tag (git root "rev-parse" "-q" "--verify" (str "refs/tags/" tag))

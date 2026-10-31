@@ -68,6 +68,44 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### The known-good set is the Mac's health record, not a copy of it (plan 7.0, item 8.3f)
+
+The person: "Opus writes 8.3f, Fable reads"; the design read GO, both questions as recommended. `bb health
+--record` wrote, from one run, the platform's record and `harness/resources/known-good.edn` - the date, the
+label, the tools, `:xtdb` and `:project`, every value taken from the record. Two files for one fact; the
+file is deleted, and its readers read the Mac's record, `harness/health/records/macos-arm64.edn`:
+
+- **`harness.setup.known-good`**, a new leaf: the platform named once (`macos-arm64` - the machine that
+  certifies the KIT, the only record with `:project`; both platforms install from the one download matrix,
+  so only the date and the label would differ), the record's path under a `harness` folder, and `read-set`,
+  the same map the file held. A leaf because the root `bb.edn` reads it, where no harness resource is on
+  the classpath - the doctor, which reads `toolchain.edn` when it loads, could not be required there.
+- **The doctor's column and header** (`doctor/known-good`), **`bb tag-check`'s versions line**, **the
+  toolchain image's name** (`toolchain-image/image-tag`) and **the root `docker-image!`'s `KIT_AS_OF`** read
+  it. `write-record!` writes the record and the run only; `docker-health`'s tree-clean exclusion and
+  `tag-check`'s diff exclusion of the file go, inert.
+- **A record stale by the set is a comparison, no history**: its tools against the Mac record's, over the
+  pinned tools (`kit-pins/recorded-tools`). The Mac's record never, being the set; the Linux one when the
+  Mac's moved past it. `known-good-moved?` and its two `git show`s go. Register row 127's two halves hold: a
+  re-date is no move (`:health/as-of` is not compared), and a run that moves the set is evidence for it. A
+  pin move stales both records anyway by the code rule (`tools/` is among `health-paths`), and the Mac
+  record's lag behind the pins is `versions-check`'s.
+- **`upgrade-run`'s record-file set keeps the path**: a clone still holding the file, edited, has it named
+  as a record file.
+- **From Fable 5.1's read of the design (a low):** every application `bb init` wrote carries the KIT's
+  `.mise.toml` sentence naming `known-good.edn`. Its words change, and `with-tools` knew only the template's
+  sentence and the KIT's current one - `bb upgrade` would have said "the template's sentence on the
+  known-good set" missed on every upgrade of every existing project. A sentence now carries the KIT's
+  earlier texts too, moved to the current one as the template's is. The read's four missed readers - the
+  two exclusions, `upgrade_run_test`'s fixture copying the file, `method.md`'s sentence - are in this commit.
+
+Proved: the Mac record read as the set equals the deleted file on every key (`bb -e`, before the delete);
+tests for the reader, the doctor and the image name from the committed record, the comparison's cases, the
+records read against the Mac's in a scratch repository, `write-record!` writing nothing beside the records,
+an earlier KIT's sentence moved. Documents: both READMEs, `harness/AGENTS.md`'s `bb health` row,
+`method.md`, `project-set.edn`, the XTDB check's `deps.edn`. The health records are stale until the
+item's end renews them, after which no known-good file is written to commit.
+
 ### The toolchain's size said as a machine gets it (plan 7.0, item 8.3e, a fix)
 
 From Fable 5.1's read of `087aa33` (a low; the person: "fix the low issue of size"): the root README said

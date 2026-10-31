@@ -59,8 +59,8 @@ offer lists what this machine gets, each with its size, and the disk's free spac
 
 `bb doctor` holds every tool on the PATH to the matrix - the same version is ok, a newer one is
 said, an older one or another commit fails with the command that fixes it - and shows KIT's dated
-known-good set beside it (`harness/resources/known-good.edn`, the versions that were actually run
-together). Only on a machine the matrix publishes no build for is your own JDK used: 21 or newer,
+known-good set beside it (the Mac's health record, `harness/health/records/macos-arm64.edn`: the
+versions that were actually run together). Only on a machine the matrix publishes no build for is your own JDK used: 21 or newer,
 25 preferred (XTDB, an optional store, documents a minimum of 21, and 2.2.0 runs on 25 with
 `-Dio.netty.noUnsafe=false`).
 

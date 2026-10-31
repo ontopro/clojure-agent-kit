@@ -24,7 +24,8 @@
   `bb upgrade`'s pre-check passes none - the floors alone hold, each entry's `:min`. A project's
   `.mise.toml` is written for the adopter's own shell and read here no longer: it was the floor, its
   `.mise.local.toml` over it (7.4.3), until the matrix became the one reference. Beside the reference the
-  report shows the KIT's dated KNOWN-GOOD SET (`resources/known-good.edn`), the versions run together.
+  report shows the KIT's dated KNOWN-GOOD SET (the Mac's health record,
+  `health/records/macos-arm64.edn`), the versions run together.
   Three projects once failed this check on a version rule that was wrong, not on a tool that was missing:
   a calendar version read as a major, a patch level read as a break.
 
@@ -51,7 +52,8 @@
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [harness.setup.download-matrix :as download-matrix]))
+   [harness.setup.download-matrix :as download-matrix]
+   [harness.setup.known-good :as known-good]))
 
 ;; ---------------------------------------------------------------------------
 ;; The toolchain
@@ -79,12 +81,12 @@
   takes FILE arguments will happily treat an unknown flag as a filename."
   #{"--version" "-version" "--help" "-h"})
 
-(def known-good-resource "known-good.edn")
-
 (defn known-good
-  "The KIT's dated known-good set: `{:as-of _ :platform _ :tools {tool version}}`."
-  ([] (known-good (io/resource known-good-resource)))
-  ([source] (when source (edn/read-string (slurp source)))))
+  "The KIT's dated known-good set, `{:as-of _ :platform _ :tools {tool version}}`, read from the Mac's
+  health record (`known-good/read-set`) under the `harness` folder `toolchain.edn` is on the classpath
+  from; nil with no record."
+  []
+  (some-> (io/resource toolchain-resource) io/file fs/parent fs/parent known-good/read-set))
 
 ;; ---------------------------------------------------------------------------
 ;; Probing

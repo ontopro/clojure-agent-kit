@@ -54,7 +54,8 @@
     (fs/copy (fs/path real "harness" "bb.edn") (fs/path kit "harness" "bb.edn"))
     (fs/copy-tree (fs/path real "harness" "agents") (fs/path kit "harness" "agents"))
     (fs/copy (fs/path real "harness" "resources" "template-pins.edn") (fs/path kit "harness" "resources" "template-pins.edn"))
-    (fs/copy (fs/path real "harness" "resources" "known-good.edn") (fs/path kit "harness" "resources" "known-good.edn"))
+    ;; a KIT before 0.7.0 tracked the known-good set's copy (plan 7.0, item 8.3f): its own stand-in
+    (spit (str (fs/path kit "harness" "resources" "known-good.edn")) "{:as-of \"2026-10-12\"}\n")
     (fs/copy-tree (fs/path real "skills") (fs/path kit "skills"))
     (fs/create-dirs (fs/path kit "build-docs"))
     (spit (str (fs/path kit "build-docs" "README.md")) "# The plan's documents\n")

@@ -84,7 +84,7 @@
 (defn record-refusal
   "Why `--record` is refused for the clone at `kit`, given `ws` - the workspace found at or
   above the clone (`workspace/find-workspace`), nil when there is none - or nil when it may
-  record. RECORDS ARE THE KIT'S OWN: `health/records/` and the known-good set are the KIT's
+  record. RECORDS ARE THE KIT'S OWN: `health/records/`, the Mac's the known-good set, are the KIT's
   evidence of a machine it certified, tracked files, and written into a workspace's clone
   they are local changes that block a clean upgrade. The first project's clone had none only
   because the documented path never passed the flag."
@@ -889,7 +889,6 @@
 ;; ---------------------------------------------------------------------------
 
 (def records-dir "health/records")
-(def known-good-path (str "resources/" doctor/known-good-resource))
 (def begin-marker "<!-- health:begin -->")
 (def end-marker "<!-- health:end -->")
 
@@ -966,10 +965,10 @@
 
 (defn write-record!
   "`health/records/<platform>.edn` - one per platform, the latest run, what the README block, the
-  tag check and the status read - and the run itself kept at `run-path`; and
-  `resources/known-good.edn` from the same tools, so what the doctor shows as
-  known-good is what a health run saw and not what someone typed."
-  [{:keys [platform tools] :as rec}]
+  tag check and the status read - and the run itself kept at `run-path`. The Mac's record is the
+  known-good set (`known-good/read-set`): what the doctor shows as known-good is what a health run saw
+  and not what someone typed, and no copy of it is written beside the record (plan 7.0, item 8.3f)."
+  [{:keys [platform] :as rec}]
   (let [path (fs/path records-dir (str (:key platform) ".edn"))
         run (run-path rec)
         text (str ";; Written by `bb health --record`; rendered into the README by `bb health-sync`. Do not edit.\n"
@@ -977,15 +976,6 @@
     (fs/create-dirs (fs/parent run))
     (spit run text)
     (spit (str path) text)
-    (spit known-good-path
-          (str ";; WRITTEN BY `bb health --record` from the health run named below - the versions that were\n"
-               ";; actually run together through the KIT's gates, `bb init`, the loop and the generated\n"
-               ";; application's gates. `bb doctor` shows it beside what is installed; newer is 'newer than\n"
-               ";; tested', information. The doctor holds each tool to the download matrix, which `bb tag-check`\n"
-               ";; holds equal to this set.\n"
-               (with-out-str (pp/pprint (cond-> {:as-of (:health/as-of rec) :platform (:label platform) :tools tools}
-                                          (:xtdb rec) (assoc :xtdb (:xtdb rec))
-                                          (:project rec) (assoc :project (:project rec)))))))
     (str path)))
 
 (defn load-records
@@ -1147,7 +1137,7 @@
   The selfcheck project first, then the generated application. `--selfcheck-only` skips
   generation (no JVM beyond the project's own gates). `--keep` leaves the
   scratch workspace for inspection and prints where it is. `--record`, on a
-  healthy full run, writes this platform's record and the known-good set -
+  healthy full run, writes this platform's record - the Mac's is the known-good set -
   commit them, then `bb health-sync` renders the README block. It is refused before the run when
   this machine runs another version than the KIT pins of a tool the record holds (`bb kit-pins`,
   `kit-pins/record-drift`): a record certifies the pins, not a drift nobody chose."
@@ -1213,6 +1203,6 @@
               (let [rec (record kit all (template/pin (template/load-pins)) doctor-results
                                 (some-> (System/getenv "KIT_TEMPLATE_LOCAL") not-empty fs/absolutize fs/normalize str))
                     path (write-record! rec)]
-                (say "  recorded: " path " and " known-good-path
+                (say "  recorded: " path
                      (when (get-in rec [:kit :dirty?]) " - NOTE: the KIT's tree has uncommitted changes, and the record says so")
                      "\n  commit them, then `bb health-sync` renders the README block"))))))))

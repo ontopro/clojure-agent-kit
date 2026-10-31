@@ -11,7 +11,7 @@
   no longer holds (From Fable 5.1's reads of `720f2af` and `1de97ad`)."
   (:require
    [babashka.fs :as fs]
-   [clojure.edn :as edn]))
+   [harness.setup.known-good :as known-good]))
 
 (defn image-context
   "What the KIT's toolchain image is built from in the clone `kit`, as `[relative-path content]`
@@ -35,5 +35,5 @@
   "The KIT's toolchain image's name, as built from the clone `kit`."
   [kit]
   (str "clojure-agent-kit-toolchain:"
-       (:as-of (edn/read-string (slurp (str (fs/path kit "harness" "resources" "known-good.edn")))))
+       (:as-of (known-good/read-set (fs/path kit "harness")))
        "-" (context-digest (image-context kit))))

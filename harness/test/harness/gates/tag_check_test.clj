@@ -1,5 +1,7 @@
 (ns harness.gates.tag-check-test
   (:require
+   [babashka.fs :as fs]
+   [babashka.process :as p]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [harness.gates.tag-check :as tc]))
@@ -78,27 +80,37 @@
                        "macos-arm64 (on aaaaaaa) is stale: recorded from a LOCAL CLONE of the template (/src/clojure-stack-lite), not the pin"))
     (is (= #{"macos-arm64"} (tc/stale-platforms [local (fresh "linux-arm64")])) "and --run records it again")))
 
-(deftest the-known-good-set-counts-when-it-says-something-new-not-when-it-is-re-dated
-  ;; row 127: `bb health --record` re-dates the set beside the record, and counting the date made
-  ;; the records just written stale against the very commit that held them
-  (let [then "{:as-of \"2026-10-12\" :platform \"macOS 27.0.1 arm64\" :tools {:bb \"1.13.225\" :java \"21.0.12.1\"}}"]
-    (is (not (tc/known-good-moved? then (str/replace then "2026-10-12" "2026-10-15"))) "a date alone")
-    (is (tc/known-good-moved? then (str/replace then "1.13.225" "1.13.230")) "a version")
-    (is (tc/known-good-moved? then (str/replace then ":java \"21.0.12.1\"" ":java \"21.0.12.1\" :mise \"2026.1\"")) "a tool")
-    (is (tc/known-good-moved? then nil) "no set at the record's commit")
-    (is (tc/known-good-moved? "{:as-of" then) "an unreadable set is a change")))
+(deftest a-record-is-stale-by-the-set-when-its-tools-differ-from-the-macs
+  ;; plan 7.0, item 8.3f: the set is the Mac's health record, so the rule is a comparison of two
+  ;; records, no history - row 127's two halves still hold: a re-date is no move, and a run that
+  ;; moves the set is evidence for it (From Fable 5.1's read of 4eab9df)
+  (let [mac {:bb "1.13.229" :clj-kondo "2026.10.26" :java "25.0.5" :git "2.57.0"}]
+    (is (not (tc/set-stales? mac mac)) "the Mac's record, being the set: never")
+    (is (not (tc/set-stales? (assoc mac :git "2.43.0") mac)) "a Linux record equal over the pinned tools: fresh - its git apart")
+    (is (tc/set-stales? (assoc mac :java "25.0.4") mac) "a record on another JDK than the set's: stale, since 8.3a")
+    (is (tc/set-stales? (assoc mac :bb "1.13.228") mac) "a record one patch behind the set: stale")
+    (is (not (tc/set-stales? mac nil)) "no set to compare with: not stale by it")
+    (is (false? (tc/set-stales? mac mac)) "a boolean")))
 
-(deftest a-run-that-moves-the-set-is-evidence-for-it
-  ;; From Fable 5.1's read of 4eab9df: a health run that moves the pins wrote the set HEAD holds, so it
-  ;; is not stale against that commit - the set's move stales a record only when the record did not run it
-  (let [then "{:as-of \"2026-10-22\" :tools {:bb \"1.13.226\" :clj-kondo \"2026.08.04\" :java \"21.0.12.1\"}}"
-        now "{:as-of \"2026-10-29\" :tools {:bb \"1.13.229\" :clj-kondo \"2026.10.26\" :java \"25.0.5\" :git \"2.57.0\"}}"]
-    (is (not (tc/set-stales? {:bb "1.13.229" :clj-kondo "2026.10.26" :java "25.0.5" :git "2.56.0"} then now))
-        "the run that wrote the set: fresh - its git apart")
-    (is (tc/set-stales? {:bb "1.13.229" :clj-kondo "2026.10.26" :java "25.0.4"} then now)
-        "a record on another JDK than the set's: stale, since 8.3a")
-    (is (tc/set-stales? {:bb "1.13.228" :clj-kondo "2026.10.26"} then now) "a record one patch behind the set: stale")
-    (is (not (tc/set-stales? {:bb "1.13.226"} then then)) "the set unmoved: never stale by it")))
+(deftest the-records-are-read-against-the-macs-and-a-re-date-is-no-move
+  (let [root (str (fs/create-temp-dir))
+        records (fs/path root "harness" "health" "records")
+        rec (fn [platform as-of tools] {:health/as-of as-of :platform {:key platform :label platform}
+                                        :kit {:sha "HEAD" :dirty? false} :tools tools})
+        write! (fn [r] (spit (str (fs/path records (str (get-in r [:platform :key]) ".edn"))) (pr-str r)))
+        git! #(apply p/shell {:dir root :out :string :err :string} "git" %&)]
+    (fs/create-dirs records)
+    (git! "init" "-q")
+    (write! (rec "macos-arm64" "2026-10-30" {:bb "1.13.229" :java "25.0.5"}))
+    (write! (rec "linux-arm64" "2026-10-12" {:bb "1.13.229" :java "25.0.5"}))
+    (git! "add" "-A")
+    (git! "-c" "user.name=t" "-c" "user.email=t@t" "commit" "-q" "-m" "records")
+    (is (= [[] []] (map :changed (tc/read-records root)))
+        "the Linux record dated before the Mac's, the same tools: fresh")
+    (write! (rec "macos-arm64" "2026-10-31" {:bb "1.13.230" :java "25.0.5"}))
+    (is (= {"linux-arm64" ["harness/health/records/macos-arm64.edn"] "macos-arm64" []}
+           (into {} (map (juxt :platform :changed)) (tc/read-records root)))
+        "the Mac's moved past it: the Linux record stale, the reason the set's record")))
 
 (deftest the-pins-are-what-the-health-runs-recorded
   ;; the person, 2026-10-29: "The KIT that an Adopter gets should have matrix = known-good versions

@@ -312,12 +312,11 @@
       (is (str/includes? out "3 of 4 ok, 1 skipped: selfcheck gates, selfcheck red, app serve, app browser SKIPPED")
           "never counted as passed"))))
 
-(deftest write-record-writes-the-platform-file-and-the-known-good-set
+(deftest write-record-writes-the-platform-file-and-no-copy-of-the-set
   (let [dir (str (fs/create-temp-dir))
         rec {:health/as-of "2026-09-22" :platform {:key "test-arm64" :label "Test arm64"}
              :kit {:sha "x" :short "x" :dirty? false} :template pin :tools {:bb "1.13.223"} :checks [] :ok? true}]
-    (with-redefs [health/records-dir (str (fs/path dir "health"))
-                  health/known-good-path (str (fs/path dir "known-good.edn"))]
+    (with-redefs [health/records-dir (str (fs/path dir "health"))]
       (health/write-record! rec)
       (is (= rec (edn/read-string (slurp (str (fs/path dir "health" "test-arm64.edn"))))))
       (is (= rec (edn/read-string (slurp (str (fs/path dir "health" "test-arm64" "2026-09-22-x.edn")))))
@@ -325,9 +324,8 @@
       (health/write-record! rec)
       (is (fs/exists? (fs/path dir "health" "test-arm64" "2026-09-22-x-2.edn")) "a second run never over the first")
       (is (= 1 (count (fs/glob (fs/path dir "health") "*.edn"))) "the readers' glob still sees one record a platform")
-      (is (= {:as-of "2026-09-22" :platform "Test arm64" :tools {:bb "1.13.223"}}
-             (edn/read-string (slurp (str (fs/path dir "known-good.edn")))))
-          "the doctor's known-good set is what the run saw"))))
+      (is (= #{"health"} (set (map (comp str fs/file-name) (fs/list-dir dir))))
+          "nothing beside the records: the Mac's record is the known-good set (plan 7.0, item 8.3f)"))))
 
 (deftest the-report-wraps-and-ends-with-what-is-ready
   (testing "no line wider than the width, broken at spaces"
