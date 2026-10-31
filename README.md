@@ -102,7 +102,7 @@ There are basically 2 steps to use KIT:
     cd ..
     ```
 
-5. Put this project's keys in the workspace's `.env`. `bb init` wrote the names its profile needs,
+5. Put this project's keys in the workspace's `.env`. `bb self-check` wrote the names its profile needs,
    each empty, with what uses it and where it is sent. One key per project, with a spending limit
    set at the provider's console. The file is yours alone (mode `600`); a `.env` a repository holds
    is refused at load; and the session's file tools are denied it (`.claude/settings.json` - a rail,

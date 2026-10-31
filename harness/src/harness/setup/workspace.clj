@@ -70,15 +70,20 @@
     (if (str/blank? path) bin (str bin ":" path))))
 
 (defn self-check-next
-  "The line `bb self-check` ends with, in the clone at `clone-dir`: `bb init` for a fresh
-  clone; for a clone that is already a workspace's KIT, the workspace's own next step - its
-  `bb init` advice had to be ignored by hand at every upgrade."
-  [clone-dir]
+  "What `bb self-check` ends with, in the clone at `clone-dir` whose project's `.env` is `env`: for a
+  fresh clone, the one setup order (plan 7.0, items 8.3d and 8.3e) - the keys filled, the eval, then
+  `bb init`, or the two seats for the KIT's own development; for a clone that is already a
+  workspace's KIT, the workspace's own next step - its `bb init` advice had to be ignored by hand at
+  every upgrade."
+  [clone-dir env]
   (if-let [ws (find-workspace clone-dir)]
     (let [up (str (fs/relativize (fs/normalize (fs/absolutize clone-dir)) (:workspace/dir ws)))]
       (str "    next       cd " (if (str/blank? up) "." up) " && bb next - this clone is the workspace's KIT; "
            "bb init is for a fresh clone"))
-    "    next       bb init - the workspace, named after this clone's folder - then cd .."))
+    (str/join "\n" [(str "    next       1. fill the keys in " env)
+                    "               2. eval \"$(bb toolchain-env)\" - in the shell that starts the session"
+                    "               3. bb init - the workspace, named after this clone's folder - then cd .."
+                    "                  (developing the KIT itself: the two seats, .claude/skills/kit-session/, instead)"])))
 
 ;; ---------------------------------------------------------------------------
 ;; the workspace a COMMAND runs in: pointed at, or walked up to

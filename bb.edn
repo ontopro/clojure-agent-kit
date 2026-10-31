@@ -1,7 +1,8 @@
 ;; The KIT's front door. An adopter's first commands are run HERE, at the root of the clone:
 ;;
-;;   bb self-check is this KIT ready on this machine? both of the next two, in order - the
-;;                 doctor first, and the health check only when it says yes
+;;   bb self-check the one setup command: this clone's git hooks, the project's .env template
+;;                 (the keys' names, empty), then both of the next two, in order - the doctor
+;;                 first, with its offer to install, and the health check only when it says yes
 ;;   bb doctor     is this machine ready? what is missing, and what is it for?
 ;;   bb init       create the workspace a project is built in, named after the folder this clone
 ;;                 is in (`bb init <name>` names it otherwise), its application generated from the
@@ -100,34 +101,13 @@
                      "git status --porcelain -- " spec "\n"
                      "[ -z \"$(git status --porcelain -- " spec ")\" ]\n"))))
 
-  ;; Setup's one check: the doctor's loop verdict (a JVM included - what a project needs), and
-  ;; only on a yes the health check, which takes minutes and starts JVMs. Exit: the first no.
-  ;; Both run with the project's toolchain folder's bin/ first on the PATH (plan 7.0, item 8.2c),
-  ;; the folder as the toolchain pack's `status --edn` names it - the pack's one rule, asked once.
-  self-check {:doc "Is this KIT ready on this machine? `bb doctor`, then - when it says yes - `bb health` (flags passed on: --keep, --selfcheck-only); minutes, starts JVMs. Both with the project's toolchain (the folder above the clone's .kit/toolchain/bin, or KIT_TOOLCHAIN_DIR's) first on the PATH. Run from the clone, before `bb init`. Never --record: the health records are the KIT's own (`bb health --record` in harness/, by whoever certifies a machine for the KIT)"
-              :requires ([harness.setup.workspace :as workspace])
-              :task (let [_ (when (some #{"--record"} *command-line-args*)
-                              (println (str "self-check does not record: the health records are the KIT's own evidence, written by "
-                                            "`bb health --record` in harness/ by whoever certifies a machine for the KIT, never by a "
-                                            "workspace's clone. Run `bb self-check` without it."))
-                              (System/exit 1))
-                          {:keys [cache refusal]} (some-> (shell {:out :string :continue true}
-                                                                 "bb" "--config" "tools/toolchain/bb.edn" "status" "--edn")
-                                                          :out str/trim not-empty edn/read-string)
-                          _ (when (or refusal (not cache))
-                              (println (str "self-check: " (or refusal "the toolchain pack's status did not answer - run "
-                                                               "`bb --config tools/toolchain/bb.edn status` to see why")))
-                              (System/exit 1))
-                          path {:extra-env {"PATH" (workspace/tools-path cache (System/getenv "PATH"))}}
-                          {:keys [exit]} (shell (merge {:dir "harness" :continue true} path) "bb" "doctor")]
-                      (when-not (zero? exit)
-                        (println (str "\nself-check: the doctor says this machine is not ready - the table above says "
-                                      "what to fix; then run `bb self-check` again. `bb health` was not run."))
-                        (System/exit exit))
-                      (let [{:keys [exit]} (apply shell (merge {:dir "harness" :continue true} path) "bb" "health" *command-line-args*)]
-                        (when (zero? exit)
-                          (println (workspace/self-check-next ".")))
-                        (System/exit exit)))}
+  ;; The one setup command (plan 7.0, item 8.3d): the project folder named, the clone's hooks, the
+  ;; project's .env template, the doctor with its offer, the health check - the steps that need no
+  ;; tool first - in `harness.setup.self-check`, run in harness/: the template is read from a
+  ;; profile, which takes the harness's classpath. Exit: the first stop.
+  self-check {:doc "The one setup command, before `bb init`: the project folder named (the folder above this clone), this clone's git hooks read from .githooks/, the project's .env template when there is none (the default seat's names, empty, 600 - fill them), `bb doctor` with its offer to install what the folder lacks, then - when it says yes - `bb health` (flags passed on: --keep, --selfcheck-only) - minutes, starts JVMs - both with the project's toolchain first on the PATH; ends with the next steps. Never --record: the health records are the KIT's own (`bb health --record` in harness/, by whoever certifies a machine for the KIT)"
+              :task (let [{:keys [exit]} (apply shell {:dir "harness" :continue true} "bb" "self-check" *command-line-args*)]
+                      (System/exit exit))}
 
   doctor {:doc "Is this machine ready? The toolchain: tool, version, status, what it is for (--edn for a pins map); in a workspace, what a pulled KIT expects that the workspace lacks"
           :task (apply harness "doctor" *command-line-args*)}

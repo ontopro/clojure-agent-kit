@@ -2,6 +2,7 @@
   "The lookup a command runs through: walked up to, pointed at, or the run's."
   (:require
    [babashka.fs :as fs]
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [harness.setup.workspace :as workspace]))
 
@@ -70,9 +71,13 @@
     (fs/create-dirs kit)
     (testing "a workspace's KIT: its next step, never a second bb init"
       (is (= "    next       cd .. && bb next - this clone is the workspace's KIT; bb init is for a fresh clone"
-             (workspace/self-check-next kit))))
-    (testing "a fresh clone: bb init"
-      (is (re-find #"next       bb init - the workspace" (workspace/self-check-next elsewhere))))))
+             (workspace/self-check-next kit "/w/.env"))))
+    (testing "a fresh clone: the one setup order - the keys, the eval, then bb init or the two seats (item 8.3d)"
+      (is (= ["    next       1. fill the keys in /w/.env"
+              "               2. eval \"$(bb toolchain-env)\" - in the shell that starts the session"
+              "               3. bb init - the workspace, named after this clone's folder - then cd .."
+              "                  (developing the KIT itself: the two seats, .claude/skills/kit-session/, instead)"]
+             (str/split-lines (workspace/self-check-next elsewhere "/w/.env")))))))
 
 (deftest self-check-runs-with-the-toolchain-folders-bin-first
   ;; plan 7.0, item 8.2c: the folder's bin/ before the shell's PATH, never an empty entry

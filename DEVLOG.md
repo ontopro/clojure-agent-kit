@@ -68,6 +68,45 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### `bb self-check` is the one setup command, and the `.env`'s one writer (plan 7.0, item 8.3d, the first of three)
+
+The design note by Fable 5.1, read by Opus 5.5 (GO with two changes and a low, all taken; a second read:
+holds); the person: "go, revise the 8.3d design", then "go, Opus builds 8.3d".
+- **Before**, `bb self-check` was the doctor, then `bb health`, inline in the clone's root `bb.edn`, and `bb
+  init` wrote the workspace's `.env` (the seat's key names, empty, 600). **After**, `bb self-check` is
+  `harness.setup.self-check`, six steps whose order a test reads - the project folder named (the toolchain
+  pack's `status --edn`; a refusal or a silent pack stops), the clone's git hooks read from `.githooks/`
+  (what `bb hooks-install` does, said only when it changed), the project's `.env` template when there is
+  none (the default seat's names, empty, created at 600 before anything is in it; a file that exists never
+  touched, said either way), the doctor with its offer, `bb health`, and the next steps in 8.3e's order -
+  fill the keys, the eval, then `bb init`, or the two seats for the KIT's own development. The steps that
+  need no tool come first (From Opus 5.5's read of the design): an N to the offer, a doctor's no or a
+  failing health check still leaves the hooks set and the template written.
+- **A harness task the root hands on to**, not the root's inline code as the design put it: the template is
+  read from a profile, and reading one takes malli, which the root `bb.edn`'s classpath (`harness/src`
+  alone) has not. `self-check` is in the front door's `kit-only`, as `init` and `health` are.
+- **`harness.setup.env-file`** owns the `.env`'s names: `env-template` (its header now says `bb
+  self-check`, and that `bb init --seat <name>` says what another seat needs), `default-seat` and
+  `shipped-profile` moved out of `init`; `missing-names`, the names a seat needs that the file gives no line
+  to; `init-lines`, what `bb init` says.
+- **`bb init` never writes the `.env`** (From Opus 5.5's read of the design: an acceptance of the file is
+  keyed by its sha256, so a line init appended would stop an accepted `.env` loading until `bb env-accept`
+  again). It says, in its dry run and after it creates the workspace: no `.env`, that `bb self-check` writes
+  it; a seat's names the file lacks, each to add; else nothing - for every seat, not only one other than
+  the default. The two shipped seats name the same three keys, so today only a hand-trimmed file shows it.
+  Its closing lines no longer say "fill the .env, then the eval" (the keys come before init in 8.3e's
+  order): `bb profile` says which keys are set. The workspace README's `.env` row says `bb self-check`.
+
+Proved: `env_file_test` (the template as `init_test` held it, the header's new words; `env-names`,
+`missing-names`, `init-lines` by case), `self_check_test` (the order; the place or the stop; the hooks set
+in a fresh repository, read back, silent the second time, a folder with no git said; the `.env` at 600,
+then byte-equal untouched), `init_test` (no `.env` entry for any seat; the second-run list),
+`workspace_test` (the next steps, both cases). 1109 tests. By hand, in a scratch clone of this tree with
+`KIT_TOOLCHAIN_DIR` on this machine's folder: `bb self-check --selfcheck-only` set the hooks, wrote the
+`.env` at 600 with the three names, the doctor ok, health 3 of 3, the next steps; again - hooks silent,
+the `.env` byte-equal; `bb init --dry-run` with no `.env` said so, with one trimmed to `ANTHROPIC_API_KEY`
+`--seat agy-ide` said "add GEMINI_API_KEY, OPENROUTER_API_KEY" - the file byte-equal each time.
+
 ### `bb upgrade` refuses up front when the project's toolchain is off the PATH, and its toolchain step stops after installing while it still is (plan 7.0, item 8.3b, the fix)
 
 From Fable 5.1's read of `c77ad78`: the line the `:toolchain` step said when the folder's `bin` was not on the

@@ -46,11 +46,11 @@
 (def kit-only
   "The harness tasks a project never runs from its workspace: the KIT's own gates
   and syncs, the security reviewer's fixture and its scoring, the tour, the REPL,
-  and the two setup commands run from the clone before a workspace exists."
+  and the three setup commands run from the clone before a workspace exists."
   #{"gates" "test" "fmt" "fmt-check" "lint" "repair" "inventory-sync" "health-sync"
     "roster-sync"
     "bake-off-check" "security-fixture" "security-score" "security-bake-off"
-    "example" "dev" "init" "health"})
+    "example" "dev" "init" "health" "self-check"})
 
 (def tasks
   "The harness tasks the front door offers, by their name here (`door-name` is the one there)."

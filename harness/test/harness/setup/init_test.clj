@@ -9,6 +9,7 @@
    [harness.contract.shapes :as shapes]
    [harness.money.report :as report]
    [harness.rules :as rules]
+   [harness.setup.env-file :as env-file]
    [harness.setup.init :as init]
    [harness.setup.init-args :as init-args]
    [harness.setup.skills :as skills]
@@ -239,8 +240,8 @@
             "the build's README says why it is called the build: settings and records beside the plan"))
       (testing "the workspace itself is not a repository"
         (is (not (fs/exists? (fs/path ws ".git")))))
-      (testing "the keys' file at 600, and the session's deny rules for it and its record (item 8.6d)"
-        (is (= "rw-------" (fs/posix->str (fs/posix-file-permissions (fs/path ws ".env")))))
+      (testing "no .env: bb self-check is its one writer (item 8.3d); the session's deny rules for it and its record (item 8.6d)"
+        (is (not (fs/exists? (fs/path ws ".env"))))
         (is (= {"permissions" {"deny" ["Read(/.env)" "Edit(/.env)" "Edit(/.env-record.edn)"]}}
                (json/parse-string (slurp (str (fs/path ws ".claude" "settings.json")))))
             "no Write rule: Claude Code matches Read and Edit path rules only"))
@@ -264,7 +265,7 @@
         (is (= kit-before (git-out kit-dir "status" "--porcelain"))))
       (testing "a second run refuses, naming what is there"
         (let [facts (init/survey req lay (constantly true))]
-          (is (= ["workspace.edn" "bb.edn" ".env" "README.md" "CLAUDE.md" ".claude/agents/interactive-programmer.md" ".claude/settings.json"
+          (is (= ["workspace.edn" "bb.edn" "README.md" "CLAUDE.md" ".claude/agents/interactive-programmer.md" ".claude/settings.json"
                   ".claude/skills/kit-plan/SKILL.md" ".claude/skills/kit-scoping/SKILL.md"
                   ".claude/skills/kit-stage-end/SKILL.md" ".claude/skills/kit-stage-plan/SKILL.md" ".claude/skills/kit-start/SKILL.md" ".claude/skills/kit-where-am-i/SKILL.md"
                   "xyx-build" "work"]
@@ -330,11 +331,11 @@
         agy (init/layout (request {:dir "/projects/xyx" :seat "agy-ide"}))]
     (is (str/starts-with? (content default "xyx-build/profile.edn") ";; THIS PROJECT'S PROFILE"))
     (is (str/ends-with? (content default "xyx-build/profile.edn")
-                        (slurp (init/shipped-profile kit-dir "claude")))
+                        (slurp (env-file/shipped-profile kit-dir "claude")))
         "the shipped example, whole and header kept, for the default seat")
-    (is (str/ends-with? (content agy "xyx-build/profile.edn") (slurp (init/shipped-profile kit-dir "agy-ide")))
+    (is (str/ends-with? (content agy "xyx-build/profile.edn") (slurp (env-file/shipped-profile kit-dir "agy-ide")))
         "--seat picks another")
-    (is (= (edn/read-string (slurp (init/shipped-profile kit-dir "claude")))
+    (is (= (edn/read-string (slurp (env-file/shipped-profile kit-dir "claude")))
            (edn/read-string (content default "xyx-build/profile.edn")))
         "and reads as the same profile")
     (is (= "profile.edn" (:profile (edn/read-string (content default "xyx-build/loop.edn"))))
@@ -423,22 +424,8 @@
     (is (= with (edn/read-string (init/workspace-edn with))) "an upgrade's rewrite loses neither")
     (is (= m (edn/read-string (init/workspace-edn m))) "and writes neither when absent")))
 
-(deftest init-writes-the-workspace-env-template-the-profiles-key-names-empty
-  ;; plan 7.0, item 8.6b; the person, 2026-10-28: "initialize a '.env' file with just the KEYS so that
-  ;; the Adopter can put in the relevant keys - basically a '.env' template"
-  (let [content (fn [lay path] (:content (first (filter #(= path (:path %)) (:entries lay)))))
-        env (content (init/layout (request {:dir "/projects/xyx"})) ".env")
-        lines (str/split-lines env)]
-    (is (str/starts-with? env "# THIS PROJECT'S KEYS - written by `bb init` with the names its profile (xyx-build/profile.edn)"))
-    (is (= ["ANTHROPIC_API_KEY=" "GEMINI_API_KEY=" "OPENROUTER_API_KEY="] (filter #(re-matches #"[A-Z_]+=.*" %) lines))
-        "the claude example's three names, sorted, every value empty")
-    (is (some #{"# blueprint-reviewer, orchestrator, tester - api.anthropic.com"} lines)
-        "what uses each, its roles sorted, and where it is sent")
-    (is (some #(and (str/starts-with? % "# coder, ") (str/includes? % "security panel (gemini-4-argon)")) lines)
-        "the security panel's members count")
-    (is (not (str/includes? env "sk-")) "no value, ever")
-    (testing "a role with no key names no line; a profile with none writes no .env"
-      (let [local {:seat :claude :roles {:coder {:model "m" :endpoint "http://localhost:8080/v1"}
-                                         :tester {:model "t" :endpoint "https://api.anthropic.com" :key-env "ANTHROPIC_API_KEY"}}}]
-        (is (= ["ANTHROPIC_API_KEY="] (filter #(re-matches #"[A-Z_]+=.*" %) (str/split-lines (init/env-template local "b")))))
-        (is (nil? (init/env-template (update local :roles dissoc :tester) "b")))))))
+(deftest init-writes-no-env-and-says-what-the-seat-lacks
+  ;; plan 7.0, item 8.3d: bb self-check is the .env's one writer; init says, never writes (From Opus
+  ;; 5.5's read of the 8.3d design: an acceptance is keyed by the file's sha256)
+  (is (not-any? #(= ".env" (:path %)) (:entries (init/layout (request {:dir "/projects/xyx"})))) "no .env entry")
+  (is (not-any? #(= ".env" (:path %)) (:entries (init/layout (request {:dir "/projects/xyx" :seat "agy-ide"})))) "for any seat"))

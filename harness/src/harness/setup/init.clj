@@ -35,6 +35,7 @@
    [harness.rules :as rules]
    [harness.setup.app :as app]
    [harness.setup.doctor :as doctor]
+   [harness.setup.env-file :as env-file]
    [harness.setup.front-door :as front-door]
    [harness.setup.init-args :as init-args]
    [harness.setup.skills :as skills]
@@ -167,17 +168,6 @@
                      (str ";; " title "\n {:id " id "\n  :text " (pr-str text) "}")))
          "]\n")))
 
-(def default-seat
-  "The seat `bb init` assumes when `--seat` is not given: the one the KIT is
-  proved in first. The others are `resources/profiles/`' other examples."
-  "claude")
-
-(defn shipped-profile
-  "Where the KIT at `kit-dir` ships the worked example for `seat`, whether or
-  not it is there - `survey` says whether, and `refusals` names the ones that are."
-  [kit-dir seat]
-  (str (fs/path kit-dir "harness" profile/examples-dir (str seat ".edn"))))
-
 (defn- profile-edn
   "`<build>/profile.edn` as `bb init` writes it: the seat's shipped example,
   whole - its header explains the pair of examples and the independence rule,
@@ -185,7 +175,7 @@
   example for the seat, which `refusals` turns into a sentence before anything
   is written."
   [{:workspace/keys [kit]} kit-dir seat]
-  (let [source (shipped-profile kit-dir seat)]
+  (let [source (env-file/shipped-profile kit-dir seat)]
     (when (fs/exists? source)
       (str ";; THIS PROJECT'S PROFILE - the models per role, and the seat. Copied by `bb init` from the KIT's\n"
            ";; example for seat " seat " (" kit "/harness/" profile/examples-dir "/" seat ".edn); edit it HERE. The build's\n"
@@ -213,36 +203,6 @@
        (str/join ",\n" (map #(str "      \"" % "\"") env-deny-rules))
        "\n    ]\n  }\n}\n"))
 
-(defn env-template
-  "The workspace `.env` as `bb init` writes it (plan 7.0, item 8.6b; the person, 2026-10-28: \"one of
-  the steps needs to be to initialize a '.env' file with just the KEYS so that the Adopter can put in
-  the relevant keys - basically a '.env' template\"): every distinct `:key-env` the seat's profile
-  names - its roles and its security panel - one `NAME=` line each, EMPTY, sorted by name, under a
-  comment naming what uses it and where it is sent; a role with no `:key-env` (a local model) adds no
-  line. The header says the file is this project's keys, one key per project with a limit at the
-  provider, never committed. Nil for a profile that names no key. Pure: `profile` the profile's map,
-  `build` the build's folder."
-  [profile build]
-  (let [uses (concat (for [[role r] (sort-by key (:roles profile))] [(name role) r])
-                     (for [m (profile/security-panel profile)] [(str "security panel (" (:name m) ")") m]))
-        by-key (->> uses
-                    (filter (fn [[_ r]] (:key-env r)))
-                    (group-by (fn [[_ r]] (:key-env r))))
-        host #(some-> % java.net.URI. .getHost)]
-    (when (seq by-key)
-      (str (str/join "\n" [(str "# THIS PROJECT'S KEYS - written by `bb init` with the names its profile (" build "/profile.edn)")
-                           "# needs, each empty: put the key after the `=`, nothing else on the line. One key per project,"
-                           "# with a spending limit set at the provider's console (for an OpenRouter key, `bb balance`"
-                           "# shows the limit beside the account's credit). This folder is not a repository, and nothing"
-                           "# commits this file. Loaded into the shell before the session starts: `eval \"$(bb"
-                           "# toolchain-env)\"`, then `claude` - the file is checked first, and no value is ever printed."])
-           "\n"
-           (str/join (for [k (sort (keys by-key))
-                           :let [rs (by-key k)]]
-                       (str "\n# " (str/join ", " (distinct (map first rs)))
-                            " - " (str/join ", " (distinct (keep (comp host :endpoint second) rs))) "\n"
-                            k "=\n")))))))
-
 (defn- workspace-readme [project {:workspace/keys [kit app build work]}]
   (str "# " project " - a workspace, not a repository\n\n"
        "Written by the KIT's `bb init`. This folder holds sibling git repositories and is not one\n"
@@ -253,7 +213,7 @@
        "| `" build "/` | the build: the plan's documents in `docs/` from the KIT's template, `rules.edn` this project's rules over the KIT's rule source, `profile.edn` the models per role, `loop.edn` defaults for runs, and `runs/` the run records with `RUNS.md` their published tables. Read before the first dispatch by `bb plan-check`, run from this folder |\n"
        "| `" work "/` | scratch, in no repository: `runs/<id>/` and `worktrees/`. Safe to delete between runs |\n"
        "| `workspace.edn` | which folder is which, for the harness |\n"
-       "| `.env` | this project's keys: the names its profile needs, written empty by `bb init` - fill them; never committed, loaded into the shell before a session starts |\n"
+       "| `.env` | this project's keys: the names its profile needs, written empty by `bb self-check` before `bb init` - fill them; never committed, loaded into the shell before a session starts |\n"
        "| `bb.edn` | the front door: every KIT command a project runs is run from this folder; `bb upgrade` writes it again (by hand, `bb front-door-sync`) |\n"
        "| `CLAUDE.md`, `.claude/` | orientation for a session started here, and the skills and the off-loop role it loads |\n\n"
        "Start sessions HERE, not inside one of the repositories. One workspace is one project.\n"))
@@ -453,7 +413,7 @@
   `:dir` is consent to use exactly that folder, and the KIT may then be
   anywhere. `:build-docs` are the plan documents to copy, relative to
   `<kit>/build-docs`. `:seat` names which shipped profile the build gets
-  (`default-seat` when nil). `:rule-mirrors` and `:loop/defaults` come from
+  (`env-file/default-seat` when nil). `:rule-mirrors` and `:loop/defaults` come from
   whatever generates the application.
 
   `:kit-commit`, when given, is the KIT's commit, recorded in `workspace.edn` so
@@ -476,7 +436,7 @@
   [{:keys [kit-dir dir build-docs skills rule-mirrors seat kit-commit kit-version harness-tasks] project :name defaults :loop/defaults
     app-folder :app build-folder :build}]
   (let [ws-dir (str (fs/normalize (or dir (fs/parent kit-dir))))
-        seat (or seat default-seat)
+        seat (or seat env-file/default-seat)
         app (or app-folder (str project "-app"))
         build (or build-folder (str project "-build"))
         ws (cond-> {:workspace/kit (kit-ref ws-dir kit-dir)
@@ -502,12 +462,8 @@
              :content (workspace-edn ws)}
             {:path "bb.edn" :what "the front door: every command a project runs, run from here"
              :content (front-door/render harness-tasks)}]
-           ;; THE PROJECT'S KEYS, NAMED AND EMPTY (plan 7.0, item 8.6b): the names the seat's profile
-           ;; needs, for the person to fill; never written again - `bb profile` names a key added later
-           (when-let [env (some-> (shipped-profile kit-dir seat) (#(when (fs/exists? %) (profile/read-profile %)))
-                                  (env-template build))]
-             [{:path ".env" :what "this project's keys: the names its profile needs, empty, to fill - never committed"
-               :content env :mode "rw-------"}])
+           ;; NO `.env`: `bb self-check` writes it before `bb init`, its one writer (plan 7.0, item 8.3d);
+           ;; `-main` says the names the seat needs that it lacks
            [{:path "README.md" :what "one screen on the folders"
              :content (workspace-readme project ws)}
             {:path "CLAUDE.md" :what "orientation for a session started here (no rules, no import)"
@@ -598,10 +554,10 @@
 
     ;; The build's profile is a copy of a shipped example, so a seat the KIT has no example
     ;; for has nothing to copy - and an empty profile.edn would fail at the first `start`.
-    (and (:kit? facts) (not (contains? (set (:seats facts)) (or seat default-seat))))
-    (conj (str "no shipped profile for seat " (pr-str (or seat default-seat)) ": the KIT has "
+    (and (:kit? facts) (not (contains? (set (:seats facts)) (or seat env-file/default-seat))))
+    (conj (str "no shipped profile for seat " (pr-str (or seat env-file/default-seat)) ": the KIT has "
                (str/join ", " (:seats facts)) " in harness/" profile/examples-dir
-               "/ (`--seat <name>`, default " default-seat ")"))
+               "/ (`--seat <name>`, default " env-file/default-seat ")"))
 
     (inside? kit-dir ws-dir)
     (conj (str ws-dir " is inside the KIT's clone (" kit-dir "), and `bb init` writes nothing there: "
@@ -783,13 +739,19 @@
              :rule-mirrors [(str app-folder "/AGENTS.md")]
              :loop/defaults (:loop/defaults pin)}
         lay (layout req)
-        no (refusals req lay (survey req lay #(doctor/ok? (doctor/report) :loop)))]
+        no (refusals req lay (survey req lay #(doctor/ok? (doctor/report) :loop)))
+        ;; THE KEYS: said, never written - `bb self-check` is the .env's one writer (plan 7.0, item 8.3d)
+        env (fs/path (:workspace/dir lay) ".env")
+        env-lines (when (empty? no)
+                    (env-file/init-lines (str env) (when (fs/exists? env) (slurp (str env)))
+                                         (profile/read-profile (env-file/shipped-profile kit-dir (or seat env-file/default-seat)))))]
     (println (render-layout lay true))
     (cond
       (seq no) (do (println "bb init: nothing was written.\n")
                    (doseq [r no] (println (str "  - " r)))
                    (System/exit 1))
-      dry-run? (println "bb init --dry-run: nothing was written.")
+      dry-run? (do (run! println env-lines)
+                   (println "bb init --dry-run: nothing was written."))
       :else
       (let [_ (println (str "Generating the application from " (:template pin) " "
                             (if local-root (str "- LOCAL CLONE " local-root) (:git/tag pin))
@@ -807,8 +769,8 @@
                                  "; remove it before running `bb init` again."))
                    (System/exit 1)))]
         (println (str "Created. " (fs/path ws-dir workspace/file-name) " says which folder is which.\n\n"
-                      "First, this project's keys: fill " (fs/path ws-dir ".env") " - the names its profile needs, each\n"
-                      "empty - then `eval \"$(bb toolchain-env)\"` in the shell that starts the session, and `bb profile`.\n\n"
+                      (str/join (map #(str % "\n") env-lines))
+                      "The keys this project's profile needs, in this shell: `bb profile` says which are set.\n\n"
                       "Next: open a Claude Code session in the workspace folder - Opus 5.5, effort high -\n"
                       "and type /kit-start:\n\n"
                       "  cd " ws-dir " && claude\n\n"
