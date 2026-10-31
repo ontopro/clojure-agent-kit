@@ -514,22 +514,34 @@
                       (not (and here (same-version? here pinned))))]
        (str tag " uses " (name tool) " " pinned "; this machine has " (or here "none") " - the upgrade installs it")))))
 
-(defn path-line
-  "The line said when the toolchain folder's `bin` is not among `path`'s entries - nil when it is: the
-  application's gates and the doctor in this process run the PATH's tools. Said, not plumbed (From
-  Fable 5.1's read of the 8.3b design)."
+(defn on-path?
+  "Whether the toolchain folder's `bin` is among `path`'s entries: the application's gates and the doctor
+  in this process run the PATH's tools (From Fable 5.1's read of the 8.3b design)."
   [bin path]
-  (when-not (some #(= (str (fs/normalize bin)) (str (fs/normalize %))) (remove str/blank? (str/split (or path "") #":")))
-    (str bin " is not on this shell's PATH: the application's gates and the doctor in this upgrade run this shell's tools - "
-         "`eval \"$(bb toolchain-env)\"`, then `bb upgrade --after-pull` picks up where it is")))
+  (boolean (some #(= (str (fs/normalize bin)) (str (fs/normalize %))) (remove str/blank? (str/split (or path "") #":")))))
+
+(defn path-refusal
+  "The refusal at the start of `bb upgrade` and `bb upgrade --after-pull`, before anything moves - pure:
+  nil unless the folder's `bin` exists (`exists?`) and is not on `path`. A folder not made yet - the first
+  upgrade into 0.7.x, whose `:toolchain` step makes it - passes; the front door puts `bin` first, so through
+  it this never fires (From Fable 5.1's read of `c77ad78`, the person's proposal)."
+  [bin exists? path]
+  (when (and exists? (not (on-path? bin path)))
+    (str bin " is not on this shell's PATH, so the upgrade's steps would run this shell's tools, not the project's;"
+         " nothing changed - run `eval \"$(bb toolchain-env)\"`, then this command again")))
+
+(defn toolchain-bin
+  "The project's toolchain `bin` from the pack's `status` (`doctor/folder-status`), or nil when it did not answer."
+  [status]
+  (some-> (:cache status) (str "/bin")))
 
 (defn toolchain-plan
-  "What the `:toolchain` step does - pure over the moved clone's pack `status` (`doctor/folder-status`, or
-  nil), its `matrix` and the disk's `space`: `{:stop line}`, `{:nothing line}`, or `{:lines [...]}` - the
+  "What the `:toolchain` step does - pure over the moved clone `kit`'s pack `status` (`doctor/folder-status`,
+  or nil), its `matrix` and the disk's `space`: `{:stop line}`, `{:nothing line}`, or `{:lines [...]}` - the
   offer's lines, without its question (the person: the upgrade installs)."
-  [status matrix space]
+  [kit status matrix space]
   (cond
-    (nil? status) {:stop "the toolchain pack's status did not answer - `bb --config KIT/tools/toolchain/bb.edn status` says why"}
+    (nil? status) {:stop (str "the toolchain pack's status did not answer - `bb --config " (fs/path kit "tools" "toolchain" "bb.edn") " status` says why")}
     (:refusal status) {:stop (:refusal status)}
     (:unpublished status) {:nothing (:unpublished status)}
     :else
@@ -542,23 +554,31 @@
 
 (defn toolchain!
   "Phase 2's `:toolchain` step on the moved clone `kit`: its pack's true-up - this release's versions -
-  into the project's folder, the list said first; a step record."
-  [kit]
-  (let [status (doctor/folder-status kit)
-        {:keys [stop nothing lines items]} (toolchain-plan status (download-matrix/read-matrix kit)
-                                                           (doctor/disk-space (or (:cache status) kit)))]
+  into the project's folder, the list said first; a step record. Stopped after installing when the folder's
+  `bin` is not on this process's PATH - only the first upgrade into 0.7.x, whose folder this step made after
+  the up-front check passed it: the steps after it would run the shell's tools. A re-run finds nothing to
+  install and goes on. Opts, for tests: `:status` the pack's, `:install!` (-> exit), `:path`, `:space`."
+  [kit & [{:keys [status install! path space]}]]
+  (let [status (or status (doctor/folder-status kit))
+        {:keys [stop nothing lines items]} (toolchain-plan kit status (download-matrix/read-matrix kit)
+                                                           (or space (doctor/disk-space (or (:cache status) kit))))]
     (run! #(say %) lines)
     (cond
       stop {:status :stopped :detail stop}
       nothing {:status :done :detail nothing}
       :else
-      (let [{:keys [exit]} (p/shell {:continue true} "bb" "--config" (str (fs/path kit "tools" "toolchain" "bb.edn")) "toolchain-install")
-            warn (path-line (str (:cache status) "/bin") (System/getenv "PATH"))]
-        (when warn (say warn))
-        (if (zero? exit)
-          {:status :done :detail (str "installed " (str/join ", " (map #(str (name (:tool %)) " " (:version %)) items))
-                                      (when warn "; the folder's bin not on this shell's PATH - said above"))}
-          {:status :stopped :detail "the true-up failed - its lines above; `bb upgrade --after-pull` picks up here"})))))
+      (let [exit (if install!
+                   (install!)
+                   (:exit (p/shell {:continue true} "bb" "--config" (str (fs/path kit "tools" "toolchain" "bb.edn")) "toolchain-install")))
+            installed (str "installed " (str/join ", " (map #(str (name (:tool %)) " " (:version %)) items)))]
+        (cond
+          (not (zero? exit))
+          {:status :stopped :detail "the true-up failed - its lines above; `bb upgrade --after-pull` picks up here"}
+          (not (on-path? (toolchain-bin status) (or path (System/getenv "PATH"))))
+          {:status :stopped
+           :detail (str installed "; the new tools are in " (:cache status) ", not on this shell's PATH - the front door was rewritten earlier"
+                        " in this upgrade: `eval \"$(bb toolchain-env)\"`, then `bb upgrade --after-pull`")}
+          :else {:status :done :detail installed})))))
 
 (defn- step-toolchain! [{:keys [kit toolchain]}]
   ((or toolchain toolchain!) kit))
@@ -622,12 +642,17 @@
 
 (defn dry-run!
   "What `after-pull!` would do, from the same facts; nothing written. `status` the clone's pack's
-  `status --edn` (the `:toolchain` step's facts), read unless given."
-  [ws kit & [{:keys [status] :or {status ::read}}]]
+  `status --edn` (the `:toolchain` step's facts), read unless given; `path` this process's PATH unless
+  given. The up-front check's refusal is said first, and the dry run goes on."
+  [ws kit & [{:keys [status path] :or {status ::read path (System/getenv "PATH")}}]]
   (let [raw (raw-workspace ws)
         from (:workspace/kit-commit raw)
         head (git! kit "rev-parse" "HEAD")
-        version (clone-version (str/split-lines (:out (git kit "tag" "--merged" "HEAD"))))]
+        version (clone-version (str/split-lines (:out (git kit "tag" "--merged" "HEAD"))))
+        st (if (= ::read status) (doctor/folder-status kit) status)
+        bin (toolchain-bin st)]
+    (when-let [refusal (and bin (path-refusal bin (fs/exists? bin) path))]
+      (say "would refuse: " refusal))
     (if-not from
       (say "workspace.edn records no :workspace/kit-commit: the upgrade would refuse")
       (let [files (parse-diff (:out (git kit "diff" from head "--" "build-docs/")))
@@ -666,8 +691,7 @@
         (say "build-ignore: " (let [f (fs/path (:workspace/build ws) ".gitignore")
                                     [_ added] (ignore-text (when (fs/exists? f) (slurp (str f))) init/build-ignored)]
                                 (if (seq added) (str "would add " (str/join ", " added)) "nothing to add")))
-        (let [st (if (= ::read status) (doctor/folder-status kit) status)
-              {:keys [stop nothing lines]} (toolchain-plan st (download-matrix/read-matrix kit) (doctor/disk-space (or (:cache st) kit)))]
+        (let [{:keys [stop nothing lines]} (toolchain-plan kit st (download-matrix/read-matrix kit) (doctor/disk-space (or (:cache st) kit)))]
           (say "toolchain: " (cond stop (str "would stop - " stop) nothing nothing :else "would install, with no question asked:"))
           (run! #(say "  " %) (when-not (or stop nothing) (remove str/blank? (rest lines)))))
         (say "app: " (if moved (str "the template pin moved " (:git/tag (:from moved)) " -> " (:git/tag (:to moved)) ": template-upgrade, the mirror and the tested set on its branch") "the pin as it was: a branch for the mirror and the tested set if either changed"))
@@ -986,6 +1010,15 @@
       (println "upgrade: --to needs a tag after it")
       (System/exit 2))
     (try
+      ;; THE PROJECT'S TOOLCHAIN ON THE PATH, checked before anything moves (From Fable 5.1's read of
+      ;; `c77ad78`): a dry run says it and goes on; `--after-pull --dry-run` says it itself
+      (let [refusal (when-not (and (flags "--after-pull") (flags "--dry-run"))
+                      (let [bin (toolchain-bin (doctor/folder-status kit))]
+                        (when bin (path-refusal bin (fs/exists? bin) (System/getenv "PATH")))))]
+        (when refusal
+          (if (flags "--dry-run")
+            (println (str "bb upgrade --dry-run: would refuse: " refusal))
+            (do (println (str "bb upgrade: " refusal)) (System/exit 1)))))
       (cond
         (and (flags "--after-pull") (flags "--dry-run")) (dry-run! ws kit)
         (flags "--after-pull") (let [{:keys [ok?]} (after-pull! ws kit {})] (System/exit (if ok? 0 1)))

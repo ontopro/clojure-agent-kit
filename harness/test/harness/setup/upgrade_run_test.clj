@@ -668,19 +668,80 @@
   (let [status {:cache "/w/.kit/toolchain" :rows [{:tool :java :present? false} {:tool :cljfmt :present? true}]}
         m {:java {:version "25.0.5+8" :disk-mb 294} :cljfmt {:version "0.16.6" :disk-mb 36}}
         room {:free-mb (* 100 1024) :total-mb (* 500 1024)}]
-    (let [{:keys [lines items]} (ur/toolchain-plan status m room)]
+    (let [{:keys [lines items]} (ur/toolchain-plan "/w/KIT" status m room)]
       (is (= [{:tool :java :version "25.0.5+8" :disk-mb 294}] (vec items)))
       (is (some #{"  - java 25.0.5+8 (about 294 MB on disk)"} lines) "the doctor's offer lines, no question"))
-    (is (str/starts-with? (:stop (ur/toolchain-plan status m {:free-mb 10 :total-mb 100})) "Not enough space")
+    (is (str/starts-with? (:stop (ur/toolchain-plan "/w/KIT" status m {:free-mb 10 :total-mb 100})) "Not enough space")
         "a total past the free space stops the step, the way out named")
-    (is (:nothing (ur/toolchain-plan (assoc-in status [:rows 0 :present?] true) m room)) "nothing to install")
-    (is (= "unpublished" (:nothing (ur/toolchain-plan (assoc status :unpublished "unpublished") m room))))
-    (is (= "refused" (:stop (ur/toolchain-plan (assoc status :refusal "refused") m room))))
-    (is (str/includes? (:stop (ur/toolchain-plan nil m room)) "did not answer")))
-  (testing "the folder's bin not on this process's PATH: said, with the eval and the resume"
-    (is (nil? (ur/path-line "/w/.kit/toolchain/bin" "/w/.kit/toolchain/bin:/usr/bin")))
-    (is (str/includes? (ur/path-line "/w/.kit/toolchain/bin" "/usr/bin:/bin")
-                       "`eval \"$(bb toolchain-env)\"`, then `bb upgrade --after-pull` picks up where it is")))
+    (is (:nothing (ur/toolchain-plan "/w/KIT" (assoc-in status [:rows 0 :present?] true) m room)) "nothing to install")
+    (is (= "unpublished" (:nothing (ur/toolchain-plan "/w/KIT" (assoc status :unpublished "unpublished") m room))))
+    (is (= "refused" (:stop (ur/toolchain-plan "/w/KIT" (assoc status :refusal "refused") m room))))
+    (is (= "the toolchain pack's status did not answer - `bb --config /w/KIT/tools/toolchain/bb.edn status` says why"
+           (:stop (ur/toolchain-plan "/w/KIT" nil m room)))
+        "the clone's own pack named, never a literal KIT/"))
+  (testing "the up-front check: refused only when the folder's bin exists and is off the PATH"
+    (is (ur/on-path? "/w/.kit/toolchain/bin" "/usr/bin:/w/.kit/toolchain/bin/"))
+    (is (not (ur/on-path? "/w/.kit/toolchain/bin" nil)))
+    (is (nil? (ur/path-refusal "/w/.kit/toolchain/bin" true "/w/.kit/toolchain/bin:/usr/bin")) "on the PATH: the front door's case")
+    (is (nil? (ur/path-refusal "/w/.kit/toolchain/bin" false "/usr/bin")) "no folder yet: the first upgrade into 0.7.x passes")
+    (is (str/ends-with? (ur/path-refusal "/w/.kit/toolchain/bin" true "/usr/bin:/bin")
+                        "nothing changed - run `eval \"$(bb toolchain-env)\"`, then this command again"))
+    (is (= "/w/.kit/toolchain/bin" (ur/toolchain-bin {:cache "/w/.kit/toolchain"})))
+    (is (nil? (ur/toolchain-bin nil)) "the pack did not answer: no check, the step says it"))
   (testing "the step is before :app, so the application's gates run on the new tools"
     (is (< (.indexOf ur/steps :toolchain) (.indexOf ur/steps :app)))
     (is (= :build-ignore (nth ur/steps (dec (.indexOf ur/steps :toolchain)))))))
+
+(def ^:private room {:free-mb (* 100 1024) :total-mb (* 500 1024)})
+
+(deftest the-toolchain-step-stops-when-its-folder-is-off-the-path-and-a-re-run-goes-on
+  ;; From Fable 5.1's read of c77ad78: the first upgrade into 0.7.x makes the folder inside phase 2, so the
+  ;; up-front check passed it; the step installs, then stops - the steps after it would run the shell's tools
+  (let [kit (fake-kit!)
+        ws (workspace! kit)
+        _ (release! kit)
+        cache (str (fs/path (fs/parent kit) ".kit" "toolchain"))
+        missing {:cache cache :rows [{:tool :java :present? false}]}
+        present (assoc-in missing [:rows 0 :present?] true)
+        installs (atom 0)
+        step (fn [facts] (fn [k] (ur/toolchain! k (assoc facts :space room :install! #(do (swap! installs inc) 0)))))
+        opts {:gates [[:fmt "true"]] :generate (fn [_] (throw (ex-info "no generation: the pin is as it was" {})))}
+        r1 (binding [*out* (java.io.StringWriter.)] (ur/after-pull! ws kit (assoc opts :toolchain (step {:status missing :path "/usr/bin"}))))
+        detail (get-in r1 [:records :toolchain :detail])]
+    (is (= :toolchain (:stopped r1)))
+    (is (= 1 @installs) "installed first, then stopped")
+    (is (str/includes? detail (str "the new tools are in " cache ", not on this shell's PATH")))
+    (is (str/ends-with? detail "`eval \"$(bb toolchain-env)\"`, then `bb upgrade --after-pull`") "the exact next command")
+    (is (nil? (get-in r1 [:records :app])) "nothing after it ran")
+    (testing "after the eval, the re-run finds nothing to install and goes on to :app"
+      (let [r2 (binding [*out* (java.io.StringWriter.)] (ur/after-pull! ws kit (assoc opts :toolchain (step {:status present :path (str cache "/bin:/usr/bin")}))))]
+        (is (:ok? r2))
+        (is (= 1 @installs) "nothing installed again")
+        (is (= "every tool of the download matrix is in the project's folder at its version" (get-in r2 [:records :toolchain :detail])))
+        (is (= :done (get-in r2 [:records :app :status])))))
+    (testing "on the PATH, the step is done; a failed true-up stops it with its own line"
+      (binding [*out* (java.io.StringWriter.)]
+        (is (= {:status :done :detail "installed java "}
+               (ur/toolchain! "/w/KIT" {:status missing :path (str cache "/bin") :space room :install! (constantly 0)})))
+        (is (= "the true-up failed - its lines above; `bb upgrade --after-pull` picks up here"
+               (:detail (ur/toolchain! "/w/KIT" {:status missing :path (str cache "/bin") :space room :install! (constantly 1)}))))))))
+
+(deftest the-dry-run-says-the-up-front-check-and-the-toolchain-step
+  ;; From Fable 5.1's read of c77ad78: dry-run!'s toolchain line, the pack's status given
+  (let [kit (fake-kit!)
+        ws (workspace! kit)
+        _ (release! kit)
+        cache (str (fs/path (fs/parent kit) ".kit" "toolchain"))
+        _ (fs/create-dirs (fs/path cache "bin"))
+        missing {:cache cache :rows [{:tool :java :present? false}]}
+        dry (fn [status path] (with-out-str (ur/dry-run! ws kit {:status status :path path})))]
+    (let [out (dry missing "/usr/bin")]
+      (is (str/includes? out (str "would refuse: " cache "/bin is not on this shell's PATH")) "said first")
+      (is (str/includes? out "toolchain: would install, with no question asked:"))
+      (is (str/includes? out "    - java"))
+      (is (str/includes? out "bb upgrade --dry-run: nothing was written.") "and the dry run went on"))
+    (let [out (dry (assoc-in missing [:rows 0 :present?] true) (str cache "/bin:/usr/bin"))]
+      (is (not (str/includes? out "would refuse")))
+      (is (str/includes? out "toolchain: every tool of the download matrix is in the project's folder at its version")))
+    (is (str/includes? (dry nil "/usr/bin")
+                       (str "toolchain: would stop - the toolchain pack's status did not answer - `bb --config " kit "/tools/toolchain/bb.edn status` says why")))))

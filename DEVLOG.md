@@ -68,6 +68,40 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### `bb upgrade` refuses up front when the project's toolchain is off the PATH, and its toolchain step stops after installing while it still is (plan 7.0, item 8.3b, the fix)
+
+From Fable 5.1's read of `c77ad78`: the line the `:toolchain` step said when the folder's `bin` was not on the
+process's PATH told the person to eval and resume, but said it after the step had gone on - the application's
+gates and the doctor then ran the shell's tools, and "picks up where it is" found every step done. The
+person's proposal (check the PATH up front, refuse with the eval) and the writer's refinement, read by Fable
+5.1; the person: "go".
+- **Up front, before anything moves**, at the start of `bb upgrade` and of `bb upgrade --after-pull` (in
+  `-main`, before the network): when the project's toolchain folder's `bin` exists (the pack's `status --edn`
+  `:cache`) and is not on this shell's PATH, refused - "nothing changed - run `eval "$(bb toolchain-env)"`,
+  then this command again" - exit 1. A dry run says it as "would refuse:" and goes on. A folder not made yet
+  passes: the first upgrade into 0.7.x makes it in phase 2. Through the front door it never fires - the front
+  door puts `bin` first (8.2c). Phase 1's hand-over to `--after-pull` meets the same check on the same PATH.
+- **The `:toolchain` step stops after installing** when the folder's `bin` is still not on the PATH - only that
+  first upgrade into 0.7.x, whose folder the step itself made after the check passed it: `:stopped`, "the new
+  tools are in <folder>, not on this shell's PATH - the front door was rewritten earlier in this upgrade: `eval
+  "$(bb toolchain-env)"`, then `bb upgrade --after-pull`". The re-run finds nothing to install and goes on to
+  `:app`. `path-line` goes; `on-path?`, `path-refusal` and `toolchain-bin` take its place. `toolchain!` takes
+  its facts as options for a test (`:status`, `:install!`, `:path`, `:space`).
+- **The no-answer stop** names the clone's own pack (`bb --config <clone>/tools/toolchain/bb.edn status`), not a
+  literal `KIT/` - `toolchain-plan` takes the clone first, as `doctor/fix-context` does (the read's nit).
+- Item 13's hand-off order (Fable 5.1): `git -C KIT checkout 0.7.0`, `bb self-check` in `KIT/` (the true-up),
+  `eval "$(bb toolchain-env)"`, `bb --config KIT/harness/bb.edn upgrade --after-pull` - meets neither.
+
+Proved: `upgrade_run_test` - the check's cases (on the PATH, no folder yet, refused, the pack silent); a whole
+phase 2 whose `:toolchain` step installs (a stand-in true-up), stops off the PATH with the exact next command,
+nothing after it run, then after the eval the re-run installs nothing again and `:app` is done; the step done on
+the PATH, stopped by a failed true-up; `dry-run!`'s toolchain lines with the status given (the read's low) -
+would install, nothing to install, would stop with the clone's pack named, and "would refuse" said first with the
+dry run going on. 1103 tests. By hand, against a scratch `workspace.edn` with this machine's real folder
+(`bin` present, not on the PATH): `bb upgrade` and `bb upgrade --after-pull` refused, exit 1, nothing reached;
+`--dry-run` and `--after-pull --dry-run` said "would refuse" and went on, exit 0; with `bin` on the PATH, no
+refusal - the next check spoke.
+
 ### `bb upgrade` says what each newer release's tools mean here, and installs them after the move (plan 7.0, item 8.3b, the second of two)
 
 The person, 2026-10-30: "why doesn't 'bb upgrade' run this as part of the upgrade process?" - "yes to both";
