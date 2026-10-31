@@ -68,6 +68,13 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### `copy-script`'s folder a constant, never input, said in its docstring (plan 7.0, item 9.3, a nit)
+
+From Fable 5.1's read of `045e217`: `copy-script` puts its folder into a shell script unquoted. Both
+callers pass a constant of the namespace (`/tmp/run`, `/tmp/serve`), so nothing reaches the shell from
+outside today; the docstring now says the folder must stay one, so a later caller does not pass a path
+from elsewhere. No behaviour changed.
+
 ### `clj-paren-repair` warmed in the KIT's review sandbox: register row 237 (plan 7.0, item 9, before the audit)
 
 The person: "go" - row 237's fix before the audit, its wording with it (From Fable 5.1's read of `045e217`:

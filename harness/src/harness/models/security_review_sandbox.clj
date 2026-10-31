@@ -78,7 +78,8 @@
   and `.cpcache/` (all ignored) do not. A run in the clone itself saw what earlier runs had left: a
   test that wrote into `target/` passed in the review only because a whole-suite run had made the
   folder, and failed in a fresh clone. Every run now starts from the same tree a fresh clone has - and,
-  the clone read-only, nothing else could run there."
+  the clone read-only, nothing else could run there. `dir` goes into the shell script as it is, unquoted:
+  a constant of this namespace (`/tmp/run`, `/tmp/serve`), never input."
   [dir]
   (str "set -e\n"
        "rm -rf " dir " && mkdir -p " dir "\n"
