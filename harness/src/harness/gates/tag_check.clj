@@ -98,13 +98,22 @@
                                                    (str/join ", " (take 5 (map #(last (str/split (str/trim %) #"\s+")) (str/split-lines porcelain)))))
                  :else (str "clean on `" branch "`")))))
 
+(defn stale?
+  "Whether a record, as `read-records` gives it, is stale: dirty, from a local clone of the template, or
+  `:changed` naming a path - code `bb health` runs, changed since its commit, or the known-good set's
+  record. The one definition `health-check`, `stale-platforms` and `read-records` hold a record to
+  (From Fable 5.1's read of `e1c51fa`); `read-records` asks it of the Mac's before the set is compared,
+  when `:changed` is the code alone."
+  [{:keys [dirty? local-root changed]}]
+  (boolean (or dirty? local-root (seq changed))))
+
 (defn health-check
   "`records`: [{:platform :sha :dirty? :changed [paths]}], `changed` the health
   paths that differ between the record's commit and HEAD."
   [records]
   (let [by (into {} (map (juxt :platform identity) records))
         missing (remove by (sort platforms))
-        stale (filter #(or (:dirty? %) (:local-root %) (seq (:changed %))) (keep by (sort platforms)))]
+        stale (filter stale? (keep by (sort platforms)))]
     (check :health (and (empty? missing) (empty? stale))
            (cond (seq missing) (str "no record for " (str/join ", " missing))
                  (seq stale) (str/join "; " (for [{:keys [platform sha dirty? local-root changed]} stale]
@@ -148,7 +157,7 @@
   "The platforms whose health record is missing or stale."
   [records]
   (let [by (into {} (map (juxt :platform identity) records))]
-    (set (filter #(let [r (by %)] (or (nil? r) (:dirty? r) (:local-root r) (seq (:changed r)))) platforms))))
+    (set (filter #(let [r (by %)] (or (nil? r) (stale? r))) platforms))))
 
 (defn gates-check [rec head-tree]
   (check :gates (and rec (zero? (:exit rec)) (= (:tree rec) (:tree-after rec) head-tree))
@@ -214,12 +223,6 @@
   (let [held #(select-keys % kit-pins/recorded-tools)]
     (boolean (and good-tools (not= (held record-tools) (held good-tools))))))
 
-(defn- stale-by-itself?
-  "A record `read-records` holds stale before the set is compared: dirty, from a local clone of the
-  template, or code `bb health` runs changed since its commit."
-  [{:keys [dirty? local-root changed]}]
-  (boolean (or dirty? local-root (seq changed))))
-
 (defn read-records
   "Every record under `records-dir`, `{:platform :sha :dirty? :local-root :changed [paths]}`. The
   known-good set counts only while the Mac's record is fresh: when a pin moved and `bb docker-health`
@@ -240,7 +243,7 @@
                                          str/split-lines
                                          (->> (remove str/blank?))))
                    :tools (:tools r)})
-        set-fresh? (not-any? #(and (= known-good/platform (:platform %)) (stale-by-itself? %)) records)]
+        set-fresh? (not-any? #(and (= known-good/platform (:platform %)) (stale? %)) records)]
     (for [{:keys [tools] :as rec} records
           ;; THE KNOWN-GOOD SET COUNTS WHEN IT SAYS SOMETHING the record did not run
           :let [set-moved? (and set-fresh? (set-stales? tools (:tools good)))]]

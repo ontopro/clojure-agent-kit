@@ -80,6 +80,15 @@
                        "macos-arm64 (on aaaaaaa) is stale: recorded from a LOCAL CLONE of the template (/src/clojure-stack-lite), not the pin"))
     (is (= #{"macos-arm64"} (tc/stale-platforms [local (fresh "linux-arm64")])) "and --run records it again")))
 
+(deftest one-definition-of-a-stale-record
+  ;; From Fable 5.1's read of e1c51fa: health-check, stale-platforms and read-records hold a record to it
+  (let [fresh {:platform "macos-arm64" :sha sha-a :dirty? false :changed []}]
+    (is (false? (tc/stale? fresh)))
+    (is (tc/stale? (assoc fresh :dirty? true)) "dirty")
+    (is (tc/stale? (assoc fresh :local-root "/src/clojure-stack-lite")) "a local clone of the template")
+    (is (tc/stale? (assoc fresh :changed ["harness/src/x.clj"])) "a path changed")
+    (is (= #{"linux-arm64"} (tc/stale-platforms [fresh])) "a missing record listed with the stale")))
+
 (deftest a-record-is-stale-by-the-set-when-its-tools-differ-from-the-macs
   ;; plan 7.0, item 8.3f: the set is the Mac's health record, so the rule is a comparison of two
   ;; records, no history - row 127's two halves still hold: a re-date is no move, and a run that

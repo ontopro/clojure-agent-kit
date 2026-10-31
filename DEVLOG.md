@@ -68,6 +68,15 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### One definition of a stale health record (plan 7.0, item 8.3f, a nit)
+
+From Fable 5.1's read of `e1c51fa` (a nit; the person: "fix it"): `tag-check` wrote what makes a record
+stale - dirty, from a local clone of the template, a path changed - three times: `health-check` and
+`stale-platforms` inline, and `stale-by-itself?`, which `e1c51fa` added for the Mac's record before the set is
+compared. It is one function now, `stale?`, all three calling it, so the rule a record is renewed by and the
+rule that decides whether the set is about to be rewritten cannot drift apart. No behaviour changed; a test
+pins the three conditions.
+
 ### The toolchain image's versions are the download matrix's (plan 7.0, item 8.3f, a fix)
 
 From Fable 5.1's read of `836255d` (a low; the person: "go"): the harness README said every version in the
