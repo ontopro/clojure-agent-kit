@@ -68,6 +68,18 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### The health records at the end of item 8: both platforms on `7df68b9`, the first with no known-good copy (plan 7.0, item 8)
+
+The person: "go, renew the health records". `bb kit-pins` first: 0 newer released, 0 installed differ.
+`bb health --record` on this Mac (macOS 27.0.1 arm64, at `7df68b9`, the project folder's `bin/` first on the
+PATH): 12 of 12 checks in 161 s. `bb docker-health` in the KIT's toolchain image (Linux Ubuntu 24.04.5 LTS
+arm64): healthy in 99 s - 10 of 12 ok, the image and the pgwire checks skipped there as on 2026-10-29, no
+Docker inside the container. `bb health-sync` rendered the README block. The tools are the ones the
+2026-10-29 records hold but git in the container, 2.43.0, Ubuntu's since 8.2e (the image built git 2.56.0
+before). The first runs since 8.3f: neither wrote a known-good copy, and the Mac's record, re-dated
+2026-10-31, is the set - so the toolchain image's name moves to that date and the next `bb docker-gates`
+builds it. Each run kept under its own time-named file (`health/records/<platform>/2026-10-31-7df68b9.edn`).
+
 ### One definition of a stale health record (plan 7.0, item 8.3f, a nit)
 
 From Fable 5.1's read of `e1c51fa` (a nit; the person: "fix it"): `tag-check` wrote what makes a record

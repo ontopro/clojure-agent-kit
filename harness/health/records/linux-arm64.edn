@@ -1,10 +1,10 @@
 ;; Written by `bb health --record`; rendered into the README by `bb health-sync`. Do not edit.
-{:health/as-of "2026-10-29",
+{:health/as-of "2026-10-31",
  :platform
  {:key "linux-arm64", :label "Linux Ubuntu 24.04.5 LTS arm64"},
  :kit
- {:sha "f9b5af88cb8db0e8ef169fa5b67742ac125c4631",
-  :short "f9b5af8",
+ {:sha "7df68b9d01890a9ea1bbee180f5da1b4db173109",
+  :short "7df68b9",
   :dirty? false},
  :template
  {:template io.github.ontopro/clojure-stack-lite,
@@ -17,20 +17,20 @@
   :clj-paren-repair "d341c23",
   :cljfmt "0.16.6",
   :clojure "1.12.6.1673",
-  :git "2.56.0",
+  :git "2.43.0",
   :java "25.0.5"},
  :checks
- [{:subject :selfcheck, :check :gates, :ok? true, :ms 3452}
-  {:subject :selfcheck, :check :red, :ok? true, :ms 5320}
-  {:subject :selfcheck, :check :loop, :ok? true, :ms 8622}
-  {:subject :app, :check :gates, :ok? true, :ms 13885}
-  {:subject :app, :check :red, :ok? true, :ms 11737}
-  {:subject :app, :check :loop, :ok? true, :ms 11900}
-  {:subject :app, :check :serve, :ok? true, :ms 8495}
-  {:subject :app, :check :browser, :ok? true, :ms 14198}
-  {:subject :app, :check :security, :ok? true, :ms 11794}
+ [{:subject :selfcheck, :check :gates, :ok? true, :ms 3590}
+  {:subject :selfcheck, :check :red, :ok? true, :ms 5486}
+  {:subject :selfcheck, :check :loop, :ok? true, :ms 8489}
+  {:subject :app, :check :gates, :ok? true, :ms 12575}
+  {:subject :app, :check :red, :ok? true, :ms 12557}
+  {:subject :app, :check :loop, :ok? true, :ms 12420}
+  {:subject :app, :check :serve, :ok? true, :ms 8472}
+  {:subject :app, :check :browser, :ok? true, :ms 13159}
+  {:subject :app, :check :security, :ok? true, :ms 11838}
   {:subject :app, :check :image, :ok? true, :ms 0, :skipped? true}
-  {:subject :xtdb, :check :embedded, :ok? true, :ms 11722}
+  {:subject :xtdb, :check :embedded, :ok? true, :ms 10380}
   {:subject :xtdb, :check :pgwire, :ok? true, :ms 0, :skipped? true}],
  :xtdb {:version "2.2.0", :image "ghcr.io/xtdb/xtdb:2.2.0"},
  :ok? true}

@@ -177,8 +177,8 @@ disagree. The date is the claim; nothing here says it still holds today.
 
 | Platform | Run on | KIT commit | Template | Checks | Time |
 |---|---|---|---|---|---|
-| Linux Ubuntu 24.04.5 LTS arm64 | 2026-10-29 | `f9b5af8` | `kit-v1.3` (`f12268d`) | 10 of 12 ok, 2 skipped: selfcheck gates, selfcheck red, selfcheck loop, app gates, app red, app loop, app serve, app browser, app security, app image SKIPPED, xtdb embedded, xtdb pgwire SKIPPED | 101s |
-| macOS 27.0.1 arm64 | 2026-10-29 | `f9b5af8` | `kit-v1.3` (`f12268d`) | 12 of 12 ok: selfcheck gates, selfcheck red, selfcheck loop, app gates, app red, app loop, app serve, app browser, app security, app image, xtdb embedded, xtdb pgwire | 186s |
+| Linux Ubuntu 24.04.5 LTS arm64 | 2026-10-31 | `7df68b9` | `kit-v1.3` (`f12268d`) | 10 of 12 ok, 2 skipped: selfcheck gates, selfcheck red, selfcheck loop, app gates, app red, app loop, app serve, app browser, app security, app image SKIPPED, xtdb embedded, xtdb pgwire SKIPPED | 99s |
+| macOS 27.0.1 arm64 | 2026-10-31 | `7df68b9` | `kit-v1.3` (`f12268d`) | 12 of 12 ok: selfcheck gates, selfcheck red, selfcheck loop, app gates, app red, app loop, app serve, app browser, app security, app image, xtdb embedded, xtdb pgwire | 161s |
 
 One record per platform actually run, the latest run on it; a platform not in the table has none. `bb health --record` on such a machine writes one - commit it, and `bb health-sync`.
 

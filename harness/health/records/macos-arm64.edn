@@ -18,19 +18,19 @@
   :git/tag "kit-v1.3",
   :git/sha "f12268d32585d98358a0413a300e20ef74e95635"},
  :checks
- [{:subject :selfcheck, :check :gates, :ok? true, :ms 3214}
-  {:subject :selfcheck, :check :red, :ok? true, :ms 4783}
-  {:subject :selfcheck, :check :loop, :ok? true, :ms 9541}
-  {:subject :app, :check :gates, :ok? true, :ms 8193}
-  {:subject :app, :check :red, :ok? true, :ms 14915}
-  {:subject :app, :check :loop, :ok? true, :ms 14317}
-  {:subject :app, :check :serve, :ok? true, :ms 8562}
-  {:subject :app, :check :browser, :ok? true, :ms 15494}
-  {:subject :app, :check :security, :ok? true, :ms 12683}
-  {:subject :app, :check :image, :ok? true, :ms 77916}
-  {:subject :xtdb, :check :embedded, :ok? true, :ms 5567}
-  {:subject :xtdb, :check :pgwire, :ok? true, :ms 10825}],
- :health/as-of "2026-10-29",
+ [{:subject :selfcheck, :check :gates, :ok? true, :ms 2823}
+  {:subject :selfcheck, :check :red, :ok? true, :ms 4544}
+  {:subject :selfcheck, :check :loop, :ok? true, :ms 8081}
+  {:subject :app, :check :gates, :ok? true, :ms 8451}
+  {:subject :app, :check :red, :ok? true, :ms 15061}
+  {:subject :app, :check :loop, :ok? true, :ms 13240}
+  {:subject :app, :check :serve, :ok? true, :ms 8438}
+  {:subject :app, :check :browser, :ok? true, :ms 14986}
+  {:subject :app, :check :security, :ok? true, :ms 12155}
+  {:subject :app, :check :image, :ok? true, :ms 57565}
+  {:subject :xtdb, :check :embedded, :ok? true, :ms 6079}
+  {:subject :xtdb, :check :pgwire, :ok? true, :ms 9837}],
+ :health/as-of "2026-10-31",
  :project
  {:tools
   {:java "temurin-25",
@@ -43,7 +43,7 @@
   :runtime-image "eclipse-temurin:25.0.4.1_1-jre-alpine",
   :image-java "25.0.4.1"},
  :kit
- {:sha "f9b5af88cb8db0e8ef169fa5b67742ac125c4631",
-  :short "f9b5af8",
+ {:sha "7df68b9d01890a9ea1bbee180f5da1b4db173109",
+  :short "7df68b9",
   :dirty? false},
  :platform {:key "macos-arm64", :label "macOS 27.0.1 arm64"}}
