@@ -45,16 +45,17 @@ KIT installs its own toolchain. You install the two things that run it:
 
 | Install | Version | Route |
 |---|---|---|
-| **Babashka** | 1.12.212 or newer - it runs KIT; the true-up then puts the matrix's own `bb` in the project's folder | [babashka.org](https://babashka.org) → install; on macOS `brew install borkdude/brew/babashka` |
+| **Babashka** | 1.12.212 or newer - it runs KIT; the true-up adds the matrix's own `bb` to the project's folder only when yours is older | [babashka.org](https://babashka.org) → install; on macOS `brew install borkdude/brew/babashka` |
 | **git** | any current release | [git-scm.com/downloads](https://git-scm.com/downloads); on macOS `xcode-select --install` |
 
 The rest comes from `bb self-check` (step 4 below): a JDK (Temurin 25), the Clojure CLI, `bb`,
 cljfmt, clj-kondo, bbin and clojure-mcp-light, each at the version the download matrix names
 ([`tools/toolchain/download-matrix.edn`](tools/toolchain/download-matrix.edn)) and checked against
 its sha256, into the project's toolchain folder - `<xyx>/.kit/toolchain`, beside the clone, or the
-folder `KIT_TOOLCHAIN_DIR` names (another disk, or one folder several projects share). About 470 MB
-on disk, 294 MB of it the JDK: the matrix's `:disk-mb`, each measured after a full install. It lists
-each with its size and the disk's free space, and asks first.
+folder `KIT_TOOLCHAIN_DIR` names (another disk, or one folder several projects share). About 400 MB
+on disk, 294 MB of it the JDK - 470 when the true-up also installs `bb`, which it does only when yours
+is older than the matrix's (the matrix's `:disk-mb`, each measured after a full install). The doctor's
+offer lists what this machine gets, each with its size, and the disk's free space, and asks first.
 
 `bb doctor` holds every tool on the PATH to the matrix - the same version is ok, a newer one is
 said, an older one or another commit fails with the command that fixes it - and shows KIT's dated

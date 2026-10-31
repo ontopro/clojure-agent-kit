@@ -81,8 +81,9 @@ The project's, in the folder above the KIT's clone - `<project>/.kit/toolchain/`
 `.env` (plan 7.0, item 8.2b): `KIT/.kit/toolchain/` for the KIT's own development, the workspace's for a
 project, whose README clones the KIT into it. `KIT_TOOLCHAIN_DIR` names another. Inside, per tool, then
 per version - `bb/1.13.229/bb`, `java/25.0.5+8/…`, `clojure/1.12.6.1673/bin/clojure` - and `bin/`, a link
-to each tool's executables at the matrix's version. About 400 MB on disk, 300 of it the JDK - each
-tool's size is its `:disk-mb` in the matrix, measured; deleting the
+to each tool's executables at the matrix's version. About 400 MB on disk, 294 MB of it the JDK - 470 when the
+true-up also installs `bb`, which it does only when the running one is older than the matrix's; each
+tool's size is its `:disk-mb` in the matrix, measured, and the doctor's offer lists what a machine gets; deleting the
 project deletes it. Nothing of it is in the repository.
 
 > [!WARNING]

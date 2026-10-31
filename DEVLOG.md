@@ -68,6 +68,17 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### The toolchain's size said as a machine gets it (plan 7.0, item 8.3e, a fix)
+
+From Fable 5.1's read of `087aa33` (a low; the person: "fix the low issue of size"): the root README said
+about 470 MB and the toolchain pack's README about 400, 300 of it the JDK - two figures for one fact. And
+470 counts `bb`'s 72 MB, which the true-up installs only when the running `bb` is older than the matrix's
+(`toolchain_download_matrix.clj:208`, the `:skip`), so a machine that followed the README's Babashka route
+gets about 400. Both READMEs now say "about 400 MB, 294 MB of it the JDK - 470 when the true-up also
+installs `bb`", and that the doctor's offer lists what this machine gets; the Babashka row says the true-up
+adds the matrix's `bb` only when yours is older. Checked: the matrix's `:disk-mb` summed is 470, without
+`bb` 398 (`bb -e` over `tools/toolchain/download-matrix.edn`).
+
 ### The setup, one order for a project and for KIT's own development (plan 7.0, item 8.3e)
 
 The person: "why not keep the steps consistent" (the reshaped note's T3), and "Opus 5.5; Fable 5.1 reads".
