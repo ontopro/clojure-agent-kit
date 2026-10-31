@@ -217,8 +217,12 @@
 (def deps-clj-volume "kit-review-depsclj")
 
 (def kit-warm-script
-  "bb's own dependencies for `harness/`, fetched while there is a network."
-  "set -e\ncd harness\nbb tasks > /dev/null\nbb -e 1 > /dev/null\n")
+  "bb's own dependencies for `harness/`, and `clj-paren-repair`'s, fetched while there is a network. The
+  repair tool fetches its libraries (cljfmt among them) the first time it runs, so it is run once here,
+  on a scratch file: without it, every test reaching the repair gate, the write tools or the doctor's
+  probes failed in the sandbox for the sandbox (register row 237)."
+  (str "set -e\ncd harness\nbb tasks > /dev/null\nbb -e 1 > /dev/null\n"
+       "printf '(ns warm)\\n' > /tmp/warm.clj && clj-paren-repair /tmp/warm.clj > /dev/null\n"))
 
 (defn kit-warm-argv
   "The first container for the KIT: network on, the caches writable, the clone mounted."

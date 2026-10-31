@@ -139,7 +139,9 @@
   (let [warm (sb/kit-warm-argv {:image "img" :clone "/c"})]
     (is (not-any? #{"none"} warm) "the warming container alone fetches")
     (is (some #{"kit-review-m2:/root/.m2"} warm))
-    (is (str/includes? (last warm) "bb tasks")))
+    (is (str/includes? (last warm) "bb tasks"))
+    (is (str/includes? (last warm) "clj-paren-repair /tmp/warm.clj")
+        "the repair tool fetches its libraries on its first run, and the run container has no network (row 237)"))
   (is (str/starts-with? (sb/kit-container-name) "kit-review-") "so a killed one is cleared as any review's is"))
 
 (deftest the-kit-s-tests-run-by-bb-the-namespace-an-argument-never-a-shell-s

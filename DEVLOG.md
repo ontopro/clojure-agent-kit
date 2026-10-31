@@ -68,6 +68,18 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### `clj-paren-repair` warmed in the KIT's review sandbox: register row 237 (plan 7.0, item 9, before the audit)
+
+The person: "go" - row 237's fix before the audit, its wording with it (From Fable 5.1's read of `045e217`:
+"name the 16"). `clj-paren-repair` fetches its libraries the first time it runs, and the KIT's run
+container has no network: `kit-warm-script` now runs it once, on a scratch file `/tmp/warm.clj`, while the
+warming container has the network, into the `kit-review-m2` volume the run container mounts read-only. The
+row now names all 60: 44 assertions naming the probe, and 16 downstream of it - 13 in the write tools' tests,
+2 in the loop's orchestration, 1 in the doctor's `probe-statuses`. Proved in Docker with no model: a fresh
+clone of `045e217` through `start-kit!` and `:run-tests` with no namespace, the two cache volumes swapped
+for two new, empty ones so no earlier warming could stand in: 1114 tests, 8523 assertions, 0 failures,
+0 errors - against 14 and 46 before. The warm argv's test asserts the run.
+
 ### The security review's clone read-only in both run containers (plan 7.0, item 9.3)
 
 The person: "go on the read-only sandbox commit first" (item 9 cut to 9.3 and the audit: "a lot has changed
