@@ -208,28 +208,44 @@
   that moves the set is evidence for it (From Fable 5.1's read of `4eab9df`). A pin move stales both
   records anyway, by the code rule - `tools/` is among `health-paths` - and the Mac record's lag behind
   the pins is `versions-check`'s. `record-tools` the record's `:tools`, `good-tools` the set's; no
-  set, no comparison."
+  set, no comparison. A set about to be rewritten stales nothing: `read-records` compares only when
+  the Mac's record is fresh itself."
   [record-tools good-tools]
   (let [held #(select-keys % kit-pins/recorded-tools)]
     (boolean (and good-tools (not= (held record-tools) (held good-tools))))))
 
-(defn read-records [root]
-  (let [good (known-good/read-set (fs/path root "harness"))]
-    (for [f (sort (map str (fs/glob (fs/path root records-dir) "*.edn")))
-          :let [r (edn/read-string (slurp f))
-                sha (get-in r [:kit :sha])
-                changed (some-> (apply git root "diff" "--name-only" sha "HEAD" "--"
-                                       (concat health-paths [(str ":(exclude)" records-dir)]))
-                                str/split-lines
-                                (->> (remove str/blank?)))
-                ;; THE KNOWN-GOOD SET COUNTS WHEN IT SAYS SOMETHING the record did not run
-                set-moved? (set-stales? (:tools r) (:tools good))]]
-      {:platform (get-in r [:platform :key])
-       :sha sha
-       :dirty? (get-in r [:kit :dirty?])
-       ;; a run with KIT_TEMPLATE_LOCAL set: the record names the pin it stood for, not what ran
-       :local-root (:template/local-root r)
-       :changed (cond-> (vec changed) set-moved? (conj (str records-dir "/" known-good/platform ".edn")))})))
+(defn- stale-by-itself?
+  "A record `read-records` holds stale before the set is compared: dirty, from a local clone of the
+  template, or code `bb health` runs changed since its commit."
+  [{:keys [dirty? local-root changed]}]
+  (boolean (or dirty? local-root (seq changed))))
+
+(defn read-records
+  "Every record under `records-dir`, `{:platform :sha :dirty? :local-root :changed [paths]}`. The
+  known-good set counts only while the Mac's record is fresh: when a pin moved and `bb docker-health`
+  ran before the Mac's run, the Mac's is the stale one, by code, and the Linux record, which ran the new
+  pins, is not stale against a set about to be rewritten (From Fable 5.1's read of `836255d`)."
+  [root]
+  (let [good (known-good/read-set (fs/path root "harness"))
+        records (for [f (sort (map str (fs/glob (fs/path root records-dir) "*.edn")))
+                      :let [r (edn/read-string (slurp f))
+                            sha (get-in r [:kit :sha])]]
+                  {:platform (get-in r [:platform :key])
+                   :sha sha
+                   :dirty? (get-in r [:kit :dirty?])
+                   ;; a run with KIT_TEMPLATE_LOCAL set: the record names the pin it stood for, not what ran
+                   :local-root (:template/local-root r)
+                   :changed (vec (some-> (apply git root "diff" "--name-only" sha "HEAD" "--"
+                                                (concat health-paths [(str ":(exclude)" records-dir)]))
+                                         str/split-lines
+                                         (->> (remove str/blank?))))
+                   :tools (:tools r)})
+        set-fresh? (not-any? #(and (= known-good/platform (:platform %)) (stale-by-itself? %)) records)]
+    (for [{:keys [tools] :as rec} records
+          ;; THE KNOWN-GOOD SET COUNTS WHEN IT SAYS SOMETHING the record did not run
+          :let [set-moved? (and set-fresh? (set-stales? tools (:tools good)))]]
+      (-> (dissoc rec :tools)
+          (update :changed #(cond-> % set-moved? (conj (str records-dir "/" known-good/platform ".edn"))))))))
 
 (defn- read-edn [f] (when (fs/exists? f) (edn/read-string (slurp (str f)))))
 

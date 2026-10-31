@@ -110,7 +110,18 @@
     (write! (rec "macos-arm64" "2026-10-31" {:bb "1.13.230" :java "25.0.5"}))
     (is (= {"linux-arm64" ["harness/health/records/macos-arm64.edn"] "macos-arm64" []}
            (into {} (map (juxt :platform :changed)) (tc/read-records root)))
-        "the Mac's moved past it: the Linux record stale, the reason the set's record")))
+        "the Mac's moved past it: the Linux record stale, the reason the set's record")
+    (testing "a pin moved and the Linux run recorded first: the Mac's is the stale one, the Linux record fresh"
+      ;; From Fable 5.1's read of 836255d: a set about to be rewritten stales nothing
+      (let [before (str/trim (:out (git! "rev-parse" "HEAD")))]
+        (fs/create-dirs (fs/path root "tools"))
+        (spit (str (fs/path root "tools" "matrix.edn")) "{:bb \"1.13.231\"}\n")
+        (git! "add" "-A")
+        (git! "-c" "user.name=t" "-c" "user.email=t@t" "commit" "-q" "-m" "the pin moved")
+        (write! (assoc-in (rec "macos-arm64" "2026-10-31" {:bb "1.13.230" :java "25.0.5"}) [:kit :sha] before))
+        (write! (rec "linux-arm64" "2026-11-01" {:bb "1.13.231" :java "25.0.5"}))
+        (is (= {"linux-arm64" [] "macos-arm64" ["tools/matrix.edn"]}
+               (into {} (map (juxt :platform :changed)) (tc/read-records root))))))))
 
 (deftest the-pins-are-what-the-health-runs-recorded
   ;; the person, 2026-10-29: "The KIT that an Adopter gets should have matrix = known-good versions

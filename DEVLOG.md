@@ -68,6 +68,17 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### A set about to be rewritten stales nothing (plan 7.0, item 8.3f, a fix)
+
+From Fable 5.1's read of `836255d` (a low; the person: "go"): the comparison disagreed with the old history
+rule in one case. A pin moves and `bb docker-health` is recorded before the Mac's `bb health --record`: the
+Linux record carries the new pins, the Mac's the old, and `set-stales?` called the Linux record stale by
+the set - its reason the Mac record's file, unchanged since - while the stale one is the Mac's, by code
+(`tools/` is among `health-paths`). Rare, since the checklist and `--run` record the Mac first, and it
+cost one needless container run. `read-records` now compares with the set only while the Mac's record is
+fresh itself - not dirty, not from a local clone of the template, no code changed since its commit. A test
+in a scratch repository: the pin moved, the Linux record fresh, the Mac's stale with the matrix named.
+
 ### The known-good set is the Mac's health record, not a copy of it (plan 7.0, item 8.3f)
 
 The person: "Opus writes 8.3f, Fable reads"; the design read GO, both questions as recommended. `bb health
