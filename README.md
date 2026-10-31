@@ -34,25 +34,34 @@ template, not KIT.
 What is in the clone - the method, the build docs, the harness, the tools, the skills - is
 listed under [Five parts](#five-parts), in the section for KIT developers below.
 
-### Before anything: three installs
+### Before anything: Babashka and git
 
 > [!IMPORTANT]
 > KIT is certified on an Apple silicon Mac (macOS, arm64) and on arm64 Linux - the health records
 > below. Its toolchain is published for amd64 Linux too, and no record proves it there yet. An Intel
 > Mac is not supported: cljfmt, which KIT runs, publishes no build for it.
 
-KIT guides and does not install. Put these on the machine yourself - each is one page and one
-or two commands - then let `bb doctor` say what is still missing and what fixes it.
+KIT installs its own toolchain. You install the two things that run it:
 
 | Install | Version | Route |
 |---|---|---|
-| **A JDK - installed by the KIT** | the download matrix's Temurin 25, into the project's toolchain folder by the true-up, like every tool (plan 7.0, item 8.3a); your own only on a machine the matrix publishes no build for - 21 or newer there, 25 preferred (XTDB, an optional store, documents a minimum of 21, and 2.2.0 runs on 25 with `-Dio.netty.noUnsafe=false`) | [Temurin 25](https://adoptium.net/temurin/releases/?version=25); on macOS `brew install --cask temurin@25` |
-| **Clojure CLI** | any current release | [clojure.org/guides/install_clojure](https://clojure.org/guides/install_clojure); on macOS `brew install clojure/tools/clojure` |
-| **Babashka** | 1.12.212 or newer (bbin needs it) | [babashka.org](https://babashka.org) → install; on macOS `brew install borkdude/brew/babashka` |
+| **Babashka** | 1.12.212 or newer - it runs KIT; the true-up then puts the matrix's own `bb` in the project's folder | [babashka.org](https://babashka.org) → install; on macOS `brew install borkdude/brew/babashka` |
+| **git** | any current release | [git-scm.com/downloads](https://git-scm.com/downloads); on macOS `xcode-select --install` |
 
-Every other version is a floor, not a pin. `bb doctor` shows what is installed beside KIT's
-dated known-good set (`harness/resources/known-good.edn`, the versions that were actually run
-together) and calls a newer version *newer than tested* - information, not a fault.
+The rest comes from `bb self-check` (step 4 below): a JDK (Temurin 25), the Clojure CLI, `bb`,
+cljfmt, clj-kondo, bbin and clojure-mcp-light, each at the version the download matrix names
+([`tools/toolchain/download-matrix.edn`](tools/toolchain/download-matrix.edn)) and checked against
+its sha256, into the project's toolchain folder - `<xyx>/.kit/toolchain`, beside the clone, or the
+folder `KIT_TOOLCHAIN_DIR` names (another disk, or one folder several projects share). About 470 MB
+on disk, 294 MB of it the JDK: the matrix's `:disk-mb`, each measured after a full install. It lists
+each with its size and the disk's free space, and asks first.
+
+`bb doctor` holds every tool on the PATH to the matrix - the same version is ok, a newer one is
+said, an older one or another commit fails with the command that fixes it - and shows KIT's dated
+known-good set beside it (`harness/resources/known-good.edn`, the versions that were actually run
+together). Only on a machine the matrix publishes no build for is your own JDK used: 21 or newer,
+25 preferred (XTDB, an optional store, documents a minimum of 21, and 2.2.0 runs on 25 with
+`-Dio.netty.noUnsafe=false`).
 
 ### How to use KIT
 There are basically 2 steps to use KIT:
@@ -60,13 +69,18 @@ There are basically 2 steps to use KIT:
 2. **build** - to build the adopter's application
 
 #### 1. Set up workspace
-1. Set up your development environment as described in the [Before anything: three installs](#before-anything-three-installs) section above.
+
+One order, the same for a project and for developing KIT itself: Babashka and git; the project
+folder and the clone in it; `bb self-check`; the keys; the eval; then `bb init`.
+
+1. Install Babashka and git, as described in [Before anything: Babashka and git](#before-anything-babashka-and-git) above.
 2. Create project folder `<xyx>`. This will be the main working directory where all the work will be done.
     - recommend using a short name for the `<xyx>`.
     - the name must be lowercase letters, digits and single hyphens, starting with a letter -
       for example `my-site` - because `bb init` takes it as the project's name, and it becomes
       folder names and the application's namespace.
-    - The only thing you put in it yourself is KIT's clone, in step 3; `bb init` makes the rest.
+    - The only thing you put in it yourself is KIT's clone, in step 3; `bb self-check` and `bb
+      init` make the rest.
 
 3. Open a terminal and `cd` into the newly created `<xyx>`. Clone this repo into it with:
 
@@ -75,45 +89,32 @@ There are basically 2 steps to use KIT:
     ```
 
     - **KIT** is a clone of the **Clojure Agent Kit (aka KIT)** and it will be guiding you through the product build, test and deployment process.
-4. Next, do the following steps:
 
-    - `cd` into the KIT directory.
+4. `cd` into the clone and run `bb self-check`, the one setup command:
+
     ```shell
     cd KIT
-    ```
-
-    - Run `bb self-check` for KIT to do a full diagnostics check on itself. It does 2 things:
-      - `bb doctor` (for environment check)
-      - `bb health` (this KIT, this machine, the pinned template - minutes, starts JVMs)
-    ```shell
     bb self-check
     ```
 
-    - Initialize the workspace for the build process.
-      By default `init` will use the `<xyx>` (`bb init <name>` names it otherwise) to create the
-      `<xyx>-app` and `<xyx>-build` plus a few other
-      directories and files in the parent `<xyx>` folder.
-    ```shell
-    bb init
-    ```
+    - It points the clone's git hooks at `.githooks/`, and writes `<xyx>/.env` with the names of
+      the keys the default profile needs, each empty - a `.env` already there is never touched.
+    - Then `bb doctor`: what the project's toolchain folder lacks, with sizes, and `Install? [y/N]`.
+      On `y` the true-up installs it; on a no, self-check stops, and `bb self-check` again picks up.
+    - Then `bb health`: this KIT, this machine, the pinned template - minutes, starts JVMs.
+    - It ends with the next three steps.
 
-    - Move back to the `<xyx>` where you will be doing all the work from.
-    ```shell
-    cd ..
-    ```
-
-5. Put this project's keys in the workspace's `.env`. `bb self-check` wrote the names its profile needs,
+5. Put this project's keys in `<xyx>/.env`. `bb self-check` wrote the names its profile needs,
    each empty, with what uses it and where it is sent. One key per project, with a spending limit
    set at the provider's console. The file is yours alone (mode `600`); a `.env` a repository holds
    is refused at load; and the session's file tools are denied it (`.claude/settings.json` - a rail,
    not a lock: [`NOTES.md`](NOTES.md) row 236). It may hold what else the application needs too - a
    `DATABASE_URL`, a `PORT`.
 
-6. Put the project's toolchain first on this terminal's PATH and load the keys, then check the profile sees them:
+6. Put the project's toolchain first on this terminal's PATH and load the keys:
 
     ```shell
     eval "$(bb toolchain-env)"
-    bb profile
     ```
 
     - `toolchain-env` prints no value: it checks the `.env`, then prints the line that has your shell
@@ -122,6 +123,23 @@ There are basically 2 steps to use KIT:
       read it, change it, or accept the file as it is with `bb env-accept`.
     - Each change it sees is noted in `.env-record.edn` beside it - the names added and removed, never
       a value - so a `.env` that changed when you did not change it shows.
+    - With mise activated in your shell, its shims come back in front of the folder's `bin/` after
+      the eval, so a `.mise.local.toml` naming another JDK would win over the folder's. The
+      application's `.mise.toml` names `temurin-25`, the matrix's major, so by default the two agree.
+
+7. Make the workspace, move to it, and check the profile sees the keys:
+
+    ```shell
+    bb init
+    cd ..
+    bb profile
+    ```
+
+    - By default `init` names the project after `<xyx>` (`bb init <name>` names it otherwise) and makes
+      `<xyx>-app` and `<xyx>-build` plus a few other directories and files in `<xyx>` - always the
+      folder the clone is in. It writes no `.env`: it says which names the profile needs that the
+      file lacks, if any.
+    - `<xyx>` is where you will be doing all the work from.
 
 > [!IMPORTANT]
 > The keys reach a session only through the shell that starts it. Run the `eval` in the terminal you
@@ -210,10 +228,27 @@ That separation is not tidiness. Two of these carried the same forward-looking l
 while and both went stale; the rule now is that a fact lives in one of them and the others
 link to it.
 
+### Setting up to develop KIT
+
+The same order as a project's, with the two seats in place of `bb init`:
+
+1. Babashka and git ([Before anything](#before-anything-babashka-and-git)).
+2. A folder `KIT/`, and this repository cloned into it: `KIT/clojure-agent-kit/`. The folder above
+   the clone holds the toolchain (`KIT/.kit/toolchain`) and the keys (`KIT/.env`), as `<xyx>/` does
+   for a project.
+3. `bb self-check` in the clone - the hooks, `KIT/.env`, the doctor with its offer, the health check.
+4. The keys in `KIT/.env`; `eval "$(bb toolchain-env)"` in the terminal that starts the sessions.
+5. `.local/wording/names.txt` - the project names no committed line may carry, one a line; an
+   empty file to start. The commit check refuses every commit while it is missing, and says how.
+6. The two seats: the KIT session, `claude` in the clone, which writes; and the reading session,
+   `claude --agent kit-reader -n kit-reader --model fable` in a tab of its own. The
+   `kit-session` skill (`.claude/skills/kit-session/`, never shipped) is the routine they follow.
+
 ### The commands
 
 ```bash
-bb self-check # from the root of the clone: bb doctor, then - when it says yes - bb health
+bb self-check # from the root of the clone, the one setup command: the hooks, the .env template, bb doctor
+              # with its offer to install, then - when it says yes - bb health
 bb doctor     # from the root of the clone: every tool, its version, and for anything unusable
               # the command or page that fixes it. Run it, follow it, run it again - until both
               # verdicts say yes: "The KIT's gates can run here" and "A loop can run here"
@@ -222,8 +257,9 @@ bb health     # then, once: is this KIT healthy here, with the template it pins?
               # one task through the loop, the application served, a Firefox opening it (skipped, and said, with no geckodriver)
 bb init       # then: the workspace, named after the folder the clone is in - see harness/README.md
 bb gates      # KIT's own gates: doctor -> format -> lint -> boundary -> rules -> skills -> inventory -> health block -> the records (reports, stage reports, bake-offs) -> test
-bb hooks-install   # once per clone: the pre-commit hook, which runs `bb commit-check`
-bb commit-check    # what the hook runs: refuse unless the last `bb gates` was green on exactly this tree
+bb hooks-install   # the pre-commit hook, which runs `bb commit-check` - bb self-check sets it too
+bb commit-check    # what the hook runs: refuse unless the last `bb gates` was green on exactly this tree,
+                   # and while .local/wording/names.txt is missing
 bb kit-status      # at an item's end: flaky tests, stale health records, open register rows, the plan's log
 bb tag-check <tag> # before a tag: DEVLOG's checklist for <tag> on HEAD (--run does what is stale, --landed after the push)
 bb docker-gates    # the gates on a clone of HEAD in a fresh Linux container; bb docker-health the health check there

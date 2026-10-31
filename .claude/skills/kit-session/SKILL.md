@@ -17,7 +17,11 @@ commands that check each step. Nothing here is shipped: `bb init` copies `skills
    one at `.local/plans/` itself is read there). Read its `## Task Status` - the
    `**Next:**` line says what is next, since the order differs from the numbering - and the last
    entry of its Sessions log.
-3. `bb hooks-install` once per clone if `git config core.hooksPath` is not `.githooks`.
+3. A new clone, in the one setup order (the README's "Setting up to develop KIT"): `bb self-check` - the
+   hooks, `KIT/.env`, the doctor with its offer, the health check - then the keys in `KIT/.env`, `eval
+   "$(bb toolchain-env)"` in the terminal that starts the sessions, and `.local/wording/names.txt`; then the
+   two seats ("The seats"). An existing clone: `bb hooks-install` if `git config core.hooksPath` is not
+   `.githooks`.
 4. At a plan's first session, its branch just cut, and again before a tag: `bb kit-pins`, the
    KIT's pins - each tool and library the KIT pins, as installed here, as pinned, and its newest
    release - read with the person, who gives a go or no-go per row: to the latest, or back to the pin

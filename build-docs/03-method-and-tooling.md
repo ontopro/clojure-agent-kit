@@ -130,7 +130,8 @@ a `human` or `tooling` route, a dead REPL, a provider refusing for credit.
 ```bash
 mkdir <name> && cd <name>              # the project folder: it becomes the workspace
 git clone https://github.com/ontopro/clojure-agent-kit.git KIT
-cd KIT && bb self-check                # the doctor, then the health check: until it says healthy
+cd KIT && bb self-check                # the hooks, the .env, the doctor and its offer, the health check: until healthy
+# the keys into ../.env; eval "$(bb toolchain-env)" in the shell that starts the session
 bb init                                # <name>-app (generated, committed untouched), <name>-build, work/, bb.edn
 cd .. && cd <name>-app && bb serve     # KIT's commands from the workspace; the application's in its folder
 ```

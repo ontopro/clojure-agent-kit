@@ -68,6 +68,36 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### The setup, one order for a project and for KIT's own development (plan 7.0, item 8.3e)
+
+The person: "why not keep the steps consistent" (the reshaped note's T3), and "Opus 5.5; Fable 5.1 reads".
+**Before**, the README asked for three installs by hand - a JDK, the Clojure CLI, Babashka - with versions
+as floors, ran `bb self-check` as the doctor then health, `bb init`, and only then the keys and the eval;
+`method.md` said "nothing is installed for you"; `workflow.md` had init making the `.env`. **After**, every
+setup passage gives one order: Babashka and git; the project folder and the clone in it; `bb self-check`;
+the keys; the eval; then `bb init` - or, developing KIT, the two seats.
+- **README.md, "Before anything: Babashka and git"**: the two hand installs, then what the true-up brings
+  - the JDK, the Clojure CLI, `bb`, cljfmt, clj-kondo, bbin, clojure-mcp-light, each at the download
+  matrix's version (the file linked, not copied), sha256-checked, into `<xyx>/.kit/toolchain` or
+  `KIT_TOOLCHAIN_DIR`'s folder: about 470 MB, 294 MB the JDK - the matrix's `:disk-mb` summed (`bb -e` over
+  `tools/toolchain/download-matrix.edn`), each measured by `du` after a full install (`370d868`). The doctor's
+  rule said as it is: equal ok, newer said, older or another commit fails.
+- **The steps**: 4 `bb self-check` with what it does; 5 the keys; 6 the eval, with the mise-shell sentence
+  (carried from the read of `e0fe220`: mise's shims come back in front of the folder's `bin/` after the
+  eval; the application's `.mise.toml` names `temurin-25`, the matrix's major, so by default they agree);
+  7 `bb init`, `cd ..`, `bb profile`.
+- **README.md, "Setting up to develop KIT"** (new): `KIT/` holding the clone, `bb self-check`, the keys in
+  `KIT/.env` and the eval, `.local/wording/names.txt`, then the two seats; the commands block's
+  `self-check`, `hooks-install` and `commit-check` lines.
+- **The kit-session skill's start**, step 3: a new clone in that order; an existing one, `bb hooks-install`
+  if unset.
+- **method.md** §02 (the keys and the eval before `bb init`; the doctor installs on a yes; two hand
+  installs; health "the last step of" self-check), **workflow.md** (the setup flowchart and its table row:
+  the keys and the eval before init, init making no `.env`), **build-docs/03** §6's block.
+
+Proved: `git grep` finds no setup passage left saying three installs, "nothing is installed for you", or
+the keys or the eval after `bb init`; the gates (skills, inventory, plan-check over build-docs) green.
+
 ### `bb self-check` names the project folder only when it stops there (plan 7.0, item 8.3d, a fix)
 
 From Fable 5.1's read of `28e231b` (a nit; the person: "take the nit"): self-check's first line - "the

@@ -196,7 +196,7 @@ graph LR
 
 ## 02 — Phase A — SETUP: the machine and the workspace
 
-Setup is not a stage: it has no plan, no cap and no model spend. It is done once, by the person, before the first conversation: a project folder, KIT cloned into it, `bb self-check` until the machine is ready, and `bb init`, which makes the workspace beside the clone, named after the folder. The README's *How to use KIT* gives the steps; this section gives the detail. Every session of the project from here on opens in the workspace folder, and KIT's commands are run from there.
+Setup is not a stage: it has no plan, no cap and no model spend. It is done once, by the person, before the first conversation: a project folder, KIT cloned into it, `bb self-check` until the machine is ready, the keys and the eval, and `bb init`, which makes the workspace beside the clone, named after the folder. The README's *How to use KIT* gives the steps; this section gives the detail. Every session of the project from here on opens in the workspace folder, and KIT's commands are run from there.
 
 ### The toolchain, then the workspace: `bb self-check`, `bb init`
 
@@ -204,22 +204,24 @@ Project structure is a solved problem, and so is the toolchain around it. The KI
 a PINNED commit of its own application template - a fork of Clojure Stack Lite, named in
 [`harness/resources/template-pins.edn`](harness/resources/template-pins.edn) as a full commit
 and a tag, so *this KIT with that template* is a pair that can be certified - and a doctor that
-checks the machine before anything is generated. Nothing is copied by hand and nothing is
-installed for you.
+checks the machine against a download matrix before anything is generated, and installs what the
+project's folder lacks when you say yes. Nothing is copied by hand.
 
 ```bash
 mkdir <xyx> && cd <xyx>                                      # the project folder: it becomes the workspace
 git clone https://github.com/ontopro/clojure-agent-kit.git KIT
 cd KIT
-bb self-check    # bb doctor - every tool, its version, what fixes a miss - then, when it says yes, bb health:
-                 # KIT, on this machine, with the template it pins - minutes, starts JVMs
+bb self-check    # the hooks, the .env template, bb doctor - every tool against the download matrix, what fixes a
+                 # miss, the offer to install - then, when it says yes, bb health: KIT, on this machine, with the
+                 # template it pins - minutes, starts JVMs
+# the keys into ../.env, then: eval "$(bb toolchain-env)", in the shell that starts the session
 bb init          # the workspace, named after the folder: <xyx>-app (generated, two commits and a `template` branch), <xyx>-build (the
                  # documents, the rules overlay, the profile, run defaults, runs/), work/, and bb.edn
 cd ..            # every session of the project, and KIT's commands, from here
 cd <xyx>-app && bb serve                                     # the application's own commands, in its folder: http://localhost:8000
 ```
 
-The three installs the doctor cannot do for you - a JDK, the Clojure CLI, Babashka - are the
+The two installs the true-up cannot do for you - Babashka, which runs it, and git - are the
 first lines of the [root README](README.md). The download matrix is the reference: the doctor holds each
 tool, the JDK among them, to the version it names - older fails, newer is said - and the true-up installs
 what the project's folder lacks; an own JDK, 21 or newer with 25 preferred, only on a machine the matrix
@@ -331,7 +333,7 @@ one task does exactly this).
 
 ### The loop proved without a model, on this machine: `bb health`
 
-This is the step people skip, and it is the only one that produces evidence rather than confidence. `bb health` - the second half of `bb self-check` - runs the whole loop once, end to end, with a scripted runner in every model's seat and everything else real: a `clamp` function through provisioning, two nREPLs, dispatch, assembly, gate 0, the gates and the review, to the merge stop, on its selfcheck project and on an application it just generated. The health check tears its own task down; nothing of it reaches your application.
+This is the step people skip, and it is the only one that produces evidence rather than confidence. `bb health` - the last step of `bb self-check` - runs the whole loop once, end to end, with a scripted runner in every model's seat and everything else real: a `clamp` function through provisioning, two nREPLs, dispatch, assembly, gate 0, the gates and the review, to the merge stop, on its selfcheck project and on an application it just generated. The health check tears its own task down; nothing of it reaches your application.
 
 ### Setup is done when
 
