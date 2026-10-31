@@ -105,7 +105,8 @@ Said plainly:
   being committed is set aside before the gates, not after.
 - The document in the same commit: `DEVLOG.md` for what changed and why, `NOTES.md`'s register
   for what stays open (and its `**Updated` stamp moved). The hook refuses code without one, an
-  unmoved stamp, and a name from `.local/wording/names.txt`.
+  unmoved stamp, and a name from `.local/wording/names.txt` - or the list missing, with the two commands
+  that make it.
 - One finding per commit unless the person says otherwise. Never `--no-verify`: fix the cause.
 
 ## An item's end

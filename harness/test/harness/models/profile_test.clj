@@ -331,7 +331,7 @@
     (is (= (str (fs/path plan "profile.edn")) (profile/project-profile (str (fs/path ws "kit" "harness"))))
         "found by walking up, so from the clone's harness/ too")
     (let [elsewhere (str (fs/create-temp-dir))]
-      (is (nil? (profile/project-profile elsewhere)) "a KIT kept outside the workspace walks up to nothing")
+      (is (nil? (profile/project-profile elsewhere)) "a clone in no workspace walks up to nothing")
       (is (= (str (fs/path plan "profile.edn"))
              (profile/plan-profile (workspace/current ["--workspace" ws] elsewhere)))
           "pointed at the workspace, the plan's profile is found from anywhere"))

@@ -294,7 +294,7 @@
           (pr-str {:workspace/app "xyx-app" :workspace/rule-mirrors ["xyx-app/AGENTS.md"]}))
     (is (= ["AGENTS.md" (str (fs/path ws "xyx-app" "AGENTS.md"))] (rules/mirror-paths seed))
         "the application's mirror, absolute, because the task runs in harness/")
-    ;; A KIT kept OUTSIDE the workspace walks up to nothing; pointed at it, it lists the same.
+    ;; A clone in NO workspace walks up to nothing; pointed at one, it lists the same.
     (let [elsewhere (str (fs/path (tmp) "clojure-agent-kit" "harness"))]
       (fs/create-dirs (fs/path elsewhere "resources"))
       (spit (str (fs/path elsewhere "resources" "rule-mirrors.edn")) (pr-str ["AGENTS.md"]))

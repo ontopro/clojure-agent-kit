@@ -178,3 +178,13 @@
     (fs/create-dirs (fs/path dir ".local/wording"))
     (spit (str (fs/path dir record/names-path)) "# the projects\nacme\n\n  other  \n")
     (is (= ["acme" "other"] (record/read-names dir)))))
+
+(deftest a-commit-is-refused-without-the-wording-list
+  ;; plan 7.0, item 8.3d: refused, with the two commands that make it; an empty list is a list
+  (let [dir (str (fs/create-temp-dir))]
+    (is (= "no wording list at .local/wording/names.txt - `mkdir -p .local/wording && touch .local/wording/names.txt`, then commit again"
+           (record/names-refusal (record/read-names dir))))
+    (fs/create-dirs (fs/path dir ".local/wording"))
+    (spit (str (fs/path dir record/names-path)) "")
+    (is (= [] (record/read-names dir)))
+    (is (nil? (record/names-refusal (record/read-names dir))) "empty: the check runs and finds nothing")))

@@ -68,6 +68,20 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### `bb commit-check` refuses a commit while the wording list is missing (plan 7.0, item 8.3d, the third of three)
+
+**Before**, a clone with no `.local/wording/names.txt` said "no wording list, names not checked" and the
+commit went on - the one check the dropped `--dev` would have set up, quietly off on a new machine.
+**After**, it is refused like every other reason, with the two commands that make the list: "no wording list
+at .local/wording/names.txt - `mkdir -p .local/wording && touch .local/wording/names.txt`, then commit
+again" (`record/names-refusal`, pure). An empty list is a list: the check runs and finds nothing. `bb
+self-check` does not make it: only the KIT's own clone commits, and the first refusal says how. The rule
+(CLAUDE.md), the kit-session skill's commit step, the harness README's row and the task's doc say it. In passing, From Fable 5.1's read of `f61feab`: three test descriptions that still said "a KIT kept outside the workspace" say "a clone in no workspace" - a story the KIT no longer tells, read in a year as a supported route.
+
+Proved: `record_test` (no list: the refusal, word for word; an empty file: `[]`, no refusal). 1110 tests. By
+hand, in a scratch clone of this tree with the hooks set: a gated commit refused while the list was
+missing, the two commands run, the same commit taken.
+
 ### `bb init` takes no folder: the workspace is always the one the KIT's clone is in (plan 7.0, item 8.3d, the second of three)
 
 The person: "go with A", "this option can be removed" - a KIT kept outside its workspace. **Before**, `bb init

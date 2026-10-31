@@ -124,7 +124,7 @@
                  :task (do (shell "git" "config" "core.hooksPath" ".githooks")
                            (println "core.hooksPath = .githooks: every commit now runs `bb commit-check`"))}
 
-  commit-check {:doc "The pre-commit hook's check: refuse unless the last `bb gates` record is green and names the tree being committed"
+  commit-check {:doc "The pre-commit hook's check: refuse unless the last `bb gates` record is green and names the tree being committed, and while the wording list .local/wording/names.txt is missing"
                 :requires ([harness.gates.record :as record])
                 :task (record/commit-check-main)}
 

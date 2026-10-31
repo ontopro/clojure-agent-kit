@@ -313,6 +313,16 @@
            (remove #(or (str/blank? %) (str/starts-with? % "#")))
            vec))))
 
+(defn names-refusal
+  "The refusal of a commit when the wording list `names` (`read-names`) is not there - pure: nil when
+  it is, an empty list included (the check runs and finds nothing). The one check the KIT's own
+  development once kept behind a flag is the hook's, on every machine (plan 7.0, item 8.3d); the
+  refusal gives the two commands that make the list."
+  [names]
+  (when (nil? names)
+    (str "no wording list at " names-path " - `mkdir -p " (fs/parent names-path) " && touch " names-path
+         "`, then commit again")))
+
 (defn name-pattern
   "A name as a whole word: case-insensitive, no letter or digit just before or
   after it, so `-`, `_`, `.` and `/` end a word and a digit does not. Pure."
@@ -366,14 +376,13 @@
         names (read-names root)
         whys (concat (keep identity [(refusal rec (staged-tree root))
                                      (document-refusal paths)
+                                     (names-refusal names)
                                      ;; a NOTES.md the commit deletes has no stamp to bump
                                      (when notes
                                        (stamp-refusal (git root ["show" "HEAD:NOTES.md"]) notes
                                                       (java.time.LocalDateTime/now)))])
                      (when names
                        (wording-refusals names (added-lines (git root ["diff" "--cached" "-U0" "--no-color" "--no-ext-diff"])))))]
-    (when-not names
-      (println (str "commit-check: no wording list (" names-path "), names not checked")))
     (if (seq whys)
       (do (doseq [why whys] (println (str "commit refused: " why)))
           (System/exit 1))
