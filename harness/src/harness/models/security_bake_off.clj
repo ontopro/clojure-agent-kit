@@ -141,11 +141,12 @@
 
 (defn token-usage
   "The tokens of a review, summed over its completions' steps: uncached input, input read from the
-  cache, input written to it, output, and reasoning where the host reports it."
+  cache, input written to it, output, and reasoning where the host reports it - nil, not 0, when no
+  step reports it (row 129)."
   [steps]
   (let [sum (fn [k] (reduce + 0 (keep #(get-in % [:usage k]) steps)))]
     {:in (sum :in) :cache-read (sum :cache-read) :cache-write (sum :cache-write) :out (sum :out)
-     :reasoning (reduce + 0 (keep :reasoning-tokens steps))}))
+     :reasoning (when-let [rs (seq (keep :reasoning-tokens steps))] (reduce + 0 rs))}))
 
 (defn reading-metrics
   "Everything the report says of one reading, from its review record and its score."
@@ -192,7 +193,7 @@
      :work-ms (sum-or-nil :work-ms ms)
      :in (sum-by #(get-in % [:usage :in]) ms) :cache-read (sum-by #(get-in % [:usage :cache-read]) ms)
      :cache-write (sum-by #(get-in % [:usage :cache-write]) ms) :out (sum-by #(get-in % [:usage :out]) ms)
-     :reasoning (sum-by #(get-in % [:usage :reasoning]) ms)
+     :reasoning (sum-or-nil #(get-in % [:usage :reasoning]) ms)
      :tokens (sum-by :tokens ms)
      :cost (sum-by :cost ms) :cost-known? cost-known?
      :completions (sum-by :completions ms) :calls (sum-by :calls ms)
@@ -263,6 +264,11 @@
                  (row "Tokens: cache read" #(grouped (:cache-read (tot %))))
                  (row "Tokens: cache write" #(grouped (:cache-write (tot %))))
                  (row "Tokens: output (reasoning included)" #(grouped (:out (tot %))))
+                 (row "Tokens: reasoning" #(if-let [x (:reasoning (tot %))] (grouped x) "not reported"))
+                 (row "Reasoning tokens per completion (faulted / careful)"
+                      #(pair % (fn [m] (if-let [x (get-in m [:usage :reasoning])]
+                                         (if (pos? (or (:completions m) 0)) (grouped (Math/round (/ x (double (:completions m))))) "—")
+                                         "not reported"))))
                  (row "Completions (faulted / careful)" #(pair % :completions))
                  (row "Tool calls per completion (faulted / careful)" #(pair % (fn [m] (if-let [x (:calls-per-completion m)] (format "%.1f" x) "—"))))
                  (row "Tests written (file writes), faulted" #(let [m (of % :faulted)] (str (:tests-written m) " (" (:test-writes m) ")")))
@@ -281,7 +287,7 @@
                             (when (pos? work) (format " (%.1f minutes of work per minute of waiting)" (/ (/ work 60000.0) (max 0.01 (/ elapsed 60000.0)))))))
          ".**\n\n"
          "Notes: a dash is a figure no record carries. \"Total work\" adds a reading's sandbox start, review and scoring; readings run in parallel, so wall-clock is shorter. "
-         "Tokens: all = uncached input + cache read + cache write + output; reasoning tokens are part of output. A reading with no tests has no scoring time. "
+         "Tokens: all = uncached input + cache read + cache write + output; reasoning tokens are part of output, and \"not reported\" where no completion's host reported them; reasoning per completion, over a reading's completions, is where a level run lower than asked shows. A reading with no tests has no scoring time. "
          "A reading reused from an earlier run keeps the time and cost it was recorded with; wall-clock covers only this run's invocations. "
          "A cost a host has not yet reported is left out of the totals.\n")))
 

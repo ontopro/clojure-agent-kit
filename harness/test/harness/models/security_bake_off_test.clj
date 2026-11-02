@@ -116,6 +116,9 @@
       (is (str/includes? r "| **Cost** | **$1.26** |"))
       (is (str/includes? r "| **Tokens: all** | **29,030** |"))
       (is (str/includes? r "| Completions (faulted / careful) | 12 / 12 |"))
+      (is (str/includes? r "| Tokens: reasoning | 600 |"))
+      (is (str/includes? r "| Reasoning tokens per completion (faulted / careful) | 25 / 25 |")
+          "where a level run lower than asked shows, over a reading's completions")
       (is (str/includes? r "| Tests written (file writes), faulted | 2 (3) |"))
       (is (str/includes? r "| Cost per fault found | $0.80 |")))
     (testing "by reading"
@@ -127,6 +130,11 @@
       (let [run2 (assoc-in run [:invocations 0 :candidates] [{:id "gemini-4-argon-high" :route "google-direct" :model "gemini-4-argon"}])]
         (is (str/includes? (bo/report "T" run2 [(reading "astra" :faulted 0.80)]) "**Models:** gemini-4-argon-high (google-direct) ·")))
       (is (str/includes? r "**Models:** openai/gpt-6-astra ·") "an invocation from before: its :models"))
+    (testing "row 129: reasoning no host reported is said so, never 0"
+      (let [bare (fn [k] (update (reading "astra" k 0.5) :review update :steps (partial mapv #(dissoc % :reasoning-tokens))))
+            r4 (bo/report "T" run [(bare :faulted) (bare :clean)])]
+        (is (str/includes? r4 "| Tokens: reasoning | not reported |"))
+        (is (str/includes? r4 "| Reasoning tokens per completion (faulted / careful) | not reported / not reported |"))))
     (testing "a cost not reported is said and left out of the total"
       (let [r2 (bo/report "T" run [(reading "astra" :faulted 0.80) (reading "astra" :clean nil)])]
         (is (str/includes? r2 "$0.80 so far, some not reported"))

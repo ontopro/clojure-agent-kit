@@ -182,7 +182,12 @@
        ;; host's own generation time say whether a slow turn was the model
        ;; thinking; the service tier is the only field that tells OpenAI's flex
        ;; from its standard endpoint — :provider_name is "OpenAI" for both.
-       :reasoning-tokens (:native_tokens_reasoning generation)
+       ;; REASONING TOKENS FROM THE REPLY FIRST: the generation record, their one source until
+       ;; 2026-11-02, answers 404 since 2026-10-16 (row 129), so every step since kept none. The
+       ;; reply's `usage.completion_tokens_details.reasoning_tokens` is the host's own count - nil
+       ;; when the host reports none, 0 only when it says 0.
+       :reasoning-tokens (let [r (get-in parsed [:raw :usage :completion_tokens_details :reasoning_tokens])]
+                           (if (some? r) r (:native_tokens_reasoning generation)))
        :generation-ms (:generation_time generation)
        :service-tier (:service_tier generation)
        :generation-id (:id parsed)}

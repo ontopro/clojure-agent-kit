@@ -68,6 +68,20 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### A step's reasoning tokens read from the reply: register row 129 extended and closed (plan 7.0, item 10)
+
+From Fable 5.1's read of the pre-run probe's design (`.local/plans/v7/kit-plan-v7.0-item10-probe-design.md`); the
+person: "why a new register row record if it same or closely related? ... Fix it and close the bug(s)". A step's
+`:reasoning-tokens` had one source, OpenRouter's generation record (`native_tokens_reasoning`), which has answered
+404 since 2026-10-16 - row 129's cause - so it was nil on every step since, on OpenRouter and at a direct API alike
+(the 2026-10-21 records: Argon direct's 20 steps and Astra's 16, all nil). The reply carries the host's own count,
+`usage.completion_tokens_details.reasoning_tokens`, and nothing read it. Now `provenance/of` takes it first and the
+record's as the fallback: nil when the host reports none, 0 only when it says 0. The security bake-off's report
+summed the nils to 0 - computed, never printed - and now prints them: "Tokens: reasoning" and "Reasoning tokens per
+completion (faulted / careful)", "not reported" where no completion's host gave a count. Per completion over a
+reading's 15-40 completions is where a level run lower than asked shows - the signal the probe's one call cannot
+give (the read: "drop the second call"). Row 129 carries it, not a new row: the same cause.
+
 ### Effort levels are the model's, from OpenRouter's listing; a line naming none read at medium (plan 7.0, item 10.2)
 
 The person: "Get every family's levels. If a level is not available easily for a direct model ..., use the

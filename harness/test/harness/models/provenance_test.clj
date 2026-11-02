@@ -126,7 +126,13 @@
     (is (= "flex" (:service-tier p))))
   (let [p (prov/of parsed nil)]
     (is (every? nil? ((juxt :reasoning-tokens :generation-ms :service-tier) p))
-        "without a record, absent — not zero, not a guess")))
+        "without a record, absent — not zero, not a guess"))
+  (testing "row 129: the reply's own reasoning count first, the record's the fallback"
+    (let [reply (assoc parsed :raw {:usage {:completion_tokens_details {:reasoning_tokens 812}}})]
+      (is (= 812 (:reasoning-tokens (prov/of reply nil))))
+      (is (= 812 (:reasoning-tokens (prov/of reply (assoc (:data record) :native_tokens_reasoning 30))))))
+    (is (= 0 (:reasoning-tokens (prov/of (assoc parsed :raw {:usage {:completion_tokens_details {:reasoning_tokens 0}}}) nil)))
+        "0 when the host says 0")))
 
 (deftest without-a-record-the-cost-is-nil-and-the-tokens-are-still-real
   ;; The direct-Anthropic path without a priced role. §10 lesson 11: a computed
