@@ -68,6 +68,20 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### The security fixture's careful feature refuses a form value sent as a map (plan 7.0, item 10, register row 239)
+
+From Muse Wonder's careful reading in the bake-off of 2026-11-02, and Fable 5.1's read of its triage (F2); the person:
+"fix problems 1, 2 and 3". The overlay's `web.clj` - the careful feature, byte for byte - sent a note's title to
+`str/blank?`, its body to `str`, a password to the hash after counting `(str password)`, and any `q` to the search:
+`title[x]=...` is a map by the parameter middleware, so a 500, or a note stored as the printed map. It checked a
+login's values and a username and not these, half of the KIT's own rule. Now a `text?` check refuses each with a 400,
+and the key gains a fifth property no fault is planted against, `a-form-value-sent-as-a-map-is-refused-not-a-500`,
+with its paragraph in the fixture's README. Every fault's `:find` still matches once. Measured: the reference tests
+on the 2026-11-02 fixture's careful branch (`feature-1`) - only the new test fails, all five of its checks; and
+`bb security-fixture .local/security-review/fixture-2026-11-02b` from the fixed overlay - clean 0 failing, faulted the
+six, each fault reverted alone 5, "the key holds". So the bake-off's "tests failing on the careful branch" counted this
+real defect as Muse's inventions on 2026-11-02 (three of its four); from the next fixture it does not. Row 239, fixed.
+
 ### The security scorer quotes each test's own failure, the careful branch's for a test failing on both (plan 7.0, item 10)
 
 From Fable 5.1's read of the bake-off's triage (F1); the person: "fix problems 1, 2 and 3". `security-score` kept

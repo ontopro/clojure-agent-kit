@@ -24,6 +24,12 @@
                 :action action
                 :class ["my-4"]} (reitit-extras/csrf-token-html)] fields))
 
+(defn- text?
+  "Whether a request value is text, or absent: the parameter middleware makes a map of `x[y]=...`,
+  and a value of the wrong type is refused as a bad request before it is used."
+  [v]
+  (or (nil? v) (string? v)))
+
 ;; ---------------------------------------------------------------------------
 ;; who is asking
 ;; ---------------------------------------------------------------------------
@@ -101,7 +107,7 @@
   (cond
     (not (accounts/valid-username? username))
     (-> (page [:h1 "Register"] [:p "A username of three to thirty-two letters, digits, hyphens and underscores."]) (response/status 400))
-    (< (count (str password)) 8)
+    (not (and (string? password) (<= 8 (count password))))
     (-> (page [:h1 "Register"] [:p "A password of eight characters or more."]) (response/status 400))
     (accounts/register! (conn request) username password)
     (response/redirect "/login" :see-other)
@@ -116,33 +122,39 @@
   [{:keys [user]
     {:keys [q]} :params
     :as request}]
-  (let [notes (notebook/notes-for (conn request) (:id user) q)]
-    (page [:h1 (:username user) "'s notes"]
-          [:form {:method "get"
-                  :action "/notes"}
-           [:input {:name "q"
-                    :value q
-                    :placeholder "search titles"}]
-           [:button {:type "submit"} "Search"]]
-          [:ul (for [n notes]
-                 [:li [:a {:href (str "/notes/" (:id n))} (:title n)]])]
-          (form "/notes"
-                [:input {:name "title"
-                         :placeholder "title"}]
-                [:textarea {:name "body"}]
-                [:button {:type "submit"} "Add"])
-          [:p [:a {:href "/export"} "Export my notes"]]
-          (form "/logout" [:button {:type "submit"} "Log out"]))))
+  (if-not (text? q)
+    (-> (page [:h1 "A search is text"]) (response/status 400))
+    (let [notes (notebook/notes-for (conn request) (:id user) q)]
+      (page [:h1 (:username user) "'s notes"]
+            [:form {:method "get"
+                    :action "/notes"}
+             [:input {:name "q"
+                      :value q
+                      :placeholder "search titles"}]
+             [:button {:type "submit"} "Search"]]
+            [:ul (for [n notes]
+                   [:li [:a {:href (str "/notes/" (:id n))} (:title n)]])]
+            (form "/notes"
+                  [:input {:name "title"
+                           :placeholder "title"}]
+                  [:textarea {:name "body"}]
+                  [:button {:type "submit"} "Add"])
+            [:p [:a {:href "/export"} "Export my notes"]]
+            (form "/logout" [:button {:type "submit"} "Log out"])))))
 
 (defn add-note!
   [{:keys [user]
     {:keys [title body]} :params
     :as request}]
-  (if (str/blank? title)
+  (cond
+    (not (and (text? title) (text? body)))
+    (-> (page [:h1 "A note's title and body are text"]) (response/status 400))
+    (str/blank? title)
     (-> (page [:h1 "A note needs a title"]) (response/status 400))
-    (if (notebook/add-note! (conn request) (:id user) title (str body))
-      (response/redirect "/notes" :see-other)
-      (-> (page [:h1 "You have " notebook/quota " notes, the most you can keep"]) (response/status 409)))))
+    (notebook/add-note! (conn request) (:id user) title (str body))
+    (response/redirect "/notes" :see-other)
+    :else
+    (-> (page [:h1 "You have " notebook/quota " notes, the most you can keep"]) (response/status 409))))
 
 (defn- note-id [request] (parse-long (str (get-in request [:path-params :id]))))
 

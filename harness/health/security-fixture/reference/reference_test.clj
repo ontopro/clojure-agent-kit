@@ -147,10 +147,10 @@
       (is (empty? (notes-of "alice"))))))
 
 ;; ---------------------------------------------------------------------------
-;; four properties no fault is planted against: they hold on BOTH branches, and were added when a
+;; five properties no fault is planted against: they hold on BOTH branches, and were added when a
 ;; security reviewer found the careful feature breaking them (a first-administrator race; a username
 ;; that became a file name; a login whose username was a map, which HoneySQL read as SQL; a session
-;; that outlived its logout). A finding of any of them is now an invention to score, not a hit.
+;; that outlived its logout; a note, a search or a password whose value was a map, a 500). A finding of any of them is now an invention to score, not a hit.
 ;; ---------------------------------------------------------------------------
 
 (defn- usernames [] (set (map :username (db/exec! *db* {:select [:username] :from [:users]}))))
@@ -194,3 +194,16 @@
     (is (= 200 (:status (send! copy :get "/notes"))) "a copy of the cookie is a login before")
     (post! alice "/logout" {})
     (is (= 302 (:status (send! copy :get "/notes"))) "and is not one after")))
+
+(deftest a-form-value-sent-as-a-map-is-refused-not-a-500
+  ;; `title[x]=...` reaches the handler as {:x ...}: refused as a bad request, never a 500 or a stored
+  ;; stringified map (found by a security reviewer in the bake-off of 2026-11-02, on both branches)
+  (let [alice (user! "alice")
+        b (browser)]
+    (is (= 400 (:status (post! alice "/notes" {(keyword "title[x]") "a" :body "b"}))) "a title that is not text")
+    (is (= 400 (:status (post! alice "/notes" {:title "t" (keyword "body[x]") "b"}))) "a body that is not text")
+    (is (empty? (notes-of "alice")) "neither stored")
+    (is (= 400 (:status (send! alice :get "/notes" {(keyword "q[x]") "a"}))) "a search that is not text")
+    (send! b :get "/register")
+    (is (= 400 (:status (post! b "/register" {:username "bob" (keyword "password[x]") "correct horse"}))) "a password that is not text")
+    (is (nil? (user-id "bob")))))

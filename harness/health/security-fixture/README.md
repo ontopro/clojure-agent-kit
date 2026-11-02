@@ -47,7 +47,7 @@ feature with one fault reverted and the other five in place, and the key checks 
 tests of the other five fail and the reverted fault's passes. That is what lets the scorer
 (`bb security-score`) say which fault a reviewer's test detects: the one whose revert makes it pass.
 
-Four more properties are tested that no fault is planted against, and hold on both branches. Each was
+Five more properties are tested that no fault is planted against, and hold on both branches. Each was
 added when a security reviewer found the careful feature breaking it, and the feature was fixed; a finding of
 any of them is now an invention to score.
 
@@ -65,6 +65,12 @@ a signed cookie the server keeps no copy of: an account now carries a session ge
 it was opened in, and a logout ends every session of the account. Measured: each test fails on the careful
 feature with its own fix taken out, and no other test does; the security reviewer's two tests that found them pass on the
 fixed feature.
+
+A form value sent as a map is refused, not a 500. A note's title or body, a search or a password arriving as a map
+went unchecked into `str/blank?`, `str` or the password hash: a 500, or a note stored as the printed map. The careful
+feature checked a login's values and a username, not these - half of the KIT's own rule that a request value is
+checked before it is used; found by a security reviewer in the bake-off of 2026-11-02, on both branches. Each is
+now refused with a 400.
 
 An auditor's reproduction is scored the same way: a hit on a fault is a test that fails on the
 faulted branch and passes once that fault alone is reverted; one that fails on the clean branch
