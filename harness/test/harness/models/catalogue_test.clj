@@ -42,12 +42,14 @@
   (is (= :x-ai (cat/family-of "x-ai/grok-4.7")))
   (is (nil? (cat/family-of "claude-fable-5-1")) "a direct model name has no prefix")
   (let [r (cat/routes)]
-    (is (= #{:anthropic :openai :google :x-ai :z-ai :anthropic-direct :google-direct} (set (keys r))))
+    (is (= #{:anthropic :openai :google :x-ai :z-ai :qwen :meta :anthropic-direct :google-direct} (set (keys r))))
     (doseq [[fam route] r]
       (is (and (:endpoint route) (:key-env route) (:shape route) (get-in route [:effort :param]) (seq (get-in route [:effort :levels])))
           (str (name fam) ": endpoint, key variable, shape, effort parameter and levels"))
       (is (not (re-find #"(?i)sk-|key-[a-z0-9]{8}" (pr-str route))) "no key, ever"))
     (is (= "xai" (:provider (cat/route r :x-ai))))
+    (is (= ["alibaba" "meta"] (map #(:provider (cat/route r %)) [:qwen :meta]))
+        "each pinned to the one host OpenRouter lists for the bake-off's candidate")
     (is (= :anthropic (:shape (cat/route r :anthropic-direct))))
     (is (= [:openai "GEMINI_API_KEY" nil] ((juxt :shape :key-env :provider) (cat/route r :google-direct)))
         "Gemini at Google's own endpoint: the OpenAI shape, Google's key, no provider to pin")

@@ -46,6 +46,18 @@
         :shape :openai
         :provider "alibaba"
         :effort {:param :reasoning_effort :levels ["low" "medium" "high"]}}
+ ;; Alibaba is the one host OpenRouter lists for qwen3.8-max-0902 (2026-11-02, two tags of it).
+ :qwen {:endpoint "https://openrouter.ai/api/v1"
+        :key-env "OPENROUTER_API_KEY"
+        :shape :openai
+        :provider "alibaba"
+        :effort {:param :reasoning_effort :levels ["low" "medium" "high"]}}
+ ;; Meta is the one host OpenRouter lists for muse-wonder (2026-11-02).
+ :meta {:endpoint "https://openrouter.ai/api/v1"
+        :key-env "OPENROUTER_API_KEY"
+        :shape :openai
+        :provider "meta"
+        :effort {:param :reasoning_effort :levels ["low" "medium" "high"]}}
  :google-direct {:endpoint "https://generativelanguage.googleapis.com/v1beta/openai"
                  :key-env "GEMINI_API_KEY"
                  :shape :openai

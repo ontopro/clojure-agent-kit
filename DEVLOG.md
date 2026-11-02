@@ -68,6 +68,17 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### Routes for `:qwen` and `:meta`, the security reviewer bake-off's two new families (plan 7.0, item 10.1)
+
+The person: "Let's do 10 first in 2 parts. a) a quick bake-off", then "go on (a) with the five models" - GPT-6.1
+Sol, Qwen3.8 Max and Muse Wonder at xhigh, GPT-6 Astra the control, Gemini 4 Argon added. `catalogue/route`
+refused Qwen and Muse by name, no route being written for their families. Two entries in `resources/routes.edn`,
+in the z-ai entry's shape: OpenRouter, `OPENROUTER_API_KEY`, the OpenAI shape, `reasoning_effort`, each pinned to
+the one host `bb models <slug> --endpoints` lists (2026-11-02): `alibaba` for `qwen/qwen3.8-max-0902` (two tags
+of it), `meta` for `meta/muse-wonder`. Their levels are the three every family has; `xhigh` is 10.2's, after a
+probe. Whether each host takes tool calls is what the probe shows, not what the entry assumes. Argon needs no
+route: `google/gemini-4-argon` is the `:google` family's, on OpenRouter through `google-vertex`.
+
 ### `copy-script`'s folder a constant, never input, said in its docstring (plan 7.0, item 9.3, a nit)
 
 From Fable 5.1's read of `045e217`: `copy-script` puts its folder into a shell script unquoted. Both
