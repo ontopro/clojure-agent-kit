@@ -30,6 +30,34 @@
            (score/why out))))
   (is (nil? (score/why "Ran 1 tests\n0 failures"))))
 
+;; From Fable 5.1's read of the 2026-11-02 bake-off's triage: one reason per namespace, the faulted
+;; run's first, was put on every test of the file - a passing test carried a failure, and a test failing
+;; on both branches showed the faulted branch's reason where the careful one's decides it
+(deftest each-failing-test-has-its-own-reason
+  (let [out "FAIL in (a-test) (x.clj:5)\nexpected: 1\n  actual: 2\nFAIL in (b-test) (x.clj:9)\nexpected: 3\nRan 3 tests"]
+    (is (= "FAIL in (b-test) (x.clj:9) | expected: 3 | Ran 3 tests" (score/why out "b-test")))
+    (is (= "FAIL in (a-test) (x.clj:5) | expected: 1 |   actual: 2" (score/why out "a-test")) "it stops at the next test's failure")
+    (is (= "FAIL in notes.x-test/b-test (x.clj:9) | exp" (score/why "FAIL in notes.x-test/b-test (x.clj:9)\nexp" "b-test")) "the qualified form too")
+    (is (nil? (score/why out "b")) "a name is matched whole, not as a prefix")
+    (is (= {"a-test" "FAIL in (a-test) (x.clj:5) | expected: 1 |   actual: 2"}
+           (score/unit-whys {"a-test" :fails "c-test" :passes} out "the namespace's")) "a test that passed has no reason")
+    (is (= {"z" "the namespace's"} (score/unit-whys {"z" :does-not-compile} "Syntax error" "the namespace's"))
+        "a test the output does not name: the namespace's reason")))
+
+(deftest a-test-failing-on-both-branches-shows-the-careful-branchs-reason
+  (let [o {:faulted :fails :clean :fails :why-faulted "the faulted reason" :why-clean "the careful reason"}]
+    (with-redefs [score/outcomes! (fn [& _] {"x.a-test/t" o "x.a-test/u" {:faulted :passes :clean :passes}})]
+      (let [dir (fs/create-temp-dir {:prefix "kit-score-why"})]
+        (try
+          (spit (str (fs/path dir "rev.edn")) (pr-str {:tests [] :findings []}))
+          (fs/create-dirs (fs/path dir "fx"))
+          (spit (str (fs/path dir "fx" "cases.edn")) (pr-str {:faults [:race]}))
+          (let [tests (:tests (score/score! "kit" (str (fs/path dir "rev.edn")) (str (fs/path dir "fx"))))]
+            (is (= "the careful reason" (get-in tests ["x.a-test/t" :why])))
+            (is (= "the faulted reason" (get-in tests ["x.a-test/t" :why-faulted])) "both kept")
+            (is (nil? (get-in tests ["x.a-test/u" :why])) "a test that held carries none"))
+          (finally (fs/delete-tree dir)))))))
+
 (deftest a-test-that-fails-on-the-faulted-branch-only-detects-the-fault-whose-revert-makes-it-pass
   (testing "a hit"
     (is (= {:class :hit :hits [:race]}

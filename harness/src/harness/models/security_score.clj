@@ -12,7 +12,7 @@
 
   What does not discriminate is classified, not judged: a test that fails on both branches is
   UNPLANTED - a real flaw nobody planted, an invented one, or a test whose own setup was refused;
-  the person marks which, and the first failure is quoted to help. A test that passes on the
+  the person marks which, and the test's own failure on the careful branch is quoted to help. A test that passes on the
   faulted branch is a concern that did not hold; one that does not compile is nothing. A
   whole-suite run would hide all of this behind one broken file, which is why each test
   namespace is run alone.
@@ -60,13 +60,27 @@
 
 (defn why
   "The first failure in a test run's output, as a few lines: what to show a person deciding what
-  a failing test means. Cleaned of the runner's decoration and cut short."
-  [out]
-  (let [lines (str/split-lines (security-review-tools/clean-output out))
-        from (first (keep-indexed (fn [i l] (when (re-find #"^(FAIL|ERROR) in " l) i)) lines))]
-    (when from
-      (let [s (str/join " | " (take 4 (drop from lines)))]
-        (if (> (count s) 300) (str (subs s 0 300) "...") s)))))
+  a failing test means. Cleaned of the runner's decoration and cut short. With `test-name`, the first
+  failure OF THAT TEST - `FAIL in (<name>)`, or `FAIL in <ns>/<name>` - nil when the run names none:
+  a namespace's run holds every test of the file, and one test's failure is not another's reason."
+  ([out] (why out nil))
+  ([out test-name]
+   (let [lines (str/split-lines (security-review-tools/clean-output out))
+         head (if test-name
+                (re-pattern (str "^(FAIL|ERROR) in (\\(" (java.util.regex.Pattern/quote test-name) "\\)|\\S+/"
+                                 (java.util.regex.Pattern/quote test-name) "[\\s(])"))
+                #"^(FAIL|ERROR) in ")
+         from (first (keep-indexed (fn [i l] (when (re-find head l) i)) lines))]
+     (when from
+       (let [s (str/join " | " (take 4 (cons (nth lines from) (take-while #(not (re-find #"^(FAIL|ERROR) in " %)) (drop (inc from) lines)))))]
+         (if (> (count s) 300) (str (subs s 0 300) "...") s))))))
+
+(defn unit-whys
+  "Each failing test's reason, from a namespace's run: the test's own failure where the output names
+  it, else the namespace's first (`ns-why`: it did not compile, or failed with no test named). A test
+  that passed has none."
+  [units out ns-why]
+  (into {} (for [[v st] units :when (not= :passes st)] [v (or (why out v) ns-why)])))
 
 (defn deftest-names
   "The names of the tests a test file defines, in order: its `deftest` forms, metadata skipped."
@@ -163,7 +177,8 @@
 
 (defn- run-branch!
   "The test namespaces `nses` run one at a time in the sandbox, on a fresh single-branch clone of
-  `branch` with the security reviewer's test files copied in: ns -> {:status _ :why _ :units {test status}}."
+  `branch` with the security reviewer's test files copied in: ns -> {:status _ :units {test status}
+  :whys {test reason}}."
   [kit app-dir branch files nses]
   (let [scratch (str (fs/create-temp-dir {:prefix "kit-score"}))
         clone (str (fs/path scratch "app"))]
@@ -182,16 +197,17 @@
                       :let [r ((:run-tests sb) n)
                             st (status r)
                             vars (deftest-names (some (fn [[path text]] (when (= n (test-ns path)) text)) files))]]
-                  [n {:status st
-                      :why (when (not= :passes st) (why (:out r)))
-                      :units (unit-statuses st vars (:out r))}]))
+                  [n (let [units (unit-statuses st vars (:out r))]
+                       {:status st
+                        :units units
+                        :whys (unit-whys units (:out r) (when (not= :passes st) (why (:out r))))})]))
           (finally ((:stop! sb)))))
       (finally (fs/delete-tree scratch)))))
 
 (defn outcomes!
   "Run the security reviewer's tests where they matter. `cases` is the fixture's cases.edn, `files` the
   security reviewer's tests (path -> text). Returns `ns/test` -> `{:faulted s :clean s :variants {fault s}
-  :why _}`, one entry per `deftest`. The variants are run only for the namespaces with a test that
+  :why-faulted _ :why-clean _}`, one entry per `deftest`, each reason that test's own on that branch. The variants are run only for the namespaces with a test that
   discriminates."
   [kit app-dir cases files]
   (let [nses (vec (sort (distinct (map test-ns (keys files)))))
@@ -203,7 +219,8 @@
                      [(str n "/" v) {:ns n
                                      :faulted (get-in faulted [n :units v])
                                      :clean (get-in clean [n :units v])
-                                     :why (or (get-in faulted [n :why]) (get-in clean [n :why]))}]))
+                                     :why-faulted (get-in faulted [n :whys v])
+                                     :why-clean (get-in clean [n :whys v])}]))
         worth (vec (distinct (for [[_ o] base :when (discriminates? o)] (:ns o))))
         variants (into {} (when (seq worth)
                             (for [[fault branch] (:variants cases)]
@@ -232,7 +249,13 @@
         cases (edn/read-string (slurp (str (fs/path fixture-dir "cases.edn"))))
         t0 (System/currentTimeMillis)
         out (outcomes! kit (str (fs/path fixture-dir "notes")) cases files)
-        tests (into (sorted-map) (for [[n o] out] [n (merge (classify o) (select-keys o [:why :faulted :clean]))]))]
+        ;; THE REASON SHOWN IS THE ONE THE CLASS ASKS ABOUT: a test failing on both branches is for the
+        ;; person to mark, and what decides it is why it fails where nothing was planted - the careful branch's
+        tests (into (sorted-map)
+                    (for [[n o] out
+                          :let [c (classify o)
+                                w (if (= :fails-on-both (:class c)) (:why-clean o) (:why-faulted o))]]
+                      [n (cond-> (merge c (select-keys o [:faulted :clean :why-faulted :why-clean])) w (assoc :why w))]))]
     (assoc (summary tests (:findings review) (:faults cases))
            :review (str (fs/file-name review-file))
            :model (:model review)

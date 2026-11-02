@@ -68,6 +68,21 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### The security scorer quotes each test's own failure, the careful branch's for a test failing on both (plan 7.0, item 10)
+
+From Fable 5.1's read of the bake-off's triage (F1); the person: "fix problems 1, 2 and 3". `security-score` kept
+one reason per test NAMESPACE - the faulted branch's run's first `FAIL` - and put it on every test of the file: a test
+that passed carried a failure, and a test failing on both branches, which the person marks real, invented or a
+refused setup, showed the faulted branch's reason where the careful branch's decides it. It misled the triage of the
+2026-11-02 bake-off: Qwen3.8 Max's two search tests showed "bob-only" on alice's page, the faulted run's detection,
+where on the careful branch they failed one line earlier - a parameterised search returns nothing for an injection
+payload, and the tests assumed it still returns the user's own note. Now `why` takes a test's name and quotes that
+test's own failure (`FAIL in (<name>)` or `<ns>/<name>`), up to the next failure's header; `unit-whys` gives each
+failing test its reason, the namespace's only where the output names no test (it did not compile); each test keeps
+`:why-faulted` and `:why-clean`, and `:why` - what `print-score` quotes - is the careful branch's for
+`:fails-on-both`, the faulted branch's otherwise, none for a test that held. The 2026-11-02 scores keep the old
+reasons, as written.
+
 ### The security bake-off's record names the KIT commit it ran on, read as the run starts (plan 7.0, item 10, register row 238)
 
 From Fable 5.1's read of the bake-off's triage (K1); the person: "fix problems 1, 2 and 3". `run-readings!` read the
