@@ -15,6 +15,15 @@
           ["glm-5.3-prime-high-faulted" :faulted] ["glm-5.3-prime-high-clean" :clean]]
          (mapv (juxt :id :case) (bo/jobs [astra glm])))))
 
+(deftest a-candidate-is-a-model-line-or-a-profile-and-no-two-share-an-id
+  (is (= {:models ["sol xhigh"] :profiles ["argon.edn" "b.edn"] :fixture "fx"}
+         (bo/parse-args ["fx" "--model" "sol xhigh" "--profile" "argon.edn" "--profile" "b.edn"]))
+      "a profile is the way to a direct route, which no --model line reaches")
+  (is (= [astra glm] (bo/distinct-ids [astra glm])))
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"two candidates share the id gpt-6-astra-high"
+                        (bo/distinct-ids [astra glm astra]))
+      "a reading's files are named by the id: two would write the same ones"))
+
 (def astra-faulted
   {:review {:model "openai/gpt-6-astra" :iterations 15 :ms 372000 :cost 1.2 :findings [{} {} {}] :refused? false :capped? false}
    :score {:found {:race ["a"] :idor ["b"] :raw-sql ["c" "d"]}

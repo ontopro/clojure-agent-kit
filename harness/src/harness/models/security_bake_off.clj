@@ -1,6 +1,10 @@
 (ns harness.models.security-bake-off
   "Models compared as security reviewers: `bb security-bake-off <fixture-dir> --model \"<model> [effort]\" ...`.
 
+  A candidate is a `--model` line, reached on OpenRouter by its family's route, or a `--profile`: the
+  profile's first eligible security reviewer, as `bb security-review --profile` takes it - the way to a
+  direct route (Gemini at Google's API), which no `--model` line reaches.
+
   Each model reviews the fixture twice, as the architecture tracer: once on the faulted branch,
   where there is something to find, and once on the careful one, where there is not. Every
   reading is scored by running the tests it wrote (`harness.models.security-score`), so the
@@ -90,6 +94,16 @@
                        :when note]
                    (str "\n- " candidate ": " note)))
        "\n"))
+
+(defn distinct-ids
+  "The candidates, refused when two share an id: the id names a reading's files, so two would read and
+  score into the same ones."
+  [cands]
+  (let [dups (keep (fn [[id n]] (when (> n 1) id)) (frequencies (map :id cands)))]
+    (when (seq dups)
+      (throw (ex-info (str "two candidates share the id " (str/join ", " dups) " - a reading's files are named by it")
+                      {:bake-off/error :duplicate-id :ids (vec dups)})))
+    cands))
 
 (defn- read-edn [f] (when (fs/exists? f) (edn/read-string (slurp (str f)))))
 
@@ -330,13 +344,17 @@
 (defn run-readings!
   "Run every reading, `parallel` at a time, and write `bake-off.md` and `report.md` under `out`.
   Returns the rows."
-  [{:keys [fixture out models parallel kit rounds] :as opts}]
+  [{:keys [fixture out models profiles parallel kit rounds] :as opts}]
   (let [started (java.time.Instant/now)
         t0 (System/currentTimeMillis)
         cases (read-edn (fs/path fixture "cases.edn"))
-        listing (catalogue/fetch-listing)
-        routes (catalogue/routes)
-        cands (mapv #(catalogue/expand-candidate listing routes %) models)
+        cands (distinct-ids
+               (into (if (seq models)
+                       (let [listing (catalogue/fetch-listing) routes (catalogue/routes)]
+                         (mapv #(catalogue/expand-candidate listing routes %) models))
+                       [])
+                     (map review/role-from-profile)
+                     profiles))
         _ (fs/create-dirs out)
         results (->> (jobs cands)
                      (partition-all (max 1 (or parallel 2)))
@@ -354,17 +372,19 @@
     rows))
 
 (def usage
-  (str "bb security-bake-off <fixture-dir> --model \"<model> [effort]\" --model \"<model> [effort]\" ...\n"
+  (str "bb security-bake-off <fixture-dir> --model \"<model> [effort]\" ... --profile <profile.edn> ...\n"
        "                         [--out <dir>] [--rounds N] [--parallel N]\n"
        "bb security-bake-off --report <dir>   write report.md again from a folder's records (no model calls)\n"
        "  <fixture-dir>  what bb security-fixture built (notes/ and cases.edn)\n"
+       "  --model    a model on OpenRouter, by its family's route; --profile  a profile's first eligible security reviewer (a direct route)\n"
        "  Each model reviews the faulted branch and the careful one as the tracer, and each reading is scored.\n"
        "  REAL MODEL CALLS: it spends money. A stopped run resumes from the folder's records."))
 
 (defn parse-args [args]
-  (loop [[a & more] args m {:models []}]
+  (loop [[a & more] args m {:models [] :profiles []}]
     (cond (nil? a) m
           (= a "--model") (recur (rest more) (update m :models conj (first more)))
+          (= a "--profile") (recur (rest more) (update m :profiles conj (first more)))
           (= a "--out") (recur (rest more) (assoc m :out (first more)))
           (= a "--rounds") (recur (rest more) (assoc m :rounds (parse-long (first more))))
           (= a "--parallel") (recur (rest more) (assoc m :parallel (parse-long (first more))))
@@ -373,19 +393,19 @@
           :else (recur more (assoc m :fixture a)))))
 
 (defn -main [& args]
-  (let [{:keys [fixture models out rounds parallel report]} (parse-args args)
+  (let [{:keys [fixture models profiles out rounds parallel report]} (parse-args args)
         kit (str (fs/normalize (fs/absolutize "..")))]
     (when report
       (println (str "  report: " (report! (str (fs/absolutize report)))))
       (System/exit 0))
-    (when-not (and fixture (seq models))
+    (when-not (and fixture (or (seq models) (seq profiles)))
       (println usage)
       (System/exit 2))
     (let [out (str (fs/absolutize (or out (fs/path kit ".local" "security-review"
                                                    (str "bake-off-" (.format (java.time.LocalDateTime/now) (java.time.format.DateTimeFormatter/ofPattern "yyyyMMdd-HHmmss")))))))
           fixture (str (fs/absolutize fixture))]
-      (println (str "  " (count models) " models x faulted and careful, " (or parallel 2) " at a time, into " out))
-      (let [rows (run-readings! {:kit kit :fixture fixture :out out :models models :rounds rounds :parallel parallel})]
+      (println (str "  " (+ (count models) (count profiles)) " models x faulted and careful, " (or parallel 2) " at a time, into " out))
+      (let [rows (run-readings! {:kit kit :fixture fixture :out out :models models :profiles (mapv #(str (fs/absolutize %)) profiles) :rounds rounds :parallel parallel})]
         (println)
         (println (render rows))
         (println (str "  table: " (fs/path out "bake-off.md")))

@@ -68,6 +68,17 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### `bb security-bake-off --profile`: a candidate reached by a direct route (plan 7.0, item 10)
+
+The person: "go, add --profile and run Argon direct". A `--model` line is expanded by the catalogue into an
+OpenRouter route - routes.edn: "NOTHING READS A `-direct` ROUTE" - so Gemini 4 Argon could only be read on
+OpenRouter, where the KIT's shipped profile reaches it at Google's own API. A `--profile <profile.edn>`
+(repeatable, beside `--model`) is now a candidate: the profile's first eligible security reviewer, by
+`security-review/role-from-profile`, as `bb security-review --profile` takes it; the listing is fetched only
+when there is a `--model`. Candidates sharing an id are refused by name (`distinct-ids`): a reading's files are
+named by it, so two would read and score into the same ones. The task's doc, the harness's `AGENTS.md` task
+table and its README say it.
+
 ### Routes for `:qwen` and `:meta`, the security reviewer bake-off's two new families (plan 7.0, item 10.1)
 
 The person: "Let's do 10 first in 2 parts. a) a quick bake-off", then "go on (a) with the five models" - GPT-6.1
