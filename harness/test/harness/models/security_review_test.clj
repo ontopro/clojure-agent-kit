@@ -178,11 +178,21 @@
                                                     :params {:reasoning_effort "high"}}}}))
     (spit without (pr-str {:seat :claude :roles {}}))
     (let [c (sr/role-from-profile with)]
-      (is (= "gpt-6-astra" (:id c)) "the record is named by the model, as with --model")
+      (is (= "gpt-6-astra-high" (:id c)) "named by the model and its effort, as a --model line is")
       (is (= "high" (:effort c)))
+      (is (= "example.test" (:route c)) "an endpoint routes.edn does not name: its host")
+      (is (= "gpt-6-astra" (:member c)))
       (is (= :openai (get-in c [:profile :family])) "the role block is what reads"))
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"has no :security-reviewer"
-                          (sr/role-from-profile without)))))
+                          (sr/role-from-profile without)))
+    (testing "a member at Anthropic's API: its effort read by that route's parameter, not reasoning_effort"
+      (let [anth (str (fs/path dir "anth.edn"))]
+        (spit anth (pr-str {:seat :claude
+                            :roles {:security-reviewer {:family :anthropic :model "claude-opus-5-5" :shape :anthropic
+                                                        :endpoint "https://api.anthropic.com"
+                                                        :params {:output_config {:effort "high"}}}}}))
+        (is (= ["claude-opus-5-5-high" "high" "anthropic-direct"]
+               ((juxt :id :effort :route) (sr/role-from-profile anth))))))))
 
 (deftest a-review-of-the-kit-is-pointed-at-its-source-and-told-what-an-earlier-pass-fixed
   (let [files ["harness/src/harness/a.clj" "harness/test/harness/a_test.clj" "tools/security/check.bb"

@@ -15,15 +15,6 @@
           ["glm-5.3-prime-high-faulted" :faulted] ["glm-5.3-prime-high-clean" :clean]]
          (mapv (juxt :id :case) (bo/jobs [astra glm])))))
 
-(deftest a-candidate-is-a-model-line-or-a-profile-and-no-two-share-an-id
-  (is (= {:models ["sol xhigh"] :profiles ["argon.edn" "b.edn"] :fixture "fx"}
-         (bo/parse-args ["fx" "--model" "sol xhigh" "--profile" "argon.edn" "--profile" "b.edn"]))
-      "a profile is the way to a direct route, which no --model line reaches")
-  (is (= [astra glm] (bo/distinct-ids [astra glm])))
-  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"two candidates share the id gpt-6-astra-high"
-                        (bo/distinct-ids [astra glm astra]))
-      "a reading's files are named by the id: two would write the same ones"))
-
 (def astra-faulted
   {:review {:model "openai/gpt-6-astra" :iterations 15 :ms 372000 :cost 1.2 :findings [{} {} {}] :refused? false :capped? false}
    :score {:found {:race ["a"] :idor ["b"] :raw-sql ["c" "d"]}
@@ -33,6 +24,26 @@
 (def astra-control
   {:review {:cost 0.9 :findings [{:title "x"}] :iterations 9}
    :score {:tests {"notes.a-test" {:clean :fails} "notes.b-test" {:clean :passes} "notes.c-test" {:clean :fails}}}})
+
+(deftest a-candidate-is-a-model-line-or-a-profile-and-no-two-share-an-id
+  (is (= {:models ["sol xhigh"] :profiles ["argon.edn" "b.edn"] :fixture "fx"}
+         (bo/parse-args ["fx" "--model" "sol xhigh" "--profile" "argon.edn" "--profile" "b.edn"]))
+      "a profile is the way to a direct route, which no --model line reaches")
+  (is (= [astra glm] (bo/distinct-ids [astra glm])))
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"two candidates share the id and the route gpt-6-astra-high"
+                        (bo/distinct-ids [astra glm astra]))
+      "a reading's files are named by the id and the route: two would write the same ones")
+  (testing "one model on two routes: one id, two candidates, two readings' worth of files"
+    (let [direct {:id "gemini-4-argon-high" :model "gemini-4-argon" :route "google-direct"}
+          routed {:id "gemini-4-argon-high" :model "google/gemini-4-argon" :route "openrouter"}]
+      (is (= [direct routed] (bo/distinct-ids [direct routed])))
+      (is (= ["gemini-4-argon-high_google-direct-faulted" "gemini-4-argon-high_google-direct-clean"
+              "gemini-4-argon-high_openrouter-faulted" "gemini-4-argon-high_openrouter-clean"]
+             (mapv :id (bo/jobs [direct routed]))))
+      (let [t (bo/render [(bo/row direct astra-faulted astra-control) (bo/row routed astra-faulted astra-control)])]
+        (is (str/includes? t "| gemini-4-argon-high | google-direct | 3 of 6 |"))
+        (is (str/includes? t "| gemini-4-argon-high | openrouter | 3 of 6 |"))
+        (is (str/includes? t "- gemini-4-argon-high (openrouter): missed"))))))
 
 (deftest a-candidates-row-is-arithmetic-over-its-two-readings
   (let [r (bo/row astra astra-faulted astra-control)]
@@ -61,7 +72,7 @@
 
 (deftest the-table-has-a-row-per-candidate
   (let [table (bo/render [(bo/row astra astra-faulted astra-control)])]
-    (is (str/includes? table "| gpt-6-astra-high | 3 of 6 | 5 / 2 / 1 | 15 | 6.2 | $2.10 | 2 |"))
+    (is (str/includes? table "| gpt-6-astra-high | — | 3 of 6 | 5 / 2 / 1 | 15 | 6.2 | $2.10 | 2 |") "a candidate from before the route: a dash")
     (is (str/includes? table "- gpt-6-astra-high: missed admin-authz, csrf-get, path-escape"))))
 
 (def canned-review
@@ -97,6 +108,7 @@
     (is (not (str/includes? r "## Time")) "one table, not a section per subject")
     (testing "by model: a column per candidate, the metrics as rows"
       (is (str/includes? r "|  | astra |"))
+      (is (str/includes? r "| Route | — |") "a reading from before the route")
       (is (str/includes? r "| **Planted faults found** | **1 of 2** |"))
       (is (str/includes? r "| **Cost** | **$1.26** |"))
       (is (str/includes? r "| **Tokens: all** | **29,030** |"))

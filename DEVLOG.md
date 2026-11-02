@@ -68,6 +68,26 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### A candidate's route said beside its name; a profile's effort read by its route's parameter (plan 7.0, item 10)
+
+From Fable 5.1's read of `d3f2a32`, and the person's correction of it: "Having the same name is fine - the route
+is different. If we are doing a bake-off between 2 routes for the same model, then we will use the same name and
+specify the routes". A candidate - a `--model` line or a `--profile`'s member - is named by its model and effort
+(`catalogue/candidate-id`, `gemini-4-argon-high`) and carries its route as an attribute of its own
+(`catalogue/route-name`: `openrouter`, a direct route's name in routes.edn such as `google-direct`, else the
+endpoint's host). The bake-off's table and report say the route beside the name - a column in `bake-off.md`, a
+row in the report's by-model table, the by-reading labels; a reading's files are named by both
+(`<id>_<route>-faulted.edn`, `reading-key`), so one model on two routes is two candidates, and `distinct-ids`
+refuses only two that share the id AND the route. A folder from before the route reads as it did, its route a
+dash. `role-from-profile` gives the member's name as `:member`.
+
+The second, older than this item (since plan 6.11): `role-from-profile` read the effort from
+`:reasoning_effort` alone, so a member at Anthropic's API (`:output_config {:effort …}`, as both shipped
+profiles write it) had none - in `bb security-review --profile`'s terminal line and record too. Now read by the
+route's own parameter (`catalogue/effort-of`, the route found by `route-of`: the direct route whose endpoint is
+the member's, else its family's). Tested with an Anthropic-direct member. `bb security-review --profile`'s records
+are named by the model and effort now, as `--model`'s are, where they carried the member's name.
+
 ### `bb security-bake-off --profile`: a candidate reached by a direct route (plan 7.0, item 10)
 
 The person: "go, add --profile and run Argon direct". A `--model` line is expanded by the catalogue into an

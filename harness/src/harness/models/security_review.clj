@@ -531,7 +531,9 @@
 (defn role-from-profile
   "The first eligible member of the profile's security reviewer panel at `path` - its one
   `:security-reviewer` in a profile written before the panel - as a candidate: `{:profile role
-  :id _ :model _ :effort _}`, `:id` the member's name. Throws naming the file when the profile has
+  :id _ :model _ :effort _ :route _ :member _}` - `:id` the model and its effort as a `--model` line's
+  (`catalogue/candidate-id`), `:route` how it is reached (`catalogue/route-name`), `:member` its name in
+  the panel, `:effort` read by the route's own parameter (`catalogue/effort-of`). Throws naming the file when the profile has
   none, or none outside the Coder's family. `bb security-panel` chooses among several."
   [path]
   (let [p (profile/read-profile path)
@@ -541,10 +543,15 @@
                                   " has no security reviewer outside the Coder's family - add one, or pass --model"
                                   " has no :security-reviewer or :security-panel - add one (the shipped examples have it), or pass --model"))
                       {:profile (str path)})))
-    {:profile (dissoc m :name)
-     :id (:name m)
-     :model (:model m)
-     :effort (get-in m [:params :reasoning_effort])}))
+    (let [routes (catalogue/routes)
+          role (dissoc m :name)
+          effort (catalogue/effort-of routes role)]
+      {:profile role
+       :id (catalogue/candidate-id {:model (:model m) :effort effort})
+       :model (:model m)
+       :effort effort
+       :route (catalogue/route-name routes role)
+       :member (:name m)})))
 
 (def kit-table-file "kit-review.md")
 

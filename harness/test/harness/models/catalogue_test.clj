@@ -56,6 +56,18 @@
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no route is written for the family :mistralai"
                           (cat/route r :mistralai)))))
 
+(deftest a-role-blocks-route-and-effort-are-read-by-routes-edn
+  (let [r (cat/routes)]
+    (is (= "openrouter" (cat/route-name r {:endpoint "https://openrouter.ai/api/v1" :family :openai})))
+    (is (= "google-direct" (cat/route-name r {:endpoint "https://generativelanguage.googleapis.com/v1beta/openai" :family :google}))
+        "the same family, its direct route by the endpoint")
+    (is (= "anthropic-direct" (cat/route-name r {:endpoint "https://api.anthropic.com" :family :anthropic})))
+    (is (= "example.test" (cat/route-name r {:endpoint "https://example.test/v1"})))
+    (is (= "xhigh" (cat/effort-of r {:endpoint "https://openrouter.ai/api/v1" :family :openai :params {:reasoning_effort "xhigh"}})))
+    (is (= "high" (cat/effort-of r {:endpoint "https://api.anthropic.com" :family :anthropic :params {:output_config {:effort "high"}}}))
+        "Anthropic's API takes the effort inside output_config")
+    (is (nil? (cat/effort-of r {:endpoint "https://openrouter.ai/api/v1" :family :openai :params {}})))))
+
 (deftest a-models-line-is-its-name-without-the-version
   (is (= "gpt-sol" (cat/line-of "openai/gpt-5.6-sol")))
   (is (= "gpt-sol" (cat/line-of "openai/gpt-6.1-sol")))

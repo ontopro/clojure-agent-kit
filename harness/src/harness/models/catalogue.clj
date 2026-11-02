@@ -134,9 +134,35 @@
       {:query q :effort (some-> e str/trim not-empty)})))
 
 (defn candidate-id
-  "A short id for records and columns: the slug's last segment and the effort."
+  "A short id for records and columns: the slug's last segment and the effort. It names the model
+  and its effort, not how it is reached: the same model on two routes has one id and two routes
+  (`route-name`)."
   [{:keys [model effort]}]
   (str (last (str/split model #"/")) "-" effort))
+
+(defn route-of
+  "The route a role block is reached by, as `[name route]` from `routes`: the direct route whose
+  endpoint is the block's, else its family's; nil when routes.edn has neither."
+  [routes {:keys [endpoint family]}]
+  (or (some (fn [[k r]] (when (and (str/ends-with? (name k) "-direct") (= endpoint (:endpoint r))) [k r])) routes)
+      (when-let [r (get routes (some-> family keyword))] [(keyword family) r])))
+
+(defn route-name
+  "How a role block is reached, said beside the model's id: `openrouter` for OpenRouter's endpoint,
+  a direct route's name in routes.edn (`google-direct`), else the endpoint's host."
+  [routes {:keys [endpoint]}]
+  (cond (str/includes? (str endpoint) "openrouter.ai") "openrouter"
+        :else (or (some (fn [[k r]] (when (and (str/ends-with? (name k) "-direct") (= endpoint (:endpoint r))) (name k))) routes)
+                  (some-> endpoint java.net.URI. .getHost)
+                  "unknown")))
+
+(defn effort-of
+  "The effort a role block asks for, read by its route's effort parameter: `reasoning_effort`'s
+  value, or `output_config`'s `:effort` at Anthropic's API. nil when it names none."
+  [routes block]
+  (let [param (or (some-> (route-of routes block) second (get-in [:effort :param])) :reasoning_effort)
+        v (get-in block [:params param])]
+    (if (map? v) (:effort v) v)))
 
 (defn expand-candidate
   "One candidate line → `{:id :query :model :family :effort :profile}` where
@@ -166,6 +192,7 @@
      :family family
      :effort effort
      :id (candidate-id {:model (:id m) :effort effort})
+     :route "openrouter"
      :profile (cond-> {:family family
                        :model (:id m)
                        :shape (:shape route)

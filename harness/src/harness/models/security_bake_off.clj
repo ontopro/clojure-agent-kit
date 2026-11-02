@@ -36,12 +36,18 @@
 ;; pure
 ;; ---------------------------------------------------------------------------
 
+(defn reading-key
+  "What a candidate's readings are named by: its id, and its route after `_` - the same model on two
+  routes is one id and two readings' worth of files. A candidate with no route is its id alone."
+  [{:keys [id route]}]
+  (if route (str id "_" route) id))
+
 (defn jobs
   "The readings: each candidate on the faulted branch and on the careful one. A job is
   `{:candidate :case :id}` with `:case` `:faulted` or `:clean`."
   [candidates]
   (vec (for [c candidates, k [:faulted :clean]]
-         {:candidate c :case k :id (str (:id c) "-" (name k))})))
+         {:candidate c :case k :id (str (reading-key c) "-" (name k))})))
 
 (defn row
   "One candidate's row from its two readings: `faulted` and `control`, each
@@ -53,6 +59,7 @@
         found (count (:found sf))
         planted (+ found (count (:missed sf)))]
     {:candidate (:id candidate)
+     :route (:route candidate)
      :model (or (:model rf) (:model candidate))
      :found found
      :planted planted
@@ -76,32 +83,33 @@
   "The table, as Markdown: one row per candidate, and a line under it for anything that qualifies a
   row - a refusal, a review that never answered, one stopped at its round limit."
   [rows]
-  (str "| Candidate | Planted faults found | Claims: shown by its tests / not reproduced / for you to mark | Completions | Minutes | Cost | On the careful branch: tests that fail |\n"
-       "|---|---|---|---|---|---|---|\n"
+  (str "| Candidate | Route | Planted faults found | Claims: shown by its tests / not reproduced / for you to mark | Completions | Minutes | Cost | On the careful branch: tests that fail |\n"
+       "|---|---|---|---|---|---|---|---|\n"
        (str/join "\n"
-                 (for [{:keys [candidate found planted hits not-reproduced to-mark completions minutes cost cost-known? control-failing]} rows]
-                   (str "| " candidate " | " found " of " planted " | " hits " / " not-reproduced " / " to-mark
+                 (for [{:keys [candidate route found planted hits not-reproduced to-mark completions minutes cost cost-known? control-failing]} rows]
+                   (str "| " candidate " | " (or route "—") " | " found " of " planted " | " hits " / " not-reproduced " / " to-mark
                         " | " (or completions "—") " | " (if minutes (format "%.1f" (double minutes)) "—")
                         " | " (if cost-known? (format "$%.2f" (double cost)) "not yet reported")
                         " | " control-failing " |")))
        "\n"
        (str/join ""
-                 (for [{:keys [candidate refused? answered? capped? missed]} rows
+                 (for [{:keys [candidate route refused? answered? capped? missed]} rows
                        note [(when refused? "the model refused the review")
                              (when (and (not refused?) (not answered?)) "wrote no answer; scored on its tests alone")
                              (when capped? "stopped at its round limit")
                              (when (seq missed) (str "missed " (str/join ", " missed)))]
                        :when note]
-                   (str "\n- " candidate ": " note)))
+                   (str "\n- " candidate (when route (str " (" route ")")) ": " note)))
        "\n"))
 
 (defn distinct-ids
-  "The candidates, refused when two share an id: the id names a reading's files, so two would read and
-  score into the same ones."
+  "The candidates, refused when two share an id AND a route: the two name a reading's files
+  (`reading-key`), so the two would read and score into the same ones. One model on two routes is two
+  candidates."
   [cands]
-  (let [dups (keep (fn [[id n]] (when (> n 1) id)) (frequencies (map :id cands)))]
+  (let [dups (keep (fn [[k n]] (when (> n 1) k)) (frequencies (map reading-key cands)))]
     (when (seq dups)
-      (throw (ex-info (str "two candidates share the id " (str/join ", " dups) " - a reading's files are named by it")
+      (throw (ex-info (str "two candidates share the id and the route " (str/join ", " dups) " - a reading's files are named by them")
                       {:bake-off/error :duplicate-id :ids (vec dups)})))
     cands))
 
@@ -136,7 +144,7 @@
 
 (defn reading-metrics
   "Everything the report says of one reading, from its review record and its score."
-  [{:keys [id candidate case review score]}]
+  [{:keys [id candidate route case review score]}]
   (let [calls (:calls review)
         by-tool (frequencies (map first calls))
         writes (for [t (:turns review) c (:calls t) :when (= "write_test" (:tool c))] (get-in c [:args :path]))
@@ -144,7 +152,7 @@
         u (token-usage (:steps review))
         found (count (:found score))
         planted (+ found (count (:missed score)))]
-    {:id id :candidate candidate :case case
+    {:id id :candidate candidate :route route :case case
      :review-ms (:ms review) :sandbox-ms (:sandbox-ms review) :score-ms (:ms score)
      :work-ms (when (:ms review) (+ (:ms review) (or (:sandbox-ms review) 0) (or (:ms score) 0)))
      :usage u :tokens (+ (:in u) (:cache-read u) (:cache-write u) (:out u))
@@ -174,7 +182,7 @@
   (let [cost-known? (all-known? :cost ms)
         found (sum-by :found (filter #(= :faulted (:case %)) ms))
         faulted (filter #(= :faulted (:case %)) ms)]
-    {:candidate (:candidate (first ms))
+    {:candidate (:candidate (first ms)) :route (:route (first ms))
      :review-ms (sum-or-nil :review-ms ms) :sandbox-ms (sum-or-nil :sandbox-ms ms) :score-ms (sum-or-nil :score-ms ms)
      :work-ms (sum-or-nil :work-ms ms)
      :in (sum-by #(get-in % [:usage :in]) ms) :cache-read (sum-by #(get-in % [:usage :cache-read]) ms)
@@ -201,15 +209,16 @@
   or `not reported`, never an estimate."
   [title run readings]
   (let [ms (mapv reading-metrics readings)
-        by-cand (group-by :candidate ms)
+        ckey (juxt :candidate :route)
+        by-cand (group-by ckey ms)
         totals (mapv model-totals (vals by-cand))
-        tot (into {} (map (juxt :candidate identity)) totals)
+        tot (into {} (map (juxt ckey identity)) totals)
         cands (vec (sort (keys tot)))
         inv (:invocations run)
         elapsed (when (seq inv) (sum-by :elapsed-ms inv))
         work (sum-by :work-ms ms)
         all-cost-known? (all-known? :cost ms)
-        of (fn [c k] (first (filter #(and (= c (:candidate %)) (= k (:case %))) ms)))
+        of (fn [c k] (first (filter #(and (= c (ckey %)) (= k (:case %))) ms)))
         pair (fn [c f] (str (f (of c :faulted)) " / " (f (of c :clean))))
         ended (fn [m] (cond (nil? m) "—" (:refused? m) "refused" (:capped? m) "round limit" (:answered? m) "answered" :else "no answer"))
         bold (fn [s] (str "**" s "**"))
@@ -225,8 +234,9 @@
                 " · " (str/join "/" (distinct (keep :parallel inv))) " readings at a time"))
          "\n\n## By model\n\n"
          "Totals over each model's faulted and careful readings; the per-fault rows use the faulted reading.\n\n"
-         (table (into [""] cands)
-                [(row "**Planted faults found**" #(bold (str (:found (tot %)) " of " (:planted (tot %)))))
+         (table (into [""] (map first) cands)
+                [(row "Route" #(or (second %) "—"))
+                 (row "**Planted faults found**" #(bold (str (:found (tot %)) " of " (:planted (tot %)))))
                  (row "Claims: shown by its tests / not reproduced / to mark"
                       #(let [c (:counts (of % :faulted))] (str (get c :hit 0) " / " (get c :not-reproduced 0) " / " (+ (get c :fails-on-both 0) (get c :unattributed 0)))))
                  (row "Tests failing on the careful branch" #(:careful-failing (of % :clean)))
@@ -249,8 +259,8 @@
                  (row "Tokens per fault found" #(if-let [x (per % :tokens)] (grouped (Math/round (double x))) "—"))])
          "\n## By reading\n\n"
          (table ["Reading" "Sandbox start" "Review" "Scoring" "Cost" "Tokens" "Completions" "Ended"]
-                (for [m (sort-by (juxt :candidate :case) ms)]
-                  [(str (:candidate m) ", " (name (:case m))) (clock (:sandbox-ms m)) (clock (:review-ms m)) (clock (:score-ms m))
+                (for [m (sort-by (juxt :candidate :route :case) ms)]
+                  [(str (:candidate m) (when (:route m) (str " (" (:route m) ")")) ", " (name (:case m))) (clock (:sandbox-ms m)) (clock (:review-ms m)) (clock (:score-ms m))
                    (dollars (:cost m)) (grouped (:tokens m)) (:completions m) (ended m)]))
          "\n**Whole run: " (if all-cost-known? (dollars (sum-by :cost ms)) (str (dollars (sum-by :cost ms)) " so far, some costs not reported (`bb reprice` fetches them)"))
          ", " (grouped (sum-by :tokens ms)) " tokens, " (clock work) " of work"
@@ -263,17 +273,18 @@
          "A cost a host has not yet reported is left out of the totals.\n")))
 
 (defn- read-folder
-  "The folder's readings: each `<id>.edn` that has a `<id>-score.edn`, with the candidate and branch
-  read from the id (`<candidate>-faulted` or `-clean`)."
+  "The folder's readings: each `<id>.edn` that has a `<id>-score.edn`, with the candidate, its route
+  and the branch read from the id (`<candidate>_<route>-faulted` or `-clean`; a folder from before the
+  route has `<candidate>-faulted`, its route nil)."
   [out]
   (vec (for [f (sort (map str (fs/glob out "*.edn")))
              :let [nm (str (fs/file-name f))
                    id (str/replace nm #"\.edn$" "")]
              :when (and (not (str/ends-with? id "-score")) (not= id "run")
                         (fs/exists? (fs/path out (str id "-score.edn"))))
-             :let [[_ cand kind] (re-matches #"(.+)-(faulted|clean)" id)]
+             :let [[_ cand route kind] (re-matches #"([^_]+)(?:_(.+))?-(faulted|clean)" id)]
              :when cand]
-         {:id id :candidate cand :case (keyword kind)
+         {:id id :candidate cand :route route :case (keyword kind)
           :review (read-edn f) :score (read-edn (fs/path out (str id "-score.edn")))})))
 
 (defn report!
@@ -360,7 +371,7 @@
                      (partition-all (max 1 (or parallel 2)))
                      (mapcat (fn [batch] (mapv deref (mapv #(future [% (reading! opts cases %)]) batch))))
                      vec)
-        by (fn [cand k] (some (fn [[j r]] (when (and (= (:id cand) (:id (:candidate j))) (= k (:case j))) r)) results))
+        by (fn [cand k] (some (fn [[j r]] (when (and (= (reading-key cand) (reading-key (:candidate j))) (= k (:case j))) r)) results))
         rows (mapv (fn [c] (row c (by c :faulted) (by c :clean))) cands)]
     (spit (str (fs/path out "bake-off.md")) (render rows))
     (record-invocation! out {:started (str started) :finished (str (java.time.Instant/now))
