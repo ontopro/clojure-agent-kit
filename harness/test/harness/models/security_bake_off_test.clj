@@ -122,7 +122,21 @@
       (is (str/includes? r "| Tests written (file writes), faulted | 2 (3) |"))
       (is (str/includes? r "| Cost per fault found | $0.80 |")))
     (testing "by reading"
-      (is (str/includes? r "| astra, faulted | 0:25 | 4:03 | 1:00 | $0.80 | 14,515 | 12 | answered |")))
+      (is (str/includes? r "| astra, faulted | — | — | — | 0:25 | 4:03 | 1:00 | $0.80 | 14,515 | 12 | answered |")
+          "a reading with no times: dashes"))
+    (testing "start and end: a reading's own, else the files', marked"
+      (let [utc java.time.ZoneOffset/UTC
+            timed (fn [k s e] (-> (reading "astra" k 0.5) (assoc-in [:review :started] s) (assoc-in [:score :scored] e)))
+            r5 (bo/report "T" run [(timed :faulted "2026-11-02T17:45:48Z" "2026-11-02T17:52:30Z")
+                                   (timed :clean "2026-11-02T17:45:48.120Z" "2026-11-02T17:59:44Z")] utc)
+            filed (assoc (reading "astra" :faulted 0.8) :file-times {:started "2026-11-02T17:45:48Z" :ended "2026-11-02T17:52:30Z"})
+            r6 (bo/report "T" run [filed] utc)]
+        (is (str/includes? r5 "| astra, faulted | 17:45:48 | 17:52:30 | 6:42 |"))
+        (is (str/includes? r5 "| Started | 17:45:48 |"))
+        (is (str/includes? r5 "| Ended | 17:59:44 |") "a model ends with its last reading")
+        (is (str/includes? r5 "| **Time: start to end** | **13:56** |"))
+        (is (str/includes? r5 "local time (Z)"))
+        (is (str/includes? r6 "| astra, faulted | ≈17:45:48 | ≈17:52:30 | 6:42 |") "read off the files: marked")))
     (testing "the whole run, and the clock"
       (is (str/includes? r "**Whole run: $1.26, 29,030 tokens, 10:56 of work, 20:00 wall-clock"))
       (is (str/includes? r "KIT abc1234")))

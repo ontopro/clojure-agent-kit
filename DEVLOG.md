@@ -68,6 +68,19 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### The security bake-off's report says when each reading and each model started and ended (plan 7.0, item 10)
+
+The person, during the five-model bake-off: "add start and end times to the bake-off report, also the costs for each
+of the runs". A reading's record now carries `:started` (before its clone) and `:ended` (its review done), its score
+`:scored` (when written); the report's by-model table gains Started, Ended and "Time: start to end" (the first
+reading's start to the last one's end), its by-reading table Started, Ended and Start to end, in local time with the
+zone named in the notes. A reading recorded before them - this run's, which loaded the code it started with - takes
+its times from its files (the record's modification time less its review and sandbox start, the score's), marked `≈`
+in the cell. The costs were already in both tables, per reading and per model, but `report.md` is written only at the
+run's end; each reading's progress line now says its cost as it finishes ("cost not yet reported" when the host has
+not). Checked by `bb security-bake-off`'s report rendered from the running bake-off's folder: Sol ≈11:45:36 to
+≈11:59:44 (14:08, $0.66), Qwen ≈11:59:44 to ≈13:17:22 (1:17:37, $2.67).
+
 ### The probe's host check a warning, its cost and failures said as they are (plan 7.0, item 10, two lows and a nit)
 
 From Fable 5.1's read of `72ac40d`; the person: "go", "do the lows in parallel" (while the bake-off ran). (1) A host
