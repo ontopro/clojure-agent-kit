@@ -432,6 +432,9 @@
   Returns the rows."
   [{:keys [fixture out models profiles parallel kit rounds] :as opts}]
   (let [started (java.time.Instant/now)
+        ;; THE COMMIT THE RUN RUNS ON, read as it starts: the code is loaded now, and a commit made
+        ;; while the readings run is not the code that ran them (register row 238)
+        commit (kit-commit kit)
         t0 (System/currentTimeMillis)
         cases (read-edn (fs/path fixture "cases.edn"))
         cands (distinct-ids
@@ -457,7 +460,7 @@
     (spit (str (fs/path out "bake-off.md")) (render rows))
     (record-invocation! out {:started (str started) :finished (str (java.time.Instant/now))
                              :elapsed-ms (- (System/currentTimeMillis) t0)
-                             :kit-commit (kit-commit kit) :models (mapv :model cands)
+                             :kit-commit commit :models (mapv :model cands)
                              :candidates (mapv #(select-keys % [:id :route :model :member]) cands)
                              :rounds (or rounds review/default-rounds) :parallel (or parallel 2)
                              :fixture (str fixture)})

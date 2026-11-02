@@ -68,6 +68,15 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### The security bake-off's record names the KIT commit it ran on, read as the run starts (plan 7.0, item 10, register row 238)
+
+From Fable 5.1's read of the bake-off's triage (K1); the person: "fix problems 1, 2 and 3". `run-readings!` read the
+KIT's commit inside `record-invocation!`, after the last reading, and `bb` loads the code as the run starts - so a
+commit made during the readings was named as the code that ran them. It is now read as the run starts, beside
+`started`. **The five-model bake-off of 2026-11-02 (`.local/security-review/bake-off-2026-11-02/`) ran on
+`01f3bda`**; its `run.edn` says `f6f1379`, the commit that was HEAD when it ended, four commits later, and keeps
+saying it - a record is not written over (row 232); this entry is where its true commit is said. Row 238, fixed.
+
 ### Tokens no reading reported said in words; each time cell marked by its own reading (plan 7.0, item 10, three nits)
 
 From Fable 5.1's reads of `47df5c4` (two nits) and `fdefecb` (nit 3, first left, then taken); the person: "go, take
