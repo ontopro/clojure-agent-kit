@@ -95,6 +95,7 @@
      :minutes (some-> (:ms rf) (/ 60000.0))
      :cost (+ (or (:cost rf) 0) (or (:cost rc) 0))
      :tokens (let [t (keep reading-tokens [rf rc])] (when (seq t) (reduce + 0 t)))
+     :tokens-known? (every? some? (map reading-tokens [rf rc]))
      :cost-known? (and (some? (:cost rf)) (some? (:cost rc)))
      :refused? (boolean (or (:refused? rf) (:refused? rc)))
      :answered? (boolean (and (some? (:findings rf)) (not (:refused? rf))))
@@ -109,11 +110,13 @@
   (str "| Candidate | Route | Planted faults found | Claims: shown by its tests / not reproduced / for you to mark | Completions | Minutes | Cost | Tokens | On the careful branch: tests that fail |\n"
        "|---|---|---|---|---|---|---|---|---|\n"
        (str/join "\n"
-                 (for [{:keys [candidate route found planted hits not-reproduced to-mark completions minutes cost cost-known? tokens control-failing]} rows]
+                 (for [{:keys [candidate route found planted hits not-reproduced to-mark completions minutes cost cost-known? tokens tokens-known? control-failing]} rows]
                    (str "| " candidate " | " (or route "—") " | " found " of " planted " | " hits " / " not-reproduced " / " to-mark
                         " | " (or completions "—") " | " (if minutes (format "%.1f" (double minutes)) "—")
                         " | " (if cost-known? (format "$%.2f" (double cost)) "not yet reported")
-                        " | " (if tokens (format "%,d" (long tokens)) "—")
+                        " | " (cond (nil? tokens) "—"
+                                    tokens-known? (format "%,d" (long tokens))
+                                    :else (format "%,d so far, one reading none" (long tokens)))
                         " | " control-failing " |")))
        "\n"
        (str/join ""
@@ -163,7 +166,7 @@
   record's `:started` (before its clone), its end the score's `:scored` - or, for a reading scored again
   in a later run (`:scored-again?`), the record's `:ended`, its review done, so the span never crosses the
   gap between the runs. A reading recorded before they were, its `file-times` - read off the files by
-  `read-folder` - and `:times-from-files?` says so."
+  `read-folder` - and `:started-from-files?` and `:ended-from-files?` say which, each of its own."
   [{:keys [id candidate route case review score file-times]}]
   (let [calls (:calls review)
         by-tool (frequencies (map first calls))
@@ -177,7 +180,8 @@
      :ended (if (:scored-again? score)
               (or (:ended review) (:reviewed file-times))
               (or (:scored score) (:ended file-times)))
-     :times-from-files? (boolean (and file-times (not (:started review))))
+     :started-from-files? (boolean (and file-times (not (:started review))))
+     :ended-from-files? (boolean (and file-times (not (if (:scored-again? score) (:ended review) (:scored score)))))
      :review-ms (:ms review) :sandbox-ms (:sandbox-ms review) :score-ms (:ms score)
      :work-ms (when (:ms review) (+ (:ms review) (or (:sandbox-ms review) 0) (or (:ms score) 0)))
      :usage u :tokens (reading-tokens review)
@@ -215,7 +219,10 @@
   [ms]
   (let [cost-known? (all-known? :cost ms)
         found (sum-by :found (filter #(= :faulted (:case %)) ms))
-        faulted (filter #(= :faulted (:case %)) ms)]
+        faulted (filter #(= :faulted (:case %)) ms)
+        ;; the first reading in and the last one out, each cell marked by its own reading
+        first-in (first (sort-by (comp instant :started) (filter :started ms)))
+        last-out (last (sort-by (comp instant :ended) (filter :ended ms)))]
     {:candidate (:candidate (first ms)) :route (:route (first ms))
      :review-ms (sum-or-nil :review-ms ms) :sandbox-ms (sum-or-nil :sandbox-ms ms) :score-ms (sum-or-nil :score-ms ms)
      :work-ms (sum-or-nil :work-ms ms)
@@ -227,8 +234,8 @@
      :completions (sum-by :completions ms) :calls (sum-by :calls ms)
      :found found :planted (sum-by :planted faulted)
      :faulted-work-ms (sum-by :work-ms faulted)
-     :started (first (sort-by instant (keep :started ms))) :ended (last (sort-by instant (keep :ended ms)))
-     :times-from-files? (boolean (some :times-from-files? ms))}))
+     :started (:started first-in) :started-from-files? (boolean (:started-from-files? first-in))
+     :ended (:ended last-out) :ended-from-files? (boolean (:ended-from-files? last-out))}))
 
 (defn- per-fault [x found] (when (and x (pos? found)) (/ x (double found))))
 
@@ -270,7 +277,7 @@
          cost-cell (fn [t] (if (:cost-known? t) (dollars (:cost t)) (str (dollars (:cost t)) " so far, some not reported")))
          row (fn [label f] (into [label] (map f) cands))
          per (fn [c f] (let [m (of c :faulted)] (if-let [x (per-fault (f m) (:found (tot c)))] x nil)))
-         at (fn [m k] (if-let [t (local-time zone (k m))] (str (when (:times-from-files? m) "≈") t) "—"))]
+         at (fn [m k] (if-let [t (local-time zone (k m))] (str (when (get m (keyword (str (name k) "-from-files?"))) "≈") t) "—"))]
      (str "# " title "\n\n"
           "- **Run:** " (if (seq inv)
                           (str (str/join "; " (for [i inv] (str (:started i) " → " (:finished i)))) "; KIT " (str/join ", " (distinct (keep :kit-commit inv))))
@@ -371,11 +378,11 @@
             (assoc (score/summary {} (:findings r) (:faults cases)) :review (str (fs/file-name rec))))
         s (cond-> (assoc s :scored (str (java.time.Instant/now))) again? (assoc :scored-again? true))]
     (spit (str sco) (with-out-str (pp/pprint s)))
-    (println (format "  %s: %s, %d completions, %ds, %s, %,d tokens; %d of %d planted faults found"
+    (println (format "  %s: %s, %d completions, %ds, %s, %s; %d of %d planted faults found"
                      id (cond (:refused? r) "REFUSED" (:no-block? r) "no answer" :else "answered")
                      (or (:iterations r) 0) (quot (or (:ms r) 0) 1000)
                      (if-let [c (:cost r)] (format "$%.2f" (double c)) "cost not yet reported")
-                     (or (reading-tokens r) 0)
+                     (if-let [t (reading-tokens r)] (format "%,d tokens" (long t)) "no tokens reported")
                      (count (:found s)) (+ (count (:found s)) (count (:missed s)))))
     s))
 

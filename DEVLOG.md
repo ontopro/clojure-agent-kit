@@ -68,6 +68,15 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### Tokens no reading reported said in words; each time cell marked by its own reading (plan 7.0, item 10, three nits)
+
+From Fable 5.1's reads of `47df5c4` (two nits) and `fdefecb` (nit 3, first left, then taken); the person: "go, take
+nits 1, 2 and 3". (1) The progress line says "no tokens reported" for a review with no steps, where it printed 0 - as
+it says "cost not yet reported". (2) `bake-off.md`'s Tokens cell, when one of a candidate's two readings has none,
+says "<n> so far, one reading none", as its Cost cell says "not yet reported" (`:tokens-known?`). (3) A model's
+Started and Ended are each marked ≈ by the reading they came from - the first reading in, the last one out - where
+one flag for the model marked both when either reading's times came from its files.
+
 ### The security bake-off's table and progress line say the tokens (plan 7.0, item 10)
 
 The person: "Also add tokens count to the report." `report.md` already gave them - all, uncached input, cache read and

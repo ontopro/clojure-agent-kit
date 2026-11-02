@@ -80,7 +80,10 @@
     (let [steps [{:usage {:in 10 :out 400 :cache-read 5000 :cache-write 1000}}]
           with (bo/row astra (assoc-in astra-faulted [:review :steps] steps) (assoc-in astra-control [:review :steps] steps))]
       (is (= 12820 (:tokens with)) "both readings' tokens, all of them")
-      (is (str/includes? (bo/render [with]) "| $2.10 | 12,820 | 2 |")))
+      (is (str/includes? (bo/render [with]) "| $2.10 | 12,820 | 2 |"))
+      (is (str/includes? (bo/render [(bo/row astra (assoc-in astra-faulted [:review :steps] steps) astra-control)])
+                         "| $2.10 | 6,410 so far, one reading none | 2 |")
+          "one reading with no tokens: said, as a cost not reported is"))
     (is (str/includes? table "- gpt-6-astra-high: missed admin-authz, csrf-get, path-escape"))))
 
 (def canned-review
@@ -142,6 +145,10 @@
         (is (str/includes? r5 "| **Time: start to end** | **13:56** |"))
         (is (str/includes? r5 "local time (Z)"))
         (is (str/includes? r6 "| astra, faulted | ≈17:45:48 | ≈17:52:30 | 6:42 |") "read off the files: marked")
+        (let [mixed (bo/report "T" run [(assoc filed :file-times {:started "2026-11-02T17:45:40Z" :ended "2026-11-02T17:52:30Z"})
+                                        (timed :clean "2026-11-02T17:45:48Z" "2026-11-02T17:59:44Z")] utc)]
+          (is (str/includes? mixed "| Started | ≈17:45:40 |") "the first reading in was timed from its files")
+          (is (str/includes? mixed "| Ended | 17:59:44 |") "the last one out carried its own: each cell by its own reading"))
         (let [again (-> (timed :faulted "2026-11-02T17:45:48Z" "2026-11-03T09:00:00Z")
                         (assoc-in [:review :ended] "2026-11-02T17:50:00Z") (assoc-in [:score :scored-again?] true))
               old-again (-> filed (assoc-in [:file-times :reviewed] "2026-11-02T17:50:00Z")
