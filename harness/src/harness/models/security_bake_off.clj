@@ -38,8 +38,13 @@
 
 (defn reading-key
   "What a candidate's readings are named by: its id, and its route after `_` - the same model on two
-  routes is one id and two readings' worth of files. A candidate with no route is its id alone."
-  [{:keys [id route]}]
+  routes is one id and two readings' worth of files. A candidate with no route is its id alone. An id
+  carrying `_` is refused: the folder's reader splits a file name at the first one, and a route never
+  has one (`openrouter`, `<x>-direct`, a host)."
+  [{:keys [id route model]}]
+  (when (str/includes? (str id) "_")
+    (throw (ex-info (str "the candidate " id " (model " model ") has a `_` in its id, which separates the id from the route in a reading's files - rename the model in its profile")
+                    {:bake-off/error :underscore-in-id :id id})))
   (if route (str id "_" route) id))
 
 (defn jobs
@@ -200,10 +205,18 @@
   (str "| " (str/join " | " head) " |\n|" (str/join "|" (repeat (count head) "---")) "|\n"
        (str/join "\n" (for [r rows] (str "| " (str/join " | " r) " |"))) "\n"))
 
+(defn invocation-models
+  "What an invocation of `run.edn` says ran: each candidate as `<id> (<route>)` from its `:candidates`,
+  or - an invocation from before they were recorded - its `:models`."
+  [{:keys [candidates models]}]
+  (if (seq candidates)
+    (mapv (fn [{:keys [id route]}] (if route (str id " (" route ")") id)) candidates)
+    models))
+
 (defn report
   "The report, as Markdown, in tables: a header, one table by model (the metrics as rows, a column
   per candidate), one by reading, a line for the whole run, and what the report lacks. `run` is
-  `{:invocations [{:started :finished :elapsed-ms :kit-commit :models :rounds :parallel :fixture}
+  `{:invocations [{:started :finished :elapsed-ms :kit-commit :models :candidates :rounds :parallel :fixture}
   ...]}` (empty for a run made before they were recorded) and `readings` the folder's readings as
   `reading-metrics` takes them. Every figure is from a record; a figure no record carries is `—`
   or `not reported`, never an estimate."
@@ -230,7 +243,7 @@
                          (str (str/join "; " (for [i inv] (str (:started i) " → " (:finished i)))) "; KIT " (str/join ", " (distinct (keep :kit-commit inv))))
                          "made before runs were recorded")
          (when (seq inv)
-           (str "\n- **Models:** " (str/join ", " (distinct (mapcat :models inv))) " · tracer · rounds " (str/join "/" (distinct (keep :rounds inv)))
+           (str "\n- **Models:** " (str/join ", " (distinct (mapcat invocation-models inv))) " · tracer · rounds " (str/join "/" (distinct (keep :rounds inv)))
                 " · " (str/join "/" (distinct (keep :parallel inv))) " readings at a time"))
          "\n\n## By model\n\n"
          "Totals over each model's faulted and careful readings; the per-fault rows use the faulted reading.\n\n"
@@ -377,6 +390,7 @@
     (record-invocation! out {:started (str started) :finished (str (java.time.Instant/now))
                              :elapsed-ms (- (System/currentTimeMillis) t0)
                              :kit-commit (kit-commit kit) :models (mapv :model cands)
+                             :candidates (mapv #(select-keys % [:id :route :model :member]) cands)
                              :rounds (or rounds review/default-rounds) :parallel (or parallel 2)
                              :fixture (str fixture)})
     (report! out)

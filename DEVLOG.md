@@ -68,6 +68,16 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### The bake-off's record says each candidate's route; an id carrying `_` refused (plan 7.0, item 10, two lows)
+
+From Fable 5.1's read of `8109171`; the person: "Fables 2 changes - Accept". (1) Each invocation in a bake-off's
+`run.edn` now records `:candidates [{:id :route :model :member}]` beside `:models`, which stays for the old
+readers, and the report's Models line reads them ("gemini-4-argon-high (google-direct)"; an invocation from
+before, its `:models`): the record states what ran, where the Route row had been read back from the readings'
+file names. (2) `reading-key` refuses a candidate whose id carries `_`, naming the model and the fix (rename it in
+its profile): the folder's reader splits a file name at the first `_`, and a route never has one. None of the 451
+models OpenRouter lists has one today (`catalogue/fetch-listing`, 2026-11-02); a profile may name one that does.
+
 ### A candidate's route said beside its name; a profile's effort read by its route's parameter (plan 7.0, item 10)
 
 From Fable 5.1's read of `d3f2a32`, and the person's correction of it: "Having the same name is fine - the route

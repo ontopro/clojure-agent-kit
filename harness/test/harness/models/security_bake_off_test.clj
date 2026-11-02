@@ -43,7 +43,10 @@
       (let [t (bo/render [(bo/row direct astra-faulted astra-control) (bo/row routed astra-faulted astra-control)])]
         (is (str/includes? t "| gemini-4-argon-high | google-direct | 3 of 6 |"))
         (is (str/includes? t "| gemini-4-argon-high | openrouter | 3 of 6 |"))
-        (is (str/includes? t "- gemini-4-argon-high (openrouter): missed"))))))
+        (is (str/includes? t "- gemini-4-argon-high (openrouter): missed")))))
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"has a `_` in its id.*rename the model"
+                        (bo/distinct-ids [{:id "my_model-high" :model "my_model" :route "openrouter"}]))
+      "the reader splits a file name at the first `_`, so an id may not carry one"))
 
 (deftest a-candidates-row-is-arithmetic-over-its-two-readings
   (let [r (bo/row astra astra-faulted astra-control)]
@@ -120,6 +123,10 @@
     (testing "the whole run, and the clock"
       (is (str/includes? r "**Whole run: $1.26, 29,030 tokens, 10:56 of work, 20:00 wall-clock"))
       (is (str/includes? r "KIT abc1234")))
+    (testing "the Models line says what ran, each candidate with its route, from the record"
+      (let [run2 (assoc-in run [:invocations 0 :candidates] [{:id "gemini-4-argon-high" :route "google-direct" :model "gemini-4-argon"}])]
+        (is (str/includes? (bo/report "T" run2 [(reading "astra" :faulted 0.80)]) "**Models:** gemini-4-argon-high (google-direct) ·")))
+      (is (str/includes? r "**Models:** openai/gpt-6-astra ·") "an invocation from before: its :models"))
     (testing "a cost not reported is said and left out of the total"
       (let [r2 (bo/report "T" run [(reading "astra" :faulted 0.80) (reading "astra" :clean nil)])]
         (is (str/includes? r2 "$0.80 so far, some not reported"))
