@@ -10,7 +10,8 @@
   - A TOOL CALL back - the review is tool calls; a reply with none is asked once more, and two without
     one STOP (a tool-less first answer is a known flake, at lower efforts especially);
   - THE PINNED HOST answered - belt and braces: the pin (`:only`, no fallbacks) already makes OpenRouter
-    fail rather than reroute, so a STOP here means the pin itself stopped working;
+    fail rather than reroute, and the reply names the host by its display name, not the pin's slug, so a
+    name that does not match is a WARN naming both, never a STOP of a run the pin already held;
   - REASONING DONE - the reply's own count (`usage.completion_tokens_details.reasoning_tokens`, as a
     run's step reads it, `provenance/of`): STOP when the host says 0 - a candidate at `none` is stopped
     here, by design - and \"not reported\", no stop, when the host gives no count;
@@ -60,9 +61,10 @@
 
 (defn verdict
   "One candidate's checks from its calls (`call!`'s maps, in order): `{:stop? _ :checks [{:check :outcome
-  :line}]}`, an outcome `:ok`, `:stop` or `:info`."
+  :line}]}`, an outcome `:ok`, `:stop`, `:warn` or `:info`."
   [role calls]
   (let [failed (first (filter :error calls))
+        second-try? (and failed (not= failed (first calls)))
         answered (filter #(= :answered (:status %)) calls)
         with-tool (first (filter :tool-called? answered))
         last-call (or with-tool (last answered))
@@ -70,7 +72,10 @@
         checks
         (if failed
           [{:check :accepted :outcome :stop
-            :line (str "refused: " (:status failed) " " (:error failed))}]
+            :line (str (cond second-try? "the second try failed: "
+                             (zero? (or (:http failed) 0)) "no answer (a timeout or a connection): "
+                             :else (str "refused: " (:http failed) " "))
+                       (:error failed))}]
           [{:check :accepted :outcome :ok :line "accepted"}
            (if with-tool
              {:check :tool-call :outcome :ok
@@ -81,8 +86,8 @@
              (nil? pin) {:check :host :outcome :info :line (str "host " (or (:host last-call) "not named") ", no pin")}
              (nil? (:host last-call)) {:check :host :outcome :info :line "host not named in the reply"}
              (host-matches? pin (:host last-call)) {:check :host :outcome :ok :line (str "host " (:host last-call))}
-             :else {:check :host :outcome :stop
-                    :line (str "host " (:host last-call) ", not the pinned " pin " - the pin stopped working")})
+             :else {:check :host :outcome :warn
+                    :line (str "host " (:host last-call) ", pinned " pin " - check `bb models " (:model role) " --endpoints`")})
            (let [r (:reasoning last-call)]
              (cond
                (nil? r) {:check :reasoning :outcome :info :line "reasoning not reported"}
@@ -99,11 +104,13 @@
 (defn line
   "A candidate's probe as one terminal line."
   [{:keys [id route]} {:keys [stop? checks]} calls]
-  (let [cost (reduce + 0 (keep :cost calls))
+  (let [costs (seq (keep :cost calls))
         ms (reduce + 0 (keep :ms calls))]
     (str "  probe " id (when route (str " (" route ")")) ": " (if stop? "STOP - " "ok - ")
-         (str/join ", " (map :line (if stop? (filter #(= :stop (:outcome %)) checks) checks)))
-         (format "; $%.4f, %.1fs" (double cost) (/ ms 1000.0)))))
+         (str/join ", " (map #(str (when (= :warn (:outcome %)) "WARN ") (:line %))
+                             (if stop? (filter #(= :stop (:outcome %)) checks) checks)))
+         (if costs (format "; $%.4f" (double (reduce + 0 costs))) "; cost not reported")
+         (format ", %.1fs" (/ ms 1000.0)))))
 
 ;; ---------------------------------------------------------------------------
 ;; the edge

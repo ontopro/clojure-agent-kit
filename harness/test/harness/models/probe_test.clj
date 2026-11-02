@@ -36,7 +36,10 @@
   (is (true? (probe/host-matches? "xai" "xAI")))
   (is (true? (probe/host-matches? "alibaba" "Alibaba")))
   (is (false? (probe/host-matches? "openai" "Azure")))
-  (is (true? (:stop? (probe/verdict pinned [(assoc good :host "Azure")]))) "the pin stopped working")
+  (let [v (probe/verdict (assoc pinned :model "openai/gpt-6.1-sol") [(assoc good :host "Azure")])]
+    (is (false? (:stop? v)) "a display name is not the slug: the request's pin is the enforcement")
+    (is (= :warn (:host (outcomes v))))
+    (is (some #(= "host Azure, pinned openai - check `bb models openai/gpt-6.1-sol --endpoints`" (:line %)) (:checks v))))
   (is (= :info (:host (outcomes (probe/verdict direct [(assoc good :host "Google")])))) "a direct route has no pin"))
 
 (deftest reasoning-reported-zero-stops-reasoning-not-reported-is-said
@@ -46,6 +49,13 @@
   (let [absent (probe/verdict direct [(assoc good :reasoning nil)])]
     (is (false? (:stop? absent)) "absent is not zero: the host gives no count")
     (is (= :info (:reasoning (outcomes absent))))))
+
+(deftest a-failure-is-said-as-what-it-was
+  (let [line-of (fn [calls] (:line (first (:checks (probe/verdict pinned calls)))))]
+    (is (= "refused: 400 bad effort" (line-of [{:status :error :http 400 :error "bad effort"}])))
+    (is (= "no answer (a timeout or a connection): request timed out" (line-of [{:status :error :http 0 :error "request timed out"}])))
+    (is (= "the second try failed: 503 overloaded"
+           (line-of [(assoc good :tool-called? false) {:status :error :http 503 :error "503 overloaded"}])))))
 
 (deftest the-answer-is-information
   (is (false? (:stop? (probe/verdict pinned [(assoc good :answer 260)]))))
@@ -57,4 +67,7 @@
            (probe/line c (probe/verdict pinned [good]) [good])))
     (is (str/starts-with? (probe/line c (probe/verdict pinned [(assoc good :reasoning 0)]) [good])
                           "  probe gpt-6.1-sol-xhigh (openrouter): STOP - 0 reasoning tokens")
-        "a stop line names only what stopped it")))
+        "a stop line names only what stopped it")
+    (is (str/includes? (probe/line c (probe/verdict pinned [(dissoc good :cost)]) [(dissoc good :cost)]) "; cost not reported, 3.1s")
+        "no call's cost: not $0.0000")
+    (is (str/includes? (probe/line c (probe/verdict pinned [(assoc good :host "Azure")]) [good]) "WARN host Azure, pinned openai"))))

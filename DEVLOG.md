@@ -68,6 +68,17 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### The probe's host check a warning, its cost and failures said as they are (plan 7.0, item 10, two lows and a nit)
+
+From Fable 5.1's read of `72ac40d`; the person: "go", "do the lows in parallel" (while the bake-off ran). (1) A host
+whose name does not match the pin is now a WARN naming both and the command that shows the pin's hosts
+(`bb models <slug> --endpoints`), not a STOP: the reply names the host by its display name, not the pin's slug, and the
+pin in the request (`:only`, no fallbacks) is what holds the host - a fuzzy name rule stopping a run the exact rule
+already held would be the probe failing, not the host. The five's names on 2026-11-02 all matched (OpenAI, Alibaba,
+Meta, OpenAI; Google AI API with no pin). (2) The line says "cost not reported" when no call carries a cost, where it
+printed "$0.0000". (3) A failure is said as what it was: "refused: <status>" for an answer refusing the request,
+"no answer (a timeout or a connection)" for none, "the second try failed" when the first call had answered.
+
 ### The pre-run probe: one small call per candidate before a paid security review (plan 7.0, item 10)
 
 The person: "A probe seems to be a precursor check before a full run to catch things like ... a host running extra
