@@ -75,7 +75,12 @@
 
 (deftest the-table-has-a-row-per-candidate
   (let [table (bo/render [(bo/row astra astra-faulted astra-control)])]
-    (is (str/includes? table "| gpt-6-astra-high | — | 3 of 6 | 5 / 2 / 1 | 15 | 6.2 | $2.10 | 2 |") "a candidate from before the route: a dash")
+    (is (str/includes? table "| gpt-6-astra-high | — | 3 of 6 | 5 / 2 / 1 | 15 | 6.2 | $2.10 | — | 2 |")
+        "a candidate from before the route: a dash; readings with no steps: no tokens, not 0")
+    (let [steps [{:usage {:in 10 :out 400 :cache-read 5000 :cache-write 1000}}]
+          with (bo/row astra (assoc-in astra-faulted [:review :steps] steps) (assoc-in astra-control [:review :steps] steps))]
+      (is (= 12820 (:tokens with)) "both readings' tokens, all of them")
+      (is (str/includes? (bo/render [with]) "| $2.10 | 12,820 | 2 |")))
     (is (str/includes? table "- gpt-6-astra-high: missed admin-authz, csrf-get, path-escape"))))
 
 (def canned-review

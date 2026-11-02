@@ -68,6 +68,15 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### The security bake-off's table and progress line say the tokens (plan 7.0, item 10)
+
+The person: "Also add tokens count to the report." `report.md` already gave them - all, uncached input, cache read and
+write, output, reasoning, per model and per reading; the two places that did not were `bake-off.md`'s table and the
+line each reading prints as it finishes. Both now say the tokens, all of them (uncached input + cache read + cache
+write + output), by `reading-tokens`, which the report's per-reading figure now uses too; a review with no steps has
+none - a dash in the table, not 0. Checked on the running bake-off's records: Sol 206,665 faulted and 791,602 clean,
+as the report gives them.
+
 ### A reading scored again ends with its review, not across the gap (plan 7.0, item 10, a low and two nits)
 
 From Fable 5.1's read of `fdefecb`; the person: "go, low + nits 1 and 2". A reading whose record is there and is

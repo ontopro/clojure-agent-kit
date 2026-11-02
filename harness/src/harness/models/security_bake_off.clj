@@ -55,6 +55,22 @@
   (vec (for [c candidates, k [:faulted :clean]]
          {:candidate c :case k :id (str (reading-key c) "-" (name k))})))
 
+(defn token-usage
+  "The tokens of a review, summed over its completions' steps: uncached input, input read from the
+  cache, input written to it, output, and reasoning where the host reports it - nil, not 0, when no
+  step reports it (row 129)."
+  [steps]
+  (let [sum (fn [k] (reduce + 0 (keep #(get-in % [:usage k]) steps)))]
+    {:in (sum :in) :cache-read (sum :cache-read) :cache-write (sum :cache-write) :out (sum :out)
+     :reasoning (when-let [rs (seq (keep :reasoning-tokens steps))] (reduce + 0 rs))}))
+
+(defn reading-tokens
+  "A review's tokens, all of them: uncached input, cache read, cache write and output, summed over its
+  steps - the report's \"Tokens: all\"; nil for a review with no steps, not 0."
+  [review]
+  (when (seq (:steps review))
+    (let [u (token-usage (:steps review))] (+ (:in u) (:cache-read u) (:cache-write u) (:out u)))))
+
 (defn row
   "One candidate's row from its two readings: `faulted` and `control`, each
   `{:review _ :score _}` (the record and its score)."
@@ -78,6 +94,7 @@
      :completions (:iterations rf)
      :minutes (some-> (:ms rf) (/ 60000.0))
      :cost (+ (or (:cost rf) 0) (or (:cost rc) 0))
+     :tokens (let [t (keep reading-tokens [rf rc])] (when (seq t) (reduce + 0 t)))
      :cost-known? (and (some? (:cost rf)) (some? (:cost rc)))
      :refused? (boolean (or (:refused? rf) (:refused? rc)))
      :answered? (boolean (and (some? (:findings rf)) (not (:refused? rf))))
@@ -89,13 +106,14 @@
   "The table, as Markdown: one row per candidate, and a line under it for anything that qualifies a
   row - a refusal, a review that never answered, one stopped at its round limit."
   [rows]
-  (str "| Candidate | Route | Planted faults found | Claims: shown by its tests / not reproduced / for you to mark | Completions | Minutes | Cost | On the careful branch: tests that fail |\n"
-       "|---|---|---|---|---|---|---|---|\n"
+  (str "| Candidate | Route | Planted faults found | Claims: shown by its tests / not reproduced / for you to mark | Completions | Minutes | Cost | Tokens | On the careful branch: tests that fail |\n"
+       "|---|---|---|---|---|---|---|---|---|\n"
        (str/join "\n"
-                 (for [{:keys [candidate route found planted hits not-reproduced to-mark completions minutes cost cost-known? control-failing]} rows]
+                 (for [{:keys [candidate route found planted hits not-reproduced to-mark completions minutes cost cost-known? tokens control-failing]} rows]
                    (str "| " candidate " | " (or route "—") " | " found " of " planted " | " hits " / " not-reproduced " / " to-mark
                         " | " (or completions "—") " | " (if minutes (format "%.1f" (double minutes)) "—")
                         " | " (if cost-known? (format "$%.2f" (double cost)) "not yet reported")
+                        " | " (if tokens (format "%,d" (long tokens)) "—")
                         " | " control-failing " |")))
        "\n"
        (str/join ""
@@ -140,15 +158,6 @@
 
 (defn dollars [x] (if (nil? x) "not reported" (format "$%.2f" (double x))))
 
-(defn token-usage
-  "The tokens of a review, summed over its completions' steps: uncached input, input read from the
-  cache, input written to it, output, and reasoning where the host reports it - nil, not 0, when no
-  step reports it (row 129)."
-  [steps]
-  (let [sum (fn [k] (reduce + 0 (keep #(get-in % [:usage k]) steps)))]
-    {:in (sum :in) :cache-read (sum :cache-read) :cache-write (sum :cache-write) :out (sum :out)
-     :reasoning (when-let [rs (seq (keep :reasoning-tokens steps))] (reduce + 0 rs))}))
-
 (defn reading-metrics
   "Everything the report says of one reading, from its review record and its score. Its start is the
   record's `:started` (before its clone), its end the score's `:scored` - or, for a reading scored again
@@ -171,7 +180,7 @@
      :times-from-files? (boolean (and file-times (not (:started review))))
      :review-ms (:ms review) :sandbox-ms (:sandbox-ms review) :score-ms (:ms score)
      :work-ms (when (:ms review) (+ (:ms review) (or (:sandbox-ms review) 0) (or (:ms score) 0)))
-     :usage u :tokens (+ (:in u) (:cache-read u) (:cache-write u) (:out u))
+     :usage u :tokens (reading-tokens review)
      :cost (:cost review)
      :completions n :capped? (boolean (:capped? review)) :refused? (boolean (:refused? review))
      :answered? (boolean (and (some? (:findings review)) (not (:refused? review))))
@@ -362,10 +371,11 @@
             (assoc (score/summary {} (:findings r) (:faults cases)) :review (str (fs/file-name rec))))
         s (cond-> (assoc s :scored (str (java.time.Instant/now))) again? (assoc :scored-again? true))]
     (spit (str sco) (with-out-str (pp/pprint s)))
-    (println (format "  %s: %s, %d completions, %ds, %s; %d of %d planted faults found"
+    (println (format "  %s: %s, %d completions, %ds, %s, %,d tokens; %d of %d planted faults found"
                      id (cond (:refused? r) "REFUSED" (:no-block? r) "no answer" :else "answered")
                      (or (:iterations r) 0) (quot (or (:ms r) 0) 1000)
                      (if-let [c (:cost r)] (format "$%.2f" (double c)) "cost not yet reported")
+                     (or (reading-tokens r) 0)
                      (count (:found s)) (+ (count (:found s)) (count (:missed s)))))
     s))
 
