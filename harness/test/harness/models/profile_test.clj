@@ -153,6 +153,20 @@
                                     (assoc-in [:roles :reviewer :family] :anthropic)))]
       (is (= [:tester :reviewer] (mapv :role v))))))
 
+(deftest an-effort-its-route-does-not-take-is-a-finding
+  (let [openrouter {:family :openai :model "openai/m" :shape :openai :endpoint "https://openrouter.ai/api/v1"}]
+    (is (= [] (errors (assoc-in base [:roles :reviewer] (assoc openrouter :params {:reasoning_effort "xhigh"})))))
+    (let [v (profile/violations (assoc-in base [:roles :reviewer] (assoc openrouter :params {:reasoning_effort "xhihg"})))]
+      (is (= [:effort-unknown] (mapv :profile/error v)) "a typo")
+      (is (str/includes? (:detail (first v)) "reviewer asks for effort \"xhihg\"; its route openai takes") "the typo named, and what the route takes"))
+    (is (= [:effort-unknown]
+           (errors (assoc-in base [:roles :blueprint-reviewer] {:family :anthropic :model "claude-m" :shape :anthropic
+                                                                :endpoint "https://api.anthropic.com"
+                                                                :params {:output_config {:effort "none"}}})))
+        "at Anthropic's API, by its own parameter: none is not a level there")
+    (is (= [] (errors (assoc-in base [:roles :reviewer] openrouter)))
+        "naming none is not this check's: the security review refuses a member with none")))
+
 (deftest verifiers-sharing-each-others-family-is-allowed
   ;; Deliberately NOT a violation. What §05 and P0-3 record is *verifier ≠
   ;; Coder family* — two verifiers from one family still both differ from the

@@ -68,6 +68,19 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### `bb profile` holds each role's effort to its route's levels; a security reviewer naming no effort refused (plan 7.0, item 10)
+
+From Fable 5.1's read of `0bf47da` - its (b) and a low; the person: "go on 1-5 as listed". (1) `profile/violations`
+now finds `:effort-unknown`: a role block - the eight roles and each panel member - naming an effort its route in
+`resources/routes.edn` does not take, by the route's own parameter (`catalogue/effort-of`, `route-of`): a typo
+(`xhihg`), or a level the family's models never show (`none` at Anthropic's API). Static and with no network; not
+matched to OpenRouter's listing by name, since a direct route names a model otherwise (`claude-opus-5-5` against
+`anthropic/claude-opus-5.5`) and a fuzzy match would pass or refuse by accident. Whether the host honours the level
+is the pre-run probe's. Both shipped profiles pass: every role names an effort its route takes. (2)
+`role-from-profile` refuses a security reviewer naming no effort - "names no effort - name one in the profile; medium
+is the KIT's default (<the route's levels>)" - where it sent none and the model ran at its own default, its id ending
+in a dash. A hand-written profile says what it means.
+
 ### A step's reasoning tokens read from the reply: register row 129 extended and closed (plan 7.0, item 10)
 
 From Fable 5.1's read of the pre-run probe's design (`.local/plans/v7/kit-plan-v7.0-item10-probe-design.md`); the

@@ -190,6 +190,25 @@
 ;; structure — pure, offline, the same on every machine
 ;; ---------------------------------------------------------------------------
 
+;; ---------------------------------------------------------------------------
+;; effort — what each block asks for, against its route's levels
+;; ---------------------------------------------------------------------------
+
+(defn effort-violations
+  "Each role block naming an effort its route does not take - a typo, or a level the family's models never
+  show (routes.edn's levels, read with no network). Whether the host honours a level is the pre-run probe's;
+  a block naming none is not a violation here - the security review refuses one (`role-from-profile`)."
+  [routes blocks]
+  (vec (for [[label b] blocks
+             :let [e (catalogue/effort-of routes b)
+                   [rn r] (catalogue/route-of routes b)
+                   levels (get-in r [:effort :levels])]
+             :when (and e (seq levels) (not (some #{e} levels)))]
+         {:profile/error :effort-unknown
+          :role label
+          :detail (str (if (keyword? label) (name label) label) " asks for effort \"" e "\"; its route " (name rn)
+                       " takes " (str/join ", " levels))})))
+
 (defn- structural
   [{:keys [roles] :as profile}]
   (if-let [errs (shapes/explain-profile profile)]
@@ -234,7 +253,9 @@
         (and (seq panel) (empty? (:eligible (panel-split profile))))
         (conj {:profile/error :panel-all-coder-family
                :detail (str "every member of the security panel is " coder ", the Coder's family -"
-                            " none may read the Coder's work; add a member of another family")})))))
+                            " none may read the Coder's work; add a member of another family")})
+
+        true (into (effort-violations (catalogue/routes) (role-blocks profile)))))))
 
 ;; ---------------------------------------------------------------------------
 ;; environment — true or false depending on whose machine this is
@@ -302,7 +323,7 @@
 (defn violations
   "Everything wrong with `profile`, as data.
 
-  Structural checks always run. `:env?` adds the seat and key-variable checks;
+  Structural checks always run, each block's effort against its route's levels among them. `:env?` adds the seat and key-variable checks;
   `:probe?` adds one request per distinct endpoint. Both are off by default so
   that the default is the answer that does not depend on the machine.
 

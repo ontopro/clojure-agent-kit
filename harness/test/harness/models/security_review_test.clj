@@ -192,7 +192,14 @@
                                                         :endpoint "https://api.anthropic.com"
                                                         :params {:output_config {:effort "high"}}}}}))
         (is (= ["claude-opus-5-5-high" "high" "anthropic-direct"]
-               ((juxt :id :effort :route) (sr/role-from-profile anth))))))))
+               ((juxt :id :effort :route) (sr/role-from-profile anth))))))
+    (testing "a member naming no effort is refused: it would run at the model's own default"
+      (let [none (str (fs/path dir "none.edn"))]
+        (spit none (pr-str {:seat :claude
+                            :roles {:security-reviewer {:family :openai :model "openai/gpt-6-astra" :shape :openai
+                                                        :endpoint "https://openrouter.ai/api/v1" :params {}}}}))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"names no effort - name one in the profile; medium is the KIT's default"
+                              (sr/role-from-profile none)))))))
 
 (deftest a-review-of-the-kit-is-pointed-at-its-source-and-told-what-an-earlier-pass-fixed
   (let [files ["harness/src/harness/a.clj" "harness/test/harness/a_test.clj" "tools/security/check.bb"

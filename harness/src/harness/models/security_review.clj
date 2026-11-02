@@ -546,6 +546,13 @@
     (let [routes (catalogue/routes)
           role (dissoc m :name)
           effort (catalogue/effort-of routes role)]
+      ;; A HAND-WRITTEN PROFILE SAYS WHAT IT MEANS: a member naming no effort would send none, and the
+      ;; model would run at its own default - the dearest for some (the person, 2026-11-02: medium is the
+      ;; KIT's default, never the model's)
+      (when-not effort
+        (throw (ex-info (str path ": the security reviewer " (:name m) " names no effort - name one in the profile; medium is the KIT's default ("
+                             (str/join ", " (get-in (second (catalogue/route-of routes role)) [:effort :levels])) ")")
+                        {:profile (str path) :member (:name m)})))
       {:profile role
        :id (catalogue/candidate-id {:model (:model m) :effort effort})
        :model (:model m)
