@@ -136,7 +136,15 @@
         (is (str/includes? r5 "| Ended | 17:59:44 |") "a model ends with its last reading")
         (is (str/includes? r5 "| **Time: start to end** | **13:56** |"))
         (is (str/includes? r5 "local time (Z)"))
-        (is (str/includes? r6 "| astra, faulted | ≈17:45:48 | ≈17:52:30 | 6:42 |") "read off the files: marked")))
+        (is (str/includes? r6 "| astra, faulted | ≈17:45:48 | ≈17:52:30 | 6:42 |") "read off the files: marked")
+        (let [again (-> (timed :faulted "2026-11-02T17:45:48Z" "2026-11-03T09:00:00Z")
+                        (assoc-in [:review :ended] "2026-11-02T17:50:00Z") (assoc-in [:score :scored-again?] true))
+              old-again (-> filed (assoc-in [:file-times :reviewed] "2026-11-02T17:50:00Z")
+                            (assoc-in [:score :scored-again?] true) (assoc-in [:file-times :ended] "2026-11-03T09:00:00Z"))]
+          (is (str/includes? (bo/report "T" run [again] utc) "| astra, faulted | 17:45:48 | 17:50:00 | 4:12 |")
+              "scored again in a later run: it ends with its review, never across the gap")
+          (is (str/includes? (bo/report "T" run [old-again] utc) "| astra, faulted | ≈17:45:48 | ≈17:50:00 | 4:12 |")
+              "and from the files: the record's own time, not the score's"))))
     (testing "the whole run, and the clock"
       (is (str/includes? r "**Whole run: $1.26, 29,030 tokens, 10:56 of work, 20:00 wall-clock"))
       (is (str/includes? r "KIT abc1234")))

@@ -151,8 +151,10 @@
 
 (defn reading-metrics
   "Everything the report says of one reading, from its review record and its score. Its start is the
-  record's `:started` (before its clone), its end the score's `:scored`; a reading recorded before they
-  were, its `file-times` - read off the files by `read-folder` - and `:times-from-files?` says so."
+  record's `:started` (before its clone), its end the score's `:scored` - or, for a reading scored again
+  in a later run (`:scored-again?`), the record's `:ended`, its review done, so the span never crosses the
+  gap between the runs. A reading recorded before they were, its `file-times` - read off the files by
+  `read-folder` - and `:times-from-files?` says so."
   [{:keys [id candidate route case review score file-times]}]
   (let [calls (:calls review)
         by-tool (frequencies (map first calls))
@@ -162,7 +164,10 @@
         found (count (:found score))
         planted (+ found (count (:missed score)))]
     {:id id :candidate candidate :route route :case case
-     :started (or (:started review) (:started file-times)) :ended (or (:scored score) (:ended file-times))
+     :started (or (:started review) (:started file-times))
+     :ended (if (:scored-again? score)
+              (or (:ended review) (:reviewed file-times))
+              (or (:scored score) (:ended file-times)))
      :times-from-files? (boolean (and file-times (not (:started review))))
      :review-ms (:ms review) :sandbox-ms (:sandbox-ms review) :score-ms (:ms score)
      :work-ms (when (:ms review) (+ (:ms review) (or (:sandbox-ms review) 0) (or (:ms score) 0)))
@@ -308,7 +313,7 @@
           (when elapsed (str ", " (clock elapsed) " wall-clock"
                              (when (pos? work) (format " (%.1f minutes of work per minute of waiting)" (/ (/ work 60000.0) (max 0.01 (/ elapsed 60000.0)))))))
           ".**\n\n"
-          "Notes: a dash is a figure no record carries. Started and ended are local time (" zone "): a reading starts before its clone and ends when its score is written, a model's span from its first reading's start to its last one's end; ≈ is a time read from the files' modification times, for a reading recorded before readings carried their own. \"Total work\" adds a reading's sandbox start, review and scoring; readings run in parallel, so wall-clock is shorter. "
+          "Notes: a dash is a figure no record carries. Started and ended are local time (" zone "): a reading starts before its clone and ends when its score is written - one scored again in a later run when its review ended, its scoring left out - a model's span from its first reading's start to its last one's end; ≈ is a time read from the files' modification times, for a reading recorded before readings carried their own. \"Total work\" adds a reading's sandbox start, review and scoring; readings run in parallel, so wall-clock is shorter. "
           "Tokens: all = uncached input + cache read + cache write + output; reasoning tokens are part of output, and \"not reported\" where no completion's host reported them; reasoning per completion, over a reading's completions, is where a level run lower than asked shows. A reading with no tests has no scoring time. "
           "A reading reused from an earlier run keeps the time and cost it was recorded with; wall-clock covers only this run's invocations. "
           "A cost a host has not yet reported is left out of the totals.\n"))))
@@ -317,8 +322,8 @@
   "The folder's readings: each `<id>.edn` that has a `<id>-score.edn`, with the candidate, its route
   and the branch read from the id (`<candidate>_<route>-faulted` or `-clean`; a folder from before the
   route has `<candidate>-faulted`, its route nil), and the files' times: the record's modification time
-  less its review and sandbox start, the score's - the start and end of a reading recorded before
-  readings carried their own."
+  less its review and sandbox start, the record's own, the score's - the start, the review's end and the
+  end of a reading recorded before readings carried their own."
   [out]
   (vec (for [f (sort (map str (fs/glob out "*.edn")))
              :let [nm (str (fs/file-name f))
@@ -332,6 +337,7 @@
                mtime (fn [p] (.toInstant (fs/last-modified-time p)))]
            {:id id :candidate cand :route route :case (keyword kind) :review review :score (read-edn sco)
             :file-times {:started (str (.minusMillis (mtime f) (+ (or (:ms review) 0) (or (:sandbox-ms review) 0))))
+                         :reviewed (str (mtime f))
                          :ended (str (mtime sco))}}))))
 
 (defn report!
@@ -348,12 +354,14 @@
 
 (defn- score-reading!
   "Score the review in `rec`, write `sco`, and say how the reading came out. A review with no test
-  of its own is scored as nothing found, without starting a container."
-  [{:keys [kit fixture]} cases id rec sco r]
+  of its own is scored as nothing found, without starting a container. `again?` - a record from an
+  earlier run - is said in the score (`:scored-again?`), so the report ends the reading at its review."
+  [{:keys [kit fixture]} cases id rec sco r again?]
   (let [s (if (seq (:tests r))
             (score/score! kit (str rec) (str fixture))
-            (assoc (score/summary {} (:findings r) (:faults cases)) :review (str (fs/file-name rec))))]
-    (spit (str sco) (with-out-str (pp/pprint (assoc s :scored (str (java.time.Instant/now))))))
+            (assoc (score/summary {} (:findings r) (:faults cases)) :review (str (fs/file-name rec))))
+        s (cond-> (assoc s :scored (str (java.time.Instant/now))) again? (assoc :scored-again? true))]
+    (spit (str sco) (with-out-str (pp/pprint s)))
     (println (format "  %s: %s, %d completions, %ds, %s; %d of %d planted faults found"
                      id (cond (:refused? r) "REFUSED" (:no-block? r) "no answer" :else "answered")
                      (or (:iterations r) 0) (quot (or (:ms r) 0) 1000)
@@ -376,7 +384,7 @@
       (fs/exists? rec)
       (let [r (read-edn rec)]
         (println (str "  " id ": its review is there; scoring it again"))
-        {:review r :score (score-reading! opts cases id rec sco r)})
+        {:review r :score (score-reading! opts cases id rec sco r true)})
 
       :else
       (let [started (str (java.time.Instant/now))
@@ -386,7 +394,7 @@
                 r (assoc (review/review! (:profile candidate) :tracer clone (cond-> {:kit kit} rounds (assoc :rounds rounds)))
                          :started started :ended (str (java.time.Instant/now)))]
             (review/write-record! out id r)
-            {:review (read-edn rec) :score (score-reading! opts cases id rec sco r)})
+            {:review (read-edn rec) :score (score-reading! opts cases id rec sco r false)})
           (finally (fs/delete-tree scratch)))))))
 
 (defn- kit-commit [kit]

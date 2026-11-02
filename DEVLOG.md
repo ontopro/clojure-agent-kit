@@ -68,6 +68,17 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### A reading scored again ends with its review, not across the gap (plan 7.0, item 10, a low and two nits)
+
+From Fable 5.1's read of `fdefecb`; the person: "go, low + nits 1 and 2". A reading whose record is there and is
+scored again in a later run (a stopped run resumed, a changed scorer) got a fresh `:scored`, so its span ran from the
+first run's start across the gap to the re-score, unmarked. The score now says `:scored-again? true`, and such a
+reading ends at the record's `:ended`, its review done, its scoring left out - the notes say so; one recorded before
+readings carried their times ends at the record file's own time, not the score's. So the record's `:ended`, written
+and read by nothing, is read (nit 1). The harness README's row says the report gives when each reading and model
+started and ended (nit 2). Nit 3 (a model with readings of both kinds shows ≈ on both cells) left: only a resumed
+run of today's bake-off under the new code mixes them.
+
 ### The security bake-off's report says when each reading and each model started and ended (plan 7.0, item 10)
 
 The person, during the five-model bake-off: "add start and end times to the bake-off report, also the costs for each
