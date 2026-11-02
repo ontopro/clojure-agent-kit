@@ -68,6 +68,29 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### Effort levels are the model's, from OpenRouter's listing; a line naming none read at medium (plan 7.0, item 10.2)
+
+The person: "Get every family's levels. If a level is not available easily for a direct model ..., use the
+information from OpenRouter as a proxy", "use 'medium' for default level if a level is not specified", and "if
+medium is not available, refuse and present the user with what is actually available". Looking them up found that
+levels belong to the model, not the family: OpenRouter's listing carries each model's own
+(`reasoning.supported_efforts`, 2026-11-02) - GPT-6.1 Sol and GPT-6 Astra max, xhigh, high, medium, low; Qwen3.8 Max
+xhigh to minimal; Muse Wonder max to minimal; Gemini 4 Argon high, medium, low only (no xhigh); Claude Opus 5.5 and
+Fable 5.1 max to low; Grok 4.7 xhigh to low; GLM 5.3 max, high, low (no medium). So:
+
+- `catalogue/model-row` keeps a model's `:efforts`, and `expand-candidate` holds a line's effort to them, refused
+  with the model's own levels named; the family's levels in `routes.edn` are the fallback, for a model the listing
+  gives none - every level the listing shows for the family's models. A direct route's are its family's on
+  OpenRouter, the stand-in the person named, less `none` at Anthropic's API, which OpenRouter's reasoning
+  documentation says Claude rejects. The routes' header says it, where it said a level was added when a run had used
+  it.
+- A line naming no effort is read at `medium` (`catalogue/default-effort`), where it was the route's last level, the
+  highest; a model without medium is refused - "x-ai/grok-9 takes an effort of max, high, low, not \"medium\" - the
+  default when a line names none; name one of them" - never read at its own default, which the listing gives as the
+  dearest for some (GLM's `max`, Qwen's `xhigh`). `bb bake-off new`'s prompt says it.
+- No probe here: a level is the model's documentation, read once; whether a host honours it is the pre-run probe's,
+  checked before each paid run (the person: "two different things").
+
 ### The bake-off's record says each candidate's route; an id carrying `_` refused (plan 7.0, item 10, two lows)
 
 From Fable 5.1's read of `8109171`; the person: "Fables 2 changes - Accept". (1) Each invocation in a bake-off's

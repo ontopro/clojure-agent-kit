@@ -12,9 +12,16 @@
 ;; model's family from its slug's prefix, so `bb models` builds the OpenRouter block; the direct
 ;; routes are what a person copies into a profile's role, the model named as the provider names it.
 ;;
-;; EFFORT LEVELS ARE NOT IN THE LISTING. OpenRouter says whether a model takes a reasoning
-;; parameter, not which values; the levels here are what each family's API documents and what
-;; the profiles have run. Newer levels are added here when a run has used one.
+;; EFFORT LEVELS BELONG TO THE MODEL, NOT THE FAMILY. OpenRouter's listing gives each model's own
+;; (`reasoning.supported_efforts`), and they differ inside a family - Gemini 4 Argon takes no xhigh,
+;; GLM 5.3 no medium - so `expand-candidate` holds a line to its model's levels from the listing, and
+;; the levels here are the family's FALLBACK, for a model the listing gives none: every level the
+;; listing shows for the family's models (2026-11-02). A direct route's are its family's on OpenRouter,
+;; the same models' levels standing in for the provider's own documentation (the person, 2026-11-02) -
+;; less `none` at Anthropic's API, which OpenRouter's reasoning documentation says Claude rejects.
+;; A line that names no effort is read at `medium` (`catalogue/default-effort`), and refused, with the
+;; model's levels named, where the model has no medium. A level is checked against the host before a
+;; paid run by the pre-run probe, not here.
 ;;
 ;; NO KEYS, EVER: :key-env NAMES an environment variable.
 
@@ -22,48 +29,48 @@
              :key-env "OPENROUTER_API_KEY"
              :shape :openai
              :provider "anthropic"
-             :effort {:param :reasoning_effort :levels ["low" "medium" "high"]}
+             :effort {:param :reasoning_effort :levels ["none" "low" "medium" "high" "xhigh" "max"]}
              :max_tokens 16000}
  :openai {:endpoint "https://openrouter.ai/api/v1"
           :key-env "OPENROUTER_API_KEY"
           :shape :openai
           :provider "openai"
-          :effort {:param :reasoning_effort :levels ["low" "medium" "high"]}}
+          :effort {:param :reasoning_effort :levels ["none" "minimal" "low" "medium" "high" "xhigh" "max"]}}
  :google {:endpoint "https://openrouter.ai/api/v1"
           :key-env "OPENROUTER_API_KEY"
           :shape :openai
           :provider "google-vertex"
-          :effort {:param :reasoning_effort :levels ["low" "medium" "high"]}}
+          :effort {:param :reasoning_effort :levels ["none" "minimal" "low" "medium" "high"]}}
  :x-ai {:endpoint "https://openrouter.ai/api/v1"
         :key-env "OPENROUTER_API_KEY"
         :shape :openai
         :provider "xai"
-        :effort {:param :reasoning_effort :levels ["low" "medium" "high"]}}
+        :effort {:param :reasoning_effort :levels ["none" "low" "medium" "high" "xhigh"]}}
  ;; Alibaba is the one host OpenRouter lists for glm-5.3-prime (2026-10-08) and one of many for
  ;; glm-5.3, so the pin serves both; it takes tools and reasoning_effort on each.
  :z-ai {:endpoint "https://openrouter.ai/api/v1"
         :key-env "OPENROUTER_API_KEY"
         :shape :openai
         :provider "alibaba"
-        :effort {:param :reasoning_effort :levels ["low" "medium" "high"]}}
+        :effort {:param :reasoning_effort :levels ["none" "low" "high" "xhigh" "max"]}}
  ;; Alibaba is the one host OpenRouter lists for qwen3.8-max-0902 (2026-11-02, two tags of it).
  :qwen {:endpoint "https://openrouter.ai/api/v1"
         :key-env "OPENROUTER_API_KEY"
         :shape :openai
         :provider "alibaba"
-        :effort {:param :reasoning_effort :levels ["low" "medium" "high"]}}
+        :effort {:param :reasoning_effort :levels ["none" "minimal" "low" "medium" "high" "xhigh"]}}
  ;; Meta is the one host OpenRouter lists for muse-wonder (2026-11-02).
  :meta {:endpoint "https://openrouter.ai/api/v1"
         :key-env "OPENROUTER_API_KEY"
         :shape :openai
         :provider "meta"
-        :effort {:param :reasoning_effort :levels ["low" "medium" "high"]}}
+        :effort {:param :reasoning_effort :levels ["minimal" "low" "medium" "high" "xhigh" "max"]}}
  :google-direct {:endpoint "https://generativelanguage.googleapis.com/v1beta/openai"
                  :key-env "GEMINI_API_KEY"
                  :shape :openai
-                 :effort {:param :reasoning_effort :levels ["low" "medium" "high"]}}
+                 :effort {:param :reasoning_effort :levels ["none" "minimal" "low" "medium" "high"]}}
  :anthropic-direct {:endpoint "https://api.anthropic.com"
                     :key-env "ANTHROPIC_API_KEY"
                     :shape :anthropic
-                    :effort {:param :output_config :levels ["low" "medium" "high"]}
+                    :effort {:param :output_config :levels ["low" "medium" "high" "xhigh" "max"]}
                     :max_tokens 16000}}

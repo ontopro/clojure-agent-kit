@@ -48,6 +48,8 @@
           (str (name fam) ": endpoint, key variable, shape, effort parameter and levels"))
       (is (not (re-find #"(?i)sk-|key-[a-z0-9]{8}" (pr-str route))) "no key, ever"))
     (is (= "xai" (:provider (cat/route r :x-ai))))
+    (is (not-any? #{"none"} (get-in (cat/route r :anthropic-direct) [:effort :levels])) "Claude rejects none")
+    (is (= "medium" cat/default-effort))
     (is (= ["alibaba" "meta"] (map #(:provider (cat/route r %)) [:qwen :meta]))
         "each pinned to the one host OpenRouter lists for the bake-off's candidate")
     (is (= :anthropic (:shape (cat/route r :anthropic-direct))))

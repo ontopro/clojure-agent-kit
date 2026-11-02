@@ -44,7 +44,7 @@
     (is (m/validate shapes/RoleProfile (:profile c)) "a RoleProfile a profile could carry")
     (is (= "medium" (get-in c [:profile :params :reasoning_effort])))
     (is (= {:only ["xai"] :allow_fallbacks false} (get-in c [:profile :params :provider])))
-    (is (= "high" (:effort (cat/expand-candidate cat-test/listing routes "grok"))) "no effort: the route's highest")
+    (is (= "medium" (:effort (cat/expand-candidate cat-test/listing routes "grok"))) "no effort: medium, the default")
     (is (= 16000 (get-in (cat/expand-candidate cat-test/listing routes "opus") [:profile :params :max_tokens]))))
   (testing "refusals by name"
     (let [routes (test-routes "http://stub")]
@@ -54,6 +54,23 @@
                             (cat/expand-candidate cat-test/listing routes "mistral")))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"takes an effort of low, medium, high, not \"max\""
                             (cat/expand-candidate cat-test/listing routes "grok max"))))))
+
+(deftest a-lines-effort-is-held-to-its-models-own-levels-from-the-listing
+  (let [routes (test-routes "http://stub")
+        listing [{:id "x-ai/grok-9" :name "xAI: Grok 9" :created 1800000000 :supported_parameters ["reasoning"]
+                  :reasoning {:supported_efforts ["max" "high" "low"] :default_effort "max"}}
+                 {:id "x-ai/grok-8" :name "xAI: Grok 8" :created 1790000000 :supported_parameters ["reasoning"]
+                  :reasoning {:supported_efforts ["xhigh" "high" "medium" "low"]}}]]
+    (is (= "max" (:effort (cat/expand-candidate listing routes "x-ai/grok-9 max")))
+        "a level the family's fallback lacks, the model's own levels have")
+    (is (= "medium" (:effort (cat/expand-candidate listing routes "x-ai/grok-8"))))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"x-ai/grok-8 takes an effort of xhigh, high, medium, low, not \"max\"$"
+                          (cat/expand-candidate listing routes "x-ai/grok-8 max"))
+        "the model's levels named, not the family's")
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"x-ai/grok-9 takes an effort of max, high, low, not \"medium\" - the default when a line names none; name one of them"
+                          (cat/expand-candidate listing routes "x-ai/grok-9"))
+        "no medium: refused with what the model takes, never read at its own default (here its dearest)")))
 
 (deftest the-spec-expands-and-the-judge-is-held-to-the-rule
   (let [routes (test-routes "http://stub")
@@ -231,18 +248,18 @@
         spec (edn/read-string (slurp path))]
     (is (str/ends-with? path "/bake-offs/readers-new/bake-off.edn"))
     (is (= :blueprint-reviewer (:role spec)))
-    (is (= ["x-ai/grok-4.7 high" "anthropic/claude-opus-5.5 high"] (:candidates spec)) "as resolved, effort filled in")
+    (is (= ["x-ai/grok-4.7 medium" "anthropic/claude-opus-5.5 high"] (:candidates spec)) "as resolved, effort filled in: medium where none was named")
     (is (= "x-ai/grok-4.6 low" (:judge spec)))
     (is (nil? (:cases spec)) "all of what is on disk: nothing to name")
     (let [out (str/join "\n" @said)]
-      (is (str/includes? out "→ x-ai/grok-4.7 at high"))
+      (is (str/includes? out "→ x-ai/grok-4.7 at medium"))
       (is (str/includes? out "no model in the listing matches \"nope\""))
       (is (str/includes? out "x-ai/grok-4.7 is a candidate; a judge is never a candidate"))
       (is (str/includes? out "a judge is needed"))
       (is (str/includes? out "Cases on disk for blueprint-reviewer: 1) stage-1"))
       (is (str/includes? out "run it: bb bake-off run")))
     (testing "the file `run` accepts: it expands without a call"
-      (is (= ["grok-4.7-high" "claude-opus-5.5-high"]
+      (is (= ["grok-4.7-medium" "claude-opus-5.5-high"]
              (mapv :id (:candidates (:resolved (bo/expand spec cat-test/listing (test-routes "http://stub"))))))))))
 
 (deftest readings-run-in-a-bounded-pool-and-a-stopped-run-resumes-from-its-records

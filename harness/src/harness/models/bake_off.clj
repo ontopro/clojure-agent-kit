@@ -540,7 +540,7 @@
                                           (money2 (:out (catalogue/newest (catalogue/matching listing (:model c)))))))
                              c)
                            (catch clojure.lang.ExceptionInfo e (say (str "  " (ex-message e))) nil)))
-        _ (say "Candidates, one per line - a model's slug or a word (\"grok\"), then an effort (low, medium, high; the highest if none). Blank to finish; at least two.")
+        _ (say "Candidates, one per line - a model's slug or a word (\"grok\"), then an effort (the levels the model takes, from the listing; medium if none). Blank to finish; at least two.")
         cands (loop [acc []]
                 (let [line (str/trim (or (ask "candidate> ") ""))]
                   (cond (and (str/blank? line) (>= (count acc) 2)) acc

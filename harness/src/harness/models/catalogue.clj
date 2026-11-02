@@ -82,7 +82,7 @@
 
 (defn model-row
   "One listing entry as the row the table and the expander use."
-  [{:keys [id name created context_length pricing supported_parameters]}]
+  [{:keys [id name created context_length pricing supported_parameters reasoning]}]
   {:id id
    :name name
    :family (family-of id)
@@ -91,7 +91,8 @@
    :context context_length
    :in (per-million (:prompt pricing))
    :out (per-million (:completion pricing))
-   :reasoning? (boolean (some #{"reasoning"} supported_parameters))})
+   :reasoning? (boolean (some #{"reasoning"} supported_parameters))
+   :efforts (some-> (:supported_efforts reasoning) seq vec)})
 
 (defn matching
   "The models `query` names in `listing` (the parsed `:data` vector), newest
@@ -133,6 +134,11 @@
     (let [[q e] (str/split (str/trim (str line)) #"\s+" 2)]
       {:query q :effort (some-> e str/trim not-empty)})))
 
+(def default-effort
+  "The effort a candidate line naming none is read at (the person, 2026-11-02). A model without it is
+  refused, its own levels named - never read at another, which could be its dearest."
+  "medium")
+
 (defn candidate-id
   "A short id for records and columns: the slug's last segment and the effort. It names the model
   and its effort, not how it is reached: the same model on two routes has one id and two routes
@@ -168,8 +174,10 @@
   "One candidate line → `{:id :query :model :family :effort :profile}` where
   `:profile` is a `RoleProfile` block built from the catalogue's newest match
   and the family's route. Refuses by name: nothing matches, no route for the
-  family, an effort the route does not know. The effort defaults to the
-  route's last level - the highest - when the line gives none."
+  family, an effort the model does not take. The model's levels are its own in
+  the listing, the family's in routes.edn where the listing gives none; a line
+  naming no effort is read at `default-effort`, and refused where the model has
+  no such level."
   [listing routes line]
   (let [{:keys [query effort]} (parse-candidate line)
         m (newest (matching listing query))
@@ -178,11 +186,15 @@
                             {:bake-off/error :no-such-model :query query})))
         family (:family m)
         route (route routes family)
-        levels (get-in route [:effort :levels])
-        effort (or effort (last levels))
+        own (:efforts m)
+        levels (or own (get-in route [:effort :levels]))
+        named effort
+        effort (or effort default-effort)
         _ (when-not (some #{effort} levels)
-            (throw (ex-info (str "the family " family " takes an effort of " (str/join ", " levels) ", not \"" effort "\"")
-                            {:bake-off/error :no-such-effort :family family :effort effort})))
+            (throw (ex-info (str (if own (:id m) (str "the family " family)) " takes an effort of " (str/join ", " levels)
+                                 ", not \"" effort "\""
+                                 (when-not named (str " - the default when a line names none; name one of them")))
+                            {:bake-off/error :no-such-effort :family family :effort effort :levels levels})))
         params (cond-> {(get-in route [:effort :param]) effort
                         :provider {:only [(:provider route)] :allow_fallbacks false}}
                  (:max_tokens route) (assoc :max_tokens (:max_tokens route))
