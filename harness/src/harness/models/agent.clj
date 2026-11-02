@@ -150,6 +150,14 @@
             (recur (inc n)))
         [parsed err (dec n)]))))
 
+(defn complete!
+  "One completion of `role`, sent again on a transient error as a conversation's are: `[parsed error]`
+  - the parsed reply (its `:raw` the host's whole answer) or the error, never a throw. For a caller that
+  asks one question and reads the reply itself (the pre-run probe, `harness.models.probe`)."
+  [role system messages tool-decls]
+  (let [[parsed err _] (post! role system messages tool-decls (:timeout-ms defaults) (:retry defaults))]
+    [parsed err]))
+
 (defn- fetch-later
   "Start fetching `parsed`'s generation record and return at once.
 

@@ -26,6 +26,7 @@
    [harness.contained-path :as contained-path]
    [harness.models.agent :as agent]
    [harness.models.catalogue :as catalogue]
+   [harness.models.probe :as probe]
    [harness.models.profile :as profile]
    [harness.models.security-review-sandbox :as sandbox]
    [harness.models.security-review-tools :as security-review-tools]
@@ -682,6 +683,11 @@
           (println (str "  " line))
           (when-not go? (System/exit 1)))
         (println (str "  " endpoint " has no balance this command reads - not checked")))
+      ;; THE PRE-RUN PROBE: the pass's role, its max_tokens as the pass sets it, before the pass is paid for
+      (let [p (probe/probe! [cand] {:out out :max-tokens (or max-tokens default-max-tokens)})]
+        (when (:stop? p)
+          (println (str "  the pre-run probe stopped the pass - fix the line or the profile and run again: " (:file p)))
+          (System/exit 1)))
       (println (str "  review of the KIT" (when flow (str ", flow " flow)) " by " (:model cand) " (" (:effort cand) "), up to " (or rounds default-rounds) " completions"
                     (when (seq earlier) (str ", after " (count (mapcat :findings earlier)) " finding(s) of " (str/join ", " (distinct (keep :model earlier)))))))
       (let [r (review-kit! (:profile cand) kit work

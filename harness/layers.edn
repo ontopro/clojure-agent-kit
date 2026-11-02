@@ -64,14 +64,15 @@
 
  ;; models and money
  harness.models.agent #{harness.models.adapter harness.models.provenance harness.models.tools}
+ harness.models.probe #{harness.models.agent harness.models.provenance harness.models.tools}
  harness.models.code-review-tools #{harness.models.tools}
  harness.models.runner #{harness.contained-path harness.gates.repair harness.models.agent harness.models.code-review-tools harness.models.tools harness.rules}
  harness.models.runner-check #{harness.contract.shapes harness.models.runner}
  harness.models.security-review-tools #{harness.contained-path harness.models.tools}
  harness.models.security-review-sandbox #{harness.gates.toolchain-image}
  harness.models.security-score #{harness.contained-path harness.models.security-review-sandbox harness.models.security-review-tools}
- harness.models.security-bake-off #{harness.models.catalogue harness.models.security-review harness.models.security-score}
- harness.models.security-review #{harness.contained-path harness.money.balance harness.models.agent harness.models.catalogue harness.models.profile
+ harness.models.security-bake-off #{harness.models.catalogue harness.models.probe harness.models.security-review harness.models.security-score}
+ harness.models.security-review #{harness.contained-path harness.money.balance harness.models.agent harness.models.catalogue harness.models.probe harness.models.profile
                                   harness.models.security-review-sandbox harness.models.security-review-tools}
  harness.money.balance #{harness.models.catalogue harness.models.profile harness.models.provenance harness.money.report}
  harness.money.reprice #{harness.models.catalogue harness.models.profile harness.models.provenance harness.money.report}

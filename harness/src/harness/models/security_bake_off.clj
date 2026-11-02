@@ -29,6 +29,7 @@
    [clojure.pprint :as pp]
    [clojure.string :as str]
    [harness.models.catalogue :as catalogue]
+   [harness.models.probe :as probe]
    [harness.models.security-review :as review]
    [harness.models.security-score :as score]))
 
@@ -386,6 +387,12 @@
                      (map review/role-from-profile)
                      profiles))
         _ (fs/create-dirs out)
+        ;; THE PRE-RUN PROBE, every candidate, before the first paid reading: a candidate the host will
+        ;; not serve as asked stops the run here, for cents, not after minutes of a reading
+        p (probe/probe! cands {:out out :max-tokens review/default-max-tokens})
+        _ (when (:stop? p)
+            (throw (ex-info (str "the pre-run probe stopped the run - fix the line or the profile and run again: " (:file p))
+                            {:probe/stop true :file (:file p)})))
         results (->> (jobs cands)
                      (partition-all (max 1 (or parallel 2)))
                      (mapcat (fn [batch] (mapv deref (mapv #(future [% (reading! opts cases %)]) batch))))
@@ -436,7 +443,11 @@
                                                    (str "bake-off-" (.format (java.time.LocalDateTime/now) (java.time.format.DateTimeFormatter/ofPattern "yyyyMMdd-HHmmss")))))))
           fixture (str (fs/absolutize fixture))]
       (println (str "  " (+ (count models) (count profiles)) " models x faulted and careful, " (or parallel 2) " at a time, into " out))
-      (let [rows (run-readings! {:kit kit :fixture fixture :out out :models models :profiles (mapv #(str (fs/absolutize %)) profiles) :rounds rounds :parallel parallel})]
+      (let [rows (try (run-readings! {:kit kit :fixture fixture :out out :models models :profiles (mapv #(str (fs/absolutize %)) profiles) :rounds rounds :parallel parallel})
+                      (catch clojure.lang.ExceptionInfo e
+                        (if (:probe/stop (ex-data e))
+                          (do (println (str "  " (ex-message e))) (System/exit 1))
+                          (throw e))))]
         (println)
         (println (render rows))
         (println (str "  table: " (fs/path out "bake-off.md")))

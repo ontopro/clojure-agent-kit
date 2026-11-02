@@ -68,6 +68,26 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### The pre-run probe: one small call per candidate before a paid security review (plan 7.0, item 10)
+
+The person: "A probe seems to be a precursor check before a full run to catch things like ... a host running extra
+high as high quietly", "go, (ii) build the probe in now", "go on 1-5 as listed"; the design
+(`.local/plans/v7/kit-plan-v7.0-item10-probe-design.md`) read by Fable 5.1, GO with three mediums, two lows and two
+nits, all taken. `harness.models.probe`: before `bb security-bake-off`'s first reading, every candidate, and before
+`bb security-review --kit`'s pass, its one, a call through the exact role block the run will use - endpoint, key,
+model, effort, pin, the run's `max_tokens` - with a short puzzle and one tool, `answer`, made by a new
+`agent/complete!` (one completion, retried on a transient error as a conversation's are, never a throw). It STOPs
+the run on a refusal at the effort, on no tool call in two tries (one is a known flake), on a host other than the
+pin (belt and braces: the pin already makes OpenRouter fail rather than reroute), and on 0 reasoning tokens as the
+host reports them - a candidate at `none` stopped by design; reasoning the host gives no count for is "not
+reported", no stop. The answer is information. Each candidate is a terminal line; the calls - status, host,
+reasoning, the reply's `usage` keys, cost, ms - go in `probe-<stamp>.edn` beside the run's records, with no
+`:target`, so the KIT review's reader never takes it for a review. No second call at a lower level to catch a
+downgrade: one sample cannot tell it from variance; the bake-off's report prints reasoning per completion over a
+reading's completions (`40682ea`). No override: a stop is fixed at the line or the profile, and probing again
+costs cents. `probe.clj` is in the `security-review` flow of `kit-flows.edn`; the harness's `AGENTS.md` and README say
+it. Tested on canned calls: what stops, what is said.
+
 ### `bb profile` holds each role's effort to its route's levels; a security reviewer naming no effort refused (plan 7.0, item 10)
 
 From Fable 5.1's read of `0bf47da` - its (b) and a low; the person: "go on 1-5 as listed". (1) `profile/violations`
