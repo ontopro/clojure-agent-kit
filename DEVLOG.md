@@ -72,11 +72,12 @@ Plan 7.0 added:
 - **The KIT self-contained** (item 8). The toolchain pack: the download matrix, the KIT's toolchain image, `bb
   kit-pins`. A project's folder is the one above its clone, its tools in `.kit/toolchain` linked into `bin/`;
   `bb doctor` holds each tool to the matrix and offers the true-up; `bb upgrade` installs a release's tools;
-  `bb self-check` is the one setup command; known-good is read from the health records.
+  `bb self-check` is the one setup command; known-good is read from the Mac's health record.
 - **A key file per project** (item 8.6): the workspace `.env`, loaded by `bb toolchain-env` with no value
   printed, checked for lines the shell would run, accepted by `bb env-accept`, kept from the session's file
   tools by deny rules - a rail, not a lock (row 236).
-- **The JDK to 25** and XTDB pinned, the project's tested set written into it as `project-set.edn` (item 7).
+- **The JDK to 25** and XTDB pinned, the project's tested set - the KIT's `project-set.edn` - written into the
+  application's `.mise.toml`, `Dockerfile` and `.gitignore` (item 7).
 - **A stage folder's files by fixed names** (item 3): `stage-N-plan.md`, `notes/`, and `bb upgrade` renaming a
   stage-0 plan.
 - **Records add-only** (item 11): a correction is a superseding entry, and a document cites a record by
@@ -84,17 +85,29 @@ Plan 7.0 added:
 - **The first project's findings** (items 1, 2, 4, 5, 6): the shipped `claude` profile and `bb roster-sync`, the
   money-by-role table, the security panel's marks per reading, a deferred security decision stating its blast
   radius, the kept lessons.
-- **The security reviewer bake-off** (items 9.3, 10): the models' own effort levels, the pre-run probe, a
-  report that says each reading's times, cost and tokens, the review's clone read-only in both containers.
-- **The KIT's full security review** (items 9.4, 10.3): two blind passes, forty issues, none HIGH - rows
-  240-251, open, plan 7.1's fixes.
+- **The security reviewer bake-off** (item 10): the models' own effort levels, the pre-run probe, a report
+  that says each reading's times, cost and tokens.
+- **The KIT's full security review** (items 9.3, 9.4, 10.3): the review's clone read-only in both containers;
+  two blind passes, forty issues, none rated HIGH - rows 240-251, open, plan 7.1's fixes.
 
-A workspace at `0.6.11` takes it with `bb upgrade` from the workspace folder: its `:toolchain` step installs
-the project's tools into the folder, and `eval "$(bb toolchain-env)"` in the terminal that starts the sessions
-puts them first, as the upgrade says when they are not. The keys may stay in the shell, or move into the
-folder's `.env` (the README's step 5): with no `.env`, `toolchain-env` leaves them as the shell has them.
+A workspace at `0.6.11` takes it in this order, from the workspace folder: `git -C KIT fetch --tags && git -C KIT checkout
+0.7.0`; `bb self-check` in `KIT/`, which installs the project's tools into the folder; `eval "$(bb toolchain-env)"` in the
+terminal that starts the sessions, which puts them first; then `bb --config KIT/harness/bb.edn upgrade
+--after-pull`. The upgrade changes the application's repository - `.mise.toml`, `Dockerfile`, `.gitignore` - on a
+branch the person merges. The keys may stay in the shell, or move into the folder's `.env` (the README's step
+5): with no `.env`, `toolchain-env` leaves them as the shell has them.
 
 ## 2026-10-29 (plan 7.0)
+
+### The 0.7.0 heading's words: the project set, the upgrade's order, the Mac's record (plan 7.0, item 12)
+
+From Fable 5.1's read of `daf4cd2`, two lows and two nits; the person: "go, allow file + four fixes (b)". The
+heading said the project's tested set was written into it as `project-set.edn`: that file is the KIT's, and its
+lines go into the application's `.mise.toml`, `Dockerfile` and `.gitignore`. It said a `0.6.11` workspace takes
+`0.7.0` with plain `bb upgrade`, which no run had tried; it now says the order the first project's upgrade (item
+13) runs - fetch and check out the tag, `bb self-check`, the eval, `upgrade --after-pull` - and that the upgrade
+changes the application on a branch the person merges. Known-good is read from the Mac's record, not the
+records; the review's read-only clone (9.3) moved to the security review's bullet; "none rated HIGH".
 
 ### `bb tag-check`'s secrets scan reads the KIT's own allowances (plan 7.0, item 12; the audit's K7)
 
