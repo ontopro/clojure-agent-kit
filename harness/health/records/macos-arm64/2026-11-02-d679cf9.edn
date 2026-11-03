@@ -1,0 +1,49 @@
+;; Written by `bb health --record`; rendered into the README by `bb health-sync`. Do not edit.
+{:ok? true,
+ :xtdb
+ {:version "2.2.0",
+  :image "ghcr.io/xtdb/xtdb:2.2.0",
+  :server-java "25.0.4.1"},
+ :tools
+ {:bb "1.13.229",
+  :clj-kondo "2026.10.26",
+  :clj-nrepl-eval "d341c23",
+  :clj-paren-repair "d341c23",
+  :cljfmt "0.16.6",
+  :clojure "1.12.6.1673",
+  :git "2.56.0",
+  :java "25.0.5"},
+ :template
+ {:template io.github.ontopro/clojure-stack-lite,
+  :git/tag "kit-v1.3",
+  :git/sha "f12268d32585d98358a0413a300e20ef74e95635"},
+ :checks
+ [{:subject :selfcheck, :check :gates, :ok? true, :ms 2736}
+  {:subject :selfcheck, :check :red, :ok? true, :ms 4392}
+  {:subject :selfcheck, :check :loop, :ok? true, :ms 7748}
+  {:subject :app, :check :gates, :ok? true, :ms 9202}
+  {:subject :app, :check :red, :ok? true, :ms 15617}
+  {:subject :app, :check :loop, :ok? true, :ms 13766}
+  {:subject :app, :check :serve, :ok? true, :ms 8460}
+  {:subject :app, :check :browser, :ok? true, :ms 15508}
+  {:subject :app, :check :security, :ok? true, :ms 12222}
+  {:subject :app, :check :image, :ok? true, :ms 55495}
+  {:subject :xtdb, :check :embedded, :ok? true, :ms 5438}
+  {:subject :xtdb, :check :pgwire, :ok? true, :ms 9791}],
+ :health/as-of "2026-11-02",
+ :project
+ {:tools
+  {:java "temurin-25",
+   :clojure "1.12.6.1673",
+   :babashka "1.13.229",
+   :clj-kondo "2026.10.26",
+   :cljfmt "0.16.6",
+   :tailwindcss "4.3.3"},
+  :build-image "clojure:temurin-25-tools-deps-1.12.6.1673-alpine",
+  :runtime-image "eclipse-temurin:25.0.4.1_1-jre-alpine",
+  :image-java "25.0.4.1"},
+ :kit
+ {:sha "d679cf94b5f6351f1fd7df0ed91d4c673948830e",
+  :short "d679cf9",
+  :dirty? false},
+ :platform {:key "macos-arm64", :label "macOS 27.0.1 arm64"}}
