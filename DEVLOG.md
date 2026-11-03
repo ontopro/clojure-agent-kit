@@ -68,6 +68,41 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### The security reviewer bake-off and the KIT's full security review: forty issues, to plan 7.1 (plan 7.0, items 9.4 and 10.3, register rows 240-249)
+
+The person, for item 10: "a) a quick bake-off", then "(b) ... only Sol xhigh and Argon high direct. We will review
+the results" - and (b) was 9.4's full audit, so it closes both.
+
+(a), the five-model bake-off on the security fixture, 2026-11-02, on `01f3bda` (row 238): GPT-6.1 Sol, GPT-6
+Astra, Muse Wonder and Gemini 4 Argon found 6 of 6 planted faults, Qwen3.8 Max 5 of 6; no claim failed to
+reproduce. $8.79 and 2 h 08 min in all - per model Argon $0.39 (a floor, row 248), Sol $0.66, Astra $2.05, Qwen
+$2.67, Muse $3.02; time from start to end 8 to 14 minutes each, Qwen 1 h 18. Muse's tests failing on the careful
+branch were three of them a real defect of the fixture (row 239). Sol and Argon were taken for (b).
+
+(b), `bb security-review --kit --flow <name>` over all seven flows, blind (no `--after`), each pass through a
+one-member local profile, on `497251e`, 14:27 to 18:46. GPT-6.1 Sol at xhigh by OpenRouter: 7 of 7 flows, 43 reproduced findings, 1 h 51 min
+of review, $12.74 by its records ($12.75 by the credit). Gemini 4 Argon at high direct to Google: 6 of 7 flows, 25
+reproduced and 1 hypothesis, about 1 h 48 min over the six it answered, $13.98 computed over eight attempts - a
+floor (row 248). Its tool-packs flow failed once on Google's credit and answered after the top-up; its seams flow
+failed after the top-up on a 429 the retries did not wait out (row 249), $2.74 and no answer. Before it, the scans:
+`deps` finds no advisory in `tools/svg` (26 libraries) or `harness/health/selfcheck` (11); `secrets --all` fails
+on the `.env` loader's test fixture, `postgres://u:p@h/db` in `toolchain_env_test.clj` - a fake value, an allowance
+to be written with its reason in 7.1, no row.
+
+Every test a finding cites was run again on a fresh clone in the review's own sandbox: 56 namespaces, the 52 cited
+fail on HEAD, 4 pass. Opus 5.5 merged the 68 findings into 40 issues and gave each a severity by its source, its
+sink and its scope; Fable 5.1's read held in substance, with twelve corrections taken (B5 up to MEDIUM-HIGH, B2 and
+A12 down as the KIT's own input, `doctor/flag-allowlist` read by nothing, the K items' facts). By severity, the
+issues Sol found / Argon found / both / distinct: MEDIUM-HIGH 2/2/2/2, MEDIUM 10/8/3/15, LOW-MEDIUM 9/10/6/13, LOW
+9/1/1/9, and one known (row 186's design); no HIGH. Rows 240-246 carry them by class - links and paths, commands
+from data, the `.env` check, keys past the redaction, the gates, `run-status`, the template upgrade's resume - and
+rows 247-249 three of the run's own tooling. The hypothesis, Argon's, no test and no row unless the person says:
+`svg_check/rasterise` runs Batik's PNG transcoder with its default external-resource security (Relaxed in 1.19), so
+an SVG may read a `file:` resource from the host - a hand test, no model needed.
+
+The person: "go, close 9 and 10, tag 0.7.0, fixes in 7.1". `0.7.0` ships with these rows open and said; the fixes
+are plan 7.1's, a commit each with the reviewer's test adapted into `harness/test/`.
+
 ### The security fixture's careful feature refuses a form value sent as a map (plan 7.0, item 10, register row 239)
 
 From Muse Wonder's careful reading in the bake-off of 2026-11-02, and Fable 5.1's read of its triage (F2); the person:
