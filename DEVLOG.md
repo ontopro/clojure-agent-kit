@@ -68,6 +68,16 @@ tested" stays information for an adopter, never a block.
 
 ## 2026-10-29 (plan 7.0)
 
+### B1 and B5 rows of their own; Google's undercount said as about 28% (plan 7.0, items 9.4 and 10.3, register rows 248, 250 and 251)
+
+From Fable 5.1's read of `d679cf9`; the person: "go, low + nit + B1/B5 rows". Row 241 put the two MEDIUM-HIGHs in
+one row with eight lower items, and a row's Status cannot say half fixed: B1 (`bb upgrade` running a command from a
+release not chosen) is row 250, B5 (a blueprint's forms as code in the stub, and its false green) row 251, and 241
+keeps the rest. Row 248 said the Google-direct cost was low "by at least 28%", which points the wrong way: 28% if
+the credit was spent in full at the refusal, less if Google refused before its last cents; and unreported reasoning
+is said as the likely cause, a price unlike the KIT's table looking the same from outside. The entry below says 8
+to 15 minutes, Argon's being 14:22.
+
 ### The security reviewer bake-off and the KIT's full security review: forty issues, to plan 7.1 (plan 7.0, items 9.4 and 10.3, register rows 240-249)
 
 The person, for item 10: "a) a quick bake-off", then "(b) ... only Sol xhigh and Argon high direct. We will review
@@ -76,7 +86,7 @@ the results" - and (b) was 9.4's full audit, so it closes both.
 (a), the five-model bake-off on the security fixture, 2026-11-02, on `01f3bda` (row 238): GPT-6.1 Sol, GPT-6
 Astra, Muse Wonder and Gemini 4 Argon found 6 of 6 planted faults, Qwen3.8 Max 5 of 6; no claim failed to
 reproduce. $8.79 and 2 h 08 min in all - per model Argon $0.39 (a floor, row 248), Sol $0.66, Astra $2.05, Qwen
-$2.67, Muse $3.02; time from start to end 8 to 14 minutes each, Qwen 1 h 18. Muse's tests failing on the careful
+$2.67, Muse $3.02; time from start to end 8 to 15 minutes each, Qwen 1 h 18. Muse's tests failing on the careful
 branch were three of them a real defect of the fixture (row 239). Sol and Argon were taken for (b).
 
 (b), `bb security-review --kit --flow <name>` over all seven flows, blind (no `--after`), each pass through a
