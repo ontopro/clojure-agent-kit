@@ -96,6 +96,21 @@ folder's `.env` (the README's step 5): with no `.env`, `toolchain-env` leaves th
 
 ## 2026-10-29 (plan 7.0)
 
+### `bb tag-check`'s secrets scan reads the KIT's own allowances (plan 7.0, item 12; the audit's K7)
+
+`bb tag-check 0.7.0 --run` failed one line: the secrets scan since `0.6.11` found `url-credentials` in
+`toolchain_env_test.clj` at `956ea06` - the `.env` loader's test value, a database URL whose user, password and
+host are one letter each, which the audit's scans had found too (K7). Changing the test cannot clear it: the scan
+reads the history. The scan already takes allowances, a routes file's `:secrets-allowed [{:file :rule :reason}]`,
+an allowed hit a warn naming its reason; `tag-check` passed none. Now `harness/resources/kit-secrets-allowed.edn`
+holds the KIT's own, one entry for this file and rule, and `tag-check` passes it as `--routes`; its line counts
+what was allowed ("1 hit allowed by ..., each with its reason"), so an ok never reads as nothing found. The scan
+matches an allowance by file and rule, not by line, so the file's header says an entry names a test file, never a
+source file, and a test holds the entries to that. The kit-session skill's first scan before the KIT's own
+security review passes the file too. Tried: the scan since `0.6.11` with it - 0 fail, 1 warn, exit 0. The person:
+"go, allow file + four fixes (b)". No row: Fable 5.1's read of the audit's triage asked an allowance with its
+reason, not a register row.
+
 ### B1 and B5 rows of their own; Google's undercount said as about 28% (plan 7.0, items 9.4 and 10.3, register rows 248, 250 and 251)
 
 From Fable 5.1's read of `d679cf9`; the person: "go, low + nit + B1/B5 rows". Row 241 put the two MEDIUM-HIGHs in

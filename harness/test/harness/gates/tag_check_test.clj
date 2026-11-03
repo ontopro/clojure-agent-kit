@@ -2,6 +2,7 @@
   (:require
    [babashka.fs :as fs]
    [babashka.process :as p]
+   [clojure.edn :as edn]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [harness.gates.tag-check :as tc]))
@@ -38,6 +39,25 @@
         (is (str/includes? (:detail (tc/health-check [(fresh "macos-arm64") stale])) "linux-arm64 (on aaaaaaa) is stale: harness/src/a.clj"))
         (is (= #{"linux-arm64"} (tc/stale-platforms [(fresh "macos-arm64") stale]))))
       (is (= #{"macos-arm64"} (tc/stale-platforms [(assoc (fresh "macos-arm64") :dirty? true) (fresh "linux-arm64")]))))))
+
+(deftest the-secrets-line-counts-what-the-allowances-allowed
+  (let [summary (fn [warn fail] (str "\n  1 ok, " warn " warn, " fail " fail, 0 skipped - .local/gates/tag-check/security-secrets.md"))]
+    (is (= {:check :secrets :ok? true :detail "no secret in the commits since 0.6.11"}
+           (tc/secrets-check "0.6.11" {:exit 0 :out (summary 0 0)})))
+    (testing "an allowed hit is ok, and said with where its reason is"
+      (let [{:keys [ok? detail]} (tc/secrets-check "0.6.11" {:exit 0 :out (summary 1 0)})]
+        (is ok?)
+        (is (str/includes? detail "1 hit allowed by harness/resources/kit-secrets-allowed.edn"))))
+    (is (str/includes? (:detail (tc/secrets-check "0.6.11" {:exit 0 :out (summary 2 0)})) "2 hits allowed"))
+    (is (not (:ok? (tc/secrets-check "0.6.11" {:exit 1 :out (summary 1 1)}))))
+    (is (not (:ok? (tc/secrets-check nil nil))))))
+
+(deftest the-kits-allowances-are-a-routes-file-the-scan-reads
+  (let [{:keys [secrets-allowed]} (edn/read-string (slurp (str "../" tc/secrets-allowed-path)))]
+    (is (seq secrets-allowed))
+    (is (every? #(and (string? (:file %)) (keyword? (:rule %)) (string? (:reason %))) secrets-allowed))
+    (testing "an allowance names a test file, never a source file: it holds its rule anywhere in the file"
+      (is (every? #(str/includes? (:file %) "/test/") secrets-allowed)))))
 
 (deftest the-gates-and-docker-gates-records-for-head
   (let [green {:exit 0 :tree "T" :tree-after "T"}]

@@ -142,7 +142,7 @@ KIT's run records are not.
   tools, its sandbox, the routing or the model tools changed since the last pass. The person names
   the model; `--model` takes it as `bb models` does (an OpenRouter route), `--profile` a profile
   whose panel names a direct route.
-- **First, the scans, from the root:** `bb --config tools/security/bb.edn secrets --all`, and `deps`
+- **First, the scans, from the root:** `bb --config tools/security/bb.edn secrets --all --routes harness/resources/kit-secrets-allowed.edn`, and `deps`
   in `tools/svg` and `harness/health/selfcheck`. The `bb.edn` libraries' `jackson-core` is waived,
   register row 133.
 - **In flows, not whole:** `--flow <name>` for each of the six in

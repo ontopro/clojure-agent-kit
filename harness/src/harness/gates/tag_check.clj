@@ -8,7 +8,8 @@
   changed since the commit each names - for both platforms; the tag's DEVLOG
   heading and its one line; the root README naming it; the tag absent here and
   on origin; the pinned template's tag on the fork, at the pinned commit; a
-  secrets scan of the commits since the last tag; the gates record green for
+  secrets scan of the commits since the last tag, a hit the KIT's allowances
+  (`harness/resources/kit-secrets-allowed.edn`) name counted with its reason; the gates record green for
   HEAD's tree; a docker-gates record green for HEAD. bear-claw's secrets scan
   is named, never run: the script is the person's, outside the clone; so is
   Docker Scout's scan of the KIT's toolchain image - a fresh Linux machine in Docker with only the KIT's toolchain, which needs a Docker login
@@ -69,6 +70,26 @@
 ;; ---------------------------------------------------------------- pure checks
 
 (defn- check [id ok? detail] {:check id :ok? (boolean ok?) :detail detail})
+
+(def secrets-allowed-path
+  "The KIT's own secrets allowances, passed to the secrets scan as its routes file: each a file, a
+  rule and the reason a hit there is not a secret."
+  "harness/resources/kit-secrets-allowed.edn")
+
+(defn secrets-check
+  "The secrets line from the scan's result `{:exit :out}` over the commits since `since`: ok when
+  nothing reads as a secret or every hit is allowed by `secrets-allowed-path` - the allowed ones
+  counted from the scan's summary line, so an ok never reads as none found."
+  [since {:keys [exit out]}]
+  (let [report ".local/gates/tag-check/security-secrets.md"
+        allowed (some->> out (re-find #"(\d+) warn,") second parse-long)]
+    (check :secrets (and since (= 0 exit))
+           (cond (nil? since) "no earlier version tag to scan from"
+                 (not= 0 exit) (str "the secrets scan since " since " failed: " report)
+                 (pos? (or allowed 0)) (str "no secret in the commits since " since "; " allowed
+                                            (if (= 1 allowed) " hit" " hits") " allowed by "
+                                            secrets-allowed-path ", each with its reason: " report)
+                 :else (str "no secret in the commits since " since)))))
 
 (defn devlog-check
   "The tag's heading in `DEVLOG.md` - `## <tag> — ...` - with a line of prose
@@ -272,7 +293,7 @@
         since (last-tag root tag)
         secrets (when since
                   (apply run root "bb" "--config" "tools/security/bb.edn" "secrets" "--from" since
-                         ["--out" ".local/gates/tag-check"]))
+                         ["--routes" secrets-allowed-path "--out" ".local/gates/tag-check"]))
         the-pin (pin root)]
     [(tree-check (git root "branch" "--show-current") (git root "status" "--porcelain"))
      (health-check (read-records root))
@@ -285,10 +306,7 @@
      (pin-check the-pin (peeled (git root "ls-remote" (:git/url the-pin) (str "refs/tags/" (:git/tag the-pin))
                                      (str "refs/tags/" (:git/tag the-pin) "^{}"))
                                 (:git/tag the-pin)))
-     (check :secrets (and since (zero? (:exit secrets)))
-            (cond (nil? since) "no earlier version tag to scan from"
-                  (zero? (:exit secrets)) (str "no secret in the commits since " since)
-                  :else (str "the secrets scan since " since " failed: .local/gates/tag-check/security-secrets.md")))
+     (secrets-check since secrets)
      (gates-check (record/read-record root) (git root "rev-parse" "HEAD^{tree}"))
      (docker-gates-check (read-edn (fs/path root docker-gates-path)) head)]))
 
