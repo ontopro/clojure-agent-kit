@@ -100,6 +100,17 @@ repository - `.mise.toml`, `Dockerfile`, `.gitignore` - on a branch the person m
 
 ## 2026-10-29 (plan 7.0)
 
+### Docker Scout before the 0.7.0 tag: row 133's six HIGH, no release to move to (plan 7.0, item 12)
+
+The checklist's two scans by hand. Docker Scout on the KIT's toolchain image built at `17df59b`: 0 CRITICAL, 6
+HIGH, all `jackson-core` compiled into two native binaries - `clj-kondo` 2026.10.26 (2.17.0) and `bb` 1.13.229
+(2.21.1), the three CVEs row 133 has carried since 2026-10-16, each a denial of service on crafted JSON. The
+checklist moves a pinned tool's pin on a HIGH; both pins are their tools' newest releases (`bb kit-pins`), so
+nothing can move, and the person: "go, row on watch, then tag". Row 133 is extended - Scout now prints the 2.21
+line's ranges, which settles that `bb`'s match is real - and stays on watch until a release of each carries
+the fix. bear-claw's secrets scan was not run, the person's word: "bear-claw secrets scan has not been very
+useful so far. skipping it."
+
 ### The 0.7.0 heading's keys: put in the `.env` before the eval (plan 7.0, item 12, register row 252)
 
 From Fable 5.1's read of `21c22ff`, a medium and a low; the person: "go, medium + low + row; pin in 7.1". The
