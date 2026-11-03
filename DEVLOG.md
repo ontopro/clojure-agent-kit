@@ -91,13 +91,25 @@ Plan 7.0 added:
   two blind passes, forty issues, none rated HIGH - rows 240-251, open, plan 7.1's fixes.
 
 A workspace at `0.6.11` takes it in this order, from the workspace folder: `git -C KIT fetch --tags && git -C KIT checkout
-0.7.0`; `bb self-check` in `KIT/`, which installs the project's tools into the folder; `eval "$(bb toolchain-env)"` in the
-terminal that starts the sessions, which puts them first; then `bb --config KIT/harness/bb.edn upgrade
---after-pull`. The upgrade changes the application's repository - `.mise.toml`, `Dockerfile`, `.gitignore` - on a
-branch the person merges. The keys may stay in the shell, or move into the folder's `.env` (the README's step
-5): with no `.env`, `toolchain-env` leaves them as the shell has them.
+0.7.0`; `bb self-check` in `KIT/`, which offers the true-up - the project's tools into the folder - and installs on
+`y`, and writes the folder's `.env` with the names the profile needs, empty; the keys put in that `.env` (the
+README's step 5) - a line left empty empties that variable in the shell when the file is loaded, whatever the
+shell had; `eval "$(bb toolchain-env)"` in the terminal that starts the sessions, which puts the tools first and
+loads the keys; then `bb --config KIT/harness/bb.edn upgrade --after-pull`. The upgrade changes the application's
+repository - `.mise.toml`, `Dockerfile`, `.gitignore` - on a branch the person merges (register row 252).
 
 ## 2026-10-29 (plan 7.0)
+
+### The 0.7.0 heading's keys: put in the `.env` before the eval (plan 7.0, item 12, register row 252)
+
+From Fable 5.1's read of `21c22ff`, a medium and a low; the person: "go, medium + low + row; pin in 7.1". The
+heading's order runs `bb self-check`, which writes the folder's `.env` when there is none with every key the
+seat's profile names as an empty `NAME=` line (`env-file/env-template`), and the eval then loads the file into the
+shell (`set -a; . <.env>; set +a`), an empty value taken as it is - so its last sentence, "the keys may stay in
+the shell ... with no `.env`, `toolchain-env` leaves them", was false under that order: the keys the shell had
+are emptied and the sessions start without them. It now says to put the keys in the `.env` before the eval.
+And `bb self-check` offers the true-up and installs on `y`; it does not install by itself. The lasting fix -
+`toolchain-env` flagging a name empty in the `.env` that the shell has set - is row 252, plan 7.1's.
 
 ### The 0.7.0 heading's words: the project set, the upgrade's order, the Mac's record (plan 7.0, item 12)
 
